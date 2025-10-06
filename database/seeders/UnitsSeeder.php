@@ -11,8 +11,8 @@ class UnitsSeeder extends Seeder
     {
         $units = [
             ['code' => 'SIHO', 'name' => 'SI Head Office'],
-            ['code' => 'DBS1', 'name' => 'Divisi Bisnis Strategis 1'],
-            ['code' => 'ENBL', 'name' => 'Enabler'],
+            ['code' => 'DBS_GNI', 'name' => 'Divisi Bisnis Strategis Government and Institution'],
+            ['code' => 'DHC', 'name' => 'DHC (Enabler)'],
         ];
 
         foreach ($units as $u) {
