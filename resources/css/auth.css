@@ -1,0 +1,69 @@
+:root{
+  --brand:#7c5cff;
+  --muted:#6b7280;
+  --ring: color-mix(in oklch, oklch(62% 0.12 255) 28%, transparent);
+  font-family:'Instrument Sans',Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+}
+html,body{height:100%}
+body{margin:0;color:#111827;line-height:1.5;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+/* ===== Global fullscreen BG (di belakang semuanya) ===== */
+.bg-canvas{
+  background: radial-gradient(900px 500px at 110% 20%, rgba(255,255,255,.18), transparent 45%),
+              radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.12), transparent 40%),
+              linear-gradient(180deg, #1457A6, #1CA3D9 55%, #35C6AC);
+}
+
+/* Grid containers harus full */
+.auth-page{min-height:100svh;width:100vw;overflow-x:hidden}
+.hero-col,.form-col{min-height:100svh}
+.auth-page .container,[class*="container"]{max-width:none!important;padding:0!important;margin:0!important}
+
+/* ===== Dots util ===== */
+.dots-l,.dots-r{
+  --dot: rgba(255,255,255,.95);
+  --gap:14px; --size:6px;
+  background-image: radial-gradient(var(--dot) var(--size), transparent var(--size));
+  background-size: calc(var(--gap)*2) calc(var(--gap)*2);
+}
+.dots-r{opacity:.9}
+
+/* ===== Login panel (glass) ===== */
+.login-panel{
+  background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.64));
+  border: 1px solid rgba(0,0,0,.04);
+  border-radius: 26px;
+  box-shadow: 0 18px 48px rgba(15,23,42,.16), 0 1px 0 rgba(255,255,255,.55) inset;
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  overflow: hidden; /* bersihin artefak bar putih */
+}
+.panel-halo{
+  background: radial-gradient(90px 50px at 80% 30%, rgba(255,255,255,.85), rgba(255,255,255,0) 70%),
+              linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0));
+  filter: blur(7px);
+  border: 1px solid rgba(255,255,255,.30);
+  border-radius: 18px;
+}
+
+/* Inputs focus & button */
+.login-panel input{transition: box-shadow .16s,border-color .16s}
+.login-panel input:focus{
+  box-shadow: 0 0 0 .2rem color-mix(in oklch, oklch(62% .12 255) 22%, transparent);
+  border-color: color-mix(in oklch, oklch(62% .12 255) 30%, transparent);
+}
+button[type="submit"]{
+  box-shadow: 0 10px 26px rgba(124,92,255,.25);
+  transition: transform .16s, box-shadow .16s, filter .16s;
+}
+button[type="submit"]:hover{ transform: translateY(-1px); box-shadow: 0 14px 34px rgba(124,92,255,.30); filter: saturate(1.03) }
+
+/* Pastikan area kanan benar2 transparan (no white bar) */
+.form-col, .form-col > *{ background: transparent !important }
+
+/* Dark (opsional) */
+html[data-theme="dark"] .login-panel{
+  background: linear-gradient(180deg, rgba(18,26,46,.68), rgba(18,26,46,.58));
+  border-color: rgba(255,255,255,.08);
+  box-shadow: 0 28px 64px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.06) inset;
+}
