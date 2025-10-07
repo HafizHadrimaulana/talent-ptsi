@@ -1,59 +1,79 @@
+// PTSI UI – Layout Controls (Sidebar/Dropdown/Theme/Logout Slider)
+// Mobile-first, A11y, Reduced Motion aware
 document.addEventListener("DOMContentLoaded", () => {
+
   /* ===============================
      Element Refs
   =============================== */
-  const html = document.documentElement;
-  const body = document.body;
+  const d   = document;
+  const w   = window;
+  const html= d.documentElement;
+  const body= d.body;
 
-  const sidebar   = document.getElementById("sidebar");
-  const overlay   = document.getElementById("overlay");
-  const hamburger = document.getElementById("hamburgerBtn");
-  const dmFab     = document.getElementById("dmFab");
+  const $   = (sel, root=d) => root.querySelector(sel);
+  const $$  = (sel, root=d) => Array.from(root.querySelectorAll(sel));
+
+  const sidebar   = $("#sidebar");
+  const overlay   = $("#overlay");
+  const hamburger = $("#hamburgerBtn");
+  const dmFab     = $("#dmFab");
 
   // Dropdowns
-  const notifBtn        = document.getElementById("notifBtn");
-  const notifDropdown   = document.getElementById("notifDropdown");
-  const profileBtn      = document.getElementById("profileBtn");      // optional
-  const profileDropdown = document.getElementById("profileDropdown"); // optional
-  const userBtn         = document.getElementById("userBtn");
-  const userDropdown    = document.getElementById("userDropdown");
+  const notifBtn        = $("#notifBtn");
+  const notifDropdown   = $("#notifDropdown");
+  const profileBtn      = $("#profileBtn");
+  const profileDropdown = $("#profileDropdown");
+  const userBtn         = $("#userBtn");
+  const userDropdown    = $("#userDropdown");
 
   // Logout swipe
-  const powerTrack = document.getElementById("poweroff");
-  const powerKnob  = document.getElementById("powerKnob");
-  const logoutForm = document.getElementById("logoutForm");
+  const powerTrack = $("#poweroff");
+  const powerKnob  = $("#powerKnob");
+  const logoutForm = $("#logoutForm");
+
+  /* ===============================
+     Helpers
+  =============================== */
+  const safeStore = {
+    get: (k, fallback=null) => { try { return localStorage.getItem(k) ?? fallback; } catch { return fallback; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+    del: (k)     => { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  const prefersReduced = w.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  const mq             = w.matchMedia("(max-width:1024px)");
+  const isMobile       = () => mq.matches;
 
   /* ===============================
      Theme (Dark/Light) via FAB
   =============================== */
   const setTheme = (t) => {
     html.setAttribute("data-theme", t);
-    try { localStorage.setItem("theme", t); } catch {}
+    safeStore.set("theme", t);
     if (dmFab) {
       dmFab.textContent = t === "dark" ? "🌙" : "🌞";
       dmFab.setAttribute("aria-pressed", String(t === "dark"));
+      dmFab.setAttribute("title", t === "dark" ? "Switch to light" : "Switch to dark");
     }
   };
-  setTheme((() => {
-    try { return localStorage.getItem("theme") || "light"; } catch { return "light"; }
-  })());
+
+  setTheme(safeStore.get("theme", "light"));
   dmFab?.addEventListener("click", () => {
-    const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    setTheme(next);
+    setTheme(html.getAttribute("data-theme") === "dark" ? "light" : "dark");
   });
 
   /* ===============================
-     Scroll Lock (untuk drawer/modal)
+     Scroll Lock (drawer/modal)
   =============================== */
-  let locked = false, scrollY = 0, touchStartY = 0;
+  let lockState = { locked:false, scrollY:0, touchStartY:0 };
 
   const isScrollable = (el, dy) => {
     let n = el;
-    while (n && n !== document.body) {
+    while (n && n !== body) {
       if (n.hasAttribute("data-scroll-area")) {
         const { scrollTop, scrollHeight, clientHeight } = n;
-        if (dy < 0) return scrollTop > 0;                                // ke atas
-        if (dy > 0) return scrollTop + clientHeight < scrollHeight;       // ke bawah
+        if (dy < 0) return scrollTop > 0;                          // up
+        if (dy > 0) return scrollTop + clientHeight < scrollHeight; // down
         return true;
       }
       n = n.parentElement;
@@ -62,47 +82,41 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const onWheel = (e) => {
-    if (locked && !isScrollable(e.target, e.deltaY)) e.preventDefault();
+    if (lockState.locked && !isScrollable(e.target, e.deltaY)) e.preventDefault();
   };
-  const onTouchStart = (e) => { if (locked) touchStartY = e.touches[0].clientY; };
+  const onTouchStart = (e) => { if (lockState.locked) lockState.touchStartY = e.touches[0].clientY; };
   const onTouchMove  = (e) => {
-    if (!locked) return;
-    const dy = touchStartY - e.touches[0].clientY;
+    if (!lockState.locked) return;
+    const dy = lockState.touchStartY - e.touches[0].clientY;
     if (!isScrollable(e.target, dy)) e.preventDefault();
   };
 
   const lockScroll = () => {
-    if (locked) return;
-    locked = true;
-    scrollY = window.scrollY || 0;
-    body.style.setProperty("--lock-top", `-${scrollY}px`);
+    if (lockState.locked) return;
+    lockState.locked = true;
+    lockState.scrollY = w.scrollY || 0;
+    body.style.setProperty("--lock-top", `-${lockState.scrollY}px`);
     html.classList.add("scroll-lock");
     body.classList.add("scroll-lock");
-    window.addEventListener("wheel", onWheel, { passive:false, capture:true });
-    window.addEventListener("touchstart", onTouchStart, { passive:false, capture:true });
-    window.addEventListener("touchmove", onTouchMove, { passive:false, capture:true });
+    w.addEventListener("wheel", onWheel, { passive:false, capture:true });
+    w.addEventListener("touchstart", onTouchStart, { passive:false, capture:true });
+    w.addEventListener("touchmove", onTouchMove, { passive:false, capture:true });
   };
 
   const unlockScroll = () => {
-    if (!locked) return;
-    locked = false;
+    if (!lockState.locked) return;
+    lockState.locked = false;
     html.classList.remove("scroll-lock");
     body.classList.remove("scroll-lock");
     body.style.removeProperty("--lock-top");
-    window.removeEventListener("wheel", onWheel, { capture:true });
-    window.removeEventListener("touchstart", onTouchStart, { capture:true });
-    window.removeEventListener("touchmove", onTouchMove, { capture:true });
-    window.scrollTo(0, scrollY);
+    w.removeEventListener("wheel", onWheel, { capture:true });
+    w.removeEventListener("touchstart", onTouchStart, { capture:true });
+    w.removeEventListener("touchmove", onTouchMove, { capture:true });
+    w.scrollTo(0, lockState.scrollY);
   };
 
   /* ===============================
-     Breakpoint helper
-  =============================== */
-  const mq = window.matchMedia("(max-width:1024px)");
-  const isMobile = () => mq.matches;
-
-  /* ===============================
-     Dropdown helpers
+     Dropdowns
   =============================== */
   const closeAllDropdowns = () => {
     if (notifDropdown)  { notifDropdown.hidden  = true;  notifBtn?.setAttribute("aria-expanded","false"); }
@@ -112,238 +126,227 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const attachDropdown = (btn, dd) => {
     if (!btn || !dd) return;
+    // Initialize ARIA
+    btn.setAttribute("aria-haspopup", "menu");
+    btn.setAttribute("aria-expanded", "false");
+    dd.hidden = true;
+
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const willOpen = dd.hidden;
       closeAllDropdowns();
       dd.hidden = !willOpen;
       btn.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) {
+        // focus first focusable
+        const first = dd.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        first?.focus({ preventScroll: true });
+      }
     });
   };
 
   attachDropdown(notifBtn,   notifDropdown);
-  attachDropdown(profileBtn, profileDropdown); // optional
+  attachDropdown(profileBtn, profileDropdown);
   attachDropdown(userBtn,    userDropdown);
 
-  document.addEventListener("click", (e) => {
+  // Close on outside click
+  d.addEventListener("click", (e) => {
     if (!e.target.closest(".dropdown-wrap")) closeAllDropdowns();
+  });
+  // Close on Escape
+  d.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllDropdowns();
   });
 
   /* ===============================
-     Burger (Desktop collapse + Mobile drawer)
+     Sidebar: Burger (Desktop collapse / Mobile drawer)
   =============================== */
   const setBurgerVisual = () => {
-    hamburger?.classList.remove("is-open","is-collapsed");
+    if (!hamburger) return;
+    hamburger.classList.remove("is-open","is-collapsed");
+
     if (isMobile()) {
       const open = sidebar?.classList.contains("open");
-      hamburger?.classList.toggle("is-open", open); // 3 garis -> X saat drawer open
-      hamburger?.setAttribute("aria-expanded", String(Boolean(open)));
-      if (hamburger) hamburger.title = open ? "Close menu" : "Open menu";
-      body.classList.remove("sidebar-collapsed"); // di mobile: jangan collapse
+      hamburger.classList.toggle("is-open", !!open); // 3-lines → X
+      hamburger.setAttribute("aria-expanded", String(!!open));
+      hamburger.title = open ? "Close menu" : "Open menu";
+      body.classList.remove("sidebar-collapsed");    // never collapse on mobile
     } else {
       const collapsed = body.classList.contains("sidebar-collapsed");
-      hamburger?.classList.toggle("is-collapsed", collapsed);
-      hamburger?.setAttribute("aria-expanded", String(!collapsed));
-      if (hamburger) hamburger.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
-      sidebar?.classList.remove("open"); // pastikan drawer tertutup di desktop
+      hamburger.classList.toggle("is-collapsed", collapsed);
+      hamburger.setAttribute("aria-expanded", String(!collapsed));
+      hamburger.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+      sidebar?.classList.remove("open");             // ensure drawer closed in desktop
       overlay && (overlay.hidden = true);
       unlockScroll();
     }
   };
 
-  const openDrawer  = () => { sidebar?.classList.add("open");  overlay && (overlay.hidden = false); lockScroll();  setBurgerVisual(); };
-  const closeDrawer = () => { sidebar?.classList.remove("open"); overlay && (overlay.hidden = true);  unlockScroll(); setBurgerVisual(); };
+  const openDrawer  = () => { if (!sidebar) return; sidebar.classList.add("open");  overlay && (overlay.hidden = false); lockScroll();  setBurgerVisual(); };
+  const closeDrawer = () => { if (!sidebar) return; sidebar.classList.remove("open"); overlay && (overlay.hidden = true);  unlockScroll(); setBurgerVisual(); };
+
+  // Persist desktop collapsed state (optional)
+  const savedCollapsed = safeStore.get("sidebar-collapsed", "0") === "1";
+  if (!isMobile() && savedCollapsed) body.classList.add("sidebar-collapsed");
 
   hamburger?.addEventListener("click", (e) => {
     e.stopPropagation();
     if (isMobile()) {
       sidebar?.classList.contains("open") ? closeDrawer() : openDrawer();
     } else {
-      body.classList.toggle("sidebar-collapsed"); // desktop collapse/expand
+      body.classList.toggle("sidebar-collapsed");
+      safeStore.set("sidebar-collapsed", body.classList.contains("sidebar-collapsed") ? "1" : "0");
       setBurgerVisual();
     }
   });
 
   overlay?.addEventListener("click", closeDrawer);
 
+  // Keyboard: toggle with Enter/Space
+  hamburger?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      hamburger.click();
+    }
+  });
+
+  // Breakpoint change
   mq.addEventListener?.("change", () => {
-    closeDrawer();         // reset state saat lintas breakpoint
+    closeDrawer();  // reset when crossing breakpoints
     setBurgerVisual();
   });
 
   /* ===============================
-     Power-off Swipe Logout
+     Power-off Swipe Logout (single, improved)
   =============================== */
-  if (powerTrack && powerKnob && logoutForm) {
+  const initLogoutSlider = () => {
+    if (!(powerTrack && powerKnob && logoutForm)) return;
+
+    // ARIA
+    powerTrack.setAttribute("role", "slider");
+    powerTrack.setAttribute("aria-label", "Slide to logout");
+    powerTrack.setAttribute("aria-valuemin", "0");
+    powerTrack.setAttribute("aria-valuemax", "100");
+    powerTrack.setAttribute("tabindex", "0");
+
     let dragging = false;
-    let startX = 0, knobX = 0;
-    const padding = 4; // padding kiri/kanan track
-    const minX = padding;
-    const maxX       = () => powerTrack.clientWidth - powerKnob.clientWidth - padding;
-    const threshold  = () => maxX() * 0.85; // 85% untuk konfirmasi
+    let startX = 0, knobX = 0, maxX = 0;
+
+    const padding   = 4; // left/right inset
+    const threshold = parseFloat(powerTrack.dataset.threshold || "0.85");
+
+    const computeMax = () => {
+      maxX = powerTrack.clientWidth - powerKnob.clientWidth - padding;
+    };
+    const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 
     const setKnob = (x) => {
+      // Avoid janky animation for reduced motion users
+      if (prefersReduced) powerKnob.style.transition = "none";
       powerKnob.style.transform = `translateX(${x}px)`;
-      // progress tint
-      const pct = Math.min(1, Math.max(0, x / maxX()));
+
+      const pct = Math.min(1, Math.max(0, x / maxX));
       const r1 = 220, g1 = 38, b1 = 38;
       powerTrack.style.background = `linear-gradient(90deg,
         rgba(${r1},${g1},${b1},${0.20 + .50*pct}),
         rgba(${r1},${g1},${b1},${0.35 + .55*pct})
       )`;
-      if (x >= threshold()) powerTrack.classList.add("done"); else powerTrack.classList.remove("done");
+      powerTrack.classList.toggle("done", x >= maxX*threshold);
+      powerTrack.setAttribute("aria-valuenow", String(Math.round(pct*100)));
     };
 
+    const submitLogout = () => {
+      powerTrack.classList.add("done");
+      // tiny delay for UI perception
+      setTimeout(() => {
+        if (logoutForm.requestSubmit) logoutForm.requestSubmit();
+        else logoutForm.submit();
+      }, prefersReduced ? 0 : 120);
+    };
+
+    const snapBack = () => setKnob(padding);
+
     const onDown = (clientX) => {
+      if (powerTrack.classList.contains("completed")) return;
       dragging = true;
+      computeMax();
       const current = powerKnob.style.transform.match(/translateX\(([-\d.]+)px/);
-      knobX = current ? parseFloat(current[1]) : 0;
+      knobX = current ? parseFloat(current[1]) : padding;
       startX = clientX;
-      document.addEventListener("mousemove", onMove, { passive:false });
-      document.addEventListener("mouseup", onUp, { passive:false, once:true });
-      document.addEventListener("touchmove", onTouchMove, { passive:false });
-      document.addEventListener("touchend", onTouchEnd, { passive:false, once:true });
+      d.addEventListener("mousemove", onMove, { passive:false });
+      d.addEventListener("mouseup", onUp, { passive:false, once:true });
+      d.addEventListener("touchmove", onTouchMove, { passive:false });
+      d.addEventListener("touchend", onTouchEnd, { passive:false, once:true });
     };
 
     const onMove = (e) => {
       if (!dragging) return;
       e.preventDefault();
       const dx = e.clientX - startX;
-      const x = Math.max(minX, Math.min(maxX(), knobX + dx));
+      const x = clamp(knobX + dx, padding, maxX);
       setKnob(x);
     };
     const onUp = () => {
+      if (!dragging) return;
       dragging = false;
       const current = powerKnob.style.transform.match(/translateX\(([-\d.]+)px/);
-      const x = current ? parseFloat(current[1]) : 0;
-      if (x >= threshold()) {
-        powerTrack.classList.add("done");
-        logoutForm.requestSubmit ? logoutForm.requestSubmit() : logoutForm.submit();
-      } else {
-        setKnob(minX); // snap back
-      }
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("touchmove", onTouchMove);
+      const x = current ? parseFloat(current[1]) : padding;
+      if (x >= maxX*threshold) submitLogout(); else snapBack();
+      d.removeEventListener("mousemove", onMove);
+      d.removeEventListener("touchmove", onTouchMove);
     };
 
     const onTouchStart = (e) => onDown(e.touches[0].clientX);
     const onTouchMove  = (e) => {
       if (!dragging) return;
       const dx = e.touches[0].clientX - startX;
-      const x  = Math.max(minX, Math.min(maxX(), knobX + dx));
+      const x  = clamp(knobX + dx, padding, maxX);
       setKnob(x);
+      e.preventDefault();
     };
     const onTouchEnd = () => onUp();
 
     powerKnob.addEventListener("mousedown", (e) => onDown(e.clientX));
     powerKnob.addEventListener("touchstart", onTouchStart, { passive:false });
 
-    // init
-    setKnob(minX);
-  }
+    // Click track to jump toward position
+    powerTrack.addEventListener("click", (e) => {
+      if (dragging || powerTrack.classList.contains("completed")) return;
+      const rect = powerTrack.getBoundingClientRect();
+      computeMax();
+      const targetX = clamp(e.clientX - rect.left - (powerKnob.offsetWidth/2), padding, maxX);
+      setKnob(targetX);
+    });
+
+    // Keyboard accessibility
+    powerTrack.addEventListener("keydown", (e) => {
+      computeMax();
+      const step = Math.max(8, Math.round(maxX/10));
+      const current = powerKnob.style.transform.match(/translateX\(([-\d.]+)px/);
+      const xNow = current ? parseFloat(current[1]) : padding;
+
+      if (e.key === "ArrowRight") { setKnob(clamp(xNow + step, padding, maxX)); e.preventDefault(); }
+      else if (e.key === "ArrowLeft"){ setKnob(clamp(xNow - step, padding, maxX)); e.preventDefault(); }
+      else if (e.key === "Enter" || e.key === " "){ submitLogout(); e.preventDefault(); }
+      else if (e.key === "Escape"){ snapBack(); e.preventDefault(); }
+    });
+
+    // Init position
+    setKnob(padding);
+  };
+
+  initLogoutSlider();
 
   /* ===============================
-     Init visual states
+     Init Visual States
   =============================== */
-  closeAllDropdowns(); // tutup semua dropdown di awal
-  closeDrawer();       // drawer tertutup + unlock scroll
-  setBurgerVisual();   // sinkron tombol burger
-});
+  closeAllDropdowns(); // close all dropdown at start
+  overlay && (overlay.hidden = true);
+  // Ensure drawer closed & burger synced
+  if (isMobile()) {
+    sidebar?.classList.remove("open");
+    unlockScroll();
+  }
+  setBurgerVisual();
 
-document.addEventListener('DOMContentLoaded', () => {
-  const track = document.getElementById('poweroff');
-  const knob  = document.getElementById('powerKnob');
-  const form  = document.getElementById('logoutForm');
-  if(!track || !knob || !form) return;
-
-  let dragging = false, startX = 0, startLeft = 0, maxLeft = 0;
-
-  const THRESHOLD = parseFloat(track.dataset.threshold || '0.6'); // 60%
-  const px = () => {
-    const rect = track.getBoundingClientRect();
-    const knobRect = knob.getBoundingClientRect();
-    // ruang bergerak = lebar track - (knob + margin)
-    maxLeft = rect.width - knobRect.width - 8; // 4px inset kiri + 4px kanan
-  };
-  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
-  const setLeft = (leftPx) => {
-    knob.style.left = `${leftPx + 4}px`; // 4px inset kiri
-    const progress = leftPx / maxLeft;
-    track.style.background = `linear-gradient(90deg,
-      rgba(76,175,80,.35) 0%,
-      rgba(76,175,80,.35) ${progress*100}%,
-      rgba(255,255,255,.06) ${progress*100}%,
-      rgba(255,255,255,.06) 100%)`;
-    track.setAttribute('aria-valuenow', Math.round(progress*100));
-  };
-  const complete = () => {
-    track.classList.add('completed');
-    knob.style.left = `${maxLeft + 4}px`;
-    // submit dengan sedikit jeda biar UI terasa responsive
-    setTimeout(() => form.submit(), 150);
-  };
-  const reset = () => {
-    track.classList.remove('completed','dragging');
-    setLeft(0);
-  };
-
-  const onDown = (clientX) => {
-    if(track.classList.contains('completed')) return;
-    dragging = true; track.classList.add('dragging');
-    px();
-    const knobRect = knob.getBoundingClientRect();
-    startX = clientX; startLeft = knobRect.left - track.getBoundingClientRect().left - 4;
-  };
-  const onMove = (clientX) => {
-    if(!dragging) return;
-    const dx = clientX - startX;
-    const next = clamp(startLeft + dx, 0, maxLeft);
-    setLeft(next);
-  };
-  const onUp = () => {
-    if(!dragging) return;
-    dragging = false; track.classList.remove('dragging');
-    const currentLeft = parseFloat((knob.style.left||'4px').replace('px','')) - 4;
-    const progress = currentLeft / maxLeft;
-    if(progress >= THRESHOLD) complete(); else reset();
-  };
-
-  // mouse
-  knob.addEventListener('mousedown', e => { e.preventDefault(); onDown(e.clientX); });
-  window.addEventListener('mousemove', e => onMove(e.clientX), { passive:true });
-  window.addEventListener('mouseup', onUp);
-
-  // touch
-  knob.addEventListener('touchstart', e => { onDown(e.touches[0].clientX); }, { passive:true });
-  window.addEventListener('touchmove', e => onMove(e.touches[0].clientX), { passive:false });
-  window.addEventListener('touchend', onUp);
-
-  // klik pada track untuk “lompat” mendekati posisi
-  track.addEventListener('click', e => {
-    if(dragging || track.classList.contains('completed')) return;
-    px();
-    const left = clamp(e.clientX - track.getBoundingClientRect().left - (knob.offsetWidth/2) - 4, 0, maxLeft);
-    setLeft(left);
-  });
-
-  // keyboard accessibility
-  track.addEventListener('keydown', e => {
-    if(track.classList.contains('completed')) return;
-    px();
-    const step = Math.max(8, Math.round(maxLeft/10));
-    const currentLeft = parseFloat((knob.style.left||'4px').replace('px','')) - 4;
-    if(e.key === 'ArrowRight'){
-      setLeft(clamp(currentLeft + step, 0, maxLeft)); e.preventDefault();
-    }else if(e.key === 'ArrowLeft'){
-      setLeft(clamp(currentLeft - step, 0, maxLeft)); e.preventDefault();
-    }else if(e.key === 'Enter' || e.key === ' '){
-      // langsung selesaikan
-      complete(); e.preventDefault();
-    }else if(e.key === 'Escape'){
-      reset(); e.preventDefault();
-    }
-  });
-
-  // init
-  reset();
 });
