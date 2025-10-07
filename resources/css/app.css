@@ -1,11 +1,12 @@
-/* ============================
-   Vendor first
-   ============================ */
-@import "bootstrap/dist/css/bootstrap.min.css";
+/* ===== Vendor & Utilities Only =====
+   - Biarkan file ini minimal agar gaya layout tidak bentrok.
+   - Kalau BUTUH Bootstrap untuk halaman tertentu, aktifkan baris import di bawah.
+*/
 
-/* ============================
-   Tailwind v4 (utilities-only)
-   ============================ */
+/* (Opsional) Bootstrap — MATIKAN dulu untuk hindari konflik .nav/.card/.table */
+/* @import "bootstrap/dist/css/bootstrap.min.css"; */
+
+/* Tailwind v4 (utilities-only) */
 @import "tailwindcss";
 
 

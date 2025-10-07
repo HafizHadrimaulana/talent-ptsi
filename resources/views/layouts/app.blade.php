@@ -4,7 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>@yield('title','Talent PTSI')</title>
-  @vite(['resources/css/app-layout.css','resources/js/app-layout.js'])
+@vite([
+  'resources/css/app.css',
+  'resources/css/app-layout.css',
+  'resources/css/app-ui.css',  
+  'resources/js/app-layout.js',
+  'resources/js/app.js'
+])
+
+
 </head>
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
   <div class="overlay" id="overlay" hidden></div>
@@ -17,24 +25,41 @@
       </a>
     </div>
 
+    <!-- MAIN -->
     <nav class="nav-section">
       <div class="nav-title">Main</div>
       <div class="nav">
         <a class="nav-item {{ request()->routeIs('dashboard')?'active':'' }}" href="{{ route('dashboard') }}">
           <span class="icon">🏠</span><span class="label">Dashboard</span>
         </a>
-        @can('users.view')
-        <a class="nav-item {{ request()->routeIs('users.*')?'active':'' }}" href="{{ route('users.index') }}">
-          <span class="icon">👤</span><span class="label">Users</span>
-        </a>
-        @endcan
-        @can('reports.view')
-        <a class="nav-item" href="{{ route('reports.export') }}">
-          <span class="icon">📈</span><span class="label">Reports</span>
-        </a>
-        @endcan
       </div>
     </nav>
+
+    <!-- SETTINGS -->
+<!-- SETTINGS -->
+<nav class="nav-section">
+  <div class="nav-title">Settings</div>
+  <div class="nav">
+    @can('users.view')
+    <a class="nav-item {{ request()->routeIs('settings.users.*') ? 'active' : '' }}"
+       href="{{ route('settings.users.index') }}">
+      <span class="icon">👤</span><span class="label">User Management</span>
+    </a>
+    @endcan
+
+    @can('rbac.view')
+    <a class="nav-item {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}"
+       href="{{ route('settings.roles.index') }}">
+      <span class="icon">🛡️</span><span class="label">Role Management</span>
+    </a>
+    <a class="nav-item {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}"
+       href="{{ route('settings.permissions.index') }}">
+      <span class="icon">🔐</span><span class="label">Permission Management</span>
+    </a>
+    @endcan
+  </div>
+</nav>
+
   </aside>
 
   <!-- Topbar -->
@@ -49,51 +74,61 @@
     </div>
 
     <div class="top-actions">
-<!-- Notifikasi -->
-<div class="dropdown-wrap">
-  <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">🔔</button>
-  <div id="notifDropdown" class="dropdown" hidden>
-    <div class="dropdown-header">Notifikasi <button class="close-btn" type="button">✖</button></div>
-    <div class="muted text-sm">Belum ada notifikasi.</div>
-  </div>
-</div>
-
-
-
-<!-- User -->
-<div class="dropdown-wrap user-area">
-  <button id="userBtn" class="user-chip" type="button" aria-haspopup="true" aria-expanded="false" title="User menu">
-    <span class="avatar">PT</span>
-    <span class="user-meta">
-      <span class="user-name text-ellipsis">{{ auth()->user()->name ?? 'Guest' }}</span>
-      <span class="user-role muted">{{ auth()->user()?->getRoleNames()->first() ?? '-' }}</span>
-    </span>
-    <span class="chev">▾</span>
-  </button>
-
-  <div id="userDropdown" class="dropdown user-dropdown" hidden>
-    <div class="user-card">
-      <div class="avatar lg">PT</div>
-      <div class="user-info">
-        <strong>{{ auth()->user()->name ?? 'Guest' }}</strong>
-        <span class="muted text-sm">{{ auth()->user()->email ?? '-' }}</span>
+      <!-- Notifikasi -->
+      <div class="dropdown-wrap">
+        <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">🔔</button>
+        <div id="notifDropdown" class="dropdown" hidden>
+          <div class="dropdown-header">Notifikasi <button class="close-btn" type="button">✖</button></div>
+          <div class="muted text-sm">Belum ada notifikasi.</div>
+        </div>
       </div>
-    </div>
-    <div class="menu-list">
-      <a class="menu-item" href="#" data-action="toggle-theme">🌓 <span>Toggle Theme</span></a>
-      <a class="menu-item" href="{{ route('dashboard') }}">🏠 <span>Dashboard</span></a>
-    </div>
 
-    <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
-      @csrf
-      <div id="poweroff" class="poweroff">
-        <span class="power-icon">⏻</span>
-        <span class="power-text">Swipe to Logout</span>
-        <div id="powerKnob" class="power-knob"></div>
-      </div>
-    </form>
+      <!-- User -->
+      <div class="dropdown-wrap user-area">
+        <button id="userBtn" class="user-chip" type="button" aria-haspopup="true" aria-expanded="false" title="User menu">
+          <span class="avatar">PT</span>
+          <span class="user-meta">
+            <span class="user-name text-ellipsis">{{ auth()->user()->name ?? 'Guest' }}</span>
+            <span class="user-role muted">{{ auth()->user()?->getRoleNames()->first() ?? '-' }}</span>
+          </span>
+          <span class="chev">▾</span>
+        </button>
+
+        <div id="userDropdown" class="dropdown user-dropdown" hidden>
+          <div class="user-card">
+            <div class="avatar lg">PT</div>
+            <div class="user-info">
+              <strong>{{ auth()->user()->name ?? 'Guest' }}</strong>
+              <span class="muted text-sm">{{ auth()->user()->email ?? '-' }}</span>
+            </div>
+          </div>
+          <div class="menu-list">
+            <a class="menu-item" href="#" data-action="toggle-theme">🌓 <span>Toggle Theme</span></a>
+            <a class="menu-item" href="{{ route('dashboard') }}">🏠 <span>Dashboard</span></a>
+          </div>
+
+<form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
+  @csrf
+  <div id="poweroff"
+       class="poweroff"
+       data-threshold="0.6"
+       role="slider"
+       aria-label="Geser untuk logout"
+       aria-valuemin="0"
+       aria-valuemax="100"
+       aria-valuenow="0"
+       tabindex="0">
+    <span class="power-icon" aria-hidden="true">⏻</span>
+    <span class="power-text">Geser untuk Logout</span>
+    <div id="powerKnob" class="power-knob" aria-hidden="true"></div>
   </div>
-</div>
+  <noscript>
+    <button class="btn btn-outline w-full mt-2">Logout</button>
+  </noscript>
+</form>
+
+        </div>
+      </div>
 
     </div>
   </header>
