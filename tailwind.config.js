@@ -14,6 +14,7 @@ export default {
         'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial',
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'
       ],
+      montserrat: ['Montserrat', 'sans-serif'],
     },
     extend: {
       colors: {

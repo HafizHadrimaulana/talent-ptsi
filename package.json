@@ -19,6 +19,7 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
+        "@fontsource/montserrat": "^5.2.8",
         "@popperjs/core": "^2.11.8",
         "bootstrap": "^5.3.8"
     }
