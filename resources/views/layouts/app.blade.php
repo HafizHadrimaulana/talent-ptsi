@@ -103,8 +103,7 @@
             </div>
           </div>
           <div class="menu-list">
-            <a class="menu-item" href="#" data-action="toggle-theme">🌓 <span>Toggle Theme</span></a>
-            <a class="menu-item" href="{{ route('dashboard') }}">🏠 <span>Dashboard</span></a>
+            <a class="menu-item" href="#"><span>Change Password</span></a>
           </div>
 
 <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
@@ -113,13 +112,13 @@
        class="poweroff"
        data-threshold="0.6"
        role="slider"
-       aria-label="Geser untuk logout"
+       aria-label="Swipe To Signout"
        aria-valuemin="0"
        aria-valuemax="100"
        aria-valuenow="0"
        tabindex="0">
     <span class="power-icon" aria-hidden="true">⏻</span>
-    <span class="power-text">Geser untuk Logout</span>
+    <span class="power-text">Swipe To Sign out</span>
     <div id="powerKnob" class="power-knob" aria-hidden="true"></div>
   </div>
   <noscript>

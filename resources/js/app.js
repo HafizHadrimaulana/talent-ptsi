@@ -3,12 +3,19 @@ import './bootstrap';
 import { initDataTables, bindExternalSearch } from './plugins/datatables';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // USERS
+  // ===== USERS
   initDataTables('#users-table', {
-    dom: "<'dt-top'<'dt-left dataTables_length'l><'dt-right dataTables_filter'f>>t<'dt-bottom'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>",
+    // Layout atas/bawah tetap, tapi responsive aktif
     columnDefs: [
-      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140 }
-    ]
+      // Aksi: jangan disort/cari, selalu tampil (priority 1 = paling penting)
+      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+      // Nama paling penting kedua
+      { targets: 0, responsivePriority: 2 },
+      // Roles lebih penting dari email di layar kecil? atur prioritasnya
+      { targets: 2, responsivePriority: 3 },
+      { targets: 1, responsivePriority: 4 },
+    ],
+    // order: [[0,'asc']], // kalau mau default sort
   });
   bindExternalSearch({
     searchSelector: 'input[name="q"]',
@@ -17,19 +24,21 @@ document.addEventListener('DOMContentLoaded', () => {
     delay: 250,
   });
 
-  // ROLES
+  // ===== ROLES
   initDataTables('#roles-table', {
-    dom: "<'dt-top'<'dt-left dataTables_length'l><'dt-right dataTables_filter'f>>t<'dt-bottom'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>",
     columnDefs: [
-      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140 }
-    ]
+      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+      { targets: 0, responsivePriority: 2 },
+      { targets: 1, responsivePriority: 3 },
+    ],
   });
 
-  // PERMISSIONS
+  // ===== PERMISSIONS
   initDataTables('#perms-table', {
-    dom: "<'dt-top'<'dt-left dataTables_length'l><'dt-right dataTables_filter'f>>t<'dt-bottom'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>",
     columnDefs: [
-      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140 }
-    ]
+      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+      { targets: 0, responsivePriority: 2 },
+      { targets: 1, responsivePriority: 3 },
+    ],
   });
 });

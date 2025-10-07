@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Guard;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\Guard; // ⬅ penting
 
 class UserController extends Controller
 {
@@ -18,8 +19,8 @@ class UserController extends Controller
         $users = User::query()
             ->when($q, function ($qr) use ($q) {
                 $qr->where(function ($w) use ($q) {
-                    $w->where('name', 'like', "%$q%")
-                      ->orWhere('email', 'like', "%$q%");
+                    $w->where('name', 'like', "%{$q}%")
+                      ->orWhere('email', 'like', "%{$q}%");
                 });
             })
             ->with('roles:id,name')
@@ -27,10 +28,12 @@ class UserController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Guard default utk model User (cara aman via Spatie)
         $guard = Guard::getDefaultName(User::class);
 
         $roles = Role::where('guard_name', $guard)
+            // ->where(function($q){
+            //     $q->whereNull('unit_id')->orWhere('unit_id', auth()->user()->unit_id);
+            // })
             ->orderBy('name')
             ->get(['id','name']);
 
@@ -45,7 +48,7 @@ class UserController extends Controller
             'name'     => ['required','string','max:255'],
             'email'    => ['required','email','unique:users,email'],
             'password' => ['required','min:6'],
-            'roles'    => ['array'],
+            'roles'    => ['nullable','array'],
             'roles.*'  => ['integer', Rule::exists('roles','id')->where(fn($q)=>$q->where('guard_name',$guard))],
         ]);
 
@@ -56,11 +59,11 @@ class UserController extends Controller
             'unit_id'  => auth()->user()->unit_id ?? null,
         ]);
 
-        $roles = Role::where('guard_name',$guard)
-            ->whereIn('id', $data['roles'] ?? [])
-            ->get();
+        $roleModels = empty($data['roles'])
+            ? collect()
+            : Role::where('guard_name',$guard)->whereIn('id', $data['roles'])->get();
 
-        $user->syncRoles($roles);
+        $user->syncRoles($roleModels);
 
         return back()->with('ok','User created');
     }
@@ -73,7 +76,7 @@ class UserController extends Controller
             'name'     => ['required','string','max:255'],
             'email'    => ['required','email', Rule::unique('users','email')->ignore($user->id)],
             'password' => ['nullable','min:6'],
-            'roles'    => ['array'],
+            'roles'    => ['nullable','array'],
             'roles.*'  => ['integer', Rule::exists('roles','id')->where(fn($q)=>$q->where('guard_name',$guard))],
         ]);
 
@@ -86,11 +89,11 @@ class UserController extends Controller
         }
         $user->update($payload);
 
-        $roles = Role::where('guard_name',$guard)
-            ->whereIn('id', $data['roles'] ?? [])
-            ->get();
+        $roleModels = empty($data['roles'])
+            ? collect()
+            : Role::where('guard_name',$guard)->whereIn('id', $data['roles'])->get();
 
-        $user->syncRoles($roles);
+        $user->syncRoles($roleModels);
 
         return back()->with('ok','User updated');
     }
@@ -100,5 +103,35 @@ class UserController extends Controller
         abort_if(auth()->id() === $user->id, 403, 'Tidak boleh menghapus diri sendiri.');
         $user->delete();
         return back()->with('ok','User deleted');
+    }
+
+    /**
+     * JSON role options untuk modal dinamis (create/edit).
+     * Query param opsional: ?user_id=123 untuk return "assigned".
+     */
+    public function roleOptions(Request $request): JsonResponse
+    {
+        $guard = Guard::getDefaultName(User::class);
+
+        $roles = Role::where('guard_name', $guard)
+            // ->where(function($q){
+            //     $q->whereNull('unit_id')->orWhere('unit_id', auth()->user()->unit_id);
+            // })
+            ->orderBy('name')
+            ->get(['id','name']);
+
+        $assigned = collect();
+
+        if ($request->filled('user_id')) {
+            $u = User::with('roles:id')->find($request->integer('user_id'));
+            if ($u) {
+                $assigned = $u->roles->pluck('id')->values();
+            }
+        }
+
+        return response()->json([
+            'roles'    => $roles,
+            'assigned' => $assigned,
+        ]);
     }
 }
