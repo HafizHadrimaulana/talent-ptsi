@@ -2,14 +2,15 @@
 @section('title','Settings · Users')
 
 @section('content')
-<div class="card glass p-4">
+{{-- NOTE: data-roles-url dipakai JS untuk load roles secara dinamis --}}
+<div class="card glass p-4" data-roles-url="{{ route('settings.roles.options') }}">
   <div class="flex justify-between items-center gap-2 mb-3">
-    <form method="get" class="flex gap-2">
+    <form method="get" class="flex gap-2" id="searchForm">
       <input name="q" value="{{ $q }}" placeholder="Cari nama/email" class="input" />
-      <button class="btn btn-outline hover-lift" type="button" id="btnSearch">Cari</button>
+      <button class="btn btn-outline hover-lift" type="submit" id="btnSearch">Cari</button>
     </form>
     @can('users.create')
-    <button class="btn btn-brand hover-lift" data-modal-open="createUserModal">+ Tambah User</button>
+    <button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">+ Tambah User</button>
     @endcan
   </div>
 
@@ -42,16 +43,15 @@
           <td>{{ $u->roles->pluck('name')->join(', ') ?: '-' }}</td>
           <td class="cell-actions">
             @can('users.update')
-            <button class="btn-sm hover-lift"
-                    data-modal-open="editUserModal"
-                    data-user="{{ e(json_encode([
-                      'id'    => $u->id,
-                      'name'  => $u->name,
-                      'email' => $u->email,
-                      'roles' => $u->roles->pluck('id')->toArray(),
-                    ], JSON_UNESCAPED_UNICODE)) }}">
-              Edit
-            </button>
+            <button
+              type="button"
+              class="btn-sm hover-lift"
+              data-modal-open="editUserModal"
+              data-id="{{ $u->id }}"
+              data-name="{{ $u->name }}"
+              data-email="{{ $u->email }}"
+              data-roles="{{ $u->roles->pluck('id')->implode(',') }}"
+            >Edit</button>
             @endcan
 
             @can('users.delete')
@@ -79,7 +79,7 @@
       <h3>Tambah User</h3>
       <button class="close-btn" data-modal-close>&times;</button>
     </div>
-    <form method="post" action="{{ route('settings.users.store') }}" class="modal-body grid gap-3">
+    <form method="post" action="{{ route('settings.users.store') }}" class="modal-body grid gap-3" id="createUserForm">
       @csrf
       <label>Nama <input name="name" required class="input"></label>
       <label>Email <input type="email" name="email" required class="input"></label>
@@ -87,11 +87,8 @@
 
       <div>
         <div class="font-semibold mb-1">Roles</div>
-        <div class="grid grid-cols-2 gap-2">
-          @foreach($roles as $r)
-          <label class="chip"><input type="checkbox" name="roles[]" value="{{ $r->id }}"> {{ $r->name }}</label>
-          @endforeach
-        </div>
+        {{-- akan diisi dinamis via JS --}}
+        <div class="grid grid-cols-2 gap-2" id="createUserRoles"></div>
       </div>
 
       <div class="modal-actions">
@@ -117,13 +114,8 @@
 
       <div>
         <div class="font-semibold mb-1">Roles</div>
-        <div class="grid grid-cols-2 gap-2" id="editUserRoles">
-          @foreach($roles as $r)
-          <label class="chip">
-            <input type="checkbox" name="roles[]" value="{{ $r->id }}"> {{ $r->name }}
-          </label>
-          @endforeach
-        </div>
+        {{-- akan diisi dinamis via JS --}}
+        <div class="grid grid-cols-2 gap-2" id="editUserRoles"></div>
       </div>
 
       <div class="modal-actions">
@@ -134,52 +126,138 @@
   </div>
 </div>
 
+{{-- Fallback data untuk render awal bila endpoint JSON belum tersedia --}}
 <script>
-(function(){
-  const openers = document.querySelectorAll('[data-modal-open]');
-  const closers = document.querySelectorAll('[data-modal-close]');
+  window.__INITIAL_ROLES__ = @json(($roles ?? collect())->map(fn($r)=>['id'=>$r->id,'name'=>$r->name])->values());
+</script>
 
-  openers.forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const id = btn.getAttribute('data-modal-open');
-      const modal = document.getElementById(id);
-      if(!modal) return;
+<script>
+// Modal + Roles loader (dinamis, dengan fallback)
+(() => {
+  const body = document.body;
+  const rolesURL = document.querySelector('.card.glass.p-4')?.dataset.rolesUrl || null;
 
-      if(id==='editUserModal' && btn.dataset.user){
-        const data = JSON.parse(btn.dataset.user);
-        const form = document.getElementById('editUserForm');
-        form.action = "{{ url('settings/users') }}/" + data.id;
-        form.querySelector('input[name=name]').value = data.name;
-        form.querySelector('input[name=email]').value = data.email;
+  const tplRole = (r, checked=false) => `
+    <label class="chip">
+      <input type="checkbox" name="roles[]" value="${r.id}" ${checked?'checked':''}>
+      ${r.name}
+    </label>
+  `;
 
-        form.querySelectorAll('#editUserRoles input[type=checkbox]').forEach(cb=>{
-          cb.checked = Array.isArray(data.roles) && data.roles.includes(parseInt(cb.value));
-        });
+  const renderRoles = (container, roles, assignedIds=[]) => {
+    const picked = (assignedIds || []).map(String);
+    container.innerHTML = roles.map(r => tplRole(r, picked.includes(String(r.id)))).join('');
+  };
+
+  const fetchRoles = async (userId=null) => {
+    if (!rolesURL) {
+      return { roles: Array.isArray(window.__INITIAL_ROLES__) ? window.__INITIAL_ROLES__ : [], assigned: [] };
+    }
+    const url = new URL(rolesURL, window.location.origin);
+    if (userId) url.searchParams.set('user_id', userId);
+    const res = await fetch(url.toString(), { headers:{'X-Requested-With':'XMLHttpRequest'} });
+    if (!res.ok) throw new Error('Failed to load roles');
+    return res.json(); // {roles:[{id,name}], assigned:[ids]}
+  };
+
+  const openModal = (modal) => {
+    if (!modal) return;
+    modal.hidden = false;
+    body.style.overflow = 'hidden';
+    const first = modal.querySelector('input,select,textarea,button:not([data-modal-close])');
+    first?.focus({preventScroll:true});
+  };
+  const closeModal = (modal) => {
+    if (!modal) return;
+    modal.hidden = true;
+    body.style.overflow = '';
+  };
+
+  // OPEN (delegation, capture)
+  document.addEventListener('click', async (e) => {
+    const opener = e.target.closest('[data-modal-open]');
+    if (!opener) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const id    = opener.getAttribute('data-modal-open');
+    const modal = document.getElementById(id);
+    if (!modal) return;
+
+    if (id === 'createUserModal') {
+      const container = document.getElementById('createUserRoles');
+      if (container) {
+        try {
+          const { roles } = await fetchRoles();
+          renderRoles(container, roles, []);
+        } catch (err) {
+          console.error(err);
+          renderRoles(container, (window.__INITIAL_ROLES__||[]), []);
+        }
+      }
+    }
+
+    if (id === 'editUserModal') {
+      const form = document.getElementById('editUserForm');
+
+      // Ambil dari atribut sederhana (aman dari escape/JSON)
+      const uid   = opener.getAttribute('data-id') || '';
+      const name  = opener.getAttribute('data-name')  || '';
+      const email = opener.getAttribute('data-email') || '';
+      const rolesCsv = opener.getAttribute('data-roles') || '';
+      const rolesArr = rolesCsv.split(',').map(s => s.trim()).filter(Boolean); // ["1","3",...]
+
+      if (form) {
+        form.action = "{{ url('settings/users') }}/" + uid;
+        form.querySelector('input[name=name]').value  = name;
+        form.querySelector('input[name=email]').value = email;
         form.querySelector('input[name=password]').value = '';
       }
 
-      modal.hidden = false;
-      document.body.style.overflow = 'hidden';
-    });
-  });
-
-  closers.forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const modal = btn.closest('.modal');
-      if(!modal) return;
-      modal.hidden = true;
-      document.body.style.overflow = '';
-    });
-  });
-
-  document.querySelectorAll('.modal').forEach(modal=>{
-    modal.addEventListener('click', (e)=>{
-      if(e.target === modal){
-        modal.hidden = true;
-        document.body.style.overflow = '';
+      const container = document.getElementById('editUserRoles');
+      if (container) {
+        try {
+          const { roles, assigned } = await fetchRoles(uid);
+          const assignedIds = (assigned && assigned.length) ? assigned : rolesArr;
+          renderRoles(container, roles, assignedIds);
+        } catch (err) {
+          console.error(err);
+          renderRoles(container, (window.__INITIAL_ROLES__||[]), rolesArr);
+        }
       }
-    });
+    }
+
+    openModal(modal);
+  }, true);
+
+  // CLOSE (button)
+  document.addEventListener('click', (e) => {
+    const closer = e.target.closest('[data-modal-close]');
+    if (!closer) return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeModal(closer.closest('.modal'));
+  }, true);
+
+  // Backdrop close
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', (e) => { if (e.target === m) closeModal(m); });
   });
+
+  // ESC close
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const openModals = Array.from(document.querySelectorAll('.modal')).filter(m => !m.hidden);
+    const top = openModals.pop();
+    if (top) closeModal(top);
+  });
+
+  // Search safety
+  const f = document.getElementById('searchForm');
+  const btn = document.getElementById('btnSearch');
+  btn?.addEventListener('click', (ev) => { ev.preventDefault(); f?.submit(); });
 })();
 </script>
+
 @endsection

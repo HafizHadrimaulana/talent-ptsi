@@ -19,6 +19,7 @@ Route::middleware('web')->group(function () {
 
         // SETTINGS (modal-first)
         Route::prefix('settings')->name('settings.')->group(function () {
+
             // Users: index + store + update + destroy (NO create/edit pages)
             Route::get('users', [UserController::class,'index'])
                 ->middleware('permission:users.view')->name('users.index');
@@ -28,6 +29,11 @@ Route::middleware('web')->group(function () {
                 ->middleware('permission:users.update')->name('users.update');
             Route::delete('users/{user}', [UserController::class,'destroy'])
                 ->middleware('permission:users.delete')->name('users.destroy');
+
+            // JSON role options for dynamic modal (create/edit)
+            Route::get('roles/options', [UserController::class,'roleOptions'])
+                ->middleware('permission:users.view') // atau rbac.view, sesuaikan
+                ->name('roles.options');
 
             // Roles
             Route::get('roles', [RoleController::class,'index'])
