@@ -50,6 +50,27 @@ Route::middleware('web')->group(function () {
                 ->middleware('permission:rbac.view')->name('permissions.index');
             Route::put('permissions/{permission}', [PermissionController::class,'update'])
                 ->middleware('permission:rbac.assign')->name('permissions.update');
+            
+                Route::get('/rekrutmen/monitoring', fn() => view('stubs.coming', [
+        'title' => 'Rekrutmen · Monitoring'
+    ]))->name('rekrutmen.monitoring');
+
+    Route::get('/rekrutmen/izin-prinsip', fn() => view('stubs.coming', [
+        'title' => 'Rekrutmen · Izin Prinsip'
+    ]))->name('rekrutmen.izin-prinsip.index');
+
+    Route::get('/rekrutmen/kontrak', fn() => view('stubs.coming', [
+        'title' => 'Rekrutmen · Penerbitan Kontrak'
+    ]))->name('rekrutmen.kontrak.index');
+
+    // --- STUB PELATIHAN ---
+    Route::get('/pelatihan/monitoring', fn() => view('stubs.coming', [
+        'title' => 'Pelatihan · Monitoring'
+    ]))->name('pelatihan.monitoring');
+
+    Route::get('/pelatihan/izin-prinsip', fn() => view('stubs.coming', [
+        'title' => 'Pelatihan · Izin Prinsip'
+    ]))->name('pelatihan.izin-prinsip');    
         });
 
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');

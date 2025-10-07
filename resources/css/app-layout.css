@@ -445,3 +445,102 @@ body.sidebar-collapsed .main{ margin-left: calc(var(--sbw-collapsed) + var(--sid
     inset:auto auto 12px 12px;
   }
 }
+
+/* ===== Sidebar accordion ===== */
+.nav-parent{ cursor:pointer; position:relative; }
+.nav-parent .chev{ margin-left:auto; transition:transform .18s ease; opacity:.8 }
+.nav-parent.open .chev{ transform:rotate(-180deg) }
+
+.nav-children{
+  display:grid; gap:6px;
+  margin:6px 0 8px 40px; /* indent anak */
+  max-height:0; overflow:hidden;
+  transition:max-height .22s ease, opacity .18s ease;
+  opacity:0;
+}
+.nav-children.open{ max-height:360px; opacity:1; }
+
+.nav-child{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px; border-radius:10px; border:var(--border);
+  background:var(--card); text-decoration:none; color:inherit; font-weight:600;
+}
+.nav-child .bullet{ width:14px; text-align:center; opacity:.7 }
+.nav-child:hover{ background:rgba(255,255,255,.7) }
+[data-theme="dark"] .nav-child:hover{ background:rgba(255,255,255,.06) }
+.nav-child.active{ background:var(--accent-ghost); border-color:rgba(79,70,229,.2) }
+
+/* Collapsed desktop: sembunyikan children (tetap bisa expand di mobile) */
+body.sidebar-collapsed .nav-children{ display:none !important; }
+
+/* Drawer mobile: biar nyaman disentuh */
+@media (max-width:1024px){
+  .nav-children{ margin-left:34px }
+}
+
+/* Sidebar (floating) */
+.sidebar{
+  position:fixed; inset: var(--side-pad) auto var(--side-pad) var(--side-pad);
+  width:var(--sbw);
+  border-radius:20px;
+  box-shadow:var(--shadow-lg);
+  padding:12px;
+  display:flex; flex-direction:column; gap:10px;
+  z-index:60; contain:paint;
+  background:var(--sidebar); border:var(--border);
+  transition: width .2s ease, transform .2s ease;
+
+  /* === NEW: scrollable on long menus === */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+body.sidebar-collapsed .sidebar{ width:var(--sbw-collapsed) }
+
+/* (opsional) sub menu batasi tinggi + inner scroll */
+.subnav{
+  display:none;
+  margin: 4px 0 8px 32px;
+  padding-left: 4px;
+  border-left: 2px solid rgba(2,8,23,.08);
+  max-height: 50vh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+[data-theme="dark"] .subnav{ border-color: rgba(255,255,255,.12) }
+
+/* Sidebar selalu bisa scroll saat konten tinggi */
+.sidebar{
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+
+/* Submenu panjang: batasi tinggi → scroll di dalam */
+.subnav{
+  display:none;
+  margin:4px 0 8px 32px;
+  padding-left:4px;
+  border-left:2px solid rgba(2,8,23,.08);
+  max-height:50vh;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.subnav.open{ display:block; }
+
+[data-theme="dark"] .subnav{
+  border-left-color: rgba(255,255,255,.12);
+}
+
+/* Subnav via class, no inline style */
+.subnav { display: none; margin:6px 0 2px 0; padding-left:6px; }
+.subnav.open { display: block; }
+
+/* Chevron anim saat open */
+.nav-item .chev { opacity:.7; margin-left:auto; transition: transform .18s ease; }
+.nav-item.open .chev { transform: rotate(180deg); }
+
+/* Pastikan sidebar bisa scroll */
+.sidebar[data-scroll-area] { overflow: auto; -webkit-overflow-scrolling: touch; }

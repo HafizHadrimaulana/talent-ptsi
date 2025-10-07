@@ -4,17 +4,31 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>@yield('title','Talent PTSI')</title>
-@vite([
-  'resources/css/app.css',
-  'resources/css/app-layout.css',
-  'resources/css/app-ui.css',  
-  'resources/js/app-layout.js',
-  'resources/js/app.js'
-])
-
-
+  @vite([
+    'resources/css/app.css',
+    'resources/css/app-layout.css',
+    'resources/css/app-ui.css',
+    'resources/js/app-layout.js',
+    'resources/js/app.js'
+  ])
 </head>
+
+@php use Illuminate\Support\Facades\Route as Rt; @endphp
+
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
+  {{-- Force collapsed (desktop) only on first paint when user never picked a state --}}
+  <script>
+    (function(){
+      try {
+        var saved = localStorage.getItem('sidebar-collapsed'); // "1" collapsed, "0" expanded, null none
+        var shouldCollapse = (saved === null) ? true : (saved === '1');
+        if (shouldCollapse && window.matchMedia('(min-width:1025px)').matches) {
+          document.body.classList.add('sidebar-collapsed');
+        }
+      } catch(_) {}
+    })();
+  </script>
+
   <div class="overlay" id="overlay" hidden></div>
 
   <!-- Sidebar -->
@@ -35,31 +49,114 @@
       </div>
     </nav>
 
-    <!-- SETTINGS -->
-<!-- SETTINGS -->
-<nav class="nav-section">
-  <div class="nav-title">Settings</div>
-  <div class="nav">
-    @can('users.view')
-    <a class="nav-item {{ request()->routeIs('settings.users.*') ? 'active' : '' }}"
-       href="{{ route('settings.users.index') }}">
-      <span class="icon">👤</span><span class="label">User Management</span>
-    </a>
-    @endcan
+    <!-- REKRUTMEN (dropdown) -->
+    <nav class="nav-section">
+      <div class="nav-title">Rekrutmen</div>
+      <div class="nav">
+        @php $rkOpen = str_starts_with(request()->route()->getName() ?? '', 'rekrutmen.'); @endphp
 
-    @can('rbac.view')
-    <a class="nav-item {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}"
-       href="{{ route('settings.roles.index') }}">
-      <span class="icon">🛡️</span><span class="label">Role Management</span>
-    </a>
-    <a class="nav-item {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}"
-       href="{{ route('settings.permissions.index') }}">
-      <span class="icon">🔐</span><span class="label">Permission Management</span>
-    </a>
-    @endcan
-  </div>
-</nav>
+        <button type="button"
+                class="nav-item js-accordion {{ $rkOpen ? 'open' : '' }}"
+                data-accordion="nav-rekrutmen"
+                aria-expanded="{{ $rkOpen ? 'true' : 'false' }}">
+          <span class="icon">👥</span>
+          <span class="label">Rekrutmen</span>
+          <span class="chev">▾</span>
+        </button>
 
+        <div id="nav-rekrutmen"
+             class="subnav nav-children {{ $rkOpen ? 'open' : '' }}"
+             data-accordion-panel="nav-rekrutmen">
+          <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.monitoring')?'active':'' }}"
+             href="{{ Rt::has('rekrutmen.monitoring') ? route('rekrutmen.monitoring') : '#' }}">
+            <span class="icon">📊</span><span class="label">Monitoring</span>
+          </a>
+          <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.izin-prinsip*')?'active':'' }}"
+             href="{{ Rt::has('rekrutmen.izin-prinsip.index') ? route('rekrutmen.izin-prinsip.index') : '#' }}">
+            <span class="icon">✅</span><span class="label">Izin Prinsip</span>
+          </a>
+          <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.kontrak*')?'active':'' }}"
+             href="{{ Rt::has('rekrutmen.kontrak.index') ? route('rekrutmen.kontrak.index') : '#' }}">
+            <span class="icon">📝</span><span class="label">Penerbitan Kontrak</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- PELATIHAN (dropdown) -->
+    <nav class="nav-section">
+      <div class="nav-title">Pelatihan</div>
+      <div class="nav">
+        @php $plOpen = str_starts_with(request()->route()->getName() ?? '', 'pelatihan.'); @endphp
+
+        <button type="button"
+                class="nav-item js-accordion {{ $plOpen ? 'open' : '' }}"
+                data-accordion="nav-pelatihan"
+                aria-expanded="{{ $plOpen ? 'true' : 'false' }}">
+          <span class="icon">🎓</span>
+          <span class="label">Pelatihan</span>
+          <span class="chev">▾</span>
+        </button>
+
+        <div id="nav-pelatihan"
+             class="subnav nav-children {{ $plOpen ? 'open' : '' }}"
+             data-accordion-panel="nav-pelatihan">
+          <a class="nav-item nav-child {{ request()->routeIs('pelatihan.monitoring')?'active':'' }}"
+             href="{{ Rt::has('pelatihan.monitoring') ? route('pelatihan.monitoring') : '#' }}">
+            <span class="icon">📈</span><span class="label">Monitoring</span>
+          </a>
+          <a class="nav-item nav-child {{ request()->routeIs('pelatihan.izin-prinsip')?'active':'' }}"
+             href="{{ Rt::has('pelatihan.izin-prinsip') ? route('pelatihan.izin-prinsip') : '#' }}">
+            <span class="icon">🗂️</span><span class="label">Izin Prinsip</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- SETTINGS (grup dropdown: Manajemen Akses) -->
+    <nav class="nav-section">
+      <div class="nav-title">Settings</div>
+      <div class="nav">
+        @canany(['users.view','rbac.view'])
+          @php
+            $acOpen = request()->routeIs('settings.users.*')
+                   || request()->routeIs('settings.roles.*')
+                   || request()->routeIs('settings.permissions.*');
+          @endphp
+
+          <button type="button"
+                  class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}"
+                  data-accordion="nav-access"
+                  aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
+            <span class="icon">🧭</span>
+            <span class="label">Manajemen Akses</span>
+            <span class="chev">▾</span>
+          </button>
+
+          <div id="nav-access"
+               class="subnav nav-children {{ $acOpen ? 'open' : '' }}"
+               data-accordion-panel="nav-access">
+            @can('users.view')
+            <a class="nav-item nav-child {{ request()->routeIs('settings.users.*') ? 'active' : '' }}"
+               href="{{ route('settings.users.index') }}">
+              <span class="icon">👤</span><span class="label">User Management</span>
+            </a>
+            @endcan
+
+            @can('rbac.view')
+            <a class="nav-item nav-child {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}"
+               href="{{ route('settings.roles.index') }}">
+              <span class="icon">🛡️</span><span class="label">Role Management</span>
+            </a>
+            <a class="nav-item nav-child {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}"
+               href="{{ route('settings.permissions.index') }}">
+              <span class="icon">🔐</span><span class="label">Permission Management</span>
+            </a>
+            @endcan
+          </div>
+        @endcanany
+      </div>
+    </nav>
   </aside>
 
   <!-- Topbar -->
@@ -74,7 +171,6 @@
     </div>
 
     <div class="top-actions">
-      <!-- Notifikasi -->
       <div class="dropdown-wrap">
         <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">🔔</button>
         <div id="notifDropdown" class="dropdown" hidden>
@@ -83,7 +179,6 @@
         </div>
       </div>
 
-      <!-- User -->
       <div class="dropdown-wrap user-area">
         <button id="userBtn" class="user-chip" type="button" aria-haspopup="true" aria-expanded="false" title="User menu">
           <span class="avatar">PT</span>
@@ -106,29 +201,22 @@
             <a class="menu-item" href="#"><span>Change Password</span></a>
           </div>
 
-<form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
-  @csrf
-  <div id="poweroff"
-       class="poweroff"
-       data-threshold="0.6"
-       role="slider"
-       aria-label="Swipe To Signout"
-       aria-valuemin="0"
-       aria-valuemax="100"
-       aria-valuenow="0"
-       tabindex="0">
-    <span class="power-icon" aria-hidden="true">⏻</span>
-    <span class="power-text">Swipe To Sign out</span>
-    <div id="powerKnob" class="power-knob" aria-hidden="true"></div>
-  </div>
-  <noscript>
-    <button class="btn btn-outline w-full mt-2">Logout</button>
-  </noscript>
-</form>
-
+          <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
+            @csrf
+            <div id="poweroff"
+                 class="poweroff"
+                 data-threshold="0.6"
+                 role="slider"
+                 aria-label="Swipe To Signout"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+              <span class="power-icon" aria-hidden="true">⏻</span>
+              <span class="power-text">Swipe To Sign out</span>
+              <div id="powerKnob" class="power-knob" aria-hidden="true"></div>
+            </div>
+            <noscript><button class="btn btn-outline w-full mt-2">Logout</button></noscript>
+          </form>
         </div>
       </div>
-
     </div>
   </header>
 

@@ -21,8 +21,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Dropdowns
   const notifBtn        = $("#notifBtn");
   const notifDropdown   = $("#notifDropdown");
-  const profileBtn      = $("#profileBtn");
-  const profileDropdown = $("#profileDropdown");
   const userBtn         = $("#userBtn");
   const userDropdown    = $("#userDropdown");
 
@@ -120,13 +118,11 @@ document.addEventListener("DOMContentLoaded", () => {
   =============================== */
   const closeAllDropdowns = () => {
     if (notifDropdown)  { notifDropdown.hidden  = true;  notifBtn?.setAttribute("aria-expanded","false"); }
-    if (profileDropdown){ profileDropdown.hidden = true; profileBtn?.setAttribute("aria-expanded","false"); }
     if (userDropdown)   { userDropdown.hidden   = true;  userBtn?.setAttribute("aria-expanded","false"); }
   };
 
   const attachDropdown = (btn, dd) => {
     if (!btn || !dd) return;
-    // Initialize ARIA
     btn.setAttribute("aria-haspopup", "menu");
     btn.setAttribute("aria-expanded", "false");
     dd.hidden = true;
@@ -138,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
       dd.hidden = !willOpen;
       btn.setAttribute("aria-expanded", String(willOpen));
       if (willOpen) {
-        // focus first focusable
         const first = dd.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         first?.focus({ preventScroll: true });
       }
@@ -146,14 +141,11 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   attachDropdown(notifBtn,   notifDropdown);
-  attachDropdown(profileBtn, profileDropdown);
   attachDropdown(userBtn,    userDropdown);
 
-  // Close on outside click
   d.addEventListener("click", (e) => {
     if (!e.target.closest(".dropdown-wrap")) closeAllDropdowns();
   });
-  // Close on Escape
   d.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAllDropdowns();
   });
@@ -176,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hamburger.classList.toggle("is-collapsed", collapsed);
       hamburger.setAttribute("aria-expanded", String(!collapsed));
       hamburger.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
-      sidebar?.classList.remove("open");             // ensure drawer closed in desktop
+      sidebar?.classList.remove("open");
       overlay && (overlay.hidden = true);
       unlockScroll();
     }
@@ -202,27 +194,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   overlay?.addEventListener("click", closeDrawer);
 
-  // Keyboard: toggle with Enter/Space
   hamburger?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      hamburger.click();
-    }
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); hamburger.click(); }
   });
 
-  // Breakpoint change
   mq.addEventListener?.("change", () => {
-    closeDrawer();  // reset when crossing breakpoints
+    closeDrawer();
     setBurgerVisual();
   });
 
   /* ===============================
-     Power-off Swipe Logout (single, improved)
+     Power-off Swipe Logout
   =============================== */
   const initLogoutSlider = () => {
     if (!(powerTrack && powerKnob && logoutForm)) return;
 
-    // ARIA
     powerTrack.setAttribute("role", "slider");
     powerTrack.setAttribute("aria-label", "Slide to logout");
     powerTrack.setAttribute("aria-valuemin", "0");
@@ -232,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let dragging = false;
     let startX = 0, knobX = 0, maxX = 0;
 
-    const padding   = 4; // left/right inset
+    const padding   = 4;
     const threshold = parseFloat(powerTrack.dataset.threshold || "0.85");
 
     const computeMax = () => {
@@ -241,7 +227,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
 
     const setKnob = (x) => {
-      // Avoid janky animation for reduced motion users
       if (prefersReduced) powerKnob.style.transition = "none";
       powerKnob.style.transform = `translateX(${x}px)`;
 
@@ -257,7 +242,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const submitLogout = () => {
       powerTrack.classList.add("done");
-      // tiny delay for UI perception
       setTimeout(() => {
         if (logoutForm.requestSubmit) logoutForm.requestSubmit();
         else logoutForm.submit();
@@ -309,7 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
     powerKnob.addEventListener("mousedown", (e) => onDown(e.clientX));
     powerKnob.addEventListener("touchstart", onTouchStart, { passive:false });
 
-    // Click track to jump toward position
     powerTrack.addEventListener("click", (e) => {
       if (dragging || powerTrack.classList.contains("completed")) return;
       const rect = powerTrack.getBoundingClientRect();
@@ -318,7 +301,6 @@ document.addEventListener("DOMContentLoaded", () => {
       setKnob(targetX);
     });
 
-    // Keyboard accessibility
     powerTrack.addEventListener("keydown", (e) => {
       computeMax();
       const step = Math.max(8, Math.round(maxX/10));
@@ -331,18 +313,59 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (e.key === "Escape"){ snapBack(); e.preventDefault(); }
     });
 
-    // Init position
     setKnob(padding);
   };
 
   initLogoutSlider();
 
+  /* ===== Sidebar accordion (expand/collapse)
+     - Default collapsed on refresh
+     - Auto-open only group with active child
+     - No localStorage (click not persisted)
+     - Only toggles .open class (no inline style) ===== */
+  (function(){
+    const setOpen = (group, open) => {
+      const btn   = d.querySelector(`[data-accordion="${group}"]`);
+      const panel = d.querySelector(`[data-accordion-panel="${group}"]`);
+      if (!btn || !panel) return;
+      btn.classList.toggle('open',   open);
+      panel.classList.toggle('open', open);
+    };
+
+    const groupsWithActive = new Set();
+    d.querySelectorAll('.nav-children').forEach(panel => {
+      if (panel.querySelector('.nav-child.active')) {
+        const g = panel.getAttribute('data-accordion-panel');
+        if (g) groupsWithActive.add(g);
+      }
+    });
+
+    d.querySelectorAll('[data-accordion]').forEach(btn => {
+      const g     = btn.getAttribute('data-accordion');
+      const panel = d.querySelector(`[data-accordion-panel="${g}"]`);
+
+      let shouldOpen =
+        btn.classList.contains('open') ||
+        panel?.classList.contains('open') ||
+        groupsWithActive.has(g);
+
+      setOpen(g, !!shouldOpen);
+
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        const nowOpen = btn.classList.contains('open');
+        setOpen(g, !nowOpen);
+      });
+    });
+
+    groupsWithActive.forEach(g => setOpen(g, true));
+  })();
+
   /* ===============================
      Init Visual States
   =============================== */
-  closeAllDropdowns(); // close all dropdown at start
+  closeAllDropdowns();
   overlay && (overlay.hidden = true);
-  // Ensure drawer closed & burger synced
   if (isMobile()) {
     sidebar?.classList.remove("open");
     unlockScroll();

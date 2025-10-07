@@ -413,3 +413,4 @@ table.dataTable{ background:var(--surface-0) }
 @media (prefers-reduced-motion: reduce){
   .poweroff, .poweroff .power-knob{ transition:none!important }
 }
+
