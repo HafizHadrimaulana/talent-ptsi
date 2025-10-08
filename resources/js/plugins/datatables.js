@@ -77,24 +77,33 @@ const helpers = window.__DT_HELPERS__ || (() => {
 
     $wrap.find('.dt-top, .dt-bottom').each(function(){ $(this).addClass('grid gap-2'); });
 
-      const $filter = $wrap.find('.dataTables_filter');
-      const $input  = $filter.find('input');
+    // ===== Modify the default search box =====
+const $filterWrap = $wrap.find('.dataTables_filter'); // <div class="dataTables_filter">
+const $input = $filterWrap.find('input');
 
-      // Style input
-      $input
-        .attr('placeholder', dtApi.settings()[0].oLanguage.sSearchPlaceholder || 'Cari…')
-        .addClass('input input--sm')
-        .wrap('<div class="dt-search-wrap relative inline-flex items-center gap-1"></div>');
+// Style the input
+$input
+  .attr('placeholder', dtApi.settings()[0].oLanguage.sSearchPlaceholder || 'Ketik untuk cari…')
+  .addClass('input input--sm')
+  .wrap('<div class="dt-search-wrap flex items-center gap-2"></div>');
 
-      // Add search button
-      const $btn = $('<button type="button" class="btn btn-sm btn-outline hover-lift" title="Cari"><i class="fa fa-search"></i></button>');
-      $input.after($btn);
+// Create search button
+const $btnSearch = $('<button type="button" class="btn btn-outline btn-sm hover-lift" title="Cari"><i class="fa fa-search"></i></button>');
+$input.after($btnSearch);
 
-      // Hook the button to trigger search
-      $btn.on('click', () => {
-        const api = dtApi;
-        api.search($input.val()).draw();
-      });
+// Add Import / Export buttons
+const $btnImport = $('<button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Import</button>');
+const $btnExport = $('<button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Export</button>');
+
+// Append them after the search controls
+$filterWrap.append($btnImport, $btnExport);
+
+// Hook up search button click
+$btnSearch.on('click', () => {
+  const api = dtApi;
+  api.search($input.val()).draw();
+});
+
 
     const $length = $wrap.find('.dataTables_length select');
     $length.addClass('select--sm');

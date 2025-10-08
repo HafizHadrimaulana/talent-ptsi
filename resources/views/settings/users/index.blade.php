@@ -27,8 +27,6 @@
   @endif
 
   <div class="dt-card ios-glass">
-     <button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Import</button>
-     <button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Export</button>
     <table id="users-table" class="display" data-dt>
       <thead>
         <tr>

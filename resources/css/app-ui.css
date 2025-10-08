@@ -426,3 +426,15 @@ table.dataTable thead th {
   .poweroff, .poweroff .power-knob{ transition:none!important }
 }
 
+.dt-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dataTables_filter {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
