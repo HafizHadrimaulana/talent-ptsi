@@ -29,7 +29,7 @@
       <div class="relative flex h-full min-h-dvh px-[64px] pt-[60px] pb-[36px] text-white">
         <div class="z-[2] my-auto max-w-[760px]">
           <h1 class="text-[68px] leading-[1.03] translate-y-[-200px] translate-x-[100px] font-extrabold drop-shadow-[0_12px_28px_rgba(0,0,0,.25)]" style="font-family:Montserrat;">
-            Talent Management<br/>System
+            One Platform for All<br/>Human Capital Service
           </h1>
 
           <div class="absolute mt-6 flex items-start gap-4  bottom-[0px] left-[180px]">
@@ -122,7 +122,7 @@
     {{-- MOBILE header --}}
     <section class="relative overflow-hidden lg:hidden">
       <div class="relative px-5 py-8 text-white">
-        <h1 class="text-2xl font-extrabold">Talent Management System</h1>
+        <h1 class="text-2xl font-extrabold">One Platform for All Human Capital Services </h1>
       </div>
     </section>
   </div>
