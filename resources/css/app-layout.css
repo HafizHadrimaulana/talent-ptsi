@@ -321,3 +321,114 @@ body.sidebar-collapsed .main{ margin-left:calc(var(--sbw-collapsed) + var(--side
 
 /* Safety: force left text-align inside sidebar */
 .sidebar .nav, .sidebar .nav *{ text-align:left !important }
+
+    :root{
+      --tree: rgba(2,8,23,.16);
+      --tree-dark: rgba(255,255,255,.22);
+    }
+
+    /* ========== Spacing antar section & judul (divider) ========== */
+    .nav-section{ padding: 6px 6px 10px; }
+    .nav-section + .nav-section{ margin-top: 6px; } /* jarak antar grup */
+    .nav-title{
+      font-size:11px; letter-spacing:.06em; color:#94a3b8;
+      padding:6px 8px 2px;
+      position:relative;
+    }
+    /* garis halus di atas judul untuk grup berikutnya */
+    .nav-section + .nav-section .nav-title::before{
+      content:""; position:absolute; left:8px; right:8px; top:-6px; height:1px;
+      background:rgba(2,8,23,.08);
+    }
+    [data-theme="dark"] .nav-section + .nav-section .nav-title::before{
+      background:rgba(255,255,255,.12);
+    }
+
+    /* ========== Item parent & umum ========== */
+    .sidebar .nav, .sidebar .nav *{ text-align:left !important }
+    .nav{ display:flex; flex-direction:column; gap:8px; } /* jarak antar card */
+
+    .nav-item{
+      display:flex; align-items:center; justify-content:flex-start !important;
+      gap:10px; width:100%; min-width:0; text-decoration:none;
+      padding:10px 12px;
+      font-size:13px; font-weight:600;
+      border-radius:12px; border:var(--border); background:var(--card);
+      transition: background .15s, transform .12s;
+    }
+    .nav-item:hover{ background: color-mix(in srgb, var(--card) 90%, var(--accent-ghost)); transform: translateY(-1px); }
+    .nav-item.active{ background: var(--accent-ghost); border-color: rgba(79,70,229,.22); }
+
+    .icon{ width:20px; flex:0 0 20px; text-align:center; opacity:.95; }
+    .label{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .chev{ margin-left:auto; opacity:.78; transition: transform .18s ease; }
+    .js-accordion.open .chev{ transform: rotate(-180deg); }
+
+    /* ========== Submenu (flush-left + tree) ========== */
+    .nav-children{
+      display:grid; gap:6px;
+      margin:6px 0 2px 0 !important;   /* no left margin */
+      padding:0 !important;            /* no inner padding */
+      max-height:0; overflow:hidden; opacity:0;
+      transition:max-height .22s ease, opacity .18s ease;
+      position:relative; border-left:none !important;
+    }
+    .nav-children.open{ max-height:420px; opacity:1; }
+
+    /* spine tipis di paling kiri sidebar */
+    .nav-children::before{
+      content:""; position:absolute; left:10px; top:0; bottom:0; width:2px;
+      background: var(--tree);
+    }
+    [data-theme="dark"] .nav-children::before{ background: var(--tree-dark); }
+
+    /* kartu submenu rapih dan MENTOK kiri */
+    .nav-child{
+      position:relative;
+      display:flex; align-items:center; justify-content:flex-start !important;
+      gap:10px; width:100%;
+      padding:8px 10px 8px 1.5rem;     /* indent kecil, tetap flush-left */
+      border-radius:10px; border:var(--border); background:var(--card);
+      font-size:12.25px; font-weight:600;
+      box-shadow:none; text-align:left !important;
+    }
+    .nav-child:hover{ background: color-mix(in srgb, var(--card) 94%, var(--accent-ghost)); }
+    [data-theme="dark"] .nav-child:hover{ background: rgba(255,255,255,.06); }
+    .nav-child.active{ background: var(--accent-ghost); border-color: rgba(79,70,229,.22); }
+
+    /* branch + node (tidak menggeser card) */
+    .nav-child::before{
+      content:""; position:absolute; left:10px; top:50%; transform:translateY(-50%);
+      width:12px; height:2px; background:var(--tree);
+    }
+    .nav-child::after{
+      content:""; position:absolute; left:10px; top:50%; transform:translate(-50%,-50%);
+      width:6px; height:6px; border-radius:999px; background:var(--tree);
+    }
+    [data-theme="dark"] .nav-child::before,
+    [data-theme="dark"] .nav-child::after{ background: var(--tree-dark); }
+
+    /* ikon submenu sedikit lebih kecil agar proporsional */
+    .nav-children .nav-child .icon{ width:18px; flex:0 0 18px; opacity:.9; }
+
+    /* ========== Collapsed polish (CSS only) ========== */
+    /* Hilangkan chevron saat collapsed biar tidak “aneh” */
+    body.sidebar-collapsed .js-accordion .chev{ display:none; }
+
+    /* Center ikon; rapikan padding */
+    body.sidebar-collapsed .nav-item{
+      padding:10px; justify-content:center !important;
+    }
+    body.sidebar-collapsed .icon{ margin:0 auto; }
+
+    /* Scroll bug: jangan perangkap scrolling ketika collapsed */
+    body.sidebar-collapsed .sidebar{ overflow:visible !important; }
+    .sidebar{ overflow-x:hidden; } /* cegah scroll horizontal */
+
+    /* Desktop collapsed: judul tetap divider tipis */
+    body.sidebar-collapsed .nav-title{ padding:0 8px; height:10px; color:transparent; }
+    body.sidebar-collapsed .nav-title::before{
+      content:""; position:absolute; left:8px; right:8px; top:4px; height:1px;
+      background:rgba(2,8,23,.10);
+    }
+    [data-theme="dark"] body.sidebar-collapsed .nav-title::before{ background:rgba(255,255,255,.12); }
