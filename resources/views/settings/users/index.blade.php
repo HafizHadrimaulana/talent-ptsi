@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title','Settings · Users')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
 @section('content')
 {{-- NOTE: data-roles-url dipakai JS untuk load roles secara dinamis --}}
@@ -45,19 +46,29 @@
             @can('users.update')
             <button
               type="button"
-              class="btn-sm hover-lift"
+              class="btn-icon hover-lift text-blue-500"
               data-modal-open="editUserModal"
               data-id="{{ $u->id }}"
               data-name="{{ $u->name }}"
               data-email="{{ $u->email }}"
               data-roles="{{ $u->roles->pluck('id')->implode(',') }}"
-            >Edit</button>
+              title="Edit User"
+            >
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
             @endcan
 
             @can('users.delete')
-            <form method="post" action="{{ route('settings.users.destroy',$u) }}" class="inline">
+            <form method="post" action="{{ route('settings.users.destroy', $u) }}" class="inline">
               @csrf @method('delete')
-              <button class="btn-sm danger hover-lift" onclick="return confirm('Hapus user?')">Hapus</button>
+              <button
+                type="submit"
+                class="btn-icon hover-lift text-red-500"
+                onclick="return confirm('Hapus user?')"
+                title="Hapus User"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
             </form>
             @endcan
           </td>
