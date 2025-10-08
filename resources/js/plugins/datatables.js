@@ -77,9 +77,24 @@ const helpers = window.__DT_HELPERS__ || (() => {
 
     $wrap.find('.dt-top, .dt-bottom').each(function(){ $(this).addClass('grid gap-2'); });
 
-    const $filter = $wrap.find('.dataTables_filter input');
-    $filter.attr('placeholder', dtApi.settings()[0].oLanguage.sSearchPlaceholder || 'Cari…')
-           .addClass('input input--sm');
+      const $filter = $wrap.find('.dataTables_filter');
+      const $input  = $filter.find('input');
+
+      // Style input
+      $input
+        .attr('placeholder', dtApi.settings()[0].oLanguage.sSearchPlaceholder || 'Cari…')
+        .addClass('input input--sm')
+        .wrap('<div class="dt-search-wrap relative inline-flex items-center gap-1"></div>');
+
+      // Add search button
+      const $btn = $('<button type="button" class="btn btn-sm btn-outline hover-lift" title="Cari"><i class="fa fa-search"></i></button>');
+      $input.after($btn);
+
+      // Hook the button to trigger search
+      $btn.on('click', () => {
+        const api = dtApi;
+        api.search($input.val()).draw();
+      });
 
     const $length = $wrap.find('.dataTables_length select');
     $length.addClass('select--sm');

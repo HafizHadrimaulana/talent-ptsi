@@ -27,6 +27,8 @@
   @endif
 
   <div class="dt-card ios-glass">
+     <button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Import</button>
+     <button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Export</button>
     <table id="users-table" class="display" data-dt>
       <thead>
         <tr>
@@ -43,34 +45,34 @@
           <td>{{ $u->email }}</td>
           <td>{{ $u->roles->pluck('name')->join(', ') ?: '-' }}</td>
           <td class="cell-actions">
-            @can('users.update')
-            <button
-              type="button"
-              class="btn-icon hover-lift text-blue-500"
-              data-modal-open="editUserModal"
-              data-id="{{ $u->id }}"
-              data-name="{{ $u->name }}"
-              data-email="{{ $u->email }}"
-              data-roles="{{ $u->roles->pluck('id')->implode(',') }}"
-              title="Edit User"
-            >
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-            @endcan
+          @can('users.update')
+          <button
+            type="button"
+            class="btn-icon hover-lift text-blue-500"
+            data-modal-open="editUserModal"
+            data-id="{{ $u->id }}"
+            data-name="{{ $u->name }}"
+            data-email="{{ $u->email }}"
+            data-roles="{{ $u->roles->pluck('id')->implode(',') }}"
+            title="Edit User"
+          >
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          @endcan
 
-            @can('users.delete')
-            <form method="post" action="{{ route('settings.users.destroy', $u) }}" class="inline">
-              @csrf @method('delete')
-              <button
-                type="submit"
-                class="btn-icon hover-lift text-red-500"
-                onclick="return confirm('Hapus user?')"
-                title="Hapus User"
-              >
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            </form>
-            @endcan
+          @can('users.delete')
+          <form method="post" action="{{ route('settings.users.destroy', $u) }}" class="inline">
+            @csrf @method('delete')
+            <button
+              type="submit"
+              class="btn-icon hover-lift text-red-500"
+              onclick="return confirm('Hapus user?')"
+              title="Hapus User"
+            >
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </form>
+          @endcan
           </td>
         </tr>
         @empty

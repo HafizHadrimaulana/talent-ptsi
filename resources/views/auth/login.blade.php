@@ -101,14 +101,15 @@
                 <button 
                   id="signInBtn"
                   type="submit"
-                  class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition hover:brightness-110"
+                  class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer"
+                  
                 >
                   Sign in
                 </button>
 
                 <button 
                   type="button"
-                  class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110"
+                  class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110 cursor-pointer"
                 >
                   Forgot Password
                 </button>
