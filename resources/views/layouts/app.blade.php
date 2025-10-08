@@ -11,98 +11,10 @@
     'resources/js/app-layout.js',
     'resources/js/app.js'
   ])
-
-  <!-- ====== SIDEBAR POLISH (CSS-only) ====== -->
-  <style>
-    :root{
-      --sbw:256px; --sbw-collapsed:84px; --side-pad:16px; --topbar-h:64px;
-      --tree: rgba(2,8,23,.16);
-      --tree-dark: rgba(255,255,255,.22);
-    }
-
-    /* ===== General align & sizing ===== */
-    .sidebar .nav, .sidebar .nav *{ text-align:left !important }
-    .sidebar .nav-item{
-      display:flex; align-items:center; justify-content:flex-start !important;
-      gap:10px; width:100%; min-width:0; text-decoration:none;
-      padding:9px 12px;
-      font-size:13px;   /* smaller so labels fit */
-      border-radius:12px; border:var(--border); background:var(--card);
-    }
-    .sidebar .nav-item:hover{
-      background: color-mix(in srgb, var(--card) 90%, var(--accent-ghost));
-      transform: translateY(-1px);
-      transition: background .15s, transform .12s;
-    }
-    .sidebar .nav-item.active{ background:var(--accent-ghost); border-color:rgba(79,70,229,.22) }
-    .sidebar .nav-title{ font-size:11px; letter-spacing:.06em; padding:6px 8px }
-    .sidebar .icon{ width:20px; flex:0 0 20px; text-align:center; opacity:.95; margin:auto;}
-    .sidebar .label{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:10px; }
-    .sidebar .chev{ margin-left:-0.65rem; opacity:.78; transition:transform .18s ease; margin-right:0.25rem;}
-    .sidebar .js-accordion.open .chev{ transform:rotate(-180deg) }
-
-    /* ===== Children (submenu) → flush-left + tree ===== */
-    .nav-children{
-      display:grid; gap:6px;
-      margin:6px 0 8px 0 !important; /* no extra left gap */
-      padding:0 !important;          /* no inner left padding */
-      max-height:0; overflow:hidden; opacity:0;
-      transition:max-height .22s ease, opacity .18s ease;
-      position:relative; border-left:none !important;
-    }
-    .nav-children.open{ max-height:420px; opacity:1 }
-
-    /* tree spine sangat kiri (tidak menggeser card) */
-    .nav-children::before{
-      content:""; position:absolute; left:8px; top:0; bottom:0; width:2px;
-      background:var(--tree);
-    }
-    [data-theme="dark"] .nav-children::before{ background:var(--tree-dark) }
-
-    /* Submenu cards — MENTOK KIRI, rapi */
-    .nav-child{
-      position:relative;
-      display:flex; align-items:center; justify-content:flex-start !important;
-      gap:10px; width:100%;
-      padding:8px 10px 8px 1.6rem;  /* kecil: card tetap mentok kiri; ruang sedikit utk branch */
-      border-radius:10px; border:var(--border); background:var(--card);
-      font-size:12.25px;
-      box-shadow: none;
-    }
-    .nav-child:hover{
-      background: color-mix(in srgb, var(--card) 94%, var(--accent-ghost));
-    }
-    [data-theme="dark"] .nav-child:hover{ background: rgba(255,255,255,.06) }
-    .nav-child.active{ background:var(--accent-ghost); border-color:rgba(79,70,229,.22) }
-
-    /* branch horizontal + node, ditempatkan di paling kiri supaya card nggak terlihat “geser” */
-    .nav-child::before{
-      content:""; position:absolute; left:8px; top:50%; transform:translateY(-50%);
-      width:12px; height:2px; background:var(--tree);
-    }
-    .nav-child::after{
-      content:""; position:absolute; left:8px; top:50%; transform:translate(-50%,-50%);
-      width:6px; height:6px; border-radius:999px; background:var(--tree);
-    }
-    [data-theme="dark"] .nav-child::before,
-    [data-theme="dark"] .nav-child::after{ background:var(--tree-dark) }
-
-    /* icon di submenu sedikit lebih kecil biar rapi */
-    .nav-children .nav-child .icon{ width:18px; flex:0 0 18px; opacity:.9 }
-
-    /* ===== Scroll bug when collapsed ===== */
-    body.sidebar-collapsed .sidebar{ overflow:visible !important } /* jangan perangkap scroll */
-    .sidebar{ overflow-x:hidden } /* no horizontal scroll bleed */
-
-    /* collapsed: padding lebih rapat, label bisa disembunyikan oleh tema — biarkan JS kamu yang urus */
-    body.sidebar-collapsed .nav-item{ padding:9px 10px }
-  </style>
-</head>
-
 @php use Illuminate\Support\Facades\Route as Rt; @endphp
 
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
-  <!-- first-paint collapsed state (tetap) -->
+  <!-- keep first-paint collapsed helper -->
   <script>
     (function(){
       try{
@@ -306,7 +218,6 @@
     @yield('content')
   </main>
 
-  <!-- Dark mode floating FAB -->
   <button id="dmFab" class="dm-fab" type="button" title="Toggle theme" aria-pressed="false">🌞</button>
 </body>
 </html>
