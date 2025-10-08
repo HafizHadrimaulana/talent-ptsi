@@ -36,9 +36,9 @@
     }
     .sidebar .nav-item.active{ background:var(--accent-ghost); border-color:rgba(79,70,229,.22) }
     .sidebar .nav-title{ font-size:11px; letter-spacing:.06em; padding:6px 8px }
-    .sidebar .icon{ width:20px; flex:0 0 20px; text-align:center; opacity:.95 }
-    .sidebar .label{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-    .sidebar .chev{ margin-left:auto; opacity:.78; transition:transform .18s ease }
+    .sidebar .icon{ width:20px; flex:0 0 20px; text-align:center; opacity:.95; margin:auto;}
+    .sidebar .label{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:10px; }
+    .sidebar .chev{ margin-left:-0.65rem; opacity:.78; transition:transform .18s ease; margin-right:0.25rem;}
     .sidebar .js-accordion.open .chev{ transform:rotate(-180deg) }
 
     /* ===== Children (submenu) → flush-left + tree ===== */

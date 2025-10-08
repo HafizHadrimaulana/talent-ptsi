@@ -50,7 +50,8 @@ html[data-theme="dark"]{
 .btn:disabled{ opacity:.55; cursor:not-allowed }
 
 .btn-sm{ min-height:30px; padding:.35rem .6rem; border-radius:9px; font-size:.88rem }
-.btn-icon{ width:40px; height:40px; padding:0; border-radius:10px; display:inline-flex; align-items:center; justify-content:center }
+.btn-icon{ width:40px; height:40px; padding:0; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; cursor: pointer;  transition: transform 0.1s ease;
+gap: 2px; background: rgb(255, 255, 255); border: 1px solid rgba(0, 0, 0, 0.2);}
 .btn-icon.btn-sm{ width:32px; height:32px; border-radius:8px }
 
 .btn-brand{
@@ -289,6 +290,10 @@ table.dataTable thead th{
   background:var(--surface-1)!important;
   font-weight:800; font-size:.92rem; letter-spacing:.01em; padding:.70rem .80rem;
 }
+
+.thead{
+ background : purple;
+}
 table.dataTable tbody td{
   padding:.60rem .80rem;
   border-bottom:1px solid color-mix(in srgb, var(--surface-2) 45%, transparent);
@@ -375,7 +380,9 @@ td.cell-actions>*{ margin-left:.35rem }
 }
 
 /* Normalize header/body color (DT) */
-table.dataTable thead th{ background:var(--surface-1)!important }
+table.dataTable thead th{   background: rgb(105, 8, 189) !important;
+  color: #fff !important; 
+}
 table.dataTable{ background:var(--surface-0) }
 
 /* =========================================================
