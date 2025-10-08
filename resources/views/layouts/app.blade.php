@@ -16,93 +16,93 @@
   <style>
     :root{
       --sbw:256px; --sbw-collapsed:84px; --side-pad:16px; --topbar-h:64px;
-      --tree: rgba(2,8,23,.16);            /* warna garis tree (light) */
-      --tree-dark: rgba(255,255,255,.22);  /* warna garis tree (dark) */
+      --tree: rgba(2,8,23,.16);
+      --tree-dark: rgba(255,255,255,.22);
     }
 
-    /* ===== Align & sizing umum ===== */
+    /* ===== General align & sizing ===== */
     .sidebar .nav, .sidebar .nav *{ text-align:left !important }
     .sidebar .nav-item{
       display:flex; align-items:center; justify-content:flex-start !important;
       gap:10px; width:100%; min-width:0; text-decoration:none;
-      font-size:13.25px; /* kecilin sedikit */
+      padding:9px 12px;
+      font-size:13px;   /* smaller so labels fit */
+      border-radius:12px; border:var(--border); background:var(--card);
     }
-    .sidebar .nav-title{ font-size:11px; letter-spacing:.06em }
+    .sidebar .nav-item:hover{
+      background: color-mix(in srgb, var(--card) 90%, var(--accent-ghost));
+      transform: translateY(-1px);
+      transition: background .15s, transform .12s;
+    }
+    .sidebar .nav-item.active{ background:var(--accent-ghost); border-color:rgba(79,70,229,.22) }
+    .sidebar .nav-title{ font-size:11px; letter-spacing:.06em; padding:6px 8px }
     .sidebar .icon{ width:20px; flex:0 0 20px; text-align:center; opacity:.95 }
     .sidebar .label{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
     .sidebar .chev{ margin-left:auto; opacity:.78; transition:transform .18s ease }
-
-    /* rotate chevron saat state .open (JS kamu yang set .open) */
     .sidebar .js-accordion.open .chev{ transform:rotate(-180deg) }
 
-    /* ===== Anak accordion (nav-children) → LEFT + TREE ===== */
+    /* ===== Children (submenu) → flush-left + tree ===== */
     .nav-children{
       display:grid; gap:6px;
-      margin:6px 0 8px 0 !important;  /* jangan ada margin-left tambahan */
-      padding-left:0 !important;       /* nolkan padding kiri container */
+      margin:6px 0 8px 0 !important; /* no extra left gap */
+      padding:0 !important;          /* no inner left padding */
       max-height:0; overflow:hidden; opacity:0;
       transition:max-height .22s ease, opacity .18s ease;
-      position:relative;
-      border-left:none !important;     /* bersihin style lama */
+      position:relative; border-left:none !important;
     }
     .nav-children.open{ max-height:420px; opacity:1 }
 
-    /* spine (garis vertikal) */
+    /* tree spine sangat kiri (tidak menggeser card) */
     .nav-children::before{
-      content:""; position:absolute; left:14px; top:0; bottom:0; width:2px;
+      content:""; position:absolute; left:8px; top:0; bottom:0; width:2px;
       background:var(--tree);
     }
     [data-theme="dark"] .nav-children::before{ background:var(--tree-dark) }
 
-    /* item anak: indent lewat padding, tetap rata kiri */
+    /* Submenu cards — MENTOK KIRI, rapi */
     .nav-child{
       position:relative;
       display:flex; align-items:center; justify-content:flex-start !important;
       gap:10px; width:100%;
-      padding:8px 10px 8px 2.25rem;     /* indent di item, bukan container */
+      padding:8px 10px 8px 1.6rem;  /* kecil: card tetap mentok kiri; ruang sedikit utk branch */
       border-radius:10px; border:var(--border); background:var(--card);
-      font-size:12.5px;                 /* lebih kecil daripada parent */
-      text-align:left !important;
+      font-size:12.25px;
+      box-shadow: none;
     }
-    .nav-child:hover{ background: color-mix(in srgb, var(--card) 92%, var(--accent-ghost)) }
+    .nav-child:hover{
+      background: color-mix(in srgb, var(--card) 94%, var(--accent-ghost));
+    }
     [data-theme="dark"] .nav-child:hover{ background: rgba(255,255,255,.06) }
-    .nav-child.active{ background: var(--accent-ghost); border-color: rgba(79,70,229,.22) }
+    .nav-child.active{ background:var(--accent-ghost); border-color:rgba(79,70,229,.22) }
 
-    /* cabang horizontal + node bulat */
+    /* branch horizontal + node, ditempatkan di paling kiri supaya card nggak terlihat “geser” */
     .nav-child::before{
-      content:""; position:absolute; left:14px; top:50%; transform:translateY(-50%);
-      width:14px; height:2px; background:var(--tree);
+      content:""; position:absolute; left:8px; top:50%; transform:translateY(-50%);
+      width:12px; height:2px; background:var(--tree);
     }
     .nav-child::after{
-      content:""; position:absolute; left:10px; top:50%; transform:translate(-50%,-50%);
+      content:""; position:absolute; left:8px; top:50%; transform:translate(-50%,-50%);
       width:6px; height:6px; border-radius:999px; background:var(--tree);
     }
     [data-theme="dark"] .nav-child::before,
     [data-theme="dark"] .nav-child::after{ background:var(--tree-dark) }
 
-    /* ===== Perbaikan bug scroll saat collapsed =====
-       - Hindari "scroll nyangkut" di sidebar dengan melonggarkan overflow
-       - Biarkan halaman utama yang menggulir
-    */
-    body.sidebar-collapsed .sidebar{
-      overflow:visible !important;     /* jangan perangkap scroll di sidebar */
-    }
-    /* pastikan area dalam sidebar tidak membuat sumbu-X muncul */
-    .sidebar{ overflow-x:hidden; }
+    /* icon di submenu sedikit lebih kecil biar rapi */
+    .nav-children .nav-child .icon{ width:18px; flex:0 0 18px; opacity:.9 }
 
-    /* Saat collapsed, label parent bisa disembunyikan oleh tema kamu;
-       biarkan apa adanya. Kalau mau, kecilkan padding biar ikon & chevron rapi */
-    body.sidebar-collapsed .nav-item{ padding:10px 10px }
+    /* ===== Scroll bug when collapsed ===== */
+    body.sidebar-collapsed .sidebar{ overflow:visible !important } /* jangan perangkap scroll */
+    .sidebar{ overflow-x:hidden } /* no horizontal scroll bleed */
 
-    /* Safety: kalahin utilitas center dari CSS lain */
-    .sidebar .nav *{ justify-content:flex-start !important }
+    /* collapsed: padding lebih rapat, label bisa disembunyikan oleh tema — biarkan JS kamu yang urus */
+    body.sidebar-collapsed .nav-item{ padding:9px 10px }
   </style>
 </head>
 
 @php use Illuminate\Support\Facades\Route as Rt; @endphp
 
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
-  <!-- first-paint state (tetap) -->
+  <!-- first-paint collapsed state (tetap) -->
   <script>
     (function(){
       try{
@@ -251,7 +251,7 @@
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </button>
 
-  <div class="search">
+    <div class="search">
       <span class="search-icon">🔎</span>
       <input type="search" placeholder="Search…" aria-label="Search">
     </div>
