@@ -11,21 +11,107 @@
     'resources/js/app-layout.js',
     'resources/js/app.js'
   ])
+
+  <!-- ====== SIDEBAR POLISH (CSS-only) ====== -->
+  <style>
+    :root{
+      --sbw:256px; --sbw-collapsed:84px; --side-pad:16px; --topbar-h:64px;
+      --tree: rgba(2,8,23,.16);            /* warna garis tree (light) */
+      --tree-dark: rgba(255,255,255,.22);  /* warna garis tree (dark) */
+    }
+
+    /* ===== Align & sizing umum ===== */
+    .sidebar .nav, .sidebar .nav *{ text-align:left !important }
+    .sidebar .nav-item{
+      display:flex; align-items:center; justify-content:flex-start !important;
+      gap:10px; width:100%; min-width:0; text-decoration:none;
+      font-size:13.25px; /* kecilin sedikit */
+    }
+    .sidebar .nav-title{ font-size:11px; letter-spacing:.06em }
+    .sidebar .icon{ width:20px; flex:0 0 20px; text-align:center; opacity:.95 }
+    .sidebar .label{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+    .sidebar .chev{ margin-left:auto; opacity:.78; transition:transform .18s ease }
+
+    /* rotate chevron saat state .open (JS kamu yang set .open) */
+    .sidebar .js-accordion.open .chev{ transform:rotate(-180deg) }
+
+    /* ===== Anak accordion (nav-children) → LEFT + TREE ===== */
+    .nav-children{
+      display:grid; gap:6px;
+      margin:6px 0 8px 0 !important;  /* jangan ada margin-left tambahan */
+      padding-left:0 !important;       /* nolkan padding kiri container */
+      max-height:0; overflow:hidden; opacity:0;
+      transition:max-height .22s ease, opacity .18s ease;
+      position:relative;
+      border-left:none !important;     /* bersihin style lama */
+    }
+    .nav-children.open{ max-height:420px; opacity:1 }
+
+    /* spine (garis vertikal) */
+    .nav-children::before{
+      content:""; position:absolute; left:14px; top:0; bottom:0; width:2px;
+      background:var(--tree);
+    }
+    [data-theme="dark"] .nav-children::before{ background:var(--tree-dark) }
+
+    /* item anak: indent lewat padding, tetap rata kiri */
+    .nav-child{
+      position:relative;
+      display:flex; align-items:center; justify-content:flex-start !important;
+      gap:10px; width:100%;
+      padding:8px 10px 8px 2.25rem;     /* indent di item, bukan container */
+      border-radius:10px; border:var(--border); background:var(--card);
+      font-size:12.5px;                 /* lebih kecil daripada parent */
+      text-align:left !important;
+    }
+    .nav-child:hover{ background: color-mix(in srgb, var(--card) 92%, var(--accent-ghost)) }
+    [data-theme="dark"] .nav-child:hover{ background: rgba(255,255,255,.06) }
+    .nav-child.active{ background: var(--accent-ghost); border-color: rgba(79,70,229,.22) }
+
+    /* cabang horizontal + node bulat */
+    .nav-child::before{
+      content:""; position:absolute; left:14px; top:50%; transform:translateY(-50%);
+      width:14px; height:2px; background:var(--tree);
+    }
+    .nav-child::after{
+      content:""; position:absolute; left:10px; top:50%; transform:translate(-50%,-50%);
+      width:6px; height:6px; border-radius:999px; background:var(--tree);
+    }
+    [data-theme="dark"] .nav-child::before,
+    [data-theme="dark"] .nav-child::after{ background:var(--tree-dark) }
+
+    /* ===== Perbaikan bug scroll saat collapsed =====
+       - Hindari "scroll nyangkut" di sidebar dengan melonggarkan overflow
+       - Biarkan halaman utama yang menggulir
+    */
+    body.sidebar-collapsed .sidebar{
+      overflow:visible !important;     /* jangan perangkap scroll di sidebar */
+    }
+    /* pastikan area dalam sidebar tidak membuat sumbu-X muncul */
+    .sidebar{ overflow-x:hidden; }
+
+    /* Saat collapsed, label parent bisa disembunyikan oleh tema kamu;
+       biarkan apa adanya. Kalau mau, kecilkan padding biar ikon & chevron rapi */
+    body.sidebar-collapsed .nav-item{ padding:10px 10px }
+
+    /* Safety: kalahin utilitas center dari CSS lain */
+    .sidebar .nav *{ justify-content:flex-start !important }
+  </style>
 </head>
 
 @php use Illuminate\Support\Facades\Route as Rt; @endphp
 
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
-  {{-- Force collapsed (desktop) only on first paint when user never picked a state --}}
+  <!-- first-paint state (tetap) -->
   <script>
     (function(){
-      try {
-        var saved = localStorage.getItem('sidebar-collapsed'); // "1" collapsed, "0" expanded, null none
+      try{
+        var saved = localStorage.getItem('sidebar-collapsed');
         var shouldCollapse = (saved === null) ? true : (saved === '1');
         if (shouldCollapse && window.matchMedia('(min-width:1025px)').matches) {
           document.body.classList.add('sidebar-collapsed');
         }
-      } catch(_) {}
+      }catch(_){}
     })();
   </script>
 
@@ -49,7 +135,7 @@
       </div>
     </nav>
 
-    <!-- REKRUTMEN (dropdown) -->
+    <!-- REKRUTMEN -->
     <nav class="nav-section">
       <div class="nav-title">Rekrutmen</div>
       <div class="nav">
@@ -65,7 +151,7 @@
         </button>
 
         <div id="nav-rekrutmen"
-             class="subnav nav-children {{ $rkOpen ? 'open' : '' }}"
+             class="nav-children {{ $rkOpen ? 'open' : '' }}"
              data-accordion-panel="nav-rekrutmen">
           <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.monitoring')?'active':'' }}"
              href="{{ Rt::has('rekrutmen.monitoring') ? route('rekrutmen.monitoring') : '#' }}">
@@ -83,7 +169,7 @@
       </div>
     </nav>
 
-    <!-- PELATIHAN (dropdown) -->
+    <!-- PELATIHAN -->
     <nav class="nav-section">
       <div class="nav-title">Pelatihan</div>
       <div class="nav">
@@ -99,7 +185,7 @@
         </button>
 
         <div id="nav-pelatihan"
-             class="subnav nav-children {{ $plOpen ? 'open' : '' }}"
+             class="nav-children {{ $plOpen ? 'open' : '' }}"
              data-accordion-panel="nav-pelatihan">
           <a class="nav-item nav-child {{ request()->routeIs('pelatihan.monitoring')?'active':'' }}"
              href="{{ Rt::has('pelatihan.monitoring') ? route('pelatihan.monitoring') : '#' }}">
@@ -113,7 +199,7 @@
       </div>
     </nav>
 
-    <!-- SETTINGS (grup dropdown: Manajemen Akses) -->
+    <!-- SETTINGS -->
     <nav class="nav-section">
       <div class="nav-title">Settings</div>
       <div class="nav">
@@ -134,7 +220,7 @@
           </button>
 
           <div id="nav-access"
-               class="subnav nav-children {{ $acOpen ? 'open' : '' }}"
+               class="nav-children {{ $acOpen ? 'open' : '' }}"
                data-accordion-panel="nav-access">
             @can('users.view')
             <a class="nav-item nav-child {{ request()->routeIs('settings.users.*') ? 'active' : '' }}"
@@ -165,7 +251,7 @@
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </button>
 
-    <div class="search">
+  <div class="search">
       <span class="search-icon">🔎</span>
       <input type="search" placeholder="Search…" aria-label="Search">
     </div>
@@ -203,12 +289,8 @@
 
           <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
             @csrf
-            <div id="poweroff"
-                 class="poweroff"
-                 data-threshold="0.6"
-                 role="slider"
-                 aria-label="Swipe To Signout"
-                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+            <div id="poweroff" class="poweroff" data-threshold="0.6" role="slider"
+                 aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
               <span class="power-icon" aria-hidden="true">⏻</span>
               <span class="power-text">Swipe To Sign out</span>
               <div id="powerKnob" class="power-knob" aria-hidden="true"></div>
