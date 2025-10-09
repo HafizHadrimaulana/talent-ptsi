@@ -172,7 +172,7 @@
       <div class="dropdown-wrap">
         <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">🔔</button>
         <div id="notifDropdown" class="dropdown" hidden>
-          <div class="dropdown-header">Notifikasi <button class="close-btn" type="button">✖</button></div>
+          <div class="dropdown-header">Notifikasi <button class="close-btn" type="button"  onclick="closeNotifDropdown()">✖</button></div>
           <div class="muted text-sm">Belum ada notifikasi.</div>
         </div>
       </div>
@@ -219,5 +219,16 @@
   </main>
 
   <button id="dmFab" class="dm-fab" type="button" title="Toggle theme" aria-pressed="false">🌞</button>
+  <script>
+  function closeNotifDropdown() {
+    const notifDropdown = document.getElementById('notifDropdown');
+    const notifBtn = document.getElementById('notifBtn');
+    if (!notifDropdown) return;
+
+    notifDropdown.setAttribute('hidden', '');
+    if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
+  }
+  </script>
+
 </body>
 </html>
