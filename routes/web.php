@@ -6,73 +6,95 @@ use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\PermissionController;
 
+// If you plan to enable the dev sync route, uncomment the next line.
+// use App\Jobs\SyncSitmsMasterJob;
+
 Route::middleware('web')->group(function () {
 
+    // ====== GUEST (AUTH) ======
     Route::middleware('guest')->group(function () {
         Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
         Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
     });
 
-    Route::middleware(['auth','team.scope'])->group(function () {
-        Route::get('/', fn() => redirect()->route('dashboard'));
-        Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
+    // ====== AUTHENTICATED ======
+    Route::middleware(['auth', 'team.scope'])->group(function () {
+        Route::get('/', fn () => redirect()->route('dashboard'));
+        Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
 
-        // SETTINGS (modal-first)
+        // ====== SETTINGS (modal-first) ======
         Route::prefix('settings')->name('settings.')->group(function () {
 
             // Users: index + store + update + destroy (NO create/edit pages)
-            Route::get('users', [UserController::class,'index'])
+            Route::get('users', [UserController::class, 'index'])
                 ->middleware('permission:users.view')->name('users.index');
-            Route::post('users', [UserController::class,'store'])
+
+            Route::post('users', [UserController::class, 'store'])
                 ->middleware('permission:users.create')->name('users.store');
-            Route::put('users/{user}', [UserController::class,'update'])
+
+            Route::put('users/{user}', [UserController::class, 'update'])
                 ->middleware('permission:users.update')->name('users.update');
-            Route::delete('users/{user}', [UserController::class,'destroy'])
+
+            Route::delete('users/{user}', [UserController::class, 'destroy'])
                 ->middleware('permission:users.delete')->name('users.destroy');
 
             // JSON role options for dynamic modal (create/edit)
-            Route::get('roles/options', [UserController::class,'roleOptions'])
+            Route::get('roles/options', [UserController::class, 'roleOptions'])
                 ->middleware('permission:users.view') // atau rbac.view, sesuaikan
                 ->name('roles.options');
 
             // Roles
-            Route::get('roles', [RoleController::class,'index'])
+            Route::get('roles', [RoleController::class, 'index'])
                 ->middleware('permission:rbac.view')->name('roles.index');
-            Route::post('roles', [RoleController::class,'store'])
+
+            Route::post('roles', [RoleController::class, 'store'])
                 ->middleware('permission:rbac.assign')->name('roles.store');
-            Route::put('roles/{role}', [RoleController::class,'update'])
+
+            Route::put('roles/{role}', [RoleController::class, 'update'])
                 ->middleware('permission:rbac.assign')->name('roles.update');
-            Route::delete('roles/{role}', [RoleController::class,'destroy'])
+
+            Route::delete('roles/{role}', [RoleController::class, 'destroy'])
                 ->middleware('permission:rbac.assign')->name('roles.destroy');
 
             // Permissions (rename only)
-            Route::get('permissions', [PermissionController::class,'index'])
+            Route::get('permissions', [PermissionController::class, 'index'])
                 ->middleware('permission:rbac.view')->name('permissions.index');
-            Route::put('permissions/{permission}', [PermissionController::class,'update'])
+
+            Route::put('permissions/{permission}', [PermissionController::class, 'update'])
                 ->middleware('permission:rbac.assign')->name('permissions.update');
-            
-                Route::get('/rekrutmen/monitoring', fn() => view('stubs.coming', [
-        'title' => 'Rekrutmen · Monitoring'
-    ]))->name('rekrutmen.monitoring');
-
-    Route::get('/rekrutmen/izin-prinsip', fn() => view('stubs.coming', [
-        'title' => 'Rekrutmen · Izin Prinsip'
-    ]))->name('rekrutmen.izin-prinsip.index');
-
-    Route::get('/rekrutmen/kontrak', fn() => view('stubs.coming', [
-        'title' => 'Rekrutmen · Penerbitan Kontrak'
-    ]))->name('rekrutmen.kontrak.index');
-
-    // --- STUB PELATIHAN ---
-    Route::get('/pelatihan/monitoring', fn() => view('stubs.coming', [
-        'title' => 'Pelatihan · Monitoring'
-    ]))->name('pelatihan.monitoring');
-
-    Route::get('/pelatihan/izin-prinsip', fn() => view('stubs.coming', [
-        'title' => 'Pelatihan · Izin Prinsip'
-    ]))->name('pelatihan.izin-prinsip');    
         });
 
+        // ====== REKRUTMEN (stubs untuk awal) ======
+        Route::get('/rekrutmen/monitoring', fn () => view('stubs.coming', [
+            'title' => 'Rekrutmen · Monitoring'
+        ]))->middleware('permission:recruitment.view')->name('rekrutmen.monitoring');
+
+        Route::get('/rekrutmen/izin-prinsip', fn () => view('stubs.coming', [
+            'title' => 'Rekrutmen · Izin Prinsip'
+        ]))->middleware('permission:recruitment.view')->name('rekrutmen.izin-prinsip.index');
+
+        Route::get('/rekrutmen/kontrak', fn () => view('stubs.coming', [
+            'title' => 'Rekrutmen · Penerbitan Kontrak'
+        ]))->middleware('permission:contract.view')->name('rekrutmen.kontrak.index');
+
+        // ====== PELATIHAN (stubs) ======
+        Route::get('/pelatihan/monitoring', fn () => view('stubs.coming', [
+            'title' => 'Pelatihan · Monitoring'
+        ]))->name('pelatihan.monitoring');
+
+        Route::get('/pelatihan/izin-prinsip', fn () => view('stubs.coming', [
+            'title' => 'Pelatihan · Izin Prinsip'
+        ]))->name('pelatihan.izin-prinsip');
+
+        // (Opsional) Dev trigger untuk SITMS sync — batasi Superadmin kalau dipakai
+        /*
+        Route::middleware('role:Superadmin')->get('/dev/sitms/sync', function () {
+            SyncSitmsMasterJob::dispatch(1, 1000);
+            return 'Queued';
+        })->name('dev.sitms.sync');
+        */
+
+        // Logout
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     });
 });

@@ -1,24 +1,18 @@
 <?php
-
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        $this->app->bind(\App\Services\SITMS\SitmsClient::class, function(){
+            return config('sitms.read_enabled')
+                ? new \App\Services\SITMS\HttpSitmsClient
+                : new \App\Services\SITMS\NullSitmsClient;
+        });
     }
 
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        //
-    }
+    public function boot(): void {}
 }
