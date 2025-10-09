@@ -68,87 +68,112 @@ const helpers = window.__DT_HELPERS__ || (() => {
     }
   };
   // TO DO : CARI GIMANA BISA NAMBAHIN IMPORT + EXPORT BUTTON, TAMBAHIN ICON MAGNIFIER 
-  
 
-  function applyChrome(dtApi) {
-    const $table = $(dtApi.table().node());
-    const $wrap  = $(dtApi.table().container());
+function applyChrome(dtApi) {
+  const $table = $(dtApi.table().node());
+  const $wrap  = $(dtApi.table().container());
 
-    $wrap.addClass('dataTables_wrapper');
-    $wrap.closest('.table-responsive, .card, .glass, .dt-card').addClass('dt-card');
+  $wrap.addClass('dataTables_wrapper');
+  $wrap.closest('.table-responsive, .card, .glass, .dt-card').addClass('dt-card');
 
-    $wrap.find('.dt-top, .dt-bottom').each(function(){ $(this).addClass('grid gap-2'); });
+  $wrap.find('.dt-top, .dt-bottom').each(function(){ $(this).addClass('grid gap-2'); });
 
-   // ===== Modify the default search box =====
-    const $filterWrap = $wrap.find('.dataTables_filter');
-    const $input = $filterWrap.find('input');
+  // ===== Modify the default search box =====
+  const $filterWrap = $wrap.find('.dataTables_filter');
+  const $input = $filterWrap.find('input');
 
-    // Create a wrapper with embedded search icon
-    const $searchGroup = $(`
-      <div class="relative flex items-center w-full">
-        <i class="fa fa-search absolute left-3 text-gray-400 pointer-events-none"></i>
-      </div>
-    `);
+  // Create a wrapper with embedded search icon
+  const $searchGroup = $(`
+    <div class="relative flex items-center w-full">
+      <i class="fa fa-search absolute left-3 text-gray-400 pointer-events-none"></i>
+    </div>
+  `);
 
-    $input
-      .attr('placeholder', 'Pencarian…')
-      .addClass('input input--sm pl-10 w-full') // Add left padding for icon
-      .appendTo($searchGroup);
+  $input
+    .attr('placeholder', 'Ketik untuk cari…')
+    .addClass('input input--sm pl-10 w-full')
+    .appendTo($searchGroup);
 
-    // Replace default filter wrapper content with our layout
-    $filterWrap.empty().append($searchGroup);
+  // Replace default filter wrapper content with our layout
+  $filterWrap.empty().append($searchGroup);
 
+  // ===== Custom Toolbar (Search + Action Buttons on same line) =====
+  const $length = $wrap.find('.dataTables_length');
+  const $toolbarRow = $('<div class="flex flex-wrap items-center justify-between gap-3 w-full mb-2"></div>');
 
-    // Wrap both buttons and search in a single toolbar
-    const $toolbar = $('<div class="flex flex-wrap items-center justify-between gap-3 w-full"></div>');
-    $toolbar.append(
-      $('<div class="flex-1"></div>').append($filterWrap)
-    );
+  // Right side: Search + Import + Export inline
+  const $rightSide = $('<div class="flex flex-wrap items-center gap-2 w-full sm:w-auto"></div>');
+  $rightSide.append($filterWrap);
 
-    // Insert the unified toolbar after the “Tampilkan” select
-    $wrap.find('.dataTables_length').after($toolbar);
-    // Hook up search button click
-    $btnSearch.on('click', () => {
-      const api = dtApi;
-      api.search($input.val()).draw();
-    });
+  const $btnImport = $(`
+    <button type="button" class="btn btn-brand hover-lift" data-dt-import>
+      <i class="fa fa-file-import mr-1"></i> Import
+    </button>
+  `);
 
+  const $btnExport = $(`
+    <button type="button" class="btn btn-brand hover-lift" data-dt-export>
+      <i class="fa fa-file-export mr-1"></i> Export
+    </button>
+  `);
 
-    const $length = $wrap.find('.dataTables_length select');
-    $length.addClass('select--sm');
+  $rightSide.append($btnImport, $btnExport);
 
-    $table.addClass('table-ui table-compact nowrap');
-    $table.find('th:last-child, td:last-child').addClass('cell-actions');
+  // Combine "Tampilkan" dropdown and right section
+  $toolbarRow.append($length, $rightSide);
 
-    $wrap.find('.dataTables_paginate').addClass('pagination-ui');
-
-    // Scroll-X fallback
-    if (!$table.parent().hasClass('dt-scroll')) {
-      $table.wrap('<div class="dt-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch;"></div>');
-    }
-
-    // Styling child-row minimal
-    const styleId = 'dt-inline-style';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.textContent = `
-        table.dataTable tbody tr.child td.child { padding: 12px 14px; background: rgba(2,8,23,.03); }
-        [data-theme="dark"] table.dataTable tbody tr.child td.child { background: rgba(255,255,255,.03); }
-        .dt-details { display:grid; gap:8px; }
-        .dt-kv { display:grid; grid-template-columns: 140px 1fr; gap:8px; align-items:baseline; }
-        .dt-kv .k { font-weight:700; color:#64748b; }
-        .dt-kv .v { overflow-wrap:anywhere; }
-        @media (max-width: ${BREAKPOINTS.xs}px){
-          .dt-kv{ grid-template-columns: 1fr; }
-          .dt-kv .k{ opacity:.8 }
-        }
-        .dataTables_wrapper .dt-top, .dataTables_wrapper .dt-bottom { padding: 6px 0; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 2px 8px; }
-      `;
-      document.head.appendChild(style);
-    }
+  // Insert toolbar above the table (replace old toolbar placement)
+  if ($length.length) {
+    $length.closest('.dt-toolbar, .dataTables_wrapper').prepend($toolbarRow);
+  } else {
+    $wrap.prepend($toolbarRow);
   }
+
+  // ===== Hook up basic button handlers =====
+  $btnImport.on('click', () => {
+    alert('Import clicked!');
+    // TODO: open modal or file input
+  });
+
+  $btnExport.on('click', () => {
+    alert('Export clicked!');
+    // TODO: trigger export logic
+  });
+
+  // ===== Finish base styling =====
+  $length.find('select').addClass('select--sm');
+  $table.addClass('table-ui table-compact nowrap');
+  $table.find('th:last-child, td:last-child').addClass('cell-actions');
+  $wrap.find('.dataTables_paginate').addClass('pagination-ui');
+
+  if (!$table.parent().hasClass('dt-scroll')) {
+    $table.wrap('<div class="dt-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch;"></div>');
+  }
+
+  // ===== Minimal inline style =====
+  const styleId = 'dt-inline-style';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      table.dataTable tbody tr.child td.child { padding: 12px 14px; background: rgba(2,8,23,.03); }
+      [data-theme="dark"] table.dataTable tbody tr.child td.child { background: rgba(255,255,255,.03); }
+      .dt-details { display:grid; gap:8px; }
+      .dt-kv { display:grid; grid-template-columns: 140px 1fr; gap:8px; align-items:baseline; }
+      .dt-kv .k { font-weight:700; color:#64748b; }
+      .dt-kv .v { overflow-wrap:anywhere; }
+      @media (max-width: 640px){
+        .dt-kv{ grid-template-columns: 1fr; }
+        .dt-kv .k{ opacity:.8 }
+        .dataTables_wrapper .flex { flex-direction: column; align-items: stretch; }
+      }
+      .dataTables_wrapper .dt-top, .dataTables_wrapper .dt-bottom { padding: 6px 0; }
+      .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 2px 8px; }
+      .dataTables_wrapper .dataTables_filter input { max-width: 220px; }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
   function getDTFromElOrJq(tableSelector) {
     // 1) coba jQuery bridge

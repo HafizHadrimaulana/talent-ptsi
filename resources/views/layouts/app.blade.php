@@ -4,6 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>@yield('title','Talent PTSI')</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    .bell-icon {
+      color: linear-gradient( #0A3875, #00A29AB2 ); 
+      font-size: 1.5rem;
+    }
+  </style>
   @vite([
     'resources/css/app.css',
     'resources/css/app-layout.css',
@@ -56,7 +63,7 @@
         <button type="button"
                 class="nav-item js-accordion {{ $rkOpen ? 'open' : '' }}"
                 data-accordion="nav-rekrutmen"
-                aria-expanded="{{ $rkOpen ? 'true' : 'false' }}">
+                aria-expanded="{{ $rkOpen ? 'true' : 'false' }}" style = "cursor: pointer">
           <span class="icon">👥</span>
           <span class="label">Rekrutmen</span>
           <span class="chev">▾</span>
@@ -64,7 +71,7 @@
 
         <div id="nav-rekrutmen"
              class="nav-children {{ $rkOpen ? 'open' : '' }}"
-             data-accordion-panel="nav-rekrutmen">
+             data-accordion-panel="nav-rekrutmen" style = "cursor: pointer">
           <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.monitoring')?'active':'' }}"
              href="{{ Rt::has('rekrutmen.monitoring') ? route('rekrutmen.monitoring') : '#' }}">
             <span class="icon">📊</span><span class="label">Monitoring</span>
@@ -90,7 +97,8 @@
         <button type="button"
                 class="nav-item js-accordion {{ $plOpen ? 'open' : '' }}"
                 data-accordion="nav-pelatihan"
-                aria-expanded="{{ $plOpen ? 'true' : 'false' }}">
+                aria-expanded="{{ $plOpen ? 'true' : 'false' }}"
+                style = "cursor: pointer">
           <span class="icon">🎓</span>
           <span class="label">Pelatihan</span>
           <span class="chev">▾</span>
@@ -98,7 +106,8 @@
 
         <div id="nav-pelatihan"
              class="nav-children {{ $plOpen ? 'open' : '' }}"
-             data-accordion-panel="nav-pelatihan">
+             data-accordion-panel="nav-pelatihan"
+             style = "cursor: pointer">
           <a class="nav-item nav-child {{ request()->routeIs('pelatihan.monitoring')?'active':'' }}"
              href="{{ Rt::has('pelatihan.monitoring') ? route('pelatihan.monitoring') : '#' }}">
             <span class="icon">📈</span><span class="label">Monitoring</span>
@@ -125,7 +134,8 @@
           <button type="button"
                   class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}"
                   data-accordion="nav-access"
-                  aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
+                  aria-expanded="{{ $acOpen ? 'true' : 'false' }}"
+                  style = "cursor: pointer">
             <span class="icon">🧭</span>
             <span class="label">Manajemen Akses</span>
             <span class="chev">▾</span>
@@ -170,7 +180,7 @@
 
     <div class="top-actions">
       <div class="dropdown-wrap">
-        <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">🔔</button>
+        <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications"><i class="fa-solid fa-bell bell-icon"></i></button>
         <div id="notifDropdown" class="dropdown" hidden>
           <div class="dropdown-header">Notifikasi <button class="close-btn" type="button"  onclick="closeNotifDropdown()">✖</button></div>
           <div class="muted text-sm">Belum ada notifikasi.</div>

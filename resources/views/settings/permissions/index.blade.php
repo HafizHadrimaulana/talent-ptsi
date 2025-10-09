@@ -2,6 +2,7 @@
 @section('title','Settings · Permissions')
 
 @section('content')
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 <div class="card glass p-4">
   <h2 class="font-semibold mb-3">Permission List</h2>
 
@@ -18,8 +19,10 @@
         <tr>
           <td>{{ $p->name }}</td>
           <td class="cell-actions">
-            <button class="btn-sm hover-lift" data-modal-open="editPermModal"
-              data-perm='@json(["id"=>$p->id,"name"=>$p->name])'>Rename</button>
+            <button class="btn-sm hover-lift" data-modal-open="editPermModal" style="cursor: pointer;"
+                    data-perm='@json(["id"=>$p->id,"name"=>$p->name])'>
+              <i class='bx bx-rename' style="font-size: 1.5rem;"></i>
+            </button>
           </td>
         </tr>
         @endforeach

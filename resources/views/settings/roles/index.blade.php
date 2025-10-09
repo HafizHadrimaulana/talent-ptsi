@@ -2,6 +2,7 @@
 @section('title','Settings · Roles')
 
 @section('content')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 <div class="card glass p-4">
   <div class="flex justify-between items-center mb-3">
     <h2 class="font-semibold">Role Management</h2>
@@ -25,12 +26,12 @@
           <td>{{ $r->users_count }}</td>
           <td class="cell-actions">
             <button class="btn-sm hover-lift" data-modal-open="editRoleModal"
-              data-role='@json(["id"=>$r->id,"name"=>$r->name,"perms"=>$r->permissions()->pluck("name")->all()])'>
-              Edit
+              data-role='@json(["id"=>$r->id,"name"=>$r->name,"perms"=>$r->permissions()->pluck("name")->all()])' style="cursor:pointer">
+              <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <form method="post" action="{{ route('settings.roles.destroy',$r) }}" class="inline">
               @csrf @method('delete')
-              <button class="btn-sm danger hover-lift" onclick="return confirm('Hapus role?')">Hapus</button>
+              <button class="btn-sm danger hover-lift" onclick="return confirm('Hapus role?')" style="cursor:pointer"><i class="fa-solid fa-trash"></i></button>
             </form>
           </td>
         </tr>
