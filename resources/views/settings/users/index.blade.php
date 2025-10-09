@@ -3,18 +3,19 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
 @section('content')
-{{-- NOTE: data-roles-url dipakai JS untuk load roles secara dinamis --}}
 <div class="card glass p-4" data-roles-url="{{ route('settings.roles.options') }}">
-  <div class="flex justify-between items-center gap-2 mb-3">
-    <form method="get" class="flex gap-2" id="searchForm">
-      <input name="q" value="{{ $q }}" placeholder="Cari nama/email" class="input" />
-      <button class="btn btn-outline hover-lift" type="submit" id="btnSearch">Cari</button>
-    </form>
+
+  {{-- ====== HEADER ====== --}}
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-semibold">Manajemen User</h2>
     @can('users.create')
-    <button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">+ Tambah User</button>
+    <button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">
+      <i class="fa fa-plus mr-1"></i> Tambah User
+    </button>
     @endcan
   </div>
 
+  {{-- ====== ALERTS ====== --}}
   @if(session('ok'))
     <div class="alert success mb-3">{{ session('ok') }}</div>
   @endif
@@ -26,8 +27,9 @@
     </div>
   @endif
 
-  <div class="dt-card ios-glass">
-    <table id="users-table" class="display" data-dt>
+  {{-- ====== DATATABLE CARD (Unified Layer) ====== --}}
+  <div class="dt-wrapper bg-white/70 dark:bg-slate-900/60 rounded-2xl shadow-md p-4 space-y-3 ios-glass">
+    <table id="users-table" class="display w-full" data-dt>
       <thead>
         <tr>
           <th>Nama</th>
@@ -42,48 +44,49 @@
           <td>{{ $u->name }}</td>
           <td>{{ $u->email }}</td>
           <td>{{ $u->roles->pluck('name')->join(', ') ?: '-' }}</td>
-          <td class="cell-actions">
-          @can('users.update')
-          <button
-            type="button"
-            class="btn-icon hover-lift text-blue-500"
-            data-modal-open="editUserModal"
-            data-id="{{ $u->id }}"
-            data-name="{{ $u->name }}"
-            data-email="{{ $u->email }}"
-            data-roles="{{ $u->roles->pluck('id')->implode(',') }}"
-            title="Edit User"
-          >
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          @endcan
-
-          @can('users.delete')
-          <form method="post" action="{{ route('settings.users.destroy', $u) }}" class="inline">
-            @csrf @method('delete')
+          <td class="cell-actions flex items-center gap-2">
+            @can('users.update')
             <button
-              type="submit"
-              class="btn-icon hover-lift text-red-500"
-              onclick="return confirm('Hapus user?')"
-              title="Hapus User"
+              type="button"
+              class="btn-icon hover-lift text-blue-500"
+              data-modal-open="editUserModal"
+              data-id="{{ $u->id }}"
+              data-name="{{ $u->name }}"
+              data-email="{{ $u->email }}"
+              data-roles="{{ $u->roles->pluck('id')->implode(',') }}"
+              title="Edit User"
             >
-              <i class="fa-solid fa-trash"></i>
+              <i class="fa-solid fa-pen-to-square"></i>
             </button>
-          </form>
-          @endcan
+            @endcan
+
+            @can('users.delete')
+            <form method="post" action="{{ route('settings.users.destroy', $u) }}" class="inline">
+              @csrf @method('delete')
+              <button
+                type="submit"
+                class="btn-icon hover-lift text-red-500"
+                onclick="return confirm('Hapus user?')"
+                title="Hapus User"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+            @endcan
           </td>
         </tr>
         @empty
-        <tr><td colspan="4" class="muted">Belum ada data.</td></tr>
+        <tr><td colspan="4" class="muted text-center py-3">Belum ada data.</td></tr>
         @endforelse
       </tbody>
     </table>
   </div>
 
+  {{-- Hidden Laravel pagination fallback --}}
   <div class="mt-3 hidden">{{ $users->links() }}</div>
 </div>
 
-{{-- CREATE MODAL --}}
+{{-- ====== CREATE MODAL ====== --}}
 <div id="createUserModal" class="modal" hidden>
   <div class="modal-card">
     <div class="modal-header">
@@ -98,7 +101,6 @@
 
       <div>
         <div class="font-semibold mb-1">Roles</div>
-        {{-- akan diisi dinamis via JS --}}
         <div class="grid grid-cols-2 gap-2" id="createUserRoles"></div>
       </div>
 
@@ -110,7 +112,7 @@
   </div>
 </div>
 
-{{-- EDIT MODAL --}}
+{{-- ====== EDIT MODAL ====== --}}
 <div id="editUserModal" class="modal" hidden>
   <div class="modal-card">
     <div class="modal-header">
@@ -125,7 +127,6 @@
 
       <div>
         <div class="font-semibold mb-1">Roles</div>
-        {{-- akan diisi dinamis via JS --}}
         <div class="grid grid-cols-2 gap-2" id="editUserRoles"></div>
       </div>
 
@@ -137,13 +138,13 @@
   </div>
 </div>
 
-{{-- Fallback data untuk render awal bila endpoint JSON belum tersedia --}}
+{{-- ====== INITIAL ROLE DATA ====== --}}
 <script>
   window.__INITIAL_ROLES__ = @json(($roles ?? collect())->map(fn($r)=>['id'=>$r->id,'name'=>$r->name])->values());
 </script>
 
+{{-- ====== MODAL + ROLE LOADER SCRIPT ====== --}}
 <script>
-// Modal + Roles loader (dinamis, dengan fallback)
 (() => {
   const body = document.body;
   const rolesURL = document.querySelector('.card.glass.p-4')?.dataset.rolesUrl || null;
@@ -184,7 +185,7 @@
     body.style.overflow = '';
   };
 
-  // OPEN (delegation, capture)
+  // OPEN
   document.addEventListener('click', async (e) => {
     const opener = e.target.closest('[data-modal-open]');
     if (!opener) return;
@@ -192,7 +193,7 @@
     e.preventDefault();
     e.stopPropagation();
 
-    const id    = opener.getAttribute('data-modal-open');
+    const id = opener.getAttribute('data-modal-open');
     const modal = document.getElementById(id);
     if (!modal) return;
 
@@ -202,8 +203,7 @@
         try {
           const { roles } = await fetchRoles();
           renderRoles(container, roles, []);
-        } catch (err) {
-          console.error(err);
+        } catch {
           renderRoles(container, (window.__INITIAL_ROLES__||[]), []);
         }
       }
@@ -211,17 +211,15 @@
 
     if (id === 'editUserModal') {
       const form = document.getElementById('editUserForm');
-
-      // Ambil dari atribut sederhana (aman dari escape/JSON)
       const uid   = opener.getAttribute('data-id') || '';
-      const name  = opener.getAttribute('data-name')  || '';
+      const name  = opener.getAttribute('data-name') || '';
       const email = opener.getAttribute('data-email') || '';
       const rolesCsv = opener.getAttribute('data-roles') || '';
-      const rolesArr = rolesCsv.split(',').map(s => s.trim()).filter(Boolean); // ["1","3",...]
+      const rolesArr = rolesCsv.split(',').map(s => s.trim()).filter(Boolean);
 
       if (form) {
         form.action = "{{ url('settings/users') }}/" + uid;
-        form.querySelector('input[name=name]').value  = name;
+        form.querySelector('input[name=name]').value = name;
         form.querySelector('input[name=email]').value = email;
         form.querySelector('input[name=password]').value = '';
       }
@@ -232,8 +230,7 @@
           const { roles, assigned } = await fetchRoles(uid);
           const assignedIds = (assigned && assigned.length) ? assigned : rolesArr;
           renderRoles(container, roles, assignedIds);
-        } catch (err) {
-          console.error(err);
+        } catch {
           renderRoles(container, (window.__INITIAL_ROLES__||[]), rolesArr);
         }
       }
@@ -242,7 +239,7 @@
     openModal(modal);
   }, true);
 
-  // CLOSE (button)
+  // CLOSE
   document.addEventListener('click', (e) => {
     const closer = e.target.closest('[data-modal-close]');
     if (!closer) return;
@@ -251,24 +248,18 @@
     closeModal(closer.closest('.modal'));
   }, true);
 
-  // Backdrop close
+  // BACKDROP
   document.querySelectorAll('.modal').forEach(m => {
     m.addEventListener('click', (e) => { if (e.target === m) closeModal(m); });
   });
 
-  // ESC close
+  // ESC
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     const openModals = Array.from(document.querySelectorAll('.modal')).filter(m => !m.hidden);
     const top = openModals.pop();
     if (top) closeModal(top);
   });
-
-  // Search safety
-  const f = document.getElementById('searchForm');
-  const btn = document.getElementById('btnSearch');
-  btn?.addEventListener('click', (ev) => { ev.preventDefault(); f?.submit(); });
 })();
 </script>
-
 @endsection

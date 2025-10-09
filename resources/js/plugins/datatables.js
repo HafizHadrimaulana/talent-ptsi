@@ -16,9 +16,9 @@ const helpers = window.__DT_HELPERS__ || (() => {
 
   // Toolbar atas/bawah
   const DOM_CHROME =
-    "<'dt-top'<'dt-left dataTables_length'l><'dt-right dataTables_filter'f>>" +
-    "t" +
-    "<'dt-bottom'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>";
+  "<'dt-toolbar grid gap-2 mb-3'<'dt-length-row flex justify-start items-center'l><'dt-control-row flex justify-between items-center gap-3'f>>" +
+  "t" +
+  "<'dt-footer flex justify-between items-center mt-3'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>";
 
   // Breakpoints
   const BREAKPOINTS = { desktop: Infinity, lg: 1280, md: 1024, sm: 768, xs: 520 };
@@ -67,6 +67,8 @@ const helpers = window.__DT_HELPERS__ || (() => {
       processing: "Memproses…",
     }
   };
+  // TO DO : CARI GIMANA BISA NAMBAHIN IMPORT + EXPORT BUTTON, TAMBAHIN ICON MAGNIFIER 
+  
 
   function applyChrome(dtApi) {
     const $table = $(dtApi.table().node());
@@ -77,32 +79,39 @@ const helpers = window.__DT_HELPERS__ || (() => {
 
     $wrap.find('.dt-top, .dt-bottom').each(function(){ $(this).addClass('grid gap-2'); });
 
-    // ===== Modify the default search box =====
-const $filterWrap = $wrap.find('.dataTables_filter'); // <div class="dataTables_filter">
-const $input = $filterWrap.find('input');
+   // ===== Modify the default search box =====
+    const $filterWrap = $wrap.find('.dataTables_filter');
+    const $input = $filterWrap.find('input');
 
-// Style the input
-$input
-  .attr('placeholder', dtApi.settings()[0].oLanguage.sSearchPlaceholder || 'Ketik untuk cari…')
-  .addClass('input input--sm')
-  .wrap('<div class="dt-search-wrap flex items-center gap-2"></div>');
+    // Create a wrapper with embedded search icon
+    const $searchGroup = $(`
+      <div class="relative flex items-center w-full">
+        <i class="fa fa-search absolute left-3 text-gray-400 pointer-events-none"></i>
+      </div>
+    `);
 
-// Create search button
-const $btnSearch = $('<button type="button" class="btn btn-outline btn-sm hover-lift" title="Cari"><i class="fa fa-search"></i></button>');
-$input.after($btnSearch);
+    $input
+      .attr('placeholder', 'Pencarian…')
+      .addClass('input input--sm pl-10 w-full') // Add left padding for icon
+      .appendTo($searchGroup);
 
-// Add Import / Export buttons
-const $btnImport = $('<button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Import</button>');
-const $btnExport = $('<button type="button" class="btn btn-brand hover-lift" data-modal-open="createUserModal">Export</button>');
+    // Replace default filter wrapper content with our layout
+    $filterWrap.empty().append($searchGroup);
 
-// Append them after the search controls
-$filterWrap.append($btnImport, $btnExport);
 
-// Hook up search button click
-$btnSearch.on('click', () => {
-  const api = dtApi;
-  api.search($input.val()).draw();
-});
+    // Wrap both buttons and search in a single toolbar
+    const $toolbar = $('<div class="flex flex-wrap items-center justify-between gap-3 w-full"></div>');
+    $toolbar.append(
+      $('<div class="flex-1"></div>').append($filterWrap)
+    );
+
+    // Insert the unified toolbar after the “Tampilkan” select
+    $wrap.find('.dataTables_length').after($toolbar);
+    // Hook up search button click
+    $btnSearch.on('click', () => {
+      const api = dtApi;
+      api.search($input.val()).draw();
+    });
 
 
     const $length = $wrap.find('.dataTables_length select');
