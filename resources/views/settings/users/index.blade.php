@@ -1,6 +1,8 @@
 @extends('layouts.app')
 @section('title','Settings · Users')
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<!-- Font Awesome 6 (preferred) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 
 @section('content')
 <div class="card glass p-4" data-roles-url="{{ route('settings.roles.options') }}">

@@ -15,10 +15,11 @@ const helpers = window.__DT_HELPERS__ || (() => {
   const debounce = (fn, delay = 300) => { let t; return (...a)=>{clearTimeout(t); t=setTimeout(()=>fn(...a),delay)} };
 
   // Toolbar atas/bawah
-  const DOM_CHROME =
-  "<'dt-toolbar grid gap-2 mb-3'<'dt-length-row flex justify-start items-center'l><'dt-control-row flex justify-between items-center gap-3'f>>" +
+const DOM_CHROME =
+  "<'dt-toolbar flex flex-wrap items-center justify-between gap-3 mb-3'l f>" +
   "t" +
   "<'dt-footer flex justify-between items-center mt-3'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>";
+
 
   // Breakpoints
   const BREAKPOINTS = { desktop: Infinity, lg: 1280, md: 1024, sm: 768, xs: 520 };
@@ -84,17 +85,20 @@ function applyChrome(dtApi) {
 
   // Create a wrapper with embedded search icon
   const $searchGroup = $(`
-    <div class="relative flex items-center w-full">
-      <i class="fa fa-search absolute left-3 text-gray-400 pointer-events-none"></i>
+    <div class="relative flex items-center w-full max-w-xs">
+      <i class="fa fa-search absolute left-3 text-gray-400 pointer-events-none text-sm"></i>
     </div>
   `);
 
   $input
-    .attr('placeholder', 'Ketik untuk cari…')
-    .addClass('input input--sm pl-10 w-full')
+    .attr({
+      placeholder: 'Ketik untuk cari…',
+      type: 'search',
+    })
+    .addClass('input input--sm w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 focus:border-brand focus:ring focus:ring-brand/20')
     .appendTo($searchGroup);
 
-  // Replace default filter wrapper content with our layout
+  // Replace default DataTables filter contents
   $filterWrap.empty().append($searchGroup);
 
   // ===== Custom Toolbar (Search + Action Buttons on same line) =====
