@@ -1,486 +1,531 @@
 <?php
 namespace App\Jobs;
 
-use App\Services\SITMS\SitmsClient;
+use App\Services\SITMS\HttpSitmsClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class SyncSitmsMasterJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * @param int $page Halaman yang sedang diproses (1-based).
-     * @param int $size Ukuran halaman yang diminta (akan disesuaikan oleh server jika ada limit).
-     */
-    public function __construct(public int $page = 1, public int $size = 1000) {}
+    public int $page;
+    public int $perPage;
+    public bool $continuePaging;
 
-    public function handle(SitmsClient $api): void
+    protected static array $seenExternalIds = [];
+
+    public function __construct(int $page, int $perPage, bool $continuePaging)
     {
-        if (!config('sitms.read_enabled')) return;
+        $this->page = $page;
+        $this->perPage = $perPage;
+        $this->continuePaging = $continuePaging;
+    }
 
-        $resp = $api->fetchEmployeesPage($this->page, $this->size);
-        $rows = $resp['data'] ?? [];
+    public static function dispatchSync(HttpSitmsClient $client, int $page, int $perPage, bool $continuePaging): void
+    {
+        self::runSinglePage($client, $page, $perPage, $continuePaging);
+    }
 
-        // Commit per 100 row agar tidak berat
-        $chunks = array_chunk($rows, 100);
-        foreach ($chunks as $chunk) {
-            DB::transaction(function () use ($chunk) {
-                foreach ($chunk as $r) {
-                    try {
-                        $this->upsertOne($r);
-                    } catch (\Throwable $e) {
-                        logger()->warning('SITMS upsertOne skipped', [
-                            'error'      => $e->getMessage(),
-                            'row_sample' => array_slice($r ?? [], 0, 5, true),
-                        ]);
-                    }
+    public static function runSinglePage(HttpSitmsClient $client, int $page, int $perPage, bool $continuePaging): void
+    {
+        self::$seenExternalIds = [];
+
+        $current = max(1, $page);
+        $askedPerPage = max(1, $perPage);
+        $processed = 0;
+        $reportedTotal = null;
+        $noGrowthStreak = 0; // guard kalau server tetap balikin subset yang sama
+
+        do {
+            $resp   = $client->fetchEmployeesPage($current, $askedPerPage);
+            $rows   = Arr::get($resp, 'rows', []);
+            $total  = Arr::get($resp, 'total');
+            if (is_numeric($total)) $reportedTotal = (int)$total;
+
+            $countRows = is_countable($rows) ? count($rows) : 0;
+            $processed += $countRows;
+
+            $beforeSeen = count(self::$seenExternalIds);
+
+            foreach ($rows as $row) {
+                try {
+                    self::upsertFromSitmsRow((array)$row);
+                } catch (Throwable $e) {
+                    Log::warning('SITMS upsert skipped', [
+                        'error'      => $e->getMessage(),
+                        'row_sample' => Arr::only((array)$row, ['id','id_sitms','employee_id','full_name','nik_number','email']),
+                    ]);
                 }
-            });
-        }
-
-        // ==== META PAGINATION ====
-        $meta   = $resp['meta']  ?? [];
-        $links  = $resp['links'] ?? [];
-
-        // Coba ambil header via client jika tersedia (opsional)
-        $headersHasNext = false;
-        try {
-            if (method_exists($api, 'getLastHeaders')) {
-                $headers        = $api->getLastHeaders() ?: [];
-                $headersHasNext = isset($headers['X-Has-Next']) ? (bool)$headers['X-Has-Next'] : false;
             }
-        } catch (\Throwable $e) {}
 
-        $current        = (int)($meta['current_page'] ?? $meta['page'] ?? $this->page);
-        $last           = (int)($meta['last_page'] ?? $meta['total_pages'] ?? 0);
-        $serverPerPage  = (int)($meta['per_page']   ?? $meta['page_size']   ?? 0);
-        $total          = (int)($meta['total']      ?? 0);
+            $afterSeen = count(array_unique(self::$seenExternalIds));
+            $grown = $afterSeen - $beforeSeen;
 
-        logger()->info('SITMS page result', [
-            'asked_size'    => $this->size,
-            'server_perpg'  => $serverPerPage ?: null,
-            'count_rows'    => count($rows),
-            'page'          => $current,
-            'last'          => $last ?: null,
-            'total'         => $total ?: null,
-            'has_next_hdr'  => $headersHasNext,
-            'has_next_link' => !empty($links['next'] ?? null),
-        ]);
-
-        // ==== DETEKSI "ADA HALAMAN BERIKUTNYA?" ====
-        $hasMoreByMeta  = ($last > 0 && $current < $last);
-        $hasMoreByLink  = !empty($links['next'] ?? null);
-        $hasMoreByHead  = $headersHasNext === true;
-
-        // Fallback yang aman: selama halaman ini masih ada data, lanjutkan.
-        $hasMoreByCount = (count($rows) > 0);
-
-        $hasMore = $hasMoreByMeta || $hasMoreByLink || $hasMoreByHead || $hasMoreByCount;
-
-        // Guard anti infinite loop
-        $hardStop = 2000; // batas wajar jumlah halaman
-        if ($this->page >= $hardStop) {
-            logger()->warning('SITMS hard stop triggered to avoid infinite pagination loop', [
-                'at_page' => $this->page
+            Log::info('SITMS page result', [
+                'page'        => $current,
+                'per_page'    => Arr::get($resp, 'per_page'),
+                'rows'        => $countRows,
+                'processed'   => $processed,
+                'seen_unique' => $afterSeen,
+                'grown'       => $grown,
+                'total_hint'  => $reportedTotal,
             ]);
-            return;
-        }
 
-        if ($hasMore) {
-            // Hormati page size aktual server kalau ada
-            $nextSize = $serverPerPage > 0 ? $serverPerPage : $this->size;
+            if (!$continuePaging) break;
 
-            self::dispatch($this->page + 1, $nextSize)
-                ->delay(now()->addSecond());
-        }
-    }
+            // Berhenti kalau sudah memenuhi total dengan ID unik
+            if (is_numeric($reportedTotal) && $afterSeen >= $reportedTotal) break;
 
-    protected function upsertOne(array $r): void
-    {
-        // --- (Opsional) Normalisasi key jika nama field dari API berbeda ---
-        $r['id_sitms']            = $r['id_sitms']            ?? ($r['idSitms'] ?? ($r['id'] ?? null));
-        $r['employee_id']         = $r['employee_id']         ?? ($r['employeeId'] ?? null);
-        $r['nik_number']          = $r['nik_number']          ?? ($r['nik'] ?? ($r['no_ktp'] ?? null));
-        $r['full_name']           = $r['full_name']           ?? ($r['name'] ?? ($r['employee_name'] ?? null));
-        $r['email']               = $r['email']               ?? ($r['email_address'] ?? null);
-        $r['working_unit_name']   = $r['working_unit_name']   ?? ($r['unit_name'] ?? ($r['unit'] ?? null));
-        $r['directorat_name']     = $r['directorat_name']     ?? ($r['directorate_name'] ?? null);
-        $r['position_level_name'] = $r['position_level_name'] ?? ($r['level_name'] ?? null);
-        $r['position_name']       = $r['position_name']       ?? ($r['job_title'] ?? null);
-        $r['location_name']       = $r['location_name']       ?? ($r['office_name'] ?? null);
-        $r['city']                = $r['city']                ?? ($r['kota'] ?? null);
+            // Kalau tidak ada pertumbuhan ID unik beberapa kali, hentikan (server kasih subset yang sama)
+            if ($grown <= 0) {
+                $noGrowthStreak++;
+            } else {
+                $noGrowthStreak = 0;
+            }
+            if ($noGrowthStreak >= 3) { // 3 halaman berturut-turut ga nambah apa2
+                Log::warning('SITMS paging: no growth streak reached, stopping.');
+                break;
+            }
 
-        // --- Resolve person_id ---
-        $idSitms = (string) ($r['id_sitms'] ?? '');
-        $empId   = (string) ($r['employee_id'] ?? '');
-        $nik     = (string) ($r['nik_number'] ?? '');
-        $nikHash = $nik ? hash('sha256', $nik) : null;
-        $nikLast4= $nik ? substr($nik, -4) : null;
+            // Stop jika halaman kosong
+            if ($countRows === 0) break;
 
-        $personId = DB::table('identities')->where(['system'=>'SITMS','external_id'=>$idSitms])->value('person_id');
-        if (!$personId && $empId) $personId = DB::table('identities')->where(['system'=>'SITMS','external_id'=>$empId])->value('person_id');
-        if (!$personId && $nikHash) $personId = DB::table('persons')->where('nik_hash',$nikHash)->value('id');
-        if (!$personId) {
-            $personId = Str::ulid()->toBase32();
-            DB::table('persons')->insert([
-                'id'            => $personId,
-                'full_name'     => $r['full_name'] ?? null,
-                'gender'        => $r['gender'] ?? null,
-                'date_of_birth' => $this->normDate($r['date_of_birth'] ?? null),
-                'place_of_birth'=> $r['place_of_birth'] ?? null,
-                'nik_hash'      => $nikHash,
-                'nik_last4'     => $nikLast4,
-                'phone'         => $r['contact_no'] ?? null,
-                'created_at'    => now(),
-                'updated_at'    => now()
+            $current++;
+            if ($current > 30000) { Log::warning('SITMS paging guard tripped (page>30000)'); break; }
+        } while (true);
+
+        if ($continuePaging) {
+            self::pruneEmployeesNotInFeed(self::$seenExternalIds);
+            Log::info('SITMS sync summary', [
+                'processed_total' => $processed,
+                'reported_total'  => $reportedTotal,
+                'seen_externalIds'=> count(array_unique(self::$seenExternalIds)),
             ]);
         }
+    }
 
-        // email primary (opsional)
-        if (!empty($r['email'])) {
-            DB::table('emails')->updateOrInsert(
-                ['person_id'=>$personId,'email'=>$r['email']],
-                ['is_primary'=>true,'is_verified'=>false,'updated_at'=>now(),'created_at'=>now()]
-            );
+    protected static function upsertFromSitmsRow(array $row): void
+    {
+        $sitmsEmployeeId = self::nullIfEmpty($row['employee_id'] ?? null);
+        $sitmsId         = self::nullIfEmpty($row['id_sitms'] ?? null);
+        $genericId       = self::nullIfEmpty($row['id'] ?? null);
+
+        $externalId = $sitmsEmployeeId ?? $sitmsId ?? $genericId;
+
+        if (!$externalId) {
+            $name   = trim((string)($row['full_name'] ?? $row['name'] ?? ''));
+            $nik    = trim((string)($row['nik_number'] ?? $row['nik'] ?? ''));
+            $dob    = trim((string)($row['date_of_birth'] ?? $row['tgl_lahir'] ?? ''));
+            $email  = trim((string)($row['email'] ?? ''));
+            $finger = implode('|', [$name, $nik, $dob, $email]);
+            $externalId = 'SURR-'.sha1($finger);
+            $sitmsId = $externalId;
         }
 
-        // identities mapping
-        if ($idSitms) DB::table('identities')->updateOrInsert(
-            ['system'=>'SITMS','external_id'=>$idSitms],
-            ['person_id'=>$personId,'verified_at'=>now(),'updated_at'=>now(),'created_at'=>now()]
-        );
-        if ($empId) DB::table('identities')->updateOrInsert(
-            ['system'=>'SITMS','external_id'=>$empId],
-            ['person_id'=>$personId,'verified_at'=>now(),'updated_at'=>now(),'created_at'=>now()]
-        );
+        self::$seenExternalIds[] = (string)$externalId;
 
-        // masters
-        $dirName  = $r['directorat_name']   ?? null;
-        $unitName = $r['working_unit_name'] ?? null;
+        $fullName = trim((string)($row['full_name'] ?? $row['name'] ?? '')) ?: 'Unknown';
+        $nik       = trim((string)($row['nik_number'] ?? $row['nik'] ?? ''));
+        $email     = trim((string)($row['email'] ?? ''));
+        $phone     = trim((string)($row['phone'] ?? ''));
+        $gender    = self::mapGender($row['gender'] ?? $row['jenis_kelamin'] ?? null);
+        $dob       = self::toDate($row['date_of_birth'] ?? $row['tgl_lahir'] ?? null);
+        $pob       = trim((string)($row['place_of_birth'] ?? $row['tmp_lahir'] ?? ''));
 
-        $dirId = $this->firstId(
-            table: 'directorates',
-            lookup: array_filter(['name'=>$dirName]),
-            insertAttrs: array_filter([
-                'name'=>$dirName,
-                'code'=>$this->makeCode($dirName, 'directorates'),
-            ])
-        );
+        $companyName    = (string)($row['company_name'] ?? 'PT Surveyor Indonesia');
+        $employeeStatus = self::nullIfEmpty($row['employee_status'] ?? $row['status_karyawan'] ?? null);
+        $isActive       = self::boolish($row['is_active'] ?? $row['active'] ?? true);
 
-        $unitId= $this->firstId(
-            table: 'units',
-            lookup: array_filter(['name'=>$unitName]),
-            insertAttrs: array_filter([
-                'name'=>$unitName,
-                'code'=>$this->makeCode($unitName, 'units'),
-                'directorate_id'=>$dirId,
-            ])
-        );
+        $dirCode  = self::nullIfEmpty($row['directorate_code'] ?? null);
+        $dirName  = self::nullIfEmpty($row['directorate'] ?? $row['direktorat'] ?? null);
+        $unitCode = self::nullIfEmpty($row['unit_code'] ?? null);
+        $unitName = self::nullIfEmpty($row['unit_name'] ?? $row['unit'] ?? null);
 
-        $locId = $this->firstId(
-            table: 'locations',
-            lookup: array_filter(['name'=>$r['location_name'] ?? null, 'city'=>$r['city'] ?? null]),
-            insertAttrs: array_filter([
-                'name'=>$r['location_name'] ?? null,
-                'type'=>$r['location_name'] ?? null
-                    ? ($r['location_name']==='Head Office' ? 'Head Office'
-                       : ($r['location_name']==='Branch Office' ? 'Branch Office' : null))
-                    : null,
-                'city'=>$r['city'] ?? null,
-            ])
-        );
+        $posName   = self::nullIfEmpty($row['position'] ?? $row['jabatan'] ?? null);
+        $levelCode = self::nullIfEmpty($row['level_code'] ?? null);
+        $levelName = self::nullIfEmpty($row['level_name'] ?? $row['golongan'] ?? null);
 
-        $lvlName = $r['position_level_name'] ?? null;
-        $lvlId = $this->firstId(
-            table: 'position_levels',
-            lookup: array_filter(['name'=>$lvlName]),
-            insertAttrs: array_filter([
-                'name'=>$lvlName,
-                'code'=>$this->makeCode($lvlName, 'position_levels'),
-            ])
-        );
+        $homeBaseRaw      = self::nullIfEmpty($row['home_base'] ?? $row['lokasi_kerja'] ?? null);
+        $homeBaseCity     = self::nullIfEmpty($row['home_base_city'] ?? null);
+        $homeBaseProvince = self::nullIfEmpty($row['home_base_province'] ?? null);
 
-        $posId = $this->firstId(
-            table: 'positions',
-            lookup: array_filter(['name'=>$r['position_name'] ?? null]),
-            insertAttrs: array_filter(['name'=>$r['position_name'] ?? null, 'is_active'=>true])
-        );
+        $latestStart = self::toDate($row['latest_jobs_start_date'] ?? null);
+        $latestUnit  = self::nullIfEmpty($row['latest_jobs_unit'] ?? null);
+        $latestTitle = self::nullIfEmpty($row['latest_jobs_title'] ?? null);
 
-        // employees snapshot
-        [$homeCity, $homeProv] = $this->parseHomeBase($r['home_base'] ?? null);
-        DB::table('employees')->updateOrInsert(['person_id'=>$personId], [
-            'company_name'          => $r['company_name'] ?? 'PT Surveyor Indonesia',
-            'employee_status'       => $r['employee_status'] ?? null,
-            'directorate_id'        => $dirId,
-            'unit_id'               => $unitId,
-            'location_id'           => $locId,
-            'position_id'           => $posId,
-            'position_level_id'     => $lvlId,
-            'talent_class_level'    => $r['talent_class_level'] ?? null,
-            'is_active'             => ($r['is_active'] ?? '1') === '1',
-            'sitms_employee_id'     => $empId ?: null,
-            'sitms_id'              => $idSitms ?: null,
-            'home_base_raw'         => $r['home_base'] ?? null,
-            'home_base_city'        => $homeCity,
-            'home_base_province'    => $homeProv,
-            'latest_jobs_start_date'=> $this->normDate($r['latest_jobs_start_date'] ?? null),
-            'latest_jobs_unit'      => $r['latest_jobs_unit'] ?? null,
-            'latest_jobs_title'     => $r['latest_jobs'] ?? null,
-            'updated_at'            => now(),
-            'created_at'            => now()
+        DB::transaction(function () use (
+            $externalId,$fullName,$nik,$email,$phone,$gender,$dob,$pob,
+            $companyName,$employeeStatus,$isActive,
+            $dirCode,$dirName,$unitCode,$unitName,$posName,$levelCode,$levelName,
+            $homeBaseRaw,$homeBaseCity,$homeBaseProvince,
+            $latestStart,$latestUnit,$latestTitle,$sitmsEmployeeId,$sitmsId
+        ) {
+            $personId = self::resolvePersonByExternalOrNik('SITMS', (string)$externalId, $fullName, $nik, $phone, $gender, $dob, $pob);
+
+            self::upsertIdentity($personId, 'SITMS', (string)$externalId);
+            if ($email !== '') self::upsertEmail($personId, $email);
+
+            $directorateId = self::upsertDirectorate($dirCode, $dirName);
+            $unitId        = self::upsertUnit($unitCode, $unitName, $directorateId);
+            $positionId    = self::upsertPosition($posName);
+            $levelId       = self::upsertLevel($levelCode, $levelName);
+            $locationId    = self::upsertLocation($homeBaseRaw, $homeBaseCity, $homeBaseProvince);
+
+            self::upsertEmployee(
+                $personId, $companyName, $employeeStatus, $directorateId, $unitId,
+                $locationId, $positionId, $levelId, null,
+                $isActive, $sitmsEmployeeId, $sitmsId,
+                $homeBaseRaw, $homeBaseCity, $homeBaseProvince,
+                $latestStart, $latestUnit, $latestTitle,
+                (string)$externalId
+            );
+        });
+    }
+
+    protected static function resolvePersonByExternalOrNik(
+        string $system, string $externalId,
+        string $fullName, string $nik, ?string $phone=null, ?string $gender=null, ?string $dob=null, ?string $pob=null
+    ): string {
+        $viaIdentity = DB::table('identities')
+            ->where('system', $system)
+            ->where('external_id', $externalId)
+            ->value('person_id');
+        if ($viaIdentity) {
+            DB::table('persons')->where('id',$viaIdentity)->update([
+                'full_name'      => $fullName ?: DB::raw('full_name'),
+                'gender'         => $gender ?? DB::raw('gender'),
+                'date_of_birth'  => $dob ?? DB::raw('date_of_birth'),
+                'place_of_birth' => $pob ?? DB::raw('place_of_birth'),
+                'phone'          => $phone ?: DB::raw('phone'),
+                'updated_at'     => now(),
+            ]);
+            return (string)$viaIdentity;
+        }
+
+        $nikHash  = $nik !== '' ? hash('sha256', $nik) : null;
+        $nikLast4 = $nik !== '' ? substr($nik, -4) : null;
+        if ($nikHash) {
+            $id = DB::table('persons')->where('nik_hash',$nikHash)->value('id');
+            if ($id) {
+                DB::table('persons')->where('id',$id)->update([
+                    'full_name'      => $fullName ?: DB::raw('full_name'),
+                    'gender'         => $gender ?? DB::raw('gender'),
+                    'date_of_birth'  => $dob ?? DB::raw('date_of_birth'),
+                    'place_of_birth' => $pob ?? DB::raw('place_of_birth'),
+                    'nik_last4'      => $nikLast4 ?? DB::raw('nik_last4'),
+                    'phone'          => $phone ?: DB::raw('phone'),
+                    'updated_at'     => now(),
+                ]);
+                return (string)$id;
+            }
+        }
+
+        $newId = (string) Str::ulid();
+        DB::table('persons')->insert([
+            'id'             => $newId,
+            'full_name'      => $fullName,
+            'gender'         => $gender,
+            'date_of_birth'  => $dob,
+            'place_of_birth' => $pob,
+            'nik_hash'       => $nikHash,
+            'nik_last4'      => $nikLast4,
+            'phone'          => $phone,
+            'created_at'     => now(),
+            'updated_at'     => now(),
         ]);
+        return $newId;
+    }
 
-        // education
-        foreach (($r['education_list']['education_data'] ?? []) as $e) {
-            try {
-                DB::table('educations')->updateOrInsert([
-                    'person_id'       => $personId,
-                    'level'           => $e['education_level'] ?? 'n/a',
-                    'institution'     => $e['education_name'] ?? '',
-                    'major'           => $e['major_name'] ?? null,
-                    'graduation_year' => $this->normYear($this->pick($e, ['graduation_year','year','tahun','graduation_date'])),
-                ], ['updated_at'=>now(),'created_at'=>now()]);
-            } catch (\Throwable $ex) {
-                logger()->warning('Skip education', ['err'=>$ex->getMessage()]);
+    protected static function upsertEmail(string $personId, string $email): void
+    {
+        $exists = DB::table('emails')->where('person_id', $personId)->where('email', $email)->exists();
+        if ($exists) return;
+        $hasPrimary = DB::table('emails')->where('person_id', $personId)->where('is_primary', true)->exists();
+
+        DB::table('emails')->insert([
+            'person_id'   => $personId,
+            'email'       => $email,
+            'is_primary'  => !$hasPrimary,
+            'is_verified' => false,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+    }
+
+    protected static function upsertIdentity(string $personId, string $system, string $externalId): void
+    {
+        $exists = DB::table('identities')
+            ->where('system', $system)
+            ->where('external_id', $externalId)
+            ->exists();
+
+        if ($exists) {
+            DB::table('identities')
+                ->where('system', $system)
+                ->where('external_id', $externalId)
+                ->update(['person_id' => $personId, 'updated_at' => now()]);
+        } else {
+            DB::table('identities')->insert([
+                'person_id'   => $personId,
+                'system'      => $system,
+                'external_id' => $externalId,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+        }
+    }
+
+    protected static function upsertDirectorate(?string $code, ?string $name): ?int
+    {
+        if (!$name && !$code) return null;
+        $q = DB::table('directorates');
+        $code ? $q->where('code', $code) : $q->where('name', $name);
+        $id = $q->value('id');
+
+        if ($id) {
+            if ($code && !DB::table('directorates')->where('id',$id)->value('code')) {
+                DB::table('directorates')->where('id',$id)->update(['code'=>$code,'updated_at'=>now()]);
+            }
+            if ($name) DB::table('directorates')->where('id',$id)->update(['name'=>$name,'updated_at'=>now()]);
+            return (int)$id;
+        }
+
+        return DB::table('directorates')->insertGetId([
+            'code'       => $code,
+            'name'       => $name ?? ($code ?: 'Unknown'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    protected static function upsertUnit(?string $code, ?string $name, ?int $directorateId): ?int
+    {
+        if (!$name && !$code) return null;
+
+        if ($code) {
+            $id = DB::table('units')->where('code', $code)->value('id');
+            if ($id) {
+                DB::table('units')->where('id',$id)->update([
+                    'name'          => $name ?? DB::raw('name'),
+                    'directorate_id'=> $directorateId,
+                    'updated_at'    => now(),
+                ]);
+                return (int)$id;
             }
         }
 
-        // trainings
-        foreach (($r['training_list']['training_data'] ?? []) as $e) {
-            try {
-                $year = $this->normYear($this->pick($e, ['training_year','year','tahun','training_date']));
-                DB::table('trainings')->updateOrInsert([
-                    'person_id' => $personId,
-                    'name'      => $e['training_name'] ?? '',
-                    'organizer' => $e['training_organizer'] ?? null,
-                    'year'      => $year,
-                ], [
-                    'level'      => $e['training_level'] ?? null,
-                    'type'       => $e['training_type'] ?? null,
+        if ($name) {
+            $id = DB::table('units')->where('name', $name)->value('id');
+            if ($id) {
+                DB::table('units')->where('id',$id)->update([
+                    'directorate_id'=> $directorateId,
+                    'updated_at'    => now(),
+                ]);
+                return (int)$id;
+            }
+        }
+
+        return DB::table('units')->insertGetId([
+            'code'          => $code ?: null,
+            'name'          => $name ?? ($code ?: 'Unknown'),
+            'directorate_id'=> $directorateId,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    protected static function upsertPosition(?string $name): ?int
+    {
+        if (!$name) return null;
+        $id = DB::table('positions')->where('name', $name)->value('id');
+        if ($id) {
+            DB::table('positions')->where('id',$id)->update(['is_active'=>true,'updated_at'=>now()]);
+            return (int)$id;
+        }
+        return DB::table('positions')->insertGetId([
+            'name'=>$name,'is_active'=>true,'created_at'=>now(),'updated_at'=>now(),
+        ]);
+    }
+
+    protected static function upsertLevel(?string $code, ?string $name): ?int
+    {
+        if (!$code && !$name) return null;
+
+        if ($code) {
+            $id = DB::table('position_levels')->where('code', $code)->value('id');
+            if ($id) {
+                if ($name) DB::table('position_levels')->where('id',$id)->update(['name'=>$name,'updated_at'=>now()]);
+                return (int)$id;
+            }
+        }
+
+        if ($name) {
+            $id = DB::table('position_levels')->where('name', $name)->value('id');
+            if ($id) {
+                if ($code) DB::table('position_levels')->where('id',$id)->update(['code'=>$code,'updated_at'=>now()]);
+                return (int)$id;
+            }
+        }
+
+        return DB::table('position_levels')->insertGetId([
+            'code'=>$code, 'name'=>$name ?? ($code ?: 'Unknown'), 'created_at'=>now(), 'updated_at'=>now(),
+        ]);
+    }
+
+    protected static function upsertLocation(?string $raw, ?string $city, ?string $province): ?int
+    {
+        if (!$raw && !$city && !$province) return null;
+
+        if ($raw) {
+            $id = DB::table('locations')->where('name', $raw)->value('id');
+            if ($id) {
+                DB::table('locations')->where('id',$id)->update([
+                    'city'       => $city ?? DB::raw('city'),
+                    'province'   => $province ?? DB::raw('province'),
                     'updated_at' => now(),
-                    'created_at' => now()
                 ]);
-            } catch (\Throwable $ex) {
-                logger()->warning('Skip training', [
-                    'raw_year' => $this->pick($e, ['training_year','year','tahun','training_date']),
-                    'err'      => $ex->getMessage()
-                ]);
+                return (int)$id;
             }
         }
 
-        // certifications (brevet)
-        foreach (($r['brevet_list']['brevet_data'] ?? []) as $e) {
-            try {
-                DB::table('certifications')->updateOrInsert([
-                    'person_id'          => $personId,
-                    'name'               => $e['brevet_name'] ?? '',
-                    'certificate_number' => $e['certificate_number'] ?? null,
-                ], [
-                    'organizer'  => $e['brevet_organizer'] ?? null,
-                    'level'      => $e['brevet_level'] ?? null,
-                    'issued_date'=> null,
-                    'due_date'   => $this->normDate($e['certificate_due'] ?? null),
-                    'updated_at' => now(),
-                    'created_at' => now()
-                ]);
-            } catch (\Throwable $ex) {
-                logger()->warning('Skip certification', ['err'=>$ex->getMessage()]);
-            }
+        if ($city) {
+            $id = DB::table('locations')->where('city', $city)->where('province', $province)->value('id');
+            if ($id) return (int)$id;
         }
 
-        // job histories
-        foreach (($r['jobs_list']['jobs_data'] ?? []) as $e) {
-            try {
-                DB::table('job_histories')->updateOrInsert([
-                    'person_id'  => $personId,
-                    'company'    => $e['jobs_company'] ?? '',
-                    'unit_name'  => $e['jobs_unit'] ?? null,
-                    'title'      => $e['jobs'] ?? null,
-                    'start_date' => $this->normDate($e['jobs_start_date'] ?? null),
-                ], [
-                    'end_date'   => $this->normDate($e['jobs_end_date'] ?? null),
-                    'updated_at' => now(),
-                    'created_at' => now()
-                ]);
-            } catch (\Throwable $ex) {
-                logger()->warning('Skip job_history', ['err'=>$ex->getMessage()]);
-            }
+        return DB::table('locations')->insertGetId([
+            'name'       => $raw ?? (($city && $province) ? "{$city}, {$province}" : ($city ?? $province ?? 'Unknown')),
+            'type'       => null,
+            'city'       => $city,
+            'province'   => $province,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    protected static function upsertEmployee(
+        string $personId,
+        string $companyName,
+        ?string $employeeStatus,
+        ?int $directorateId,
+        ?int $unitId,
+        ?int $locationId,
+        ?int $positionId,
+        ?int $positionLevelId,
+        ?string $talentClassLevel,
+        bool $isActive,
+        ?string $sitmsEmployeeId,
+        ?string $sitmsId,
+        ?string $homeBaseRaw,
+        ?string $homeBaseCity,
+        ?string $homeBaseProvince,
+        ?string $latestStartDate,
+        ?string $latestUnit,
+        ?string $latestTitle,
+        ?string $externalIdForIdentity
+    ): void {
+        $exists = null;
+
+        if ($sitmsEmployeeId) {
+            $exists = DB::table('employees')->where('sitms_employee_id', $sitmsEmployeeId)->value('id');
+        }
+        if (!$exists && $sitmsId) {
+            $exists = DB::table('employees')->where('sitms_id', $sitmsId)->value('id');
+        }
+        if (!$exists && $externalIdForIdentity) {
+            $exists = DB::table('identities')
+                ->where('system', 'SITMS')
+                ->where('external_id', $externalIdForIdentity)
+                ->join('employees', 'employees.person_id', '=', 'identities.person_id')
+                ->value('employees.id');
         }
 
-        // assignments
-        foreach (($r['assignments_list']['assignments_data'] ?? []) as $e) {
-            try {
-                DB::table('assignments')->updateOrInsert([
-                    'person_id' => $personId,
-                    'title'     => $e['assignment_title'] ?? ''
-                ], [
-                    'company'     => $e['assignment_company'] ?? null,
-                    'period_text' => $e['assignment_period'] ?? null,
-                    'start_date'  => $this->normDate($e['assignment_start_date'] ?? null),
-                    'end_date'    => $this->normDate($e['assignment_end_date'] ?? null),
-                    'description' => $e['assignment_description'] ?? null,
-                    'updated_at'  => now(),
-                    'created_at'  => now()
-                ]);
-            } catch (\Throwable $ex) {
-                logger()->warning('Skip assignment', ['err'=>$ex->getMessage()]);
-            }
-        }
+        $payload = [
+            'company_name'           => $companyName,
+            'employee_status'        => $employeeStatus,
+            'directorate_id'         => $directorateId,
+            'unit_id'                => $unitId,
+            'location_id'            => $locationId,
+            'position_id'            => $positionId,
+            'position_level_id'      => $positionLevelId,
+            'talent_class_level'     => $talentClassLevel,
+            'is_active'              => $isActive,
+            'sitms_employee_id'      => $sitmsEmployeeId,
+            'sitms_id'               => $sitmsId,
+            'home_base_raw'          => $homeBaseRaw,
+            'home_base_city'         => $homeBaseCity,
+            'home_base_province'     => $homeBaseProvince,
+            'latest_jobs_start_date' => $latestStartDate,
+            'latest_jobs_unit'       => $latestUnit,
+            'latest_jobs_title'      => $latestTitle,
+            'updated_at'             => now(),
+        ];
 
-        // taskforces
-        foreach (($r['taskforces_list']['taskforces_data'] ?? []) as $e) {
-            try {
-                DB::table('taskforces')->updateOrInsert([
-                    'person_id' => $personId,
-                    'name'      => $e['taskforce_name'] ?? ''
-                ], [
-                    'type'       => $e['taskforce_type'] ?? null,
-                    'company'    => $e['taskforce_company'] ?? null,
-                    'year_start' => $this->normYear($this->pick($e, ['taskforce_year_start','year_start','tahun_mulai'])),
-                    'year_end'   => $this->normYear($this->pick($e, ['taskforce_year_end','year_end','tahun_selesai'])),
-                    'position'   => $e['taskforce_position'] ?? null,
-                    'desc'       => $e['taskforce_desc'] ?? null,
-                    'updated_at' => now(),
-                    'created_at' => now()
-                ]);
-            } catch (\Throwable $ex) {
-                logger()->warning('Skip taskforce', ['err'=>$ex->getMessage()]);
-            }
-        }
-
-        // documents
-        foreach (($r['documents_list']['documents_data'] ?? []) as $e) {
-            try {
-                DB::table('documents')->updateOrInsert([
-                    'person_id' => $personId,
-                    'doc_type'  => $e['document_type'] ?? 'UNKNOWN',
-                    'title'     => $e['document_title'] ?? null,
-                ], [
-                    'file_path'    => $e['document_file'] ?? '',
-                    'due_date'     => $this->normDate($e['document_duedate'] ?? null),
-                    'source_system'=> 'SITMS',
-                    'updated_at'   => now(),
-                    'created_at'   => now()
-                ]);
-            } catch (\Throwable $ex) {
-                logger()->warning('Skip document', ['err'=>$ex->getMessage()]);
-            }
+        if ($exists) {
+            DB::table('employees')->where('id', $exists)->update($payload);
+        } else {
+            $payload['person_id']  = $personId;
+            $payload['created_at'] = now();
+            DB::table('employees')->insert($payload);
         }
     }
 
-    protected function firstId(string $table, array $lookup, array $insertAttrs = []): ?int
+    protected static function mapGender($v): ?string
     {
-        $lookup = array_filter($lookup, fn($v) => filled($v));
-        if (empty($lookup)) return null;
-
-        $existing = DB::table($table)->where($lookup)->value('id');
-        if ($existing) return (int) $existing;
-
-        return (int) DB::table($table)->insertGetId(array_merge($insertAttrs, [
-            'created_at'=>now(),'updated_at'=>now()
-        ]));
+        $s = strtolower(trim((string)$v));
+        return match(true) {
+            $s === 'l' || str_contains($s,'laki') || str_contains($s,'male')   => 'Pria',
+            $s === 'p' || str_contains($s,'perem') || str_contains($s,'female')=> 'Wanita',
+            default => null,
+        };
     }
 
-    /** @return array{0:?string,1:?string} */
-    protected function parseHomeBase(?string $html): array
+    protected static function toDate($v): ?string
     {
-        if (!$html) return [null,null];
-        $plain = trim(strip_tags(str_replace(['<br/>','<br>','<br />'], "\n", $html)));
-        $parts = array_values(array_filter(array_map('trim', explode("\n", $plain))));
-        $prov = $parts[0] ?? null; $city = $parts[1] ?? null;
-        return [$city, $prov];
-    }
-
-    protected function getColumnMaxLength(string $table, string $column = 'code', int $fallback = 32): int
-    {
-        try {
-            $dbName = config('database.connections.mysql.database');
-            $row = DB::selectOne(
-                "SELECT CHARACTER_MAXIMUM_LENGTH AS len
-                 FROM information_schema.COLUMNS
-                 WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-                [$dbName, $table, $column]
-            );
-            if ($row && isset($row->len) && (int)$row->len > 0) {
-                return (int)$row->len;
-            }
-        } catch (\Throwable $e) {}
-        return $fallback;
-    }
-
-    protected function makeCode(?string $name, ?string $table = null, string $column = 'code', int $fallbackLen = 32): ?string
-    {
-        if (!$name) return 'UNK';
-
-        $max = $table ? $this->getColumnMaxLength($table, $column, $fallbackLen) : $fallbackLen;
-
-        $slug = Str::slug($name, '_');
-        $slug = $slug !== '' ? $slug : 'UNK';
-
-        if (mb_strlen($slug) <= $max) return $slug;
-
-        $words = array_values(array_filter(explode('_', $slug)));
-        if (count($words) > 1) {
-            $abbr = '';
-            foreach ($words as $i => $w) {
-                $abbr .= mb_substr($w, 0, 1);
-                if ($i < count($words) - 1) $abbr .= '_';
-                if (mb_strlen($abbr) >= $max) break;
-            }
-            $abbr = rtrim($abbr, '_');
-            if (mb_strlen($abbr) >= 3 && mb_strlen($abbr) <= $max) {
-                return $abbr;
-            }
-        }
-
-        $hash   = substr(hash('crc32b', $slug), 0, 6);
-        $baseMax= max(1, $max - (1 + mb_strlen($hash)));
-        $base   = mb_substr($slug, 0, $baseMax);
-        return rtrim($base, '_') . '_' . $hash;
-    }
-
-    protected function normDate($v): ?string
-    {
-        if (empty($v)) return null;
+        if (!$v) return null;
         $s = trim((string)$v);
-        if ($s === '' || $s === '0000-00-00' || $s === '0000-00-00 00:00:00') return null;
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) return $s;
-        $ts = strtotime($s);
-        if ($ts === false) return null;
-        return date('Y-m-d', $ts);
-    }
-
-    protected function pick(array $arr, array $keys): mixed
-    {
-        foreach ($keys as $k) {
-            if (array_key_exists($k, $arr) && $arr[$k] !== null && $arr[$k] !== '') {
-                return $arr[$k];
-            }
-        }
+        if ($s === '' || $s === '0000-00-00') return null;
+        if (preg_match('~^\d{4}-\d{2}-\d{2}$~', $s)) return $s;
+        if (preg_match('~^(\d{2})/(\d{2})/(\d{4})$~', $s, $m)) return "{$m[3]}-{$m[2]}-{$m[1]}";
         return null;
     }
 
-    protected function normYear($v): ?int
+    protected static function boolish($v): bool
     {
-        if ($v === null) return null;
-        $s = trim((string)$v);
-        if ($s === '') return null;
-        if (preg_match('/(?<!\d)(\d{4})(?!\d)/', $s, $m)) {
-            $y = (int)$m[1];
-        } else {
-            if (preg_match('/^\d+$/', $s) && strlen($s) >= 4) {
-                $y = (int) substr($s, 0, 4);
-            } else {
-                return null;
-            }
-        }
-        if ($y < 1900 || $y > 2100) return null;
-        return $y;
+        if (is_bool($v)) return $v;
+        $s = strtolower(trim((string)$v));
+        return !in_array($s, ['0','false','no','tidak','nonaktif','inactive'], true);
+    }
+
+    protected static function nullIfEmpty($v)
+    {
+        $s = trim((string)($v ?? ''));
+        return $s === '' ? null : $s;
+    }
+
+    protected static function pruneEmployeesNotInFeed(array $externalIds): void
+    {
+        $ids = array_values(array_unique(array_filter($externalIds, fn($v)=> (string)$v !== '')));
+        if (empty($ids)) return;
+
+        DB::table('employees')
+            ->whereNotNull('sitms_employee_id')
+            ->whereNotIn('sitms_employee_id', $ids)
+            ->update(['is_active' => false, 'updated_at' => now()]);
+
+        DB::table('employees')
+            ->whereNull('sitms_employee_id')
+            ->whereNotNull('sitms_id')
+            ->whereNotIn('sitms_id', $ids)
+            ->update(['is_active' => false, 'updated_at' => now()]);
     }
 }
