@@ -7,9 +7,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <style>
     .bell-icon {
-      color: linear-gradient( #0A3875, #00A29AB2 ); 
+      color: linear-gradient( #0A3875, #00A29AB2 );
       font-size: 1.5rem;
     }
+    .nav-divider { height:1px; background:var(--divider,rgba(0,0,0,.08)); margin:.5rem 1rem; }
   </style>
   @vite([
     'resources/css/app.css',
@@ -21,7 +22,6 @@
 @php use Illuminate\Support\Facades\Route as Rt; @endphp
 
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
-  <!-- keep first-paint collapsed helper -->
   <script>
     (function(){
       try{
@@ -44,7 +44,45 @@
       </a>
     </div>
 
+    @php
+      /** @var \App\Models\User|null $user */
+      $user = auth()->user();
+
+      // --- FLEX SUPER CHECK (role naming tolerant) ---
+      $roleNames = collect($user?->getRoleNames() ?? [])->map(fn($r)=> strtolower(trim($r)));
+      $isSuper = $roleNames->contains(fn($r)=> in_array($r, ['superadmin','super-admin','admin','administrator']));
+
+      // --- SECTION VISIBILITY ---
+      $showMain = true;
+
+      // gunakan hasAnyPermission (Spatie) + fallback super
+      $showRekrutmen = $isSuper || $user?->hasAnyPermission([
+        'rekrutmen.monitoring.view',
+        'rekrutmen.izin-prinsip.view',
+        'contract.view',
+      ]);
+
+      $showPelatihan = $isSuper || $user?->hasAnyPermission([
+        'pelatihan.monitoring.view',
+        'pelatihan.izin-prinsip.view',
+      ]);
+
+      // Settings tetap pakai gates yang sudah ada
+      $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view'));
+
+      // Divider logic
+      $printedAnySection = false;
+
+      // Open states
+      $rkOpen = str_starts_with(request()->route()->getName() ?? '', 'rekrutmen.');
+      $plOpen = str_starts_with(request()->route()->getName() ?? '', 'pelatihan.');
+      $acOpen = request()->routeIs('settings.users.*')
+            || request()->routeIs('settings.roles.*')
+            || request()->routeIs('settings.permissions.*');
+    @endphp
+
     <!-- MAIN -->
+    @if($showMain)
     <nav class="nav-section">
       <div class="nav-title">Main</div>
       <div class="nav">
@@ -53,17 +91,24 @@
         </a>
       </div>
     </nav>
+    @php $printedAnySection = true; @endphp
+    @endif
 
-    <!-- REKRUTMEN -->
+    {{-- Divider before Rekrutmen --}}
+    @if($printedAnySection && $showRekrutmen)
+      <div class="nav-divider" aria-hidden="true"></div>
+    @endif
+
+    <!-- REKRUTMEN (by access) -->
+    @if($showRekrutmen)
     <nav class="nav-section">
       <div class="nav-title">Rekrutmen</div>
       <div class="nav">
-        @php $rkOpen = str_starts_with(request()->route()->getName() ?? '', 'rekrutmen.'); @endphp
-
         <button type="button"
                 class="nav-item js-accordion {{ $rkOpen ? 'open' : '' }}"
                 data-accordion="nav-rekrutmen"
-                aria-expanded="{{ $rkOpen ? 'true' : 'false' }}" style = "cursor: pointer">
+                aria-expanded="{{ $rkOpen ? 'true' : 'false' }}"
+                style="cursor: pointer">
           <span class="icon">👥</span>
           <span class="label">Rekrutmen</span>
           <span class="chev">▾</span>
@@ -71,34 +116,51 @@
 
         <div id="nav-rekrutmen"
              class="nav-children {{ $rkOpen ? 'open' : '' }}"
-             data-accordion-panel="nav-rekrutmen" style = "cursor: pointer">
+             data-accordion-panel="nav-rekrutmen"
+             style="cursor: pointer">
+
+          @if($isSuper || $user?->can('rekrutmen.monitoring.view'))
           <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.monitoring')?'active':'' }}"
              href="{{ Rt::has('rekrutmen.monitoring') ? route('rekrutmen.monitoring') : '#' }}">
             <span class="icon">📊</span><span class="label">Monitoring</span>
           </a>
+          @endif
+
+          @if($isSuper || $user?->can('rekrutmen.izin-prinsip.view'))
           <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.izin-prinsip*')?'active':'' }}"
              href="{{ Rt::has('rekrutmen.izin-prinsip.index') ? route('rekrutmen.izin-prinsip.index') : '#' }}">
             <span class="icon">✅</span><span class="label">Izin Prinsip</span>
           </a>
+          @endif
+
+          @if($isSuper || $user?->can('contract.view'))
           <a class="nav-item nav-child {{ request()->routeIs('rekrutmen.kontrak*')?'active':'' }}"
              href="{{ Rt::has('rekrutmen.kontrak.index') ? route('rekrutmen.kontrak.index') : '#' }}">
             <span class="icon">📝</span><span class="label">Penerbitan Kontrak</span>
           </a>
+          @endif
+
         </div>
       </div>
     </nav>
+    @php $printedAnySection = true; @endphp
+    @endif
 
-    <!-- PELATIHAN -->
+    {{-- Divider before Pelatihan --}}
+    @if($printedAnySection && $showPelatihan)
+      <div class="nav-divider" aria-hidden="true"></div>
+    @endif
+
+    <!-- PELATIHAN (by access) -->
+    @if($showPelatihan)
     <nav class="nav-section">
       <div class="nav-title">Pelatihan</div>
       <div class="nav">
-        @php $plOpen = str_starts_with(request()->route()->getName() ?? '', 'pelatihan.'); @endphp
-
         <button type="button"
                 class="nav-item js-accordion {{ $plOpen ? 'open' : '' }}"
                 data-accordion="nav-pelatihan"
                 aria-expanded="{{ $plOpen ? 'true' : 'false' }}"
-                style = "cursor: pointer">
+                style="cursor: pointer">
           <span class="icon">🎓</span>
           <span class="label">Pelatihan</span>
           <span class="chev">▾</span>
@@ -107,35 +169,44 @@
         <div id="nav-pelatihan"
              class="nav-children {{ $plOpen ? 'open' : '' }}"
              data-accordion-panel="nav-pelatihan"
-             style = "cursor: pointer">
+             style="cursor: pointer">
+
+          @if($isSuper || $user?->can('pelatihan.monitoring.view'))
           <a class="nav-item nav-child {{ request()->routeIs('pelatihan.monitoring')?'active':'' }}"
              href="{{ Rt::has('pelatihan.monitoring') ? route('pelatihan.monitoring') : '#' }}">
             <span class="icon">📈</span><span class="label">Monitoring</span>
           </a>
+          @endif
+
+          @if($isSuper || $user?->can('pelatihan.izin-prinsip.view'))
           <a class="nav-item nav-child {{ request()->routeIs('pelatihan.izin-prinsip')?'active':'' }}"
              href="{{ Rt::has('pelatihan.izin-prinsip') ? route('pelatihan.izin-prinsip') : '#' }}">
             <span class="icon">🗂️</span><span class="label">Izin Prinsip</span>
           </a>
+          @endif
+
         </div>
       </div>
     </nav>
+    @php $printedAnySection = true; @endphp
+    @endif
+
+    {{-- Divider before Settings --}}
+    @if($printedAnySection && $showSettings)
+      <div class="nav-divider" aria-hidden="true"></div>
+    @endif
 
     <!-- SETTINGS -->
+    @if($showSettings)
     <nav class="nav-section">
       <div class="nav-title">Settings</div>
       <div class="nav">
         @canany(['users.view','rbac.view'])
-          @php
-            $acOpen = request()->routeIs('settings.users.*')
-                   || request()->routeIs('settings.roles.*')
-                   || request()->routeIs('settings.permissions.*');
-          @endphp
-
           <button type="button"
                   class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}"
                   data-accordion="nav-access"
                   aria-expanded="{{ $acOpen ? 'true' : 'false' }}"
-                  style = "cursor: pointer">
+                  style="cursor: pointer">
             <span class="icon">🧭</span>
             <span class="label">Manajemen Akses</span>
             <span class="chev">▾</span>
@@ -165,6 +236,7 @@
         @endcanany
       </div>
     </nav>
+    @endif
   </aside>
 
   <!-- Topbar -->
@@ -213,9 +285,9 @@
             @csrf
             <div id="poweroff" class="poweroff" data-threshold="0.6" role="slider"
                  aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
-              <span class="power-icon" aria-hidden="true">⏻</span>
+              <span class="power-icon">⏻</span>
               <span class="power-text">Swipe To Sign out</span>
-              <div id="powerKnob" class="power-knob" aria-hidden="true"></div>
+              <div id="powerKnob" class="power-knob"></div>
             </div>
             <noscript><button class="btn btn-outline w-full mt-2">Logout</button></noscript>
           </form>
@@ -234,9 +306,8 @@
     const notifDropdown = document.getElementById('notifDropdown');
     const notifBtn = document.getElementById('notifBtn');
     if (!notifDropdown) return;
-
-    notifDropdown.setAttribute('hidden', '');
-    if (notifBtn) notifBtn.setAttribute('aria-expanded', 'false');
+    notifDropdown.setAttribute('hidden','');
+    if (notifBtn) notifBtn.setAttribute('aria-expanded','false');
   }
   </script>
 
