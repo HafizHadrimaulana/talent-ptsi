@@ -2,24 +2,48 @@
 @section('title','Izin Prinsip')
 
 @section('content')
-  <div class="card-glass mb-2" style="display:flex;justify-content:space-between;align-items:center">
-    <h2 class="m-0">Izin Prinsip</h2>
+<div class="card-glass mb-2 p-4 rounded-2xl shadow-md space-y-4">
+  {{-- ===== Header Row (Title + Button) ===== --}}
+  <div class="flex justify-between items-center">
+    <h2 class="text-xl font-semibold">Izin Prinsip</h2>
     <button class="btn btn-brand" type="button" onclick="openIpModal()">Buat Permintaan</button>
   </div>
 
-  @if(session('ok')) <div class="alert success">{{ session('ok') }}</div> @endif
-  @if($errors->any()) <div class="alert danger">{{ $errors->first() }}</div> @endif
+  {{-- ===== Alerts (Optional) ===== --}}
+  @if(session('ok')) 
+    <div class="alert success">{{ session('ok') }}</div>
+  @endif
+  @if($errors->any()) 
+    <div class="alert danger">{{ $errors->first() }}</div>
+  @endif
 
-  <div class="table-wrap">
-    <table class="table-ui">
-      <thead><tr><th>Judul</th><th>Posisi</th><th>HC</th><th>Status</th><th class="cell-actions">Aksi</th></tr></thead>
+  {{-- ===== DataTable Wrapper Inside Card ===== --}}
+  <div class="dt-wrapper bg-white/70 dark:bg-slate-900/60 rounded-xl shadow-sm p-3 space-y-3 ios-glass">
+    <table id="perms-table" class="display table-ui table-compact table-sticky w-full" data-dt>
+      <thead>
+        <tr>
+          <th>Judul</th>
+          <th>Posisi</th>
+          <th>HC</th>
+          <th>Status</th>
+          <th class="cell-actions">Aksi</th>
+        </tr>
+      </thead>
       <tbody>
         @foreach($list as $r)
           <tr>
             <td>{{ $r->title }}</td>
             <td>{{ $r->position }}</td>
             <td>{{ $r->headcount }}</td>
-            <td><span class="badge soft">{{ $r->status }}</span></td>
+            <td>
+              <span class="badge 
+                @if($r->status === 'rejected') danger 
+                @elseif($r->status === 'draft') warn 
+                @elseif($r->status === 'approved') success 
+                @else soft @endif">
+                {{ $r->status }}
+              </span>
+            </td>
             <td class="cell-actions">
               @if($r->status === 'draft')
                 <form method="POST" action="{{ route('rekrutmen.izin-prinsip.submit',$r) }}" style="display:inline">@csrf
@@ -41,6 +65,11 @@
     </table>
   </div>
 
+  {{-- ===== Pagination (Still inside card) ===== --}}
+  <div class="mt-3">
+    {{ $list->links() }}
+  </div>
+</div>
   <div class="mt-2">{{ $list->links() }}</div>
 
   {{-- ===== Modal: Buat Izin Prinsip ===== --}}

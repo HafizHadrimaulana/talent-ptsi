@@ -26,12 +26,12 @@
           <td>{{ $r->users_count }}</td>
           <td class="cell-actions">
             <button class="btn-sm hover-lift" data-modal-open="editRoleModal"
-              data-role='@json(["id"=>$r->id,"name"=>$r->name,"perms"=>$r->permissions()->pluck("name")->all()])' style="cursor:pointer">
+              data-role='@json(["id"=>$r->id,"name"=>$r->name,"perms"=>$r->permissions()->pluck("name")->all()])' style="cursor:pointer;  color:#3b82f6">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <form method="post" action="{{ route('settings.roles.destroy',$r) }}" class="inline">
               @csrf @method('delete')
-              <button class="btn-sm danger hover-lift" onclick="return confirm('Hapus role?')" style="cursor:pointer"><i class="fa-solid fa-trash"></i></button>
+              <button class="btn-sm danger hover-lift" onclick="return confirm('Hapus role?')"  style="cursor:pointer; color:#ef4444"><i class="fa-solid fa-trash"></i></button>
             </form>
           </td>
         </tr>

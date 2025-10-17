@@ -50,13 +50,14 @@
             @can('users.update')
             <button
               type="button"
-              class="btn-icon hover-lift text-blue-500"
+              class="btn-sm hover-lift text-blue-500"
               data-modal-open="editUserModal"
               data-id="{{ $u->id }}"
               data-name="{{ $u->name }}"
               data-email="{{ $u->email }}"
               data-roles="{{ $u->roles->pluck('id')->implode(',') }}"
               title="Edit User"
+              style="cursor:pointer;"
             >
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
@@ -67,9 +68,10 @@
               @csrf @method('delete')
               <button
                 type="submit"
-                class="btn-icon hover-lift text-red-500"
+                class="btn-sm hover-lift text-red-500 "
                 onclick="return confirm('Hapus user?')"
                 title="Hapus User"
+                style="cursor:pointer;"
               >
                 <i class="fa-solid fa-trash"></i>
               </button>

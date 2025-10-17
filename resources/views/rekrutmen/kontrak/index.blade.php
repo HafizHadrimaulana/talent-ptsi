@@ -13,7 +13,7 @@
   @if($errors->any()) <div class="alert danger">{{ $errors->first() }}</div> @endif
 
   <div class="table-wrap">
-    <table class="table-ui">
+    <table id="perms-table" class="display table-ui table-compact table-sticky" data-dt>
       <thead><tr><th>No</th><th>Nama</th><th>Posisi</th><th>Jenis</th><th>Status</th><th class="cell-actions">Aksi</th></tr></thead>
       <tbody>
         @foreach($list as $c)

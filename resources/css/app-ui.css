@@ -51,7 +51,7 @@ html[data-theme="dark"]{
 
 .btn-sm{ min-height:30px; padding:.35rem .6rem; border-radius:9px; font-size:.88rem }
 .btn-icon{ width:40px; height:40px; padding:0; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; cursor: pointer;  transition: transform 0.1s ease;
-gap: 2px; background: rgb(255, 255, 255); border: 1px solid rgba(0, 0, 0, 0.2);}
+gap: 2px; background: rgb(255, 255, 255); }
 .btn-icon.btn-sm{ width:32px; height:32px; border-radius:8px }
 
 .btn-brand{
@@ -123,7 +123,7 @@ gap: 2px; background: rgb(255, 255, 255); border: 1px solid rgba(0, 0, 0, 0.2);}
 .chip{
   display:inline-flex; align-items:center; gap:.5rem; padding:.42rem .7rem;
   border-radius:999px; border:1px solid color-mix(in srgb, var(--accent) 60%, transparent);
-  background:linear-gradient(135deg, #1F337E, #49D4A9), var(--accent);
+  background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 86%, #fff 0%), var(--accent));
   color:#fff; font-weight:900; letter-spacing:.02em;
   box-shadow:0 10px 26px rgba(79,70,229,.24);
   cursor:pointer; user-select:none; transition:transform .12s, box-shadow .2s, filter .2s;
@@ -232,6 +232,7 @@ gap: 2px; background: rgb(255, 255, 255); border: 1px solid rgba(0, 0, 0, 0.2);}
   background:var(--surface-0); font-size:.95rem;
 }
 .table-ui thead th{
+  background: linear-gradient(135deg, #1F337E, #49D4A9);
   position:sticky; top:0; z-index:1; font-weight:800; letter-spacing:.01em;
   padding:.70rem .80rem; text-align:left; background:var(--surface-1);
   border-bottom:1px solid color-mix(in srgb, var(--surface-2) 55%, transparent);
@@ -292,7 +293,7 @@ table.dataTable thead th{
 }
 
 .thead{
- background : purple;
+ /*background : purple;*/
 }
 table.dataTable tbody td{
   padding:.60rem .80rem;
