@@ -50,18 +50,18 @@
             </td>
             <td class="cell-actions">
               @if($c->status === 'draft')
-                <form method="POST" action="{{ route('rekrutmen.kontrak.submit',$c) }}" style="display:inline">@csrf
+                <form method="POST" action="{{ route('recruitment.contracts.submit',$c) }}" style="display:inline">@csrf
                   <button class="btn btn-sm">Submit</button>
                 </form>
               @elseif($c->status === 'review')
                 @can('contract.approve')
-                  <form method="POST" action="{{ route('rekrutmen.kontrak.approve',$c) }}" style="display:inline">@csrf
+                  <form method="POST" action="{{ route('recruitment.contracts.approve',$c) }}" style="display:inline">@csrf
                     <button class="btn btn-sm success">Approve</button>
                   </form>
                 @endcan
               @elseif($c->status === 'approved')
                 @can('contract.sign')
-                  <form method="POST" action="{{ route('rekrutmen.kontrak.sign',$c) }}" style="display:inline">@csrf
+                  <form method="POST" action="{{ route('recruitment.contracts.sign',$c) }}" style="display:inline">@csrf
                     <button class="btn btn-sm">Mark Signed</button>
                   </form>
                 @endcan
@@ -86,7 +86,7 @@
       <h3>Draft Kontrak</h3>
       <button class="close-btn" type="button" onclick="closeCtrModal()">✖</button>
     </div>
-    <form id="ctrForm" method="POST" action="{{ route('rekrutmen.kontrak.store') }}">
+    <form id="ctrForm" method="POST" action="{{ route('recruitment.contracts.store') }}">
       @csrf
       <div class="modal-body">
         <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">

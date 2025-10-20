@@ -5,11 +5,15 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\PermissionController;
-
-use App\Http\Controllers\Rekrutmen\{
+use App\Http\Controllers\Recruitment\{
     MonitoringController,
-    IzinPrinsipController,
-    KontrakController
+    PrincipalApprovalController,
+    ContractController
+};
+// optional: kalau ada controller khusus training
+use App\Http\Controllers\Training\{
+    MonitoringController as TrainingMonitoringController,
+    PrincipalApprovalController as TrainingApprovalController
 };
 
 Route::middleware('web')->group(function () {
@@ -27,89 +31,64 @@ Route::middleware('web')->group(function () {
 
         // ====== SETTINGS ======
         Route::prefix('settings')->name('settings.')->group(function () {
+            Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
+            Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create')->name('users.store');
+            Route::put('users/{user}', [UserController::class, 'update'])->middleware('permission:users.update')->name('users.update');
+            Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('permission:users.delete')->name('users.destroy');
 
-            // Users
-            Route::get('users', [UserController::class, 'index'])
-                ->middleware('permission:users.view')->name('users.index');
-            Route::post('users', [UserController::class, 'store'])
-                ->middleware('permission:users.create')->name('users.store');
-            Route::put('users/{user}', [UserController::class, 'update'])
-                ->middleware('permission:users.update')->name('users.update');
-            Route::delete('users/{user}', [UserController::class, 'destroy'])
-                ->middleware('permission:users.delete')->name('users.destroy');
+            Route::get('roles/options', [UserController::class, 'roleOptions'])->middleware('permission:users.view')->name('roles.options');
 
-            // JSON role options
-            Route::get('roles/options', [UserController::class, 'roleOptions'])
-                ->middleware('permission:users.view')->name('roles.options');
+            Route::get('roles', [RoleController::class, 'index'])->middleware('permission:rbac.view')->name('roles.index');
+            Route::post('roles', [RoleController::class, 'store'])->middleware('permission:rbac.assign')->name('roles.store');
+            Route::put('roles/{role}', [RoleController::class, 'update'])->middleware('permission:rbac.assign')->name('roles.update');
+            Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:rbac.assign')->name('roles.destroy');
 
-            // Roles
-            Route::get('roles', [RoleController::class, 'index'])
-                ->middleware('permission:rbac.view')->name('roles.index');
-            Route::post('roles', [RoleController::class, 'store'])
-                ->middleware('permission:rbac.assign')->name('roles.store');
-            Route::put('roles/{role}', [RoleController::class, 'update'])
-                ->middleware('permission:rbac.assign')->name('roles.update');
-            Route::delete('roles/{role}', [RoleController::class, 'destroy'])
-                ->middleware('permission:rbac.assign')->name('roles.destroy');
-
-            // Permissions
-            Route::get('permissions', [PermissionController::class, 'index'])
-                ->middleware('permission:rbac.view')->name('permissions.index');
-            Route::put('permissions/{permission}', [PermissionController::class, 'update'])
-                ->middleware('permission:rbac.assign')->name('permissions.update');
+            Route::get('permissions', [PermissionController::class, 'index'])->middleware('permission:rbac.view')->name('permissions.index');
+            Route::put('permissions/{permission}', [PermissionController::class, 'update'])->middleware('permission:rbac.assign')->name('permissions.update');
         });
 
-        // ====== REKRUTMEN (pakai views & controller yang sudah ada) ======
-        Route::prefix('rekrutmen')->name('rekrutmen.')->group(function () {
-
-            // Monitoring (views/rekrutmen/monitoring.blade.php)
+        // ====== RECRUITMENT ======
+        Route::prefix('recruitment')->name('recruitment.')->group(function () {
             Route::get('monitoring', [MonitoringController::class,'index'])
-                ->middleware('permission:recruitment.view')
-                ->name('monitoring');
+                ->middleware('permission:recruitment.view')->name('monitoring');
 
-            // Izin Prinsip (views/rekrutmen/izin-prinsip/index.blade.php) — create via modal di index
-            Route::get('izin-prinsip', [IzinPrinsipController::class,'index'])
-                ->middleware('permission:recruitment.view')
-                ->name('izin-prinsip.index');
-            Route::post('izin-prinsip', [IzinPrinsipController::class,'store'])
-                ->middleware('permission:recruitment.view')
-                ->name('izin-prinsip.store');
-            Route::post('izin-prinsip/{req}/submit', [IzinPrinsipController::class,'submit'])
-                ->middleware('permission:recruitment.view')
-                ->name('izin-prinsip.submit');
-            Route::post('izin-prinsip/{req}/approve', [IzinPrinsipController::class,'approve'])
-                ->middleware('permission:recruitment.view|contract.approve')
-                ->name('izin-prinsip.approve');
-            Route::post('izin-prinsip/{req}/reject', [IzinPrinsipController::class,'reject'])
-                ->middleware('permission:recruitment.view|contract.approve')
-                ->name('izin-prinsip.reject');
+            Route::get('principal-approval', [PrincipalApprovalController::class,'index'])
+                ->middleware('permission:recruitment.view')->name('principal-approval.index');
+            Route::post('principal-approval', [PrincipalApprovalController::class,'store'])
+                ->middleware('permission:recruitment.view')->name('principal-approval.store');
+            Route::post('principal-approval/{req}/submit', [PrincipalApprovalController::class,'submit'])
+                ->middleware('permission:recruitment.view')->name('principal-approval.submit');
+            Route::post('principal-approval/{req}/approve', [PrincipalApprovalController::class,'approve'])
+                ->middleware('permission:recruitment.view|contract.approve')->name('principal-approval.approve');
+            Route::post('principal-approval/{req}/reject', [PrincipalApprovalController::class,'reject'])
+                ->middleware('permission:recruitment.view|contract.approve')->name('principal-approval.reject');
 
-            // Penerbitan Kontrak (views/rekrutmen/kontrak/index.blade.php) — create via modal di index
-            Route::get('kontrak', [KontrakController::class,'index'])
-                ->middleware('permission:contract.view')->name('kontrak.index');
-            Route::post('kontrak', [KontrakController::class,'store'])
-                ->middleware('permission:contract.create')->name('kontrak.store');
-            Route::post('kontrak/{contract}/submit', [KontrakController::class,'submit'])
-                ->middleware('permission:contract.update')->name('kontrak.submit');
-            Route::post('kontrak/{contract}/approve', [KontrakController::class,'approve'])
-                ->middleware('permission:contract.approve')->name('kontrak.approve');
-            Route::post('kontrak/{contract}/sign', [KontrakController::class,'sign'])
-                ->middleware('permission:contract.sign')->name('kontrak.sign');
+            Route::get('contracts', [ContractController::class,'index'])
+                ->middleware('permission:contract.view')->name('contracts.index');
+            Route::post('contracts', [ContractController::class,'store'])
+                ->middleware('permission:contract.create')->name('contracts.store');
+            Route::post('contracts/{contract}/submit', [ContractController::class,'submit'])
+                ->middleware('permission:contract.update')->name('contracts.submit');
+            Route::post('contracts/{contract}/approve', [ContractController::class,'approve'])
+                ->middleware('permission:contract.approve')->name('contracts.approve');
+            Route::post('contracts/{contract}/sign', [ContractController::class,'sign'])
+                ->middleware('permission:contract.sign')->name('contracts.sign');
         });
 
-        // ====== PELATIHAN (langsung nembak views yang ada) ======
-        Route::prefix('pelatihan')->name('pelatihan.')->group(function () {
-            // views/pelatihan/monitoring.blade.php
-            Route::get('monitoring', fn () => view('pelatihan.monitoring'))
+        // ====== TRAINING ======
+        Route::prefix('training')->name('training.')->group(function () {
+            // Monitoring
+            Route::get('monitoring', fn () => view('training.monitoring'))
                 ->middleware('permission:training.view')
                 ->name('monitoring');
-            // views/pelatihan/izin-prinsip.blade.php
-            Route::get('izin-prinsip', fn () => view('pelatihan.izin-prinsip'))
+
+            // Principal Approval
+            Route::get('principal-approval', fn () => view('training.principal-approval'))
                 ->middleware('permission:training.view')
-                ->name('izin-prinsip');
+                ->name('principal-approval');
         });
 
-        // Logout
+        // ====== LOGOUT ======
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     });
 });

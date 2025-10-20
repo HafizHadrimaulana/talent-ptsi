@@ -46,15 +46,15 @@
             </td>
             <td class="cell-actions">
               @if($r->status === 'draft')
-                <form method="POST" action="{{ route('rekrutmen.izin-prinsip.submit',$r) }}" style="display:inline">@csrf
+                <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" style="display:inline">@csrf
                   <button class="btn btn-sm">Submit</button>
                 </form>
               @endif
               @if($r->status === 'submitted')
-                <form method="POST" action="{{ route('rekrutmen.izin-prinsip.approve',$r) }}" style="display:inline">@csrf
+                <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}" style="display:inline">@csrf
                   <button class="btn btn-sm success">Approve</button>
                 </form>
-                <form method="POST" action="{{ route('rekrutmen.izin-prinsip.reject',$r) }}" style="display:inline">@csrf
+                <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}" style="display:inline">@csrf
                   <button class="btn btn-sm danger">Reject</button>
                 </form>
               @endif
@@ -79,7 +79,7 @@
         <h3>Buat Izin Prinsip</h3>
         <button class="close-btn" onclick="closeIpModal()">✖</button>
       </div>
-      <form id="ipForm" method="POST" action="{{ route('rekrutmen.izin-prinsip.store') }}">
+      <form id="ipForm" method="POST" action="{{ route('recruitment.principal-approval.store') }}">
         @csrf
         <div class="modal-body">
           <div class="mb-2">
