@@ -116,7 +116,7 @@
     btn.addEventListener('click', ()=>{
       const data = JSON.parse(btn.dataset.role);
       const form = document.getElementById('editRoleForm');
-      form.action = "{{ url('settings/roles') }}/" + data.id;
+      form.action = "{{ url('admin/settings/access/roles') }}/" + data.id;
       form.querySelector('input[name=name]').value = data.name;
 
       const current = new Set(data.perms || []);

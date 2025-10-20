@@ -11,11 +11,10 @@ class PrincipalApprovalController extends Controller
     public function index()
     {
         $list = RecruitmentRequest::query()
-            ->when(auth()->user()->unit_id, fn($q, $uid) => $q->where('unit_id', $uid))
+            ->forViewer(auth()->user())   // scope di model → batasi per role/unit/status
             ->latest()
             ->paginate(12);
 
-        // ✅ view path sudah english
         return view('recruitment.principal-approval.index', compact('list'));
     }
 
@@ -26,7 +25,7 @@ class PrincipalApprovalController extends Controller
             'title'         => 'required',
             'position'      => 'required',
             'headcount'     => 'required|integer|min:1',
-            'justification' => 'nullable|string'
+            'justification' => 'nullable|string',
         ]);
 
         RecruitmentRequest::create([
@@ -41,12 +40,19 @@ class PrincipalApprovalController extends Controller
     public function submit(RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
+
         if ($req->status !== 'draft') {
-            return back()->withErrors('Only drafts can be submitted.');
+            return back()->withErrors('Only DRAFT can be submitted.');
         }
 
         $req->update(['status' => 'submitted']);
-        $req->approvals()->create(['level' => 1, 'role_key' => 'vp_gm', 'status' => 'pending']);
+
+        // level 1 approval → VP/GM
+        $req->approvals()->create([
+            'level'    => 1,
+            'role_key' => 'vp_gm',
+            'status'   => 'pending',
+        ]);
 
         return back()->with('ok', 'Submitted to VP/GM.');
     }
@@ -54,52 +60,53 @@ class PrincipalApprovalController extends Controller
     public function approve(RecruitmentRequest $req, Request $r)
     {
         $this->authorizeUnit($req->unit_id);
+
         if ($req->status !== 'submitted') {
-            return back()->withErrors('Must be in submitted status.');
+            return back()->withErrors('Only SUBMITTED can be approved.');
         }
 
         $req->update([
-            'status'       => 'approved',
-            'approved_by'  => auth()->id(),
-            'approved_at'  => now(),
+            'status'      => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
         ]);
 
-        $req->approvals()
-            ->where('status', 'pending')
-            ->update([
-                'status'     => 'approved',
-                'user_id'    => auth()->id(),
-                'decided_at' => now(),
-                'note'       => $r->note
-            ]);
+        // close the latest pending approval record
+        $req->approvals()->where('status', 'pending')->latest()->first()?->update([
+            'status'     => 'approved',
+            'user_id'    => auth()->id(),
+            'decided_at' => now(),
+            'note'       => $r->note,
+        ]);
 
-        return back()->with('ok', 'Principal approval approved.');
+        return back()->with('ok', 'Request approved.');
     }
 
     public function reject(RecruitmentRequest $req, Request $r)
     {
         $this->authorizeUnit($req->unit_id);
+
         if ($req->status !== 'submitted') {
-            return back()->withErrors('Must be in submitted status.');
+            return back()->withErrors('Only SUBMITTED can be rejected.');
         }
 
         $req->update(['status' => 'rejected']);
-        $req->approvals()
-            ->where('status', 'pending')
-            ->update([
-                'status'     => 'rejected',
-                'user_id'    => auth()->id(),
-                'decided_at' => now(),
-                'note'       => $r->note
-            ]);
 
-        return back()->with('ok', 'Principal approval rejected.');
+        // close the latest pending approval record
+        $req->approvals()->where('status', 'pending')->latest()->first()?->update([
+            'status'     => 'rejected',
+            'user_id'    => auth()->id(),
+            'decided_at' => now(),
+            'note'       => $r->note,
+        ]);
+
+        return back()->with('ok', 'Request rejected.');
     }
 
     protected function authorizeUnit($unitId): void
     {
-        $my = auth()->user()->unit_id;
-        if ($my && $my != $unitId && !auth()->user()->hasRole('Superadmin')) {
+        $meUnit = auth()->user()->unit_id;
+        if ($meUnit && $meUnit != $unitId && !auth()->user()->hasRole('Superadmin')) {
             abort(403);
         }
     }

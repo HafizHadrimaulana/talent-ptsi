@@ -222,7 +222,7 @@
       const rolesArr = rolesCsv.split(',').map(s => s.trim()).filter(Boolean);
 
       if (form) {
-        form.action = "{{ url('settings/users') }}/" + uid;
+        form.action = "{{ url('admin/settings/access/users') }}/" + uid;
         form.querySelector('input[name=name]').value = name;
         form.querySelector('input[name=email]').value = email;
         form.querySelector('input[name=password]').value = '';

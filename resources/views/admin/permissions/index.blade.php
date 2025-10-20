@@ -58,7 +58,7 @@
     btn.addEventListener('click', ()=>{
       const data = JSON.parse(btn.dataset.perm);
       const form = document.getElementById('editPermForm');
-      form.action = "{{ url('settings/permissions') }}/" + data.id;
+      form.action = "{{ url('admin/settings/access/permissions') }}/" + data.id;
       form.querySelector('input[name=name]').value = data.name;
 
       const modal = document.getElementById('editPermModal');

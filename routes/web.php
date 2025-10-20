@@ -5,18 +5,31 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\Access\UserController;
 use App\Http\Controllers\Admin\Access\RoleController;
 use App\Http\Controllers\Admin\Access\PermissionController;
+
+// Public careers (one-page)
+use App\Http\Controllers\Public\CareersController;
+use App\Http\Controllers\Public\ApplicationController as PublicApplicationController;
+
+// Recruitment (internal)
 use App\Http\Controllers\Recruitment\{
     MonitoringController,
     PrincipalApprovalController,
-    ContractController
+    ContractController,
+    PublishingController
 };
-// optional: kalau ada controller khusus training
+
+// Training (internal, optional)
 use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
     PrincipalApprovalController as TrainingApprovalController
 };
 
 Route::middleware('web')->group(function () {
+
+    // ====== PUBLIC (NO AUTH) ======
+    // One-page careers (list + modal + post)
+    Route::get('/careers', [CareersController::class, 'index'])->name('careers.index');
+    Route::post('/careers/apply', [PublicApplicationController::class, 'store'])->name('careers.apply');
 
     // ====== GUEST (AUTH) ======
     Route::middleware('guest')->group(function () {
@@ -29,7 +42,7 @@ Route::middleware('web')->group(function () {
         Route::get('/', fn () => redirect()->route('dashboard'));
         Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
 
-        // ====== SETTINGS ======
+        // ====== ADMIN SETTINGS (Access) ======
         Route::prefix('admin/settings/access')->name('admin.')->group(function () {
             Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
             Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create')->name('users.store');
@@ -55,13 +68,13 @@ Route::middleware('web')->group(function () {
             Route::get('principal-approval', [PrincipalApprovalController::class,'index'])
                 ->middleware('permission:recruitment.view')->name('principal-approval.index');
             Route::post('principal-approval', [PrincipalApprovalController::class,'store'])
-                ->middleware('permission:recruitment.view')->name('principal-approval.store');
+                ->middleware('permission:recruitment.update')->name('principal-approval.store');
             Route::post('principal-approval/{req}/submit', [PrincipalApprovalController::class,'submit'])
-                ->middleware('permission:recruitment.view')->name('principal-approval.submit');
+                ->middleware('permission:recruitment.submit')->name('principal-approval.submit');
             Route::post('principal-approval/{req}/approve', [PrincipalApprovalController::class,'approve'])
-                ->middleware('permission:recruitment.view|contract.approve')->name('principal-approval.approve');
+                ->middleware('permission:recruitment.approve')->name('principal-approval.approve');
             Route::post('principal-approval/{req}/reject', [PrincipalApprovalController::class,'reject'])
-                ->middleware('permission:recruitment.view|contract.approve')->name('principal-approval.reject');
+                ->middleware('permission:recruitment.reject')->name('principal-approval.reject');
 
             Route::get('contracts', [ContractController::class,'index'])
                 ->middleware('permission:contract.view')->name('contracts.index');
@@ -73,19 +86,22 @@ Route::middleware('web')->group(function () {
                 ->middleware('permission:contract.approve')->name('contracts.approve');
             Route::post('contracts/{contract}/sign', [ContractController::class,'sign'])
                 ->middleware('permission:contract.sign')->name('contracts.sign');
+
+            // Publishing (admin/SDM) – keep under recruitment namespace
+            Route::middleware('permission:recruitment.update')->group(function(){
+                Route::get('requests/{req}/publish',  [PublishingController::class,'edit'])->name('publish.edit');
+                Route::put('requests/{req}/publish',  [PublishingController::class,'update'])->name('publish.update');
+                Route::post('requests/{req}/toggle',  [PublishingController::class,'toggle'])->name('publish.toggle');
+            });
         });
 
-        // ====== TRAINING ======
+        // ====== TRAINING (optional) ======
         Route::prefix('training')->name('training.')->group(function () {
-            // Monitoring
             Route::get('monitoring', fn () => view('training.monitoring'))
-                ->middleware('permission:training.view')
-                ->name('monitoring');
+                ->middleware('permission:training.view')->name('monitoring');
 
-            // Principal Approval
             Route::get('principal-approval', fn () => view('training.principal-approval'))
-                ->middleware('permission:training.view')
-                ->name('principal-approval');
+                ->middleware('permission:training.view')->name('principal-approval');
         });
 
         // ====== LOGOUT ======

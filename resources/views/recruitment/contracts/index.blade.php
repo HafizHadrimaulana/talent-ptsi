@@ -2,6 +2,12 @@
 @section('title','Penerbitan Kontrak')
 
 @section('content')
+@php
+  /** @var \App\Models\User $me */
+  $me = auth()->user();
+  $meUnit = $me?->unit_id;
+@endphp
+
 <div class="card-glass mb-2 p-4 rounded-2xl shadow-md space-y-4">
   {{-- ===== Header Row (Title + Button) ===== --}}
   <div class="flex justify-between items-center">
@@ -12,16 +18,16 @@
   </div>
 
   {{-- ===== Alerts (Optional) ===== --}}
-  @if(session('ok')) 
+  @if(session('ok'))
     <div class="alert success">{{ session('ok') }}</div>
   @endif
-  @if($errors->any()) 
+  @if($errors->any())
     <div class="alert danger">{{ $errors->first() }}</div>
   @endif
 
-  {{-- ===== DataTable Wrapper Inside Card ===== --}}
+  {{-- ===== DataTable Wrapper ===== --}}
   <div class="dt-wrapper bg-white/70 dark:bg-slate-900/60 rounded-xl shadow-sm p-3 space-y-3 ios-glass">
-    <table id="perms-table" class="display table-ui table-compact table-sticky w-full" data-dt>
+    <table id="contracts-table" class="display table-ui table-compact table-sticky w-full" data-dt>
       <thead>
         <tr>
           <th>No</th>
@@ -34,35 +40,51 @@
       </thead>
       <tbody>
         @foreach($list as $c)
+          @php
+            $sameUnit = $meUnit && $meUnit === $c->unit_id;
+          @endphp
           <tr>
             <td>{{ $c->number ?? '—' }}</td>
             <td>{{ $c->person_name }}</td>
             <td>{{ $c->position }}</td>
             <td>{{ $c->type }}</td>
             <td>
-              <span class="badge 
+              <span class="badge
                 @if($c->status === 'rejected') danger
                 @elseif($c->status === 'draft') warn
                 @elseif($c->status === 'approved') success
+                @elseif($c->status === 'signed') success
                 @else soft @endif">
-                {{ $c->status }}
+                {{ ucfirst($c->status) }}
               </span>
             </td>
             <td class="cell-actions">
-              @if($c->status === 'draft')
-                <form method="POST" action="{{ route('recruitment.contracts.submit',$c) }}" style="display:inline">@csrf
-                  <button class="btn btn-sm">Submit</button>
-                </form>
-              @elseif($c->status === 'review')
-                @can('contract.approve')
-                  <form method="POST" action="{{ route('recruitment.contracts.approve',$c) }}" style="display:inline">@csrf
-                    <button class="btn btn-sm success">Approve</button>
+              {{-- SDM submit draft -> review (unit sama + izin) --}}
+              @if($c->status === 'draft' && $sameUnit)
+                @can('contract.update')
+                  <form method="POST" action="{{ route('recruitment.contracts.submit',$c) }}" class="inline">
+                    @csrf
+                    <button class="btn btn-sm" title="Submit for review">Submit</button>
                   </form>
                 @endcan
-              @elseif($c->status === 'approved')
+              @endif
+
+              {{-- GM/VP approve review (unit sama + izin) --}}
+              @if($c->status === 'review' && $sameUnit)
+                @can('contract.approve')
+                  <form method="POST" action="{{ route('recruitment.contracts.approve',$c) }}" class="inline">
+                    @csrf
+                    <button class="btn btn-sm success" title="Approve contract">Approve</button>
+                  </form>
+                @endcan
+              @endif
+
+              {{-- Mark signed (opsional role khusus) --}}
+              @if($c->status === 'approved' && $sameUnit)
                 @can('contract.sign')
-                  <form method="POST" action="{{ route('recruitment.contracts.sign',$c) }}" style="display:inline">@csrf
-                    <button class="btn btn-sm">Mark Signed</button>
+                  <form method="POST" action="{{ route('recruitment.contracts.sign',$c) }}" class="inline">
+                    @csrf
+                    <button class="btn btn-sm" title="Mark as signed">Mark Signed</button>
                   </form>
                 @endcan
               @endif
@@ -80,6 +102,7 @@
 </div>
 
 {{-- ===== Modal: Draft Kontrak ===== --}}
+@can('contract.create')
 <div id="ctrModal" class="modal" hidden>
   <div class="modal-card">
     <div class="modal-header">
@@ -139,9 +162,15 @@
     </form>
   </div>
 </div>
+@endcan
 
 <script>
   function openCtrModal(){ document.getElementById('ctrModal').hidden = false; }
   function closeCtrModal(){ document.getElementById('ctrModal').hidden = true; }
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof DataTable !== 'undefined') {
+      new DataTable('#contracts-table', { responsive:true, paging:false, info:false });
+    }
+  });
 </script>
 @endsection
