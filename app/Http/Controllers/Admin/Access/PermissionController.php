@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings;
+namespace App\Http\Controllers\Admin\Access;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -11,7 +11,7 @@ class PermissionController extends Controller
     public function index()
     {
         $permissions = Permission::orderBy('name')->paginate(50);
-        return view('settings.permissions.index', compact('permissions'));
+        return view('admin.permissions.index', compact('permissions'));
     }
 
     public function update(Request $request, Permission $permission)

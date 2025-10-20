@@ -29,7 +29,7 @@
               data-role='@json(["id"=>$r->id,"name"=>$r->name,"perms"=>$r->permissions()->pluck("name")->all()])' style="cursor:pointer;  color:#3b82f6">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <form method="post" action="{{ route('settings.roles.destroy',$r) }}" class="inline">
+            <form method="post" action="{{ route('admin.roles.destroy',$r) }}" class="inline">
               @csrf @method('delete')
               <button class="btn-sm danger hover-lift" onclick="return confirm('Hapus role?')"  style="cursor:pointer; color:#ef4444"><i class="fa-solid fa-trash"></i></button>
             </form>
@@ -50,7 +50,7 @@
       <h3>Tambah Role</h3>
       <button class="close-btn" data-modal-close>&times;</button>
     </div>
-    <form method="post" action="{{ route('settings.roles.store') }}" class="modal-body grid gap-3">
+    <form method="post" action="{{ route('admin.roles.store') }}" class="modal-body grid gap-3">
       @csrf
       <label>Nama Role <input name="name" required class="input"></label>
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings;
+namespace App\Http\Controllers\Admin\Access;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -14,7 +14,7 @@ class RoleController extends Controller
         $roles = Role::withCount('users')->orderBy('name')->paginate(20);
         $permissions = Permission::orderBy('name')->get();
         $grouped = $permissions->groupBy(fn($p)=>explode('.',$p->name)[0]);
-        return view('settings.roles.index', [
+        return view('admin.roles.index', [
             'roles'=>$roles,
             'groupedPerms'=>$grouped,
             'allPerms'=>$permissions->pluck('name')->all(),

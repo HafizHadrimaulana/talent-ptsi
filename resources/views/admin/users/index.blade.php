@@ -5,7 +5,7 @@
 
 
 @section('content')
-<div class="card glass p-4" data-roles-url="{{ route('settings.roles.options') }}">
+<div class="card glass p-4" data-roles-url="{{ route('admin.roles.options') }}">
 
   {{-- ====== HEADER ====== --}}
   <div class="flex justify-between items-center mb-4">
@@ -64,7 +64,7 @@
             @endcan
 
             @can('users.delete')
-            <form method="post" action="{{ route('settings.users.destroy', $u) }}" class="inline">
+            <form method="post" action="{{ route('admin.users.destroy', $u) }}" class="inline">
               @csrf @method('delete')
               <button
                 type="submit"
@@ -97,7 +97,7 @@
       <h3>Tambah User</h3>
       <button class="close-btn" data-modal-close>&times;</button>
     </div>
-    <form method="post" action="{{ route('settings.users.store') }}" class="modal-body grid gap-3" id="createUserForm">
+    <form method="post" action="{{ route('admin.users.store') }}" class="modal-body grid gap-3" id="createUserForm">
       @csrf
       <label>Nama <input name="name" required class="input"></label>
       <label>Email <input type="email" name="email" required class="input"></label>

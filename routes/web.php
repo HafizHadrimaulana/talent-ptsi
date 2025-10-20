@@ -2,9 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Settings\UserController;
-use App\Http\Controllers\Settings\RoleController;
-use App\Http\Controllers\Settings\PermissionController;
+use App\Http\Controllers\Admin\Access\UserController;
+use App\Http\Controllers\Admin\Access\RoleController;
+use App\Http\Controllers\Admin\Access\PermissionController;
 use App\Http\Controllers\Recruitment\{
     MonitoringController,
     PrincipalApprovalController,
@@ -30,7 +30,7 @@ Route::middleware('web')->group(function () {
         Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
 
         // ====== SETTINGS ======
-        Route::prefix('settings')->name('settings.')->group(function () {
+        Route::prefix('admin/settings/access')->name('admin.')->group(function () {
             Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
             Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create')->name('users.store');
             Route::put('users/{user}', [UserController::class, 'update'])->middleware('permission:users.update')->name('users.update');

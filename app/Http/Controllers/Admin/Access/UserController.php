@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings;
+namespace App\Http\Controllers\Admin\Access;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -37,7 +37,7 @@ class UserController extends Controller
             ->orderBy('name')
             ->get(['id','name']);
 
-        return view('settings.users.index', compact('users','q','roles'));
+        return view('admin.users.index', compact('users','q','roles'));
     }
 
     public function store(Request $request)

@@ -64,9 +64,9 @@
       // Open states
       $recOpen = str_starts_with(request()->route()->getName() ?? '', 'recruitment.');
       $trOpen  = str_starts_with(request()->route()->getName() ?? '', 'training.');
-      $acOpen  = request()->routeIs('settings.users.*')
-                || request()->routeIs('settings.roles.*')
-                || request()->routeIs('settings.permissions.*');
+      $acOpen  = request()->routeIs('admin.users.*')
+                || request()->routeIs('admin.roles.*')
+                || request()->routeIs('admin.permissions.*');
     @endphp
 
     <!-- MAIN -->
@@ -199,19 +199,19 @@
                class="nav-children {{ $acOpen ? 'open' : '' }}"
                data-accordion-panel="nav-access">
             @can('users.view')
-            <a class="nav-item nav-child {{ request()->routeIs('settings.users.*') ? 'active' : '' }}"
-               href="{{ route('settings.users.index') }}">
+            <a class="nav-item nav-child {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"
+               href="{{ route('admin.users.index') }}">
               <span class="icon">👤</span><span class="label">User Management</span>
             </a>
             @endcan
 
             @can('rbac.view')
-            <a class="nav-item nav-child {{ request()->routeIs('settings.roles.*') ? 'active' : '' }}"
-               href="{{ route('settings.roles.index') }}">
+            <a class="nav-item nav-child {{ request()->routeIs('admin.roles.*') ? 'active' : '' }}"
+               href="{{ route('admin.roles.index') }}">
               <span class="icon">🛡️</span><span class="label">Role Management</span>
             </a>
-            <a class="nav-item nav-child {{ request()->routeIs('settings.permissions.*') ? 'active' : '' }}"
-               href="{{ route('settings.permissions.index') }}">
+            <a class="nav-item nav-child {{ request()->routeIs('admin.permissions.*') ? 'active' : '' }}"
+               href="{{ route('admin.permissions.index') }}">
               <span class="icon">🔐</span><span class="label">Permission Management</span>
             </a>
             @endcan
