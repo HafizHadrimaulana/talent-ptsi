@@ -123,7 +123,7 @@ gap: 2px; background: rgb(255, 255, 255); }
 .chip{
   display:inline-flex; align-items:center; gap:.5rem; padding:.42rem .7rem;
   border-radius:999px; border:1px solid color-mix(in srgb, var(--accent) 60%, transparent);
-  background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 86%, #fff 0%), var(--accent));
+  background: linear-gradient(135deg, #1F337E, #49D4A9);
   color:#fff; font-weight:900; letter-spacing:.02em;
   box-shadow:0 10px 26px rgba(79,70,229,.24);
   cursor:pointer; user-select:none; transition:transform .12s, box-shadow .2s, filter .2s;
