@@ -28,6 +28,9 @@
       color: #ffffff;
       transition: color 0.3s ease;
     }
+    .nav-links {
+      margin-right:5rem;
+    }
 
     nav a:hover,
     nav a.active {
@@ -44,6 +47,21 @@
       background: #A4F5DD;
       border-radius: 2px;
     }
+    #navbar {
+    transition: background-color 1.0s ease, box-shadow 1.0s ease, opacity 1.0s ease;
+    }
+
+    #navbar.transparent {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        opacity: 1;
+    }
+
+    #navbar.visible {
+        background-color: #00A29A !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        opacity: 1;
+    }
 
     /* ===== SECTION ANIMATIONS ===== */
     .fade-section {
@@ -56,26 +74,34 @@
       opacity: 1;
       transform: translateY(0);
     }
+
   </style>
 </head>
 
 <body class="min-h-screen bg-white text-gray-900">
 
   <!-- ===== NAVBAR ===== -->
-  <header class="fixed top-0 w-full z-30 backdrop-blur border-b transition-all duration-300" id="navbar">
-    <div class="container mx-auto px-6 py-3 flex items-center justify-between">
-      <a href="{{ route('careers.index') }}" class="text-xl font-bold text-white">
-        Test Careers
-      </a>
-      <nav class="hidden md:flex items-center gap-6 text-sm font-medium relative">
-        <a href="#about" class="nav-link">Tentang Kami</a>
-        <a href="#vision" class="nav-link">Visi & Misi</a>
-        <a href="#jobs" class="nav-link">Lowongan</a>
-        <a href="#contact" class="nav-link">Kontak</a>
-      </nav>
-      <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 hover:bg-[#A4F5DD] hover:text-[#004d47] font-semibold">Login</a>
+ <header id="navbar" class="fixed top-0 w-full z-30 bg-[#00A29A] backdrop-blur transition-all duration-300">
+  <div class="container mx-auto px-6 py-3 flex items-center justify-between">
+    <a href="{{ route('careers.index') }}" class="flex items-center gap-2">
+      <img 
+        src="{{ Vite::asset('resources/images/sapahc.png') }}" 
+        alt="Test Company Logo" 
+        class="h-12 w-auto object-contain"
+      >
+      <span class="text-xl font-bold text-white">Test Logo</span>
+    </a>
+    <div class = "nav-links">
+    <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-white">
+      <a href="#about" class="nav-link hover:text-gray-100">Tentang Kami</a>
+      <a href="#vision" class="nav-link hover:text-gray-100">Visi & Misi</a>
+      <a href="#jobs" class="nav-link hover:text-gray-100">Lowongan</a>
+      <a href="#contact" class="nav-link hover:text-gray-100">Kontak</a>
+    </nav>
     </div>
-  </header>
+    <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 hover:bg-gray-100">Login</a>
+  </div>
+</header>
 
   <!-- ===== HERO SECTION ===== -->
   <section 
@@ -179,6 +205,26 @@
 
   <!-- ===== JS: smooth scroll + fade-in ===== -->
   <script>
+    // Navbar
+      const navbar = document.getElementById('navbar');
+      let lastScrollY = window.scrollY;
+
+      function updateNavbarVisibility() {
+        if (window.scrollY <= 10) {
+          navbar.classList.remove('visible');
+          navbar.classList.add('transparent');
+        } else {
+          navbar.classList.remove('transparent');
+          navbar.classList.add('visible');
+        }
+      }
+
+      // Run on load
+      updateNavbarVisibility();
+
+      // Run on scroll
+      window.addEventListener('scroll', updateNavbarVisibility);  
+
     // Smooth scroll animation
     document.querySelectorAll('a.nav-link, a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function (e) {
@@ -217,6 +263,7 @@
     }, { threshold: 0.15 });
 
     document.querySelectorAll('.fade-section').forEach(sec => observer.observe(sec));
+
   </script>
 
 </body>
