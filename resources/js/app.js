@@ -30,8 +30,24 @@ document.addEventListener('DOMContentLoaded', () => {
     ],
   });
 
+  initDataTables('#ip-table', {
+    columnDefs: [
+      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+      { targets: 0, responsivePriority: 2 },
+      { targets: 1, responsivePriority: 3 },
+    ],
+  });
+
   // ===== PERMISSIONS
   initDataTables('#perms-table', {
+    columnDefs: [
+      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+      { targets: 0, responsivePriority: 2 },
+      { targets: 1, responsivePriority: 3 },
+    ],
+  });
+
+  initDataTables('#contracts-table', {
     columnDefs: [
       { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
       { targets: 0, responsivePriority: 2 },

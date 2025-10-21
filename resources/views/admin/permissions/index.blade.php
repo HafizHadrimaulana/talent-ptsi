@@ -11,8 +11,8 @@
     <div class="alert danger mb-3"><ul class="ml-4 list-disc">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
   @endif
 
-  <div class="table-wrap">
-    <table id="perms-table" class="display table-ui table-compact table-sticky" data-dt>
+  <div class="dt-wrapper bg-white/70 dark:bg-slate-900/60 rounded-2xl shadow-md p-4 space-y-3 ios-glass">
+    <table id="perms-table" class="display w-full" data-dt>
       <thead><tr><th>Permission</th><th class="cell-actions">Aksi</th></tr></thead>
       <tbody>
         @foreach($permissions as $p)
