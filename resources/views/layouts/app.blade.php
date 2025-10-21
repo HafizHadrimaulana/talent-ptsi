@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>@yield('title','Talent PTSI')</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   @vite([
     'resources/css/app.css',
     'resources/css/app-layout.css',
@@ -44,15 +45,16 @@
       $roleNames = collect($user?->getRoleNames() ?? [])->map(fn($r)=> strtolower(trim($r)));
       $isSuper = $roleNames->contains(fn($r)=> in_array($r, ['superadmin','super-admin','admin','administrator']));
 
+      // employee info
+      $emp = $user?->employee ?? null;
+      $jobTitle = $emp?->job_title ?: '-';
+      $unitName = $emp?->unit_name ?: optional($emp?->unit)->name ?: '-';
+
       // --- SECTION VISIBILITY ---
       $showMain = true;
-      $showRecruitment = $isSuper || $user?->hasAnyPermission([
-        'recruitment.view','contract.view'
-      ]);
-      $showTraining = $isSuper || $user?->hasAnyPermission([
-        'training.view'
-      ]);
-      $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view'));
+      $showRecruitment = $isSuper || $user?->hasAnyPermission(['recruitment.view','contract.view']);
+      $showTraining = $isSuper || $user?->hasAnyPermission(['training.view']);
+      $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view'));
 
       // Divider logic
       $printedAnySection = false;
@@ -62,7 +64,8 @@
       $trOpen  = str_starts_with(request()->route()->getName() ?? '', 'training.');
       $acOpen  = request()->routeIs('admin.users.*')
                 || request()->routeIs('admin.roles.*')
-                || request()->routeIs('admin.permissions.*');
+                || request()->routeIs('admin.permissions.*')
+                || request()->routeIs('admin.employees.*');
     @endphp
 
     <!-- MAIN -->
@@ -181,7 +184,7 @@
     <nav class="nav-section">
       <div class="nav-title">Settings</div>
       <div class="nav">
-        @canany(['users.view','rbac.view'])
+        @canany(['users.view','rbac.view','employees.view'])
           <button type="button"
                   class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}"
                   data-accordion="nav-access"
@@ -211,11 +214,36 @@
               <span class="icon">🔐</span><span class="label">Permission Management</span>
             </a>
             @endcan
+
+            @can('employees.view')
+            <a class="nav-item nav-child {{ request()->routeIs('admin.employees.*') ? 'active' : '' }}"
+               href="{{ route('admin.employees.index') }}">
+              <span class="icon">🗃️</span><span class="label">Employee Directory</span>
+            </a>
+            @endcan
           </div>
         @endcanany
       </div>
     </nav>
     @endif
+
+    {{-- Divider before Employees --}}
+    @if($printedAnySection)
+      <div class="nav-divider" aria-hidden="true"></div>
+    @endif
+
+    <nav class="nav-section">
+      <div class="nav-title">Employees</div>
+      <div class="nav">
+        @can('employees.view')
+        <a class="nav-item {{ request()->routeIs('admin.employees.*')?'active':'' }}"
+           href="{{ route('admin.employees.index') }}">
+          <span class="icon">🧑‍💼</span><span class="label">Employee List</span>
+        </a>
+        @endcan
+      </div>
+    </nav>
+
   </aside>
 
   <!-- Topbar -->
@@ -243,11 +271,22 @@
       </div>
 
       <div class="dropdown-wrap user-area">
+        @php
+          $roleBadge = $user?->getRoleNames()->first() ?? '-';
+        @endphp
         <button id="userBtn" class="user-chip" type="button" aria-haspopup="true" aria-expanded="false" title="User menu">
           <span class="avatar">PT</span>
           <span class="user-meta">
             <span class="user-name text-ellipsis">{{ auth()->user()->name ?? 'Guest' }}</span>
-            <span class="user-role muted">{{ auth()->user()?->getRoleNames()->first() ?? '-' }}</span>
+            <span class="user-role muted">
+              {{ auth()->user()?->getRoleNames()->first() ?? '-' }}
+              @php
+                $jab = auth()->user()?->job_title ?? auth()->user()?->employee?->job_title ?? auth()->user()?->employee?->position_name;
+                $unit= auth()->user()?->employee?->unit_name ?? optional(auth()->user()->unit)->name;
+              @endphp
+              @if($jab) • {{ $jab }} @endif
+              @if($unit) • {{ $unit }} @endif
+            </span>
           </span>
           <span class="chev">▾</span>
         </button>
@@ -256,12 +295,21 @@
           <div class="user-card">
             <div class="avatar lg">PT</div>
             <div class="user-info">
-              <strong>{{ auth()->user()->name ?? 'Guest' }}</strong>
-              <span class="muted text-sm">{{ auth()->user()->email ?? '-' }}</span>
+              <strong>{{ $user->name ?? 'Guest' }}</strong>
+              <span class="muted text-sm">{{ $user->email ?? '-' }}</span>
+              <div class="muted text-sm">
+                <div><strong>Role:</strong> {{ $roleBadge }}</div>
+                <div><strong>Jabatan:</strong> {{ $jobTitle }}</div>
+                <div><strong>Unit Kerja:</strong> {{ $unitName }}</div>
+                <div><strong>Employee ID:</strong> {{ $user->employee_id ?? '-' }}</div>
+              </div>
             </div>
           </div>
+
           <div class="menu-list">
-            <a class="menu-item" href="#"><span>Change Password</span></a>
+            <button id="changePwBtn" type="button" class="menu-item" onclick="openPwModal()">
+              <span>Change Password</span>
+            </button>
           </div>
 
           <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
@@ -271,7 +319,7 @@
                  aria-valuenow="0" tabindex="0">
               <span class="power-icon">⏻</span>
               <span class="power-text">Swipe To Sign out</span>
-              <div id="powerKnob" class="power-knob"></div>
+              <div class="power-knob"></div>
             </div>
             <noscript><button class="btn btn-outline w-full mt-2">Logout</button></noscript>
           </form>
@@ -281,17 +329,172 @@
   </header>
 
   <main class="main">
+    @if(session('ok'))
+      <div class="alert alert-success">{{ session('ok') }}</div>
+    @endif
     @yield('content')
   </main>
 
+  <!-- FAB -->
   <button id="dmFab" class="dm-fab" type="button" title="Toggle theme" aria-pressed="false">🌞</button>
+
+  <!-- ==================== MODALS (ONE PAGE) ==================== -->
+
+  <!-- Profile Modal -->
+  <div id="modalProfile" class="modal glass" hidden aria-modal="true" role="dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Account Settings</h3>
+        <button class="close" type="button" data-close-modal>✖</button>
+      </div>
+      <form id="formProfile" method="POST" action="{{ route('account.profile.update') }}" class="modal-body">
+        @csrf
+        <div class="grid grid-cols-1 gap-3">
+          <label class="form-field">
+            <span class="label">Name</span>
+            <input name="name" class="input" value="{{ $user->name }}" required>
+            @error('name')<div class="error">{{ $message }}</div>@enderror
+          </label>
+
+          <label class="form-field">
+            <span class="label">Phone</span>
+            <input name="phone" class="input" value="{{ $user->phone }}">
+            @error('phone')<div class="error">{{ $message }}</div>@enderror
+          </label>
+
+          <div class="muted text-sm">
+            *Perubahan hanya untuk proyek ini (tidak sinkron ke sistem lain).
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-close-modal>Cancel</button>
+          <button class="btn btn-brand">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- pwModal: Change Password (ONE PAGE) -->
+  <div id="pwModal" class="modal" hidden aria-hidden="true">
+    <div class="modal-backdrop" onclick="closePwModal()"></div>
+    <div class="modal-panel max-w-md">
+      <div class="modal-header">
+        <h3 class="text-lg font-semibold">Ganti Password</h3>
+        <button class="icon-btn" onclick="closePwModal()">✖</button>
+      </div>
+      <form method="POST" action="{{ route('account.password.update') }}" class="modal-body space-y-4">
+        @csrf
+        <div>
+          <label class="label">Password Saat Ini</label>
+          <input name="current_password" type="password" class="input" required>
+          @error('current_password')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="label">Password Baru</label>
+          <input name="password" type="password" class="input" required minlength="8">
+        </div>
+        <div>
+          <label class="label">Konfirmasi Password Baru</label>
+          <input name="password_confirmation" type="password" class="input" required minlength="8">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" onclick="closePwModal()">Batal</button>
+          <button class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
+    // ====== Dropdowns ======
     function closeNotifDropdown() {
       const notifDropdown = document.getElementById('notifDropdown');
       const notifBtn = document.getElementById('notifBtn');
       if (!notifDropdown) return;
       notifDropdown.setAttribute('hidden','');
       if (notifBtn) notifBtn.setAttribute('aria-expanded','false');
+    }
+
+    (function(){
+      const udBtn = document.getElementById('userBtn');
+      const ud = document.getElementById('userDropdown');
+      if (udBtn && ud) {
+        udBtn.addEventListener('click', () => {
+          const open = !ud.hasAttribute('hidden');
+          ud.toggleAttribute('hidden', open);
+          udBtn.setAttribute('aria-expanded', String(!open));
+        });
+        document.addEventListener('click', (e)=>{
+          if (!ud.contains(e.target) && !udBtn.contains(e.target)) {
+            ud.setAttribute('hidden','');
+            udBtn.setAttribute('aria-expanded','false');
+          }
+        });
+      }
+    })();
+
+    // ====== Modal framework (modal-first & scoped) ======
+    (function(){
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+
+      function openModal(sel){ const el = document.querySelector(sel); if(el){ el.removeAttribute('hidden'); document.body.classList.add('modal-open'); } }
+      function closeModal(el){ el.setAttribute('hidden',''); document.body.classList.remove('modal-open'); }
+      document.querySelectorAll('[data-open-modal]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          openModal(btn.getAttribute('data-open-modal'));
+        });
+      });
+      document.querySelectorAll('[data-close-modal]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          closeModal(btn.closest('.modal'));
+        });
+      });
+      document.addEventListener('keydown', (e)=>{
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.modal:not([hidden])').forEach(m=>closeModal(m));
+        }
+      });
+
+      // Progressive Enhancement: AJAX submit (scoped), fallback POST normal
+      function ajaxify(form) {
+        form.addEventListener('submit', async (e)=>{
+          e.preventDefault();
+          const modal = form.closest('.modal');
+          const fd = new FormData(form);
+          try {
+            const resp = await fetch(form.action, {
+              method: 'POST',
+              headers: {'X-CSRF-TOKEN': csrf, 'Accept':'application/json'},
+              body: fd
+            });
+            if (resp.ok) {
+              const data = await resp.json().catch(()=>({}));
+              alert((data && data.message) ? data.message : 'Saved');
+              if (modal) closeModal(modal);
+              try { location.reload(); } catch(_){}
+            } else {
+              const data = await resp.json().catch(()=>({}));
+              const msg = (data && data.message) ? data.message : 'Failed';
+              alert(msg);
+            }
+          } catch(err) {
+            alert('Network error');
+          }
+        });
+      }
+      const fp = document.getElementById('formProfile');
+      if (fp) ajaxify(fp);
+      // pwModal pakai submit standar (non-AJAX). Kalau mau AJAX sekalian, tinggal panggil: ajaxify(document.querySelector('#pwModal form'));
+    })();
+
+    // ====== pwModal helpers ======
+    function openPwModal(){
+      const m=document.getElementById('pwModal');
+      m.removeAttribute('hidden'); m.setAttribute('aria-hidden','false');
+    }
+    function closePwModal(){
+      const m=document.getElementById('pwModal');
+      m.setAttribute('hidden',''); m.setAttribute('aria-hidden','true');
     }
   </script>
 </body>

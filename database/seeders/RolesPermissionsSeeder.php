@@ -10,11 +10,13 @@ class RolesPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Tambahkan permission yang benar-benar dipakai routing
         $perms = [
             // Users / RBAC
             'users.view','users.create','users.update','users.delete',
             'rbac.view','rbac.assign',
+
+            // Directory / Employees
+            'employees.view',
 
             // Recruitment
             'recruitment.view','recruitment.create','recruitment.update','recruitment.submit','recruitment.approve','recruitment.reject',
@@ -33,17 +35,16 @@ class RolesPermissionsSeeder extends Seeder
             Permission::firstOrCreate(['name' => $p, 'guard_name' => 'web']);
         }
 
-        // Roles
         $roles = ['Superadmin','SDM Unit','GM/VP Unit','Karyawan'];
         foreach ($roles as $r) {
             Role::firstOrCreate(['name' => $r, 'guard_name' => 'web']);
         }
 
-        // Assign defaults
         Role::findByName('Superadmin')->givePermissionTo(Permission::all());
 
         Role::findByName('SDM Unit')->givePermissionTo([
             'users.view',
+            'employees.view',
             'recruitment.view','recruitment.create','recruitment.update','recruitment.submit',
             'contract.view','contract.create','contract.update',
             'training.view',
@@ -51,13 +52,15 @@ class RolesPermissionsSeeder extends Seeder
         ]);
 
         Role::findByName('GM/VP Unit')->givePermissionTo([
+            'employees.view',
             'recruitment.view',
             'contract.view','contract.approve',
             'training.view',
         ]);
 
         Role::findByName('Karyawan')->givePermissionTo([
-            'training.view'
+            'employees.view',
+            'training.view',
         ]);
     }
 }

@@ -73,49 +73,58 @@
             Masukan Credentials anda untuk melanjutkan
           </p>
 
-          <form method="POST" action="{{ route('login') }}" class="space-y-5.5">
-            @csrf
-              <div class="flex flex-col gap-3">
-                <input type="email" name="email" placeholder="you@example.com"
-                      class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
+<form method="POST" action="{{ route('login.store') }}" class="space-y-5.5">
+  @csrf
+  <div class="flex flex-col gap-3">
+    <input
+      type="text"
+      name="login"
+      value="{{ old('login') }}"
+      placeholder="email@domain.com / EMP12345"
+      class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
+    @error('login')
+      <div class="text-red-600 text-xs">{{ $message }}</div>
+    @enderror
 
-                <input type="password" name="password" placeholder="********"
-                      class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
-              </div>
+    <input
+      type="password"
+      name="password"
+      placeholder="********"
+      class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
+    @error('password')
+      <div class="text-red-600 text-xs">{{ $message }}</div>
+    @enderror
+  </div>
 
-              <label class="flex items-start gap-2 text-xs text-[#445167]">
-                <input 
-                  type="checkbox" 
-                  id="termsCheckbox"
-                  class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand"
-                >
-                <span>
-                  Saya memahami ketentuan yang berlaku, 
-                  <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
-                    Baca Ketentuan Privasi Pegawai
-                  </a>
-                </span>
-              </label>
+  <label class="flex items-start gap-2 text-xs text-[#445167]">
+    <input
+      type="checkbox"
+      id="termsCheckbox"
+      class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
+    <span>
+      Saya memahami ketentuan yang berlaku,
+      <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+        Baca Ketentuan Privasi Pegawai
+      </a>
+    </span>
+  </label>
 
-              <div class="flex flex-col gap-2.5 mt-2">
-                <button 
-                  id="signInBtn"
-                  type="submit"
-                  class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer"
-                  
-                >
-                  Sign in
-                </button>
+  <div class="flex flex-col gap-2.5 mt-2">
+    <button
+      id="signInBtn"
+      type="submit"
+      class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer">
+      Sign in
+    </button>
 
-                <button 
-                  type="button"
-                  class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110 cursor-pointer"
-                >
-                  Forgot Password
-                </button>
-              </div>
-            </div>
-          </form>
+    <button
+      type="button"
+      class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110 cursor-pointer">
+      Forgot Password
+    </button>
+  </div>
+</form>
+
         </div>
       </div>
     </section>
