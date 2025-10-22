@@ -5,19 +5,24 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-  public function up(): void {
-    Schema::table('recruitment_requests', function (Blueprint $t) {
-      $t->boolean('is_published')->default(false)->index();
-      $t->string('slug')->nullable()->unique();
-      $t->timestamp('published_at')->nullable();
-      $t->string('work_location')->nullable();
-      $t->string('employment_type')->nullable(); // full-time, contract, intern, etc
-      $t->json('requirements')->nullable();
-    });
-  }
-  public function down(): void {
-    Schema::table('recruitment_requests', function (Blueprint $t) {
-      $t->dropColumn(['is_published','slug','published_at','work_location','employment_type','requirements']);
-    });
-  }
+    public function up(): void {
+        Schema::table('recruitment_requests', function (Blueprint $table) {
+            if (!Schema::hasColumn('recruitment_requests', 'is_published')) {
+                $table->boolean('is_published')->default(false)->after('status');
+            }
+            if (!Schema::hasColumn('recruitment_requests', 'published_at')) {
+                $table->timestamp('published_at')->nullable()->after('is_published');
+            }
+        });
+    }
+    public function down(): void {
+        Schema::table('recruitment_requests', function (Blueprint $table) {
+            if (Schema::hasColumn('recruitment_requests', 'published_at')) {
+                $table->dropColumn('published_at');
+            }
+            if (Schema::hasColumn('recruitment_requests', 'is_published')) {
+                $table->dropColumn('is_published');
+            }
+        });
+    }
 };

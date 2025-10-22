@@ -7,22 +7,23 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void {
         Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users','employee_id')) {
-                $table->string('employee_id')->nullable()->unique()->after('email');
+            if (!Schema::hasColumn('users', 'person_id')) {
+                $table->ulid('person_id')->nullable()->after('id')->index();
             }
-            if (!Schema::hasColumn('users','unit_id')) {
-                $table->unsignedBigInteger('unit_id')->nullable()->after('employee_id')->index();
-            }
-            if (!Schema::hasColumn('users','job_title')) {
-                $table->string('job_title')->nullable()->after('unit_id');
+            if (!Schema::hasColumn('users', 'employee_id')) {
+                $table->string('employee_id', 64)->nullable()->after('person_id')->index();
             }
         });
     }
+
     public function down(): void {
         Schema::table('users', function (Blueprint $table) {
-            if (Schema::hasColumn('users','job_title')) $table->dropColumn('job_title');
-            if (Schema::hasColumn('users','unit_id')) $table->dropColumn('unit_id');
-            if (Schema::hasColumn('users','employee_id')) $table->dropColumn('employee_id');
+            if (Schema::hasColumn('users', 'employee_id')) {
+                $table->dropColumn('employee_id');
+            }
+            if (Schema::hasColumn('users', 'person_id')) {
+                $table->dropColumn('person_id');
+            }
         });
     }
 };
