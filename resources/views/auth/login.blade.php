@@ -16,15 +16,15 @@
       </div>
 
       <!-- Ornaments -->
-       
       <img src="{{ Vite::asset('resources/images/blue-circle.png') }}"
            class="pointer-events-none absolute right-[30px] bottom-[0px] w-[180px] opacity-90 select-none rotate-180" alt="">
       <img src="{{ Vite::asset('resources/images/blue-circle-conjoined.png') }}"
-           class="pointer-events-none absolute left-[25px] bottom-[-5px] w-[150px] z-50 opacity-95 select-none mix-blend-mode: luminosity;" alt="">
+           class="pointer-events-none absolute left-[25px] bottom-[-5px] w-[150px] z-50 opacity-95 select-none" alt="">
       <img src="{{ Vite::asset('resources/images/Group-209.png') }}"
            class="pointer-events-none absolute right-[-20px] top-[80px] w-[194px] opacity-90 select-none" alt="">
       <img src="{{ Vite::asset('resources/images/Vector.png') }}"
            class="pointer-events-none fixed bottom-0 left-0 w-screen select-none" alt="wave">
+
       <!-- Title + address + people -->
       <div class="relative flex h-full min-h-dvh px-[64px] pt-[60px] pb-[36px] text-white">
         <div class="z-[2] my-auto max-w-[760px]">
@@ -45,7 +45,7 @@
         </div>
 
         <img src="{{ Vite::asset('resources/images/image-removebg-preview 1.png') }}"
-             class="absolute bottom-[54px] left-[50%] w-[600px] h-[500px] -translate-x-[60%] flex-shrink-0 drop-shadow-2xl select-none z-[-1] "
+             class="absolute bottom-[54px] left-[50%] w-[600px] h-[500px] -translate-x-[60%] flex-shrink-0 drop-shadow-2xl select-none z-[-1]"
              style="aspect-ratio: 600 / 500;" alt="PTSI Team">
       </div>
     </section>
@@ -53,8 +53,8 @@
     {{-- ===== RIGHT: LOGIN CARD (compact) ===== --}}
     <section class="form-col relative flex items-center justify-center">
       <!-- dots kanan-bawah -->
-       <img src="{{Vite::asset('resources/images/Ornament.png') }}"
-        class="pointer-events-none absolute right-[0px] bottom-[0px] hidden h-[300px] w-[300px] z-[-1] lg:block">
+      <img src="{{ Vite::asset('resources/images/Ornament.png') }}"
+           class="pointer-events-none absolute right-[0px] bottom-[0px] hidden h-[300px] w-[300px] z-[-1] lg:block" alt="">
       <img src="{{ Vite::asset('resources/images/SI-Logo.png') }}"
            class="pointer-events-none absolute right-[0px] top-[0px] w-[300px] opacity-[1.0] select-none " alt="">
 
@@ -63,9 +63,9 @@
           <div class="panel-halo pointer-events-none absolute -top-7 right-5 h-16 w-32 rounded-[16px]"></div>
 
           <!-- logo kecil -->
-<div class="mb-2 flex justify-center">
-  <img src="{{ Vite::asset('resources/images/sapahc.png') }}" class="h-9 w-[150px] h-[150px] flex-shrink-0 aspect-[1/1]" alt="SAPA HC">
-</div>
+          <div class="mb-2 flex justify-center">
+            <img src="{{ Vite::asset('resources/images/sapahc.png') }}" class="w-[150px] h-[150px] flex-shrink-0 aspect-[1/1]" alt="SAPA HC">
+          </div>
           <h2 class="mb-1 text-center text-[17px] font-extrabold tracking-[.02em] text-[#273142] font-montserrat">
             SELAMAT DATANG
           </h2>
@@ -73,57 +73,66 @@
             Masukan Credentials anda untuk melanjutkan
           </p>
 
-<form method="POST" action="{{ route('login.store') }}" class="space-y-5.5">
-  @csrf
-  <div class="flex flex-col gap-3">
-    <input
-      type="text"
-      name="login"
-      value="{{ old('login') }}"
-      placeholder="email@domain.com / EMP12345"
-      class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
-    @error('login')
-      <div class="text-red-600 text-xs">{{ $message }}</div>
-    @enderror
+          <form method="POST" action="{{ route('login.store') }}" class="space-y-5.5">
+            @csrf
+            <div class="flex flex-col gap-3">
+              <input
+                type="text"
+                name="login"
+                value="{{ old('login') }}"
+                placeholder="email@domain.com / EMP12345"
+                autocomplete="username"
+                class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
+              @error('login')
+                <div class="text-red-600 text-xs">{{ $message }}</div>
+              @enderror
 
-    <input
-      type="password"
-      name="password"
-      placeholder="********"
-      class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
-    @error('password')
-      <div class="text-red-600 text-xs">{{ $message }}</div>
-    @enderror
-  </div>
+              <input
+                type="password"
+                name="password"
+                placeholder="********"
+                autocomplete="current-password"
+                class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
+              @error('password')
+                <div class="text-red-600 text-xs">{{ $message }}</div>
+              @enderror
+            </div>
 
-  <label class="flex items-start gap-2 text-xs text-[#445167]">
-    <input
-      type="checkbox"
-      id="termsCheckbox"
-      class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
-    <span>
-      Saya memahami ketentuan yang berlaku,
-      <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
-        Baca Ketentuan Privasi Pegawai
-      </a>
-    </span>
-  </label>
+            <div class="flex items-center justify-between text-xs">
+              <label class="flex items-center gap-2 text-[#445167]">
+                <input type="checkbox" name="remember" class="rounded border-[#cdd6e3] text-brand focus:ring-brand">
+                <span>Remember me</span>
+              </label>
 
-  <div class="flex flex-col gap-2.5 mt-2">
-    <button
-      id="signInBtn"
-      type="submit"
-      class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer">
-      Sign in
-    </button>
+              <label class="flex items-start gap-2 text-[#445167]">
+                <input
+                  type="checkbox"
+                  id="termsCheckbox"
+                  class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
+                <span>
+                  Saya memahami ketentuan yang berlaku,
+                  <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+                    Baca Ketentuan Privasi Pegawai
+                  </a>
+                </span>
+              </label>
+            </div>
 
-    <button
-      type="button"
-      class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110 cursor-pointer">
-      Forgot Password
-    </button>
-  </div>
-</form>
+            <div class="flex flex-col gap-2.5 mt-2">
+              <button
+                id="signInBtn"
+                type="submit"
+                class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition hover:brightness-110 cursor-pointer">
+                Sign in
+              </button>
+
+              <button
+                type="button"
+                class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110 cursor-pointer">
+                Forgot Password
+              </button>
+            </div>
+          </form>
 
         </div>
       </div>
@@ -137,16 +146,13 @@
     </section>
   </div>
 </div>
+
 <script>
   const checkbox = document.getElementById('termsCheckbox');
   const signInBtn = document.getElementById('signInBtn');
 
   checkbox.addEventListener('change', () => {
-    if (checkbox.checked) {
-      signInBtn.style.backgroundColor = '#00A29A';
-    } else {
-      signInBtn.style.backgroundColor = '#98A4B8';
-    }
+    signInBtn.style.backgroundColor = checkbox.checked ? '#00A29A' : '#98A4B8';
   });
 </script>
 @endsection

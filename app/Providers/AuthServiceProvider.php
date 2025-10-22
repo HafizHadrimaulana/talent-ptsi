@@ -13,7 +13,7 @@ class AuthServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Superadmin bypass semua gate
+        
         Gate::before(function ($user, $ability) {
             return $user->hasRole('Superadmin') ? true : null;
         });

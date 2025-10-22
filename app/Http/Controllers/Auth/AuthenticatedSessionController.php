@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -15,30 +14,34 @@ class AuthenticatedSessionController extends Controller
         return view('auth.login');
     }
 
-public function store(Request $request)
-{
-    $request->validate([
-        'email' => ['required','string'], // bisa email atau employee_id
-        'password' => ['required','string'],
-    ]);
+    public function store(Request $request)
+    {
+        // Validasi: form pakai "login" (email atau employee_id) + password
+        $request->validate([
+            'login'    => ['required','string'],
+            'password' => ['required','string'],
+        ]);
 
-    $login = $request->input('email');
-    $password = $request->input('password');
+        $login    = $request->input('login');
+        $password = $request->input('password');
 
-    // deteksi input: jika format email => pakai email, else coba employee_id
-    $credentials = filter_var($login, FILTER_VALIDATE_EMAIL)
-        ? ['email' => $login, 'password' => $password]
-        : ['employee_id' => $login, 'password' => $password];
+        // Deteksi: kalau valid email → pakai kolom "email", selain itu → "employee_id"
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'employee_id';
 
-    if (Auth::attempt($credentials, $request->boolean('remember'))) {
-        $request->session()->regenerate();
-        return redirect()->intended(route('dashboard'));
+        $credentials = [
+            $field     => $login,
+            'password' => $password,
+        ];
+
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $request->session()->regenerate();
+            return redirect()->intended(route('dashboard'));
+        }
+
+        throw ValidationException::withMessages([
+            'login' => __('These credentials do not match our records.'),
+        ]);
     }
-
-    throw ValidationException::withMessages([
-        'email' => __('These credentials do not match our records.'),
-    ]);
-}
 
     public function destroy(Request $request)
     {
