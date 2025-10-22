@@ -29,7 +29,7 @@
       transition: color 0.3s ease;
     }
     .nav-links {
-      margin-right:5rem;
+      margin-right:8rem;
     }
 
     nav a:hover,
@@ -89,7 +89,7 @@
         alt="Test Company Logo" 
         class="h-12 w-auto object-contain"
       >
-      <span class="text-xl font-bold text-white">Test Logo</span>
+      <span class="text-xl font-bold text-white">Logo Idsurvey</span>
     </a>
     <div class = "nav-links">
     <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-white">
