@@ -11,7 +11,7 @@ class PrincipalApprovalController extends Controller
     public function index()
     {
         $list = RecruitmentRequest::query()
-            ->forViewer(auth()->user())   // scope di model → batasi per role/unit/status
+            ->forViewer(auth()->user())  
             ->latest()
             ->paginate(12);
 
@@ -71,7 +71,7 @@ class PrincipalApprovalController extends Controller
             'approved_at' => now(),
         ]);
 
-        // close the latest pending approval record
+   
         $req->approvals()->where('status', 'pending')->latest()->first()?->update([
             'status'     => 'approved',
             'user_id'    => auth()->id(),
@@ -92,7 +92,7 @@ class PrincipalApprovalController extends Controller
 
         $req->update(['status' => 'rejected']);
 
-        // close the latest pending approval record
+
         $req->approvals()->where('status', 'pending')->latest()->first()?->update([
             'status'     => 'rejected',
             'user_id'    => auth()->id(),

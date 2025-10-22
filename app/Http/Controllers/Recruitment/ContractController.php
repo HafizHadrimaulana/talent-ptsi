@@ -18,7 +18,7 @@ class ContractController extends Controller
             ->latest()
             ->paginate(12);
 
-        // For modal "Draft Contract", show shortlisted/selected candidates
+     
         $applicants = Applicant::query()
             ->when($uid, fn($q, $u) => $q->where('unit_id', $u))
             ->whereIn('status', ['shortlisted', 'selected'])
@@ -26,11 +26,11 @@ class ContractController extends Controller
             ->limit(50)
             ->get(['id', 'full_name', 'position_applied']);
 
-        // ✅ view path sudah english
+        
         return view('recruitment.contracts.index', compact('list', 'applicants'));
     }
 
-    // CREATE via modal (same page), so only store()
+  
     public function store(Request $r)
     {
         $data = $r->validate([

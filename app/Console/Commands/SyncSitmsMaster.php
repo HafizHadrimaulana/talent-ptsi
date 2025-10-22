@@ -1,5 +1,5 @@
 <?php
-// app/Console/Commands/SyncSitmsMaster.php
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;

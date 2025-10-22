@@ -21,7 +21,7 @@ class User extends Authenticatable
 
     public function unit()
     {
-        // jika ada model Unit, relasikan; sementara nullable
+
         return $this->belongsTo(\App\Models\Unit::class);
     }
 

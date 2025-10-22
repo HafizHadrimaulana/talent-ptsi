@@ -31,19 +31,19 @@ class Contract extends Model
         return ContractFactory::new();
     }
 
-    /** Approvals (polymorphic) */
+
     public function approvals(): MorphMany
     {
         return $this->morphMany(Approval::class, 'approvable');
     }
 
-    /** Signatures */
+   
     public function signatures(): HasMany
     {
         return $this->hasMany(ContractSignature::class);
     }
 
-    /** Scope viewer */
+
     public function scopeForViewer($q, \App\Models\User $user)
     {
         if ($user->hasRole('Superadmin')) return $q;

@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 class PublishingController extends Controller
 {
-  // show simple form (kalau perlu modal di SPA, endpoint JSON pun siap)
+ 
   public function edit(RecruitmentRequest $req)
   {
     $this->authorize('recruitment.update');

@@ -10,7 +10,7 @@ class CareersController extends Controller
 {
     public function index(Request $r)
     {
-        // List published jobs
+        
         $jobs = RecruitmentRequest::query()
             ->where('is_published', true)
             ->latest('published_at')
@@ -25,7 +25,7 @@ class CareersController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        // If ?job=slug present, fetch that job to open modal
+ 
         $activeJob = null;
         if ($slug = $r->string('job')->toString()) {
             $activeJob = RecruitmentRequest::where('is_published', true)->where('slug',$slug)->first();

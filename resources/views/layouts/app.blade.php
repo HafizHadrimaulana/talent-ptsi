@@ -4,33 +4,41 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>@yield('title','Talent PTSI')</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  @vite([
-    'resources/css/app.css',
-    'resources/css/app-layout.css',
-    'resources/css/app-ui.css',
-    'resources/js/app-layout.js',
-    'resources/js/app.js'
-  ])
-@php use Illuminate\Support\Facades\Route as Rt; @endphp
 
-<body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
+  <!-- Seed theme dari localStorage (hindari FOUC; set data-theme + class dark) -->
   <script>
     (function(){
       try{
-        var saved = localStorage.getItem('sidebar-collapsed');
-        var shouldCollapse = (saved === null) ? true : (saved === '1');
-        if (shouldCollapse && window.matchMedia('(min-width:1025px)').matches) {
-          document.body.classList.add('sidebar-collapsed');
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-theme', t);
+          document.documentElement.classList.toggle('dark', t === 'dark');
         }
       }catch(_){}
     })();
   </script>
 
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+  <!-- Styles & Scripts via Vite -->
+  @vite([
+    'resources/css/app.css',
+    'resources/css/app-layout.css',
+    'resources/css/app-ui.css',
+    'resources/js/app-layout.js', /* all behavior is here */
+    'resources/js/app.js'         /* (opsional, jika ada file lain) */
+  ])
+  @php use Illuminate\Support\Facades\Route as Rt; @endphp
+
+  <style>.dm-fab{z-index:9999!important}</style>
+</head>
+
+<body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
   <div class="overlay" id="overlay" hidden></div>
 
-  <!-- Sidebar -->
+  <!-- ===== Sidebar ===== -->
   <aside class="sidebar glass" id="sidebar" aria-label="Primary navigation" data-scroll-area>
     <div class="brand">
       <a href="{{ route('dashboard') }}" class="brand-link" aria-label="Dashboard">
@@ -41,25 +49,16 @@
     @php
       /** @var \App\Models\User|null $user */
       $user = auth()->user();
-
       $roleNames = collect($user?->getRoleNames() ?? [])->map(fn($r)=> strtolower(trim($r)));
       $isSuper = $roleNames->contains(fn($r)=> in_array($r, ['superadmin','super-admin','admin','administrator']));
-
-      // employee info
       $emp = $user?->employee ?? null;
       $jobTitle = $emp?->job_title ?: '-';
       $unitName = $emp?->unit_name ?: optional($emp?->unit)->name ?: '-';
-
-      // --- SECTION VISIBILITY ---
       $showMain = true;
       $showRecruitment = $isSuper || $user?->hasAnyPermission(['recruitment.view','contract.view']);
       $showTraining = $isSuper || $user?->hasAnyPermission(['training.view']);
       $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view'));
-
-      // Divider logic
       $printedAnySection = false;
-
-      // Open states
       $recOpen = str_starts_with(request()->route()->getName() ?? '', 'recruitment.');
       $trOpen  = str_starts_with(request()->route()->getName() ?? '', 'training.');
       $acOpen  = request()->routeIs('admin.users.*')
@@ -68,7 +67,6 @@
                 || request()->routeIs('admin.employees.*');
     @endphp
 
-    <!-- MAIN -->
     @if($showMain)
     <nav class="nav-section">
       <div class="nav-title">Main</div>
@@ -81,18 +79,15 @@
     @php $printedAnySection = true; @endphp
     @endif
 
-    {{-- Divider before Recruitment --}}
     @if($printedAnySection && $showRecruitment)
       <div class="nav-divider" aria-hidden="true"></div>
     @endif
 
-    <!-- RECRUITMENT -->
     @if($showRecruitment)
     <nav class="nav-section">
       <div class="nav-title">Recruitment</div>
       <div class="nav">
-        <button type="button"
-                class="nav-item js-accordion {{ $recOpen ? 'open' : '' }}"
+        <button type="button" class="nav-item js-accordion {{ $recOpen ? 'open' : '' }}"
                 data-accordion="nav-recruitment"
                 aria-expanded="{{ $recOpen ? 'true' : 'false' }}">
           <span class="icon">👥</span>
@@ -100,10 +95,7 @@
           <span class="chev">▾</span>
         </button>
 
-        <div id="nav-recruitment"
-             class="nav-children {{ $recOpen ? 'open' : '' }}"
-             data-accordion-panel="nav-recruitment">
-
+        <div id="nav-recruitment" class="nav-children {{ $recOpen ? 'open' : '' }}" data-accordion-panel="nav-recruitment">
           @if($isSuper || $user?->can('recruitment.view'))
           <a class="nav-item nav-child {{ request()->routeIs('recruitment.monitoring')?'active':'' }}"
              href="{{ Rt::has('recruitment.monitoring') ? route('recruitment.monitoring') : '#' }}">
@@ -124,25 +116,21 @@
             <span class="icon">📝</span><span class="label">Contracts</span>
           </a>
           @endif
-
         </div>
       </div>
     </nav>
     @php $printedAnySection = true; @endphp
     @endif
 
-    {{-- Divider before Training --}}
     @if($printedAnySection && $showTraining)
       <div class="nav-divider" aria-hidden="true"></div>
     @endif
 
-    <!-- TRAINING -->
     @if($showTraining)
     <nav class="nav-section">
       <div class="nav-title">Training</div>
       <div class="nav">
-        <button type="button"
-                class="nav-item js-accordion {{ $trOpen ? 'open' : '' }}"
+        <button type="button" class="nav-item js-accordion {{ $trOpen ? 'open' : '' }}"
                 data-accordion="nav-training"
                 aria-expanded="{{ $trOpen ? 'true' : 'false' }}">
           <span class="icon">🎓</span>
@@ -150,10 +138,7 @@
           <span class="chev">▾</span>
         </button>
 
-        <div id="nav-training"
-             class="nav-children {{ $trOpen ? 'open' : '' }}"
-             data-accordion-panel="nav-training">
-
+        <div id="nav-training" class="nav-children {{ $trOpen ? 'open' : '' }}" data-accordion-panel="nav-training">
           @if($isSuper || $user?->can('training.view'))
           <a class="nav-item nav-child {{ request()->routeIs('training.monitoring')?'active':'' }}"
              href="{{ Rt::has('training.monitoring') ? route('training.monitoring') : '#' }}">
@@ -167,26 +152,22 @@
             <span class="icon">🗂️</span><span class="label">Principal Approval</span>
           </a>
           @endif
-
         </div>
       </div>
     </nav>
     @php $printedAnySection = true; @endphp
     @endif
 
-    {{-- Divider before Settings --}}
     @if($printedAnySection && $showSettings)
       <div class="nav-divider" aria-hidden="true"></div>
     @endif
 
-    <!-- SETTINGS -->
     @if($showSettings)
     <nav class="nav-section">
       <div class="nav-title">Settings</div>
       <div class="nav">
         @canany(['users.view','rbac.view','employees.view'])
-          <button type="button"
-                  class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}"
+          <button type="button" class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}"
                   data-accordion="nav-access"
                   aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
             <span class="icon">🧭</span>
@@ -194,9 +175,7 @@
             <span class="chev">▾</span>
           </button>
 
-          <div id="nav-access"
-               class="nav-children {{ $acOpen ? 'open' : '' }}"
-               data-accordion-panel="nav-access">
+          <div id="nav-access" class="nav-children {{ $acOpen ? 'open' : '' }}" data-accordion-panel="nav-access">
             @can('users.view')
             <a class="nav-item nav-child {{ request()->routeIs('admin.users.*') ? 'active' : '' }}"
                href="{{ route('admin.users.index') }}">
@@ -226,28 +205,10 @@
       </div>
     </nav>
     @endif
-
-    {{-- Divider before Employees --}}
-    @if($printedAnySection)
-      <div class="nav-divider" aria-hidden="true"></div>
-    @endif
-
-    <nav class="nav-section">
-      <div class="nav-title">Employees</div>
-      <div class="nav">
-        @can('employees.view')
-        <a class="nav-item {{ request()->routeIs('admin.employees.*')?'active':'' }}"
-           href="{{ route('admin.employees.index') }}">
-          <span class="icon">🧑‍💼</span><span class="label">Employee List</span>
-        </a>
-        @endcan
-      </div>
-    </nav>
-
   </aside>
 
-  <!-- Topbar -->
-  <header class="topbar glass">
+  <!-- ===== Topbar ===== -->
+  <header class="topbar glass floating" id="topbar">
     <button id="hamburgerBtn" class="hamburger" aria-label="Toggle sidebar" aria-expanded="false">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </button>
@@ -263,26 +224,24 @@
           <i class="fa-solid fa-bell bell-icon"></i>
         </button>
         <div id="notifDropdown" class="dropdown" hidden>
-          <div class="dropdown-header">Notifications 
-            <button class="close-btn" type="button" onclick="closeNotifDropdown()">✖</button>
+          <div class="dropdown-header">Notifications
+            <button class="close-btn" type="button" data-close="#notifDropdown">✖</button>
           </div>
           <div class="muted text-sm">No notifications yet.</div>
         </div>
       </div>
 
       <div class="dropdown-wrap user-area">
-        @php
-          $roleBadge = $user?->getRoleNames()->first() ?? '-';
-        @endphp
+        @php $roleBadge = $user?->getRoleNames()->first() ?? '-'; @endphp
         <button id="userBtn" class="user-chip" type="button" aria-haspopup="true" aria-expanded="false" title="User menu">
           <span class="avatar">PT</span>
           <span class="user-meta">
-            <span class="user-name text-ellipsis">{{ auth()->user()->name ?? 'Guest' }}</span>
+            <span class="user-name text-ellipsis">{{ $user->name ?? 'Guest' }}</span>
             <span class="user-role muted">
-              {{ auth()->user()?->getRoleNames()->first() ?? '-' }}
+              {{ $roleBadge }}
               @php
-                $jab = auth()->user()?->job_title ?? auth()->user()?->employee?->job_title ?? auth()->user()?->employee?->position_name;
-                $unit= auth()->user()?->employee?->unit_name ?? optional(auth()->user()->unit)->name;
+                $jab = $user?->job_title ?? $user?->employee?->job_title ?? $user?->employee?->position_name;
+                $unit= $user?->employee?->unit_name ?? optional($user?->unit)->name;
               @endphp
               @if($jab) • {{ $jab }} @endif
               @if($unit) • {{ $unit }} @endif
@@ -307,19 +266,16 @@
           </div>
 
           <div class="menu-list">
-            <button id="changePwBtn" type="button" class="menu-item" onclick="openPwModal()">
-              <span>Change Password</span>
-            </button>
+            <button id="changePwBtn" type="button" class="menu-item" onclick="openPwModal()"><span>Change Password</span></button>
           </div>
 
           <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
             @csrf
             <div id="poweroff" class="poweroff" data-threshold="0.6" role="slider"
-                 aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100"
-                 aria-valuenow="0" tabindex="0">
+                 aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
               <span class="power-icon">⏻</span>
               <span class="power-text">Swipe To Sign out</span>
-              <div class="power-knob"></div>
+              <div class="power-knob" id="powerKnob"></div>
             </div>
             <noscript><button class="btn btn-outline w-full mt-2">Logout</button></noscript>
           </form>
@@ -328,7 +284,8 @@
     </div>
   </header>
 
-  <main class="main">
+  <!-- ===== Main ===== -->
+  <main class="main" id="main">
     @if(session('ok'))
       <div class="alert alert-success">{{ session('ok') }}</div>
     @endif
@@ -338,56 +295,19 @@
   <!-- FAB -->
   <button id="dmFab" class="dm-fab" type="button" title="Toggle theme" aria-pressed="false">🌞</button>
 
-  <!-- ==================== MODALS (ONE PAGE) ==================== -->
-
-  <!-- Profile Modal -->
-  <div id="modalProfile" class="modal glass" hidden aria-modal="true" role="dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Account Settings</h3>
-        <button class="close" type="button" data-close-modal>✖</button>
-      </div>
-      <form id="formProfile" method="POST" action="{{ route('account.profile.update') }}" class="modal-body">
-        @csrf
-        <div class="grid grid-cols-1 gap-3">
-          <label class="form-field">
-            <span class="label">Name</span>
-            <input name="name" class="input" value="{{ $user->name }}" required>
-            @error('name')<div class="error">{{ $message }}</div>@enderror
-          </label>
-
-          <label class="form-field">
-            <span class="label">Phone</span>
-            <input name="phone" class="input" value="{{ $user->phone }}">
-            @error('phone')<div class="error">{{ $message }}</div>@enderror
-          </label>
-
-          <div class="muted text-sm">
-            *Perubahan hanya untuk proyek ini (tidak sinkron ke sistem lain).
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn" data-close-modal>Cancel</button>
-          <button class="btn btn-brand">Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- pwModal: Change Password (ONE PAGE) -->
+  <!-- ===== Password Modal ===== -->
   <div id="pwModal" class="modal" hidden aria-hidden="true">
-    <div class="modal-backdrop" onclick="closePwModal()"></div>
+    <div class="modal-backdrop" data-close="#pwModal"></div>
     <div class="modal-panel max-w-md">
       <div class="modal-header">
         <h3 class="text-lg font-semibold">Ganti Password</h3>
-        <button class="icon-btn" onclick="closePwModal()">✖</button>
+        <button class="icon-btn" data-close="#pwModal">✖</button>
       </div>
       <form method="POST" action="{{ route('account.password.update') }}" class="modal-body space-y-4">
         @csrf
         <div>
           <label class="label">Password Saat Ini</label>
           <input name="current_password" type="password" class="input" required>
-          @error('current_password')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="label">Password Baru</label>
@@ -397,105 +317,12 @@
           <label class="label">Konfirmasi Password Baru</label>
           <input name="password_confirmation" type="password" class="input" required minlength="8">
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" onclick="closePwModal()">Batal</button>
-          <button class="btn btn-primary">Simpan</button>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close="#pwModal">Batal</button>
+          <button class="btn btn-brand">Simpan</button>
         </div>
       </form>
     </div>
   </div>
-
-  <script>
-    // ====== Dropdowns ======
-    function closeNotifDropdown() {
-      const notifDropdown = document.getElementById('notifDropdown');
-      const notifBtn = document.getElementById('notifBtn');
-      if (!notifDropdown) return;
-      notifDropdown.setAttribute('hidden','');
-      if (notifBtn) notifBtn.setAttribute('aria-expanded','false');
-    }
-
-    (function(){
-      const udBtn = document.getElementById('userBtn');
-      const ud = document.getElementById('userDropdown');
-      if (udBtn && ud) {
-        udBtn.addEventListener('click', () => {
-          const open = !ud.hasAttribute('hidden');
-          ud.toggleAttribute('hidden', open);
-          udBtn.setAttribute('aria-expanded', String(!open));
-        });
-        document.addEventListener('click', (e)=>{
-          if (!ud.contains(e.target) && !udBtn.contains(e.target)) {
-            ud.setAttribute('hidden','');
-            udBtn.setAttribute('aria-expanded','false');
-          }
-        });
-      }
-    })();
-
-    // ====== Modal framework (modal-first & scoped) ======
-    (function(){
-      const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
-
-      function openModal(sel){ const el = document.querySelector(sel); if(el){ el.removeAttribute('hidden'); document.body.classList.add('modal-open'); } }
-      function closeModal(el){ el.setAttribute('hidden',''); document.body.classList.remove('modal-open'); }
-      document.querySelectorAll('[data-open-modal]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          openModal(btn.getAttribute('data-open-modal'));
-        });
-      });
-      document.querySelectorAll('[data-close-modal]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          closeModal(btn.closest('.modal'));
-        });
-      });
-      document.addEventListener('keydown', (e)=>{
-        if (e.key === 'Escape') {
-          document.querySelectorAll('.modal:not([hidden])').forEach(m=>closeModal(m));
-        }
-      });
-
-      // Progressive Enhancement: AJAX submit (scoped), fallback POST normal
-      function ajaxify(form) {
-        form.addEventListener('submit', async (e)=>{
-          e.preventDefault();
-          const modal = form.closest('.modal');
-          const fd = new FormData(form);
-          try {
-            const resp = await fetch(form.action, {
-              method: 'POST',
-              headers: {'X-CSRF-TOKEN': csrf, 'Accept':'application/json'},
-              body: fd
-            });
-            if (resp.ok) {
-              const data = await resp.json().catch(()=>({}));
-              alert((data && data.message) ? data.message : 'Saved');
-              if (modal) closeModal(modal);
-              try { location.reload(); } catch(_){}
-            } else {
-              const data = await resp.json().catch(()=>({}));
-              const msg = (data && data.message) ? data.message : 'Failed';
-              alert(msg);
-            }
-          } catch(err) {
-            alert('Network error');
-          }
-        });
-      }
-      const fp = document.getElementById('formProfile');
-      if (fp) ajaxify(fp);
-      // pwModal pakai submit standar (non-AJAX). Kalau mau AJAX sekalian, tinggal panggil: ajaxify(document.querySelector('#pwModal form'));
-    })();
-
-    // ====== pwModal helpers ======
-    function openPwModal(){
-      const m=document.getElementById('pwModal');
-      m.removeAttribute('hidden'); m.setAttribute('aria-hidden','false');
-    }
-    function closePwModal(){
-      const m=document.getElementById('pwModal');
-      m.setAttribute('hidden',''); m.setAttribute('aria-hidden','true');
-    }
-  </script>
 </body>
 </html>

@@ -1,37 +1,17 @@
-/* ===== Vendor & Utilities Only =====
-   - Biarkan file ini minimal agar gaya layout tidak bentrok.
-   - Kalau BUTUH Bootstrap untuk halaman tertentu, aktifkan baris import di bawah.
-*/
-
-/* (Opsional) Bootstrap — MATIKAN dulu untuk hindari konflik .nav/.card/.table */
-/* @import "bootstrap/dist/css/bootstrap.min.css"; */
-
-/* Tailwind v4 (utilities-only) */
 @import "tailwindcss";
 
-
-
-
-/* ============================
-   Dark mode overrides
-   ============================ */
 html[data-theme="dark"] {
   --color-text: oklch(92% 0.01 250);
   --color-text-soft: oklch(78% 0.01 250);
-
   --surface-0: oklch(18% 0.02 250);
   --surface-1: oklch(14% 0.02 250);
   --surface-2: oklch(22% 0.02 250);
-
   --glass-bg: color-mix(in oklch, var(--surface-1) 55%, transparent);
   --glass-stroke: color-mix(in oklch, var(--surface-2) 45%, transparent);
   --glass-shadow: 0 12px 36px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.05) inset;
   --tint: color-mix(in oklch, var(--color-brand) 18%, transparent);
 }
 
-/* ============================
-   Base & a11y
-   ============================ */
 :root { color-scheme: light dark; }
 html, body { height: 100%; }
 body {
@@ -45,16 +25,12 @@ body {
 a { text-decoration: none; transition: color var(--fast) var(--easing), opacity var(--fast) var(--easing); }
 a:hover { color: var(--color-brand); }
 
-/* Focus ring (soft iOS) */
 :where(a,button,[tabindex]):focus-visible {
   outline: 2px solid transparent;
   box-shadow: 0 0 0 .22rem color-mix(in oklch, var(--color-brand) 28%, transparent);
   border-radius: .6rem;
 }
 
-/* ============================
-   Liquid Glass (iOS)
-   ============================ */
 .glass {
   background: linear-gradient(0deg, var(--tint), var(--tint)), var(--glass-bg);
   border: 1px solid var(--glass-stroke);
@@ -87,7 +63,6 @@ a:hover { color: var(--color-brand); }
   -webkit-backdrop-filter: saturate(160%) blur(var(--glass-blur));
 }
 
-/* Fallback when no backdrop-filter support */
 @supports not ((backdrop-filter: blur(10px))) {
   .glass, .card-glass, .navbar-glass, .modal-glass .modal-content {
     background: var(--surface-1);
@@ -95,35 +70,25 @@ a:hover { color: var(--color-brand); }
   }
 }
 
-/* ============================
-   Motion & Interactions
-   ============================ */
 .hover-lift {
   transition: transform var(--norm) var(--easing), box-shadow var(--norm) var(--easing), filter var(--norm) var(--easing);
   will-change: transform;
 }
 .hover-lift:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(0,0,0,.12); filter: saturate(1.03); }
-
 .hover-bright { transition: filter var(--fast) var(--easing); }
 .hover-bright:hover { filter: brightness(1.06) saturate(1.05); }
-
 .tap-press:active { transform: translateY(1px) scale(.998); }
 
-/* Gentle entrance */
 @keyframes float-in {
   from { transform: translateY(8px); opacity: 0; filter: blur(4px); }
   to   { transform: translateY(0);   opacity: 1; filter: blur(0); }
 }
 .float-in { animation: float-in .38s var(--easing) both; }
 
-/* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* ============================
-   Buttons (Bootstrap-compatible)
-   ============================ */
 .btn-brand {
   --bs-btn-color: #fff;
   --bs-btn-bg: var(--color-brand);
@@ -133,7 +98,6 @@ a:hover { color: var(--color-brand); }
   --bs-btn-active-bg: var(--color-brand-700);
   --bs-btn-active-border-color: var(--color-brand-700);
   --bs-btn-focus-shadow-rgb: 68,120,255;
-
   border-radius: var(--radius-md);
   box-shadow: 0 8px 18px rgba(30, 85, 250, .18);
   transition: transform var(--fast) var(--easing), box-shadow var(--fast) var(--easing);
@@ -151,7 +115,6 @@ a:hover { color: var(--color-brand); }
   border-radius: var(--radius-md);
 }
 
-/* Chips / badges */
 .badge-glass {
   background: linear-gradient(0deg, var(--tint), var(--tint)), var(--glass-bg);
   border: 1px solid var(--glass-stroke);
@@ -164,7 +127,6 @@ a:hover { color: var(--color-brand); }
   box-shadow: var(--shadow-soft);
 }
 
-/* Inputs */
 .form-control, .form-select {
   border-radius: calc(var(--radius-sm) + .1rem);
   border-color: color-mix(in oklch, var(--surface-2) 60%, transparent);
@@ -175,7 +137,6 @@ a:hover { color: var(--color-brand); }
   box-shadow: 0 0 0 .25rem color-mix(in oklch, var(--color-brand) 28%, transparent);
 }
 
-/* Utilities */
 .text-soft { color: var(--color-text-soft) !important; }
 .round-xl  { border-radius: var(--radius-xl) }
 .round-2xl { border-radius: var(--radius-2xl) }

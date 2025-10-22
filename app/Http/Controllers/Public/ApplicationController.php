@@ -12,7 +12,7 @@ class ApplicationController extends Controller
 {
     public function store(StoreApplicationRequest $r)
     {
-        // We receive hidden input "slug" from the modal form
+
         $slug = $r->string('slug')->toString();
         $job  = RecruitmentRequest::where('is_published', true)->where('slug',$slug)->firstOrFail();
 
@@ -40,7 +40,7 @@ class ApplicationController extends Controller
             ]);
         });
 
-        // Back to /careers with success toast; keep ?job closed
+
         return redirect()
             ->route('careers.index')
             ->with('success', 'Lamaran berhasil dikirim. Terima kasih!');

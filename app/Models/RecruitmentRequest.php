@@ -35,24 +35,24 @@ class RecruitmentRequest extends Model
         return $this->morphMany(Approval::class, 'approvable');
     }
 
-    /** Scope: batasi data sesuai user & role */
+ 
     public function scopeForViewer($q, \App\Models\User $user)
     {
-        // Superadmin lihat semua
+        
         if ($user->hasRole('Superadmin')) return $q;
 
-        // GM/VP: lihat request yg status SUBMITTED/APPROVED di unit-nya
+       
         if ($user->can('recruitment.approve')) {
             return $q->where('unit_id', $user->unit_id)
                      ->whereIn('status', ['submitted','approved']);
         }
 
-        // SDM Unit: lihat semua request di unit sendiri
+       
         if ($user->can('recruitment.view')) {
             return $q->where('unit_id', $user->unit_id);
         }
 
-        // default: kosong (tidak punya akses)
+       
         return $q->whereRaw('1=0');
     }
 }

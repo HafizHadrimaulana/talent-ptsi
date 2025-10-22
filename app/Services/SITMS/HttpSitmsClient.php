@@ -18,7 +18,7 @@ class HttpSitmsClient implements SitmsClient
     protected int  $timeout;
     protected int  $retries;
 
-    protected string $pagination;     // datatables | page
+    protected string $pagination;    
     protected int    $defaultPerPage;
 
     protected ?string $csrfToken = null;
@@ -57,7 +57,7 @@ class HttpSitmsClient implements SitmsClient
         $urlBase = $this->resolveUrl($this->baseUrl, $this->employeesPath);
         $this->preflight($urlBase);
 
-        // Coba beberapa perPage kalau server “ogah” balikin baris untuk size besar
+
         $ladder = [];
         foreach ([$size, 1000, 500, 250, 100, 50] as $n) {
             $n = max(1, (int)$n);
@@ -80,7 +80,7 @@ class HttpSitmsClient implements SitmsClient
             elseif (is_numeric($recordsTotal))  $total = (int)$recordsTotal;
             elseif (is_numeric($t2))            $total = (int)$t2;
 
-            // rows: scan agresif (deep + string JSON)
+           
             $rows = $this->extractEmployeesListAggressive($json);
 
             $this->log->info('[SITMS] page normalized', [
@@ -114,10 +114,9 @@ class HttpSitmsClient implements SitmsClient
 
     /* ================= core http ================= */
 
-    /** Coba beberapa pola request; return [json, attempt_tag] */
     protected function tryAllRequestPatterns(string $urlBase, int $page, int $perPage): array
     {
-        // Unfilter flags umum
+        
         $unfilter = [
             'status'          => 'all',
             'include_all'     => 1,
@@ -127,11 +126,10 @@ class HttpSitmsClient implements SitmsClient
             'show'            => 'all',
         ];
 
-        // Page-mode
         $pageBody  = ['apikey'=>$this->apiKey,'page'=>$page,'per_page'=>$perPage] + $unfilter;
         $pageQuery = ['page'=>$page,'per_page'=>$perPage] + $unfilter;
 
-        // DataTables
+    
         $dtQuery = [
             'start'             => ($page - 1) * $perPage,
             'length'            => $perPage,
@@ -247,7 +245,7 @@ class HttpSitmsClient implements SitmsClient
             throw new UnexpectedValueException('404 Not Found pada '.$url);
         }
 
-        // parse JSON meski Content-Type text/html
+   
         $json = $this->tryParseJson($resp);
         if ($json !== null) return $json;
 
@@ -261,11 +259,11 @@ class HttpSitmsClient implements SitmsClient
     {
         $body = $resp->body() ?? '';
 
-        // 1) coba parser Laravel
+      
         $j = $resp->json();
         if (is_array($j)) return $j;
 
-        // 2) cari JSON di <pre> atau <script>
+    
         if (preg_match('~<pre[^>]*>(\{.*\}|\[.*\])</pre>~is', $body, $m)) {
             $try = json_decode(html_entity_decode($m[1], ENT_QUOTES|ENT_HTML5), true);
             if (is_array($try)) return $try;
@@ -275,7 +273,7 @@ class HttpSitmsClient implements SitmsClient
             if (is_array($try)) return $try;
         }
 
-        // 3) fallback: ambil blok JSON besar pertama
+   
         if (preg_match('~(\{(?:[^{}]|(?1))*\})~s', $body, $m)) {
             $try = json_decode($m[1], true);
             if (is_array($try)) return $try;
@@ -301,9 +299,9 @@ class HttpSitmsClient implements SitmsClient
         } catch (\Throwable $e) { /* ignore */ }
     }
 
-    /* ================= aggressive extraction ================= */
 
-    /** Ambil list pegawai secara agresif: deep-scan + skoring + string JSON decode */
+
+
     protected function extractEmployeesListAggressive($json): array
     {
         // 1) kandidat umum (shallow)
@@ -329,7 +327,7 @@ class HttpSitmsClient implements SitmsClient
         }
         if ($bestScore > 0) return $best;
 
-        // 2) deep-scan seluruh node
+      
         $allLists = [];
         $this->collectAllLists($json, $allLists);
         foreach ($allLists as $list) {
@@ -338,7 +336,7 @@ class HttpSitmsClient implements SitmsClient
         }
         if ($bestScore > 0) return $best;
 
-        // 3) string JSON → decode → ulangi
+
         $stringLists = $this->collectStringifiedLists($json);
         foreach ($stringLists as $arr) {
             $score = $this->scoreList($arr);
@@ -347,7 +345,6 @@ class HttpSitmsClient implements SitmsClient
         return is_array($best) ? $best : [];
     }
 
-    /** Kumpulkan semua list of assoc di mana pun */
     protected function collectAllLists($node, array &$out): void
     {
         if (!is_array($node)) return;
@@ -355,7 +352,7 @@ class HttpSitmsClient implements SitmsClient
         foreach ($node as $v) if (is_array($v)) $this->collectAllLists($v, $out);
     }
 
-    /** Cari field string yang berisi JSON array of objects */
+
     protected function collectStringifiedLists($node): array
     {
         $out = [];
@@ -366,7 +363,7 @@ class HttpSitmsClient implements SitmsClient
                 $arr = json_decode($n, true);
                 if ($this->isListOfAssoc($arr)) $out[] = $arr;
                 if (is_array($arr)) {
-                    // kalau decode ke object, deep-scan lagi
+                   
                     $tmp=[]; $this->collectAllLists($arr, $tmp);
                     foreach ($tmp as $t) $out[] = $t;
                 }
@@ -386,7 +383,7 @@ class HttpSitmsClient implements SitmsClient
             'email','unit','unit_name','position','jabatan','directorate','direktorat'
         ];
         $hits = 0; foreach ($cand as $k) if (in_array($k, $keys, true)) $hits++;
-        // bonus untuk panjang list (tapi dibatasi)
+      
         $len = is_countable($v) ? count($v) : 0;
         return $hits + min($len/1000, 0.5);
     }
@@ -394,9 +391,9 @@ class HttpSitmsClient implements SitmsClient
     protected function isListOfAssoc($v): bool
     {
         if (!is_array($v) || $v === []) return false;
-        // list? (0..n-1)
+      
         $i = 0; foreach ($v as $k => $_) { if ($k !== $i++) return false; }
-        // elemen pertama associative?
+      
         return is_array($v[0] ?? null) && $this->isAssoc($v[0]);
     }
 
@@ -458,7 +455,7 @@ class HttpSitmsClient implements SitmsClient
         $out = $p; if (isset($out['apikey'])) $out['apikey'] = '***';
         return $out;
     }
-    // Tambahkan ke dalam class HttpSitmsClient
+   
 protected function extractCsrfFromSetCookie(Response $resp): ?string
 {
     $set = $resp->header('Set-Cookie');
@@ -467,11 +464,11 @@ protected function extractCsrfFromSetCookie(Response $resp): ?string
     $arr = is_array($set) ? $set : [$set];
 
     foreach ($arr as $line) {
-        // Laravel default
+       
         if (preg_match('~XSRF-TOKEN=([^;]+)~', $line, $m)) {
             return urldecode($m[1]);
         }
-        // Fallback: ada server yang pakai nama cookie lain berawalan csrf
+   
         if (preg_match('~csrf[^=]*=([^;]+)~i', $line, $m)) {
             return urldecode($m[1]);
         }

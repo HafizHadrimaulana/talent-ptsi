@@ -105,10 +105,7 @@ class UserController extends Controller
         return back()->with('ok','User deleted');
     }
 
-    /**
-     * JSON role options untuk modal dinamis (create/edit).
-     * Query param opsional: ?user_id=123 untuk return "assigned".
-     */
+
     public function roleOptions(Request $request): JsonResponse
     {
         $guard = Guard::getDefaultName(User::class);
