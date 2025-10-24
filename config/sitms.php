@@ -17,6 +17,6 @@ return [
     'retries'    => (int) env('SITMS_RETRIES', 5),
 
     // behavior
-    'pagination' => env('SITMS_PAGINATION', 'page'), // page|datatables
+    'pagination' => env('SITMS_PAGINATION', 'offset'), // page|datatables
     'per_page'   => (int) env('SITMS_PER_PAGE', 1000),
 ];

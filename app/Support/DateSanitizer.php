@@ -2,51 +2,35 @@
 
 namespace App\Support;
 
-use Carbon\Carbon;
+use DateTimeImmutable;
 
 class DateSanitizer
 {
-    public static function toDateOrNull($value): ?string
-    {
-        if (empty($value)) return null;
-        $v = trim((string)$value);
-        $invalids = ['0000-00-00','0000-00-00 00:00:00','9999-12-31','1900-12-31'];
-        if (in_array($v, $invalids, true)) return null;
-        try { return Carbon::parse($v)->format('Y-m-d'); } catch (\Throwable $e) { return null; }
-    }
-
-    public static function toDateTimeOrNull($value): ?string
-    {
-        if (empty($value)) return null;
-        $v = trim((string)$value);
-        $invalids = ['0000-00-00','0000-00-00 00:00:00','9999-12-31','1900-12-31'];
-        if (in_array($v, $invalids, true)) return null;
-        try { return Carbon::parse($v)->format('Y-m-d H:i:s'); } catch (\Throwable $e) { return null; }
-    }
-
     /**
-     * Ambil 4 digit tahun pertama yang muncul (1900–2099).
-     * Contoh:
-     * - "2014-"   -> 2014
-     * - "2022.2"  -> 2022
-     * - "20221"   -> 2022
-     * - "2013-2016" -> 2013
+     * Terima berbagai format tanggal umum, kembalikan 'Y-m-d' atau null.
+     * Contoh yang didukung: '2024-11-30', '30/11/2024', '30-11-2024', '2024/11/30'
      */
-    public static function toYearOrNull($value): ?string
+    public static function toDateOrNull($v): ?string
     {
-        if (empty($value)) return null;
-        $v = trim((string)$value);
+        if ($v === null) return null;
+        $s = trim((string)$v);
+        if ($s === '' || $s === '0000-00-00') return null;
 
-        if (preg_match('/(19|20)\d{2}/', $v, $m)) {
-            return $m[0];
+        $candidates = [
+            'Y-m-d','d/m/Y','d-m-Y','Y/m/d','m/d/Y','d M Y','d M, Y','Y.m.d','d.m.Y',
+        ];
+
+        foreach ($candidates as $fmt) {
+            $dt = \DateTime::createFromFormat($fmt, $s);
+            if ($dt && $dt->format($fmt) === $s) {
+                return $dt->format('Y-m-d');
+            }
         }
-        return null;
-    }
 
-    public static function strOrNull($v, ?int $max = null): ?string
-    {
-        $v = trim((string)($v ?? ''));
-        if ($v === '' || $v === '?' || strcasecmp($v, 'N/A') === 0) return null;
-        return $max ? mb_substr($v, 0, $max) : $v;
-    }
+        // fallback: strtotime
+        $ts = strtotime($s);
+        if ($ts !== false) return date('Y-m-d', $ts);
+
+        return null;
+        }
 }
