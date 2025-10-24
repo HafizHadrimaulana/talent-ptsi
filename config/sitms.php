@@ -18,5 +18,5 @@ return [
 
     // behavior
     'pagination' => env('SITMS_PAGINATION', 'offset'), // page|datatables
-    'per_page'   => (int) env('SITMS_PER_PAGE', 1000),
+    'per_page'   => (int) env('SITMS_PER_PAGE', 1500),
 ];
