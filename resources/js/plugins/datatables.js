@@ -1,27 +1,19 @@
 // resources/js/plugins/datatables.js
 import $ from 'jquery';
 window.$ = window.jQuery = $;
-
-// Core & base CSS (DT v2)
 import DataTable from 'datatables.net';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
-
-// Responsive extension (DT v2) + CSS (bukan @datatables.net/*)
 import 'datatables.net-responsive';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
 
-// ===== Helpers (idempotent) =====
 const helpers = window.__DT_HELPERS__ || (() => {
   const debounce = (fn, delay = 300) => { let t; return (...a)=>{clearTimeout(t); t=setTimeout(()=>fn(...a),delay)} };
 
-  // Toolbar atas/bawah
-const DOM_CHROME =
-  "<'dt-toolbar flex flex-wrap items-center justify-between gap-3 mb-3'l f>" +
-  "t" +
-  "<'dt-footer flex justify-between items-center mt-3'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>";
+  const DOM_CHROME =
+    "<'dt-toolbar flex flex-wrap items-center justify-between gap-3 mb-3'l f>" +
+    "t" +
+    "<'dt-footer flex justify-between items-center mt-3'<'dt-left dataTables_info'i><'dt-right dataTables_paginate'p>>";
 
-
-  // Breakpoints
   const BREAKPOINTS = { desktop: Infinity, lg: 1280, md: 1024, sm: 768, xs: 520 };
 
   const DEFAULTS = {
@@ -32,19 +24,18 @@ const DOM_CHROME =
     orderMulti: false,
     autoWidth: false,
     stateSave: true,
-    // Responsive v2 (tanpa DataTable.use / tanpa display.*)
     responsive: {
       breakpoints: [
         { name: 'desktop', width: BREAKPOINTS.desktop },
-        { name: 'lg',      width: BREAKPOINTS.lg      },
-        { name: 'md',      width: BREAKPOINTS.md      },
-        { name: 'sm',      width: BREAKPOINTS.sm      },
-        { name: 'xs',      width: BREAKPOINTS.xs      },
+        { name: 'lg', width: BREAKPOINTS.lg },
+        { name: 'md', width: BREAKPOINTS.md },
+        { name: 'sm', width: BREAKPOINTS.sm },
+        { name: 'xs', width: BREAKPOINTS.xs },
       ],
       details: {
         type: 'inline',
         target: 'tr',
-        renderer: function ( api, rowIdx, columns ) {
+        renderer: function (api, rowIdx, columns) {
           const hidden = columns.filter(c => c.hidden);
           if (!hidden.length) return false;
           const html = hidden.map(c => `
@@ -63,128 +54,103 @@ const DOM_CHROME =
       lengthMenu: "Tampilkan _MENU_",
       info: "Menampilkan _START_–_END_ dari _TOTAL_ data",
       infoEmpty: "Tidak ada data",
+      emptyTable: "Belum ada data",
       zeroRecords: "Tidak ditemukan",
       paginate: { first: "«", last: "»", next: "›", previous: "‹" },
       processing: "Memproses…",
     }
   };
-  // TO DO : CARI GIMANA BISA NAMBAHIN IMPORT + EXPORT BUTTON, TAMBAHIN ICON MAGNIFIER 
 
-function applyChrome(dtApi) {
-  const $table = $(dtApi.table().node());
-  const $wrap  = $(dtApi.table().container());
+  function applyChrome(dtApi) {
+    const $table = $(dtApi.table().node());
+    const $wrap  = $(dtApi.table().container());
 
-  $wrap.addClass('dataTables_wrapper');
-  $wrap.closest('.table-responsive, .card, .glass, .dt-card').addClass('dt-card');
+    $wrap.addClass('dataTables_wrapper');
+    $wrap.closest('.table-responsive, .card, .glass, .dt-card').addClass('dt-card');
+    $wrap.find('.dt-top, .dt-bottom').each(function(){ $(this).addClass('grid gap-2'); });
 
-  $wrap.find('.dt-top, .dt-bottom').each(function(){ $(this).addClass('grid gap-2'); });
+    const $filterWrap = $wrap.find('.dataTables_filter');
+    const $input = $filterWrap.find('input');
 
-  // ===== Modify the default search box =====
-  const $filterWrap = $wrap.find('.dataTables_filter');
-  const $input = $filterWrap.find('input');
+    const $searchGroup = $(`
+      <div class="relative flex items-center w-full max-w-xs">
+        <i class="fa fa-search absolute left-3 text-gray-400 pointer-events-none text-sm"></i>
+      </div>
+    `);
 
-  // Create a wrapper with embedded search icon
-  const $searchGroup = $(`
-    <div class="relative flex items-center w-full max-w-xs">
-      <i class="fa fa-search absolute left-3 text-gray-400 pointer-events-none text-sm"></i>
-    </div>
-  `);
+    $input
+      .attr({ placeholder: 'Ketik untuk cari…', type: 'search' })
+      .addClass('input input--sm w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 focus:border-brand focus:ring focus:ring-brand/20')
+      .appendTo($searchGroup);
 
-  $input
-    .attr({
-      placeholder: 'Ketik untuk cari…',
-      type: 'search',
-    })
-    .addClass('input input--sm w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 focus:border-brand focus:ring focus:ring-brand/20')
-    .appendTo($searchGroup);
+    $filterWrap.empty().append($searchGroup);
 
-  // Replace default DataTables filter contents
-  $filterWrap.empty().append($searchGroup);
+    const $length = $wrap.find('.dataTables_length');
+    const $toolbarRow = $('<div class="flex flex-wrap items-center justify-between gap-3 w-full mb-2"></div>');
+    const $rightSide = $('<div class="flex flex-wrap items-center gap-2 w-full sm:w-auto"></div>');
+    $rightSide.append($filterWrap);
 
-  // ===== Custom Toolbar (Search + Action Buttons on same line) =====
-  const $length = $wrap.find('.dataTables_length');
-  const $toolbarRow = $('<div class="flex flex-wrap items-center justify-between gap-3 w-full mb-2"></div>');
+    const $btnImport = $(`
+      <button type="button" class="btn btn-brand hover-lift" data-dt-import>
+        <i class="fa fa-file-import mr-1"></i> Import
+      </button>
+    `);
 
-  // Right side: Search + Import + Export inline
-  const $rightSide = $('<div class="flex flex-wrap items-center gap-2 w-full sm:w-auto"></div>');
-  $rightSide.append($filterWrap);
+    const $btnExport = $(`
+      <button type="button" class="btn btn-brand hover-lift" data-dt-export>
+        <i class="fa fa-file-export mr-1"></i> Export
+      </button>
+    `);
 
-  const $btnImport = $(`
-    <button type="button" class="btn btn-brand hover-lift" data-dt-import>
-      <i class="fa fa-file-import mr-1"></i> Import
-    </button>
-  `);
+    $rightSide.append($btnImport, $btnExport);
+    $toolbarRow.append($length, $rightSide);
 
-  const $btnExport = $(`
-    <button type="button" class="btn btn-brand hover-lift" data-dt-export>
-      <i class="fa fa-file-export mr-1"></i> Export
-    </button>
-  `);
+    if ($length.length) {
+      $length.closest('.dt-toolbar, .dataTables_wrapper').prepend($toolbarRow);
+    } else {
+      $wrap.prepend($toolbarRow);
+    }
 
-  $rightSide.append($btnImport, $btnExport);
+    $btnImport.on('click', () => { alert('Import clicked!'); });
+    $btnExport.on('click', () => { alert('Export clicked!'); });
 
-  // Combine "Tampilkan" dropdown and right section
-  $toolbarRow.append($length, $rightSide);
+    $length.find('select').addClass('select--sm');
+    $table.addClass('table-ui table-compact nowrap');
+    $table.find('th:last-child, td:last-child').addClass('cell-actions');
+    $wrap.find('.dataTables_paginate').addClass('pagination-ui');
 
-  // Insert toolbar above the table (replace old toolbar placement)
-  if ($length.length) {
-    $length.closest('.dt-toolbar, .dataTables_wrapper').prepend($toolbarRow);
-  } else {
-    $wrap.prepend($toolbarRow);
+    if (!$table.parent().hasClass('dt-scroll')) {
+      $table.wrap('<div class="dt-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch;"></div>');
+    }
+
+    const styleId = 'dt-inline-style';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        table.dataTable tbody tr.child td.child { padding: 12px 14px; background: rgba(2,8,23,.03); }
+        [data-theme="dark"] table.dataTable tbody tr.child td.child { background: rgba(255,255,255,.03); }
+        .dt-details { display:grid; gap:8px; }
+        .dt-kv { display:grid; grid-template-columns: 140px 1fr; gap:8px; align-items:baseline; }
+        .dt-kv .k { font-weight:700; color:#64748b; }
+        .dt-kv .v { overflow-wrap:anywhere; }
+        @media (max-width: 640px){
+          .dt-kv{ grid-template-columns: 1fr; }
+          .dt-kv .k{ opacity:.8 }
+          .dataTables_wrapper .flex { flex-direction: column; align-items: stretch; }
+        }
+        .dataTables_wrapper .dt-top, .dataTables_wrapper .dt-bottom { padding: 6px 0; }
+        .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 2px 8px; }
+        .dataTables_wrapper .dataTables_filter input { max-width: 220px; }
+      `;
+      document.head.appendChild(style);
+    }
   }
-
-  // ===== Hook up basic button handlers =====
-  $btnImport.on('click', () => {
-    alert('Import clicked!');
-    // TODO: open modal or file input
-  });
-
-  $btnExport.on('click', () => {
-    alert('Export clicked!');
-    // TODO: trigger export logic
-  });
-
-  // ===== Finish base styling =====
-  $length.find('select').addClass('select--sm');
-  $table.addClass('table-ui table-compact nowrap');
-  $table.find('th:last-child, td:last-child').addClass('cell-actions');
-  $wrap.find('.dataTables_paginate').addClass('pagination-ui');
-
-  if (!$table.parent().hasClass('dt-scroll')) {
-    $table.wrap('<div class="dt-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch;"></div>');
-  }
-
-  // ===== Minimal inline style =====
-  const styleId = 'dt-inline-style';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      table.dataTable tbody tr.child td.child { padding: 12px 14px; background: rgba(2,8,23,.03); }
-      [data-theme="dark"] table.dataTable tbody tr.child td.child { background: rgba(255,255,255,.03); }
-      .dt-details { display:grid; gap:8px; }
-      .dt-kv { display:grid; grid-template-columns: 140px 1fr; gap:8px; align-items:baseline; }
-      .dt-kv .k { font-weight:700; color:#64748b; }
-      .dt-kv .v { overflow-wrap:anywhere; }
-      @media (max-width: 640px){
-        .dt-kv{ grid-template-columns: 1fr; }
-        .dt-kv .k{ opacity:.8 }
-        .dataTables_wrapper .flex { flex-direction: column; align-items: stretch; }
-      }
-      .dataTables_wrapper .dt-top, .dataTables_wrapper .dt-bottom { padding: 6px 0; }
-      .dataTables_wrapper .dataTables_paginate .paginate_button { padding: 2px 8px; }
-      .dataTables_wrapper .dataTables_filter input { max-width: 220px; }
-    `;
-    document.head.appendChild(style);
-  }
-}
 
   function getDTFromElOrJq(tableSelector) {
-    // 1) coba jQuery bridge
     if ($.fn && $.fn.dataTable && $(tableSelector).length && $(tableSelector).DataTable) {
       try { return $(tableSelector).DataTable(); } catch {}
     }
-    // 2) fallback ke instance vanilla yang disimpan di element
     const el = document.querySelector(tableSelector);
     if (el && el._dtInstance) return el._dtInstance;
     return null;
@@ -193,11 +159,14 @@ function applyChrome(dtApi) {
   function initDataTables(selector='[data-dt]', opts={}) {
     const finalOpts = { ...DEFAULTS, ...opts };
     $(selector).each(function(){
-      // Kalau jQuery bridge aktif, hindari double-init
       if ($.fn && $.fn.dataTable && $.fn.dataTable.isDataTable && $.fn.dataTable.isDataTable(this)) return;
+
+      const incoming = finalOpts.columnDefs || [];
+      const columnDefs = [{ targets: '_all', defaultContent: '—' }, ...incoming];
 
       const dt = new DataTable(this, {
         ...finalOpts,
+        columnDefs,
         drawCallback: function() {
           const api = this.api();
           const $wrap = $(api.table().container());
@@ -216,10 +185,7 @@ function applyChrome(dtApi) {
         }
       });
 
-      // Simpan instance di element (fallback non-jQuery)
       this._dtInstance = dt;
-
-      // Simpan juga via jQuery data (kalau jembatan tersedia)
       try { $(this).data('dt-instance', dt); } catch {}
     });
   }
@@ -227,12 +193,10 @@ function applyChrome(dtApi) {
   function bindExternalSearch({ searchSelector, buttonSelector=null, tableSelector='[data-dt]', delay=300 }) {
     const input = document.querySelector(searchSelector);
     if (!input) return;
-
     const dt = getDTFromElOrJq(tableSelector);
     if (!dt) return;
 
     const run = ()=> {
-      // Support vanilla & jQuery API
       if (typeof dt.search === 'function' && typeof dt.draw === 'function') {
         dt.search(input.value || '');
         dt.draw();
@@ -251,12 +215,10 @@ function applyChrome(dtApi) {
 
   function destroyDataTables(selector='[data-dt]') {
     $(selector).each(function(){
-      // jQuery bridge
       if ($.fn && $.fn.dataTable && $.fn.dataTable.isDataTable && $.fn.dataTable.isDataTable(this)) {
         $(this).DataTable().destroy();
         return;
       }
-      // vanilla fallback
       if (this._dtInstance && typeof this._dtInstance.destroy === 'function') {
         this._dtInstance.destroy();
         this._dtInstance = null;

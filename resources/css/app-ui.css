@@ -390,3 +390,19 @@ table.dataTable thead th{ background: transparent!important; color:#fff!importan
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
+
+/* resources/css/app-ui.css */
+/* …biarkan isi kamu yang lama tetap… */
+
+/* Tambahan util untuk page ini */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.grid-2{grid-template-columns:1fr}}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:8px}
+.kv .k{font-size:.8rem;color:#64748b;font-weight:700}
+.kv .v{font-weight:600;color:#1f2937}
+.list{display:grid;gap:10px}
+.item{border:1px solid color-mix(in srgb, var(--surface-2) 60%, transparent);border-radius:12px;padding:10px 12px;background:var(--surface-0)}
+.item h4{margin:0 0 4px 0;font-weight:800}
+
+/* iOS glass modal kecil */
+.modal.iosglass.sm .modal-panel{width:min(92vw,560px)}
