@@ -139,6 +139,18 @@
     </div>
   </div>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("empSearchForm");
+  const input = document.getElementById("empSearchInput");
+  const clearBtn = document.getElementById("empSearchClear");
+
+  clearBtn.addEventListener("click", function () {
+    input.value = ""; // clear the input
+  });
+});
+</script>
+
 @endsection
 
 @push('scripts')
