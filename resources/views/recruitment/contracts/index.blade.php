@@ -42,18 +42,18 @@
         @foreach($list as $c)
           @php
             $sameUnit = $meUnit && $meUnit === $c->unit_id;
+            $jenis = $c->type ?? $c->contract_type ?? '—';
           @endphp
           <tr>
             <td>{{ $c->number ?? '—' }}</td>
             <td>{{ $c->person_name }}</td>
             <td>{{ $c->position }}</td>
-            <td>{{ $c->type }}</td>
+            <td>{{ $jenis }}</td>
             <td>
               <span class="badge
                 @if($c->status === 'rejected') danger
                 @elseif($c->status === 'draft') warn
-                @elseif($c->status === 'approved') success
-                @elseif($c->status === 'signed') success
+                @elseif($c->status === 'approved' || $c->status === 'signed') success
                 @else soft @endif">
                 {{ ucfirst($c->status) }}
               </span>

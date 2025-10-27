@@ -3,12 +3,10 @@
 
 @section('content')
 <div class="card-glass mb-2 p-4 rounded-2xl shadow-md space-y-6">
-  {{-- ===== Header Row ===== --}}
   <div class="flex justify-between items-center">
     <h2 class="text-xl font-semibold">📊 Monitoring Rekrutmen</h2>
   </div>
 
-  {{-- ===== Alerts (Optional) ===== --}}
   @if(session('ok')) 
     <div class="alert success">{{ session('ok') }}</div>
   @endif
@@ -32,9 +30,9 @@
       <tbody>
         @forelse($requests as $req)
           <tr>
-            <td>{{ $req->title }}</td>
-            <td>{{ $req->position }}</td>
-            <td>{{ $req->headcount }}</td>
+            <td>{{ $req->title ?? '—' }}</td>
+            <td>{{ $req->position ?? '—' }}</td>
+            <td>{{ $req->headcount ?? '—' }}</td>
             <td>
               <span class="badge 
                 @if($req->status === 'rejected') danger
@@ -69,18 +67,21 @@
       <tbody>
         @forelse($contracts as $c)
           @php
-            $start = $c->start_date ? \Carbon\Carbon::parse($c->start_date)->format('d M Y') : '-';
+            $nama = $c->person_name ?? $c->candidate_name ?? $c->name ?? '—';
+            $pos  = $c->position ?? $c->position_name ?? $c->job_title ?? '—';
+            $tipe = $c->type ?? $c->contract_type ?? '—';
+            $start = $c->start_date ? \Carbon\Carbon::parse($c->start_date)->format('d M Y') : '—';
             $end   = $c->end_date ? \Carbon\Carbon::parse($c->end_date)->format('d M Y') : null;
           @endphp
           <tr>
-            <td>{{ $c->person_name }}</td>
-            <td>{{ $c->position }}</td>
-            <td>{{ $c->type }}</td>
+            <td>{{ $nama }}</td>
+            <td>{{ $pos }}</td>
+            <td>{{ $tipe }}</td>
             <td>
               <span class="badge 
                 @if($c->status === 'rejected') danger
                 @elseif($c->status === 'draft') warn
-                @elseif($c->status === 'approved') success
+                @elseif($c->status === 'approved' || $c->status === 'signed') success
                 @else soft @endif">
                 {{ ucfirst($c->status) }}
               </span>
@@ -97,12 +98,9 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // ===== Initialize DataTables if loaded globally =====
     if (typeof DataTable !== 'undefined') {
       new DataTable('#izin-table', { responsive: true, paging: false, info: false });
       new DataTable('#monitor-table', { responsive: true, paging: false, info: false });
-    } else {
-      console.warn('⚠️ DataTables not found — make sure it’s imported or globally available.');
     }
   });
 </script>

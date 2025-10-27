@@ -35,9 +35,9 @@ class SyncSitmsMasterJob implements ShouldQueue
     protected static $reporter = null;
     protected static array $lastSummary = [];
     protected static array $tableColumnsCache = [];
+    protected static array $tableColumnsMeta  = [];
     protected static int $errInserts = 0;
 
-    // FIX: Tambahkan tracking untuk row yang berhasil diproses
     protected static array $successfulRows = [];
     protected static int $successfulCount = 0;
 
@@ -100,10 +100,13 @@ class SyncSitmsMasterJob implements ShouldQueue
 
             foreach ($rows as $row) {
                 $row = (array)$row;
+
+                $sitmsId    = self::nullIfEmpty($row['id_sitms'] ?? null);
+                $employeeId = self::nullIfEmpty($row['employee_id'] ?? null);
                 $genericId  = self::nullIfEmpty($row['id'] ?? null);
-                $employeeId = self::nullIfEmpty($row['employee_id'] ?? null)
-                            ?? self::nullIfEmpty($row['id_sitms'] ?? null)
-                            ?? $genericId;
+
+                $externalId = $sitmsId ?? $employeeId ?? $genericId;
+                if ($externalId) self::$seenExternalIds[] = (string)$externalId;
                 if ($employeeId) self::$seenEmployeeIds[] = (string)$employeeId;
 
                 if (self::$dryRun) {
@@ -116,7 +119,7 @@ class SyncSitmsMasterJob implements ShouldQueue
                         ];
                     }
                 } else {
-                    try { 
+                    try {
                         $success = self::upsertEmployeeRawFromSitmsRow($row);
                         if ($success) {
                             self::$successfulCount++;
@@ -138,7 +141,7 @@ class SyncSitmsMasterJob implements ShouldQueue
             Log::info('SITMS page result', [
                 'page'=>$current,'per_page'=>Arr::get($resp,'per_page'),'rows'=>$countRows,
                 'processed'=>$processed,'seen_unique'=>$afterSeen,'grown'=>$grown,
-                'successful_rows'=>self::$successfulCount, // FIX: Tambah tracking successful
+                'successful_rows'=>self::$successfulCount,
                 'total_hint'=>$reportedTotal,'attempt'=>$resp['attempt'] ?? null,'dry'=>self::$dryRun
             ]);
 
@@ -155,7 +158,6 @@ class SyncSitmsMasterJob implements ShouldQueue
             if (!$continuePaging) { $stopReason='single_page'; break; }
             if ($maxPages > 0 && $pagesDone >= $maxPages) { $stopReason='max_pages'; break; }
 
-            // MODE OFFSET — lanjut selama jumlah row == limit; berhenti jika < limit
             if ($countRows < $limit) { $stopReason='short_page'; break; }
 
             if ($current > 30000) { Log::warning('SITMS guard (page>30000)'); $stopReason='guard_page_limit'; break; }
@@ -172,7 +174,7 @@ class SyncSitmsMasterJob implements ShouldQueue
             'processed_total' => $processed,
             'reported_total'  => $reportedTotal,
             'seen_unique'     => self::$uniqueCount ? count(self::uniqueExternalIds()) : $processed,
-            'successful_rows' => self::$successfulCount, // FIX: Include successful count
+            'successful_rows' => self::$successfulCount,
             'pages'           => $pagesDone,
             'stop_reason'     => $stopReason,
             'samples'         => self::$samples,
@@ -182,7 +184,6 @@ class SyncSitmsMasterJob implements ShouldQueue
         Log::info('SITMS sync summary', self::$lastSummary);
     }
 
-    /** SOFT mirror: set is_active=0 utk employee_id yang tidak terlihat */
     protected static function mirrorEmployeesSoft(array $seenIds): void
     {
         if (!Schema::hasTable('employees') || empty($seenIds)) return;
@@ -195,19 +196,18 @@ class SyncSitmsMasterJob implements ShouldQueue
     /* ================== CORE UPSERT ================== */
     protected static function upsertEmployeeRawFromSitmsRow(array $row): bool
     {
-        $genericId  = self::nullIfEmpty($row['id'] ?? null);
-        $employeeId = self::nullIfEmpty($row['employee_id'] ?? null)
-                    ?? self::nullIfEmpty($row['id_sitms'] ?? null)
-                    ?? $genericId;
+        // Keys
         $sitmsId    = self::nullIfEmpty($row['id_sitms'] ?? null);
-        $externalId = $genericId ?? $employeeId ?? $sitmsId ?? null;
+        $employeeId = self::nullIfEmpty($row['employee_id'] ?? null);
+        $genericId  = self::nullIfEmpty($row['id'] ?? null);
+        $externalId = $sitmsId ?? $employeeId ?? $genericId;
         if ($externalId) self::$seenExternalIds[] = (string)$externalId;
 
-        // 1) Person
+        // Person (STRICT: hanya by employee_id / id_sitms; tanpa merge by nama)
         $existingPersonId = self::findExistingPersonIdByEmployeeKeys($employeeId, $sitmsId);
         $personId = self::ensurePersonIdForRow($row, $existingPersonId);
 
-        // 2) Lookups + lokasi
+        // Lookups + lokasi
         [$hbProv, $hbCity] = self::sitmsParseHomeBase(self::nullIfEmpty($row['home_base'] ?? null));
         $directorateId     = self::sitmsEnsureLookupId('directorates', self::nullIfEmpty($row['directorat_name'] ?? null));
         $unitId            = self::sitmsEnsureLookupId('units',        self::nullIfEmpty($row['working_unit_name'] ?? null));
@@ -221,12 +221,20 @@ class SyncSitmsMasterJob implements ShouldQueue
 
         $now = now();
         $colsEmp = self::tableColumns('employees');
+        $metaEmp = self::columnMeta('employees');
 
-        // 3) Payload minimal (sanitize panjang string)
+        // ==== EMPLOYEE ID fallback (dinamis, no hardcode) ====
+        $employeeIdFinal = $employeeId ?? $sitmsId ?? $genericId ?? (string) Str::ulid();
+        if (isset($metaEmp['employee_id'])) {
+            // Simpan supaya mirror pakai masuk
+            self::$seenEmployeeIds[] = (string)$employeeIdFinal;
+        }
+
+        // Payload minimal
         $minimal = ['person_id' => $personId];
-        if (in_array('employee_id',$colsEmp,true))   $minimal['employee_id']   = self::cut($employeeId);
-        if (in_array('id_sitms',$colsEmp,true))      $minimal['id_sitms']      = self::cut($sitmsId);
-        if (in_array('company_name',$colsEmp,true))  $minimal['company_name']  = self::cut($row['company_name'] ?? 'PT Surveyor Indonesia');
+        if (in_array('employee_id',$colsEmp,true))   $minimal['employee_id']   = self::cut($employeeIdFinal);
+        if (in_array('id_sitms',$colsEmp,true) && $sitmsId !== null) $minimal['id_sitms'] = self::cut($sitmsId);
+        if (in_array('company_name',$colsEmp,true) && isset($row['company_name']))  $minimal['company_name']  = self::cut($row['company_name']);
         if (in_array('is_active',$colsEmp,true))     $minimal['is_active']     = isset($row['is_active']) ? ((int)$row['is_active'] ? 1 : 0) : 1;
 
         if (in_array('directorate_id',$colsEmp,true))     $minimal['directorate_id']     = $directorateId;
@@ -238,33 +246,27 @@ class SyncSitmsMasterJob implements ShouldQueue
         if (in_array('home_base_city',$colsEmp,true))     $minimal['home_base_city']     = self::cut($hbCity);
         if (in_array('home_base_province',$colsEmp,true)) $minimal['home_base_province'] = self::cut($hbProv);
 
-        // 4) Ambil kolom yang namanya sama + sanitize
+        // API → flat
         $apiFlat = self::flattenEmployeePayload($row);
-            foreach ($apiFlat as $k=>$v) {
-                // Always convert known date fields to proper date or null
-                if (in_array($k, ['latest_jobs_start_date', 'date_of_birth'], true)) {
-                    $apiFlat[$k] = DS::toDateOrNull($v);
-                    if (empty($v)) {
-                        $apiFlat[$k] = null; // Set to null if empty
-                    }
-                    continue;
-                }
-                if (is_string($v)) $apiFlat[$k] = self::cut($v);
+        foreach ($apiFlat as $k=>$v) {
+            if (in_array($k, ['latest_jobs_start_date', 'date_of_birth'], true)) {
+                $apiFlat[$k] = DS::toDateOrNull($v) ?: null;
+                continue;
             }
+            if (is_string($v)) $apiFlat[$k] = self::cut($v);
+        }
         $apiFlat = self::filterColumns('employees', $apiFlat);
-        unset($apiFlat['id']);
+        unset($apiFlat['id']); // jaga-jaga
 
-        // 5) Merge + filter final
-        $payload = array_merge($minimal, $apiFlat);
+        // Merge (minimal override)
+        $payload = array_merge($apiFlat, $minimal);
         if (in_array('updated_at',$colsEmp,true)) $payload['updated_at'] = $now;
-
-        // 6) === KUNCI UPSERT: person_id ===
         if (!DB::table('employees')->where('person_id', $personId)->exists()
             && in_array('created_at',$colsEmp,true)) {
             $payload['created_at'] = $now;
         }
         $payload = self::filterColumns('employees', $payload);
-        
+
         try {
             DB::table('employees')->updateOrInsert(['person_id' => $personId], $payload);
         } catch (\Throwable $e) {
@@ -273,55 +275,43 @@ class SyncSitmsMasterJob implements ShouldQueue
                 'error'=>$e->getMessage(),
                 'peek'=>Arr::only($row, ['id','id_sitms','employee_id','full_name','working_unit_name','position_name','email']),
             ]);
-            return false; // Return false jika gagal
+            return false;
         }
 
-        // 7) Snapshot pakai person_id - FIX: Check if person_id column exists
+        // Snapshot
         if (Schema::hasTable('employees_snapshot')) {
             $colsSnap = self::tableColumns('employees_snapshot');
-            
-            // FIX: Gunakan employee_id jika person_id tidak ada di tabel snapshot
-            $snapshotKey = in_array('person_id', $colsSnap) ? 'person_id' : 'employee_id';
-            $snapshotKeyValue = in_array('person_id', $colsSnap) ? $personId : ($payload['employee_id'] ?? ($payload['id_sitms'] ?? null));
-            
-            if ($snapshotKeyValue) {
-                $snap = [
-                    $snapshotKey => $snapshotKeyValue,
-                    'payload'     => json_encode($row, JSON_UNESCAPED_UNICODE),
-                    'captured_at' => $now,
-                    'updated_at'  => $now,
-                ];
-                
-                if (in_array('created_at', $colsSnap)) {
-                    $snap['created_at'] = DB::raw('COALESCE(created_at, NOW())');
-                }
-                
-                $snap = array_intersect_key($snap, array_flip($colsSnap));
-                try {
-                    if (in_array($snapshotKey, $colsSnap)) {
-                        DB::table('employees_snapshot')->updateOrInsert([$snapshotKey => $snapshotKeyValue], $snap);
+            $snapshotKey = in_array('person_id', $colsSnap) ? 'person_id' : (in_array('employee_id',$colsSnap) ? 'employee_id' : null);
+            if ($snapshotKey) {
+                $snapshotKeyValue = $snapshotKey === 'person_id' ? $personId : ($payload['employee_id'] ?? ($payload['id_sitms'] ?? null));
+                if ($snapshotKeyValue) {
+                    $snap = [
+                        $snapshotKey => $snapshotKeyValue,
+                        'payload'     => json_encode($row, JSON_UNESCAPED_UNICODE),
+                        'captured_at' => $now,
+                        'updated_at'  => $now,
+                    ];
+                    if (in_array('created_at', $colsSnap)) {
+                        $snap['created_at'] = DB::raw('COALESCE(created_at, NOW())');
                     }
-                } catch (\Throwable $e) {
-                    Log::warning('SITMS snapshot failed', ['error'=>$e->getMessage(), $snapshotKey=>$snapshotKeyValue]);
+                    $snap = array_intersect_key($snap, array_flip($colsSnap));
+                    try {
+                        DB::table('employees_snapshot')->updateOrInsert([$snapshotKey => $snapshotKeyValue], $snap);
+                    } catch (\Throwable $e) {
+                        Log::warning('SITMS snapshot failed', ['error'=>$e->getMessage(), $snapshotKey=>$snapshotKeyValue]);
+                    }
                 }
             }
         }
 
-        // 8) Portfolio & Documents - dengan error handling terpisah
-        try {
-            self::sitmsSyncPortfolio($personId, $row);
-        } catch (\Throwable $e) {
-            Log::error('SITMS portfolio sync failed', ['error'=>$e->getMessage(), 'person_id'=>$personId]);
-        }
-        
-        try {
-            self::sitmsSyncDocuments($personId, $row);
-        } catch (\Throwable $e) {
-            Log::error('SITMS documents sync failed', ['error'=>$e->getMessage(), 'person_id'=>$personId]);
-            self::$errInserts++;
-        }
+        // Portfolio & Documents
+        try { self::sitmsSyncPortfolio($personId, $row); } 
+        catch (\Throwable $e) { Log::error('SITMS portfolio sync failed', ['error'=>$e->getMessage(), 'person_id'=>$personId]); }
 
-        return true; // Return true jika berhasil
+        try { self::sitmsSyncDocuments($personId, $row); } 
+        catch (\Throwable $e) { Log::error('SITMS documents sync failed', ['error'=>$e->getMessage(), 'person_id'=>$personId]); self::$errInserts++; }
+
+        return true;
     }
 
     protected static function findExistingPersonIdByEmployeeKeys(?string $employeeId, ?string $sitmsId): ?string
@@ -345,25 +335,16 @@ class SyncSitmsMasterJob implements ShouldQueue
         if ($existingPersonId) return (string)$existingPersonId;
 
         $cols = self::tableColumns($tbl);
-        $fullName = self::cut(self::nullIfEmpty($row['full_name'] ?? null));
-        $dob      = DS::toDateOrNull($row['date_of_birth'] ?? null);
-
-        if ($fullName && in_array('full_name',$cols,true)) {
-            $q = DB::table($tbl)->where('full_name', $fullName);
-            if ($dob && in_array('date_of_birth',$cols,true)) $q->whereDate('date_of_birth', $dob);
-            $id = $q->value('id');
-            if ($id) return (string) $id;
-        }
-
         $newId = (string) Str::ulid();
         $person = ['id' => $newId];
-        if (in_array('full_name',$cols,true))     $person['full_name'] = $fullName ?? '-';
+
+        if (in_array('full_name',$cols,true))     $person['full_name'] = self::cut(self::nullIfEmpty($row['full_name'] ?? null)) ?? '-';
         if (in_array('gender',$cols,true))        $person['gender']    = self::cut(self::nullIfEmpty($row['gender'] ?? null));
-        if (in_array('date_of_birth',$cols,true)) $person['date_of_birth'] = $dob;
+        if (in_array('date_of_birth',$cols,true)) $person['date_of_birth'] = DS::toDateOrNull($row['date_of_birth'] ?? null);
         if (in_array('place_of_birth',$cols,true))$person['place_of_birth'] = self::cut(self::nullIfEmpty($row['place_of_birth'] ?? null));
         if (in_array('phone',$cols,true))         $person['phone']     = self::cut(self::nullIfEmpty($row['contact_no'] ?? null));
-        if (in_array('created_at',$cols,true)) $person['created_at'] = $now;
-        if (in_array('updated_at',$cols,true)) $person['updated_at'] = $now;
+        if (in_array('created_at',$cols,true))    $person['created_at'] = $now;
+        if (in_array('updated_at',$cols,true))    $person['updated_at'] = $now;
 
         $person = array_intersect_key($person, array_flip($cols));
         DB::table($tbl)->insert($person);
@@ -387,7 +368,11 @@ class SyncSitmsMasterJob implements ShouldQueue
             'profile_picture_url',
         ];
         $out = [];
-        foreach ($keys as $k) if (array_key_exists($k, $emp)) $out[$k] = $emp[$k];
+        foreach ($keys as $k) {
+            if (array_key_exists($k, $emp)) {
+                $out[$k] = self::nullIfEmpty($emp[$k]); // '' -> null
+            }
+        }
 
         if (!empty($emp['home_base'])) {
             $raw = (string)$emp['home_base'];
@@ -407,7 +392,7 @@ class SyncSitmsMasterJob implements ShouldQueue
         $genericId  = self::nullIfEmpty($row['id'] ?? null);
         $employeeId = self::nullIfEmpty($row['employee_id'] ?? null);
         $sitmsId    = self::nullIfEmpty($row['id_sitms'] ?? null);
-        $externalId = $genericId ?? $employeeId ?? $sitmsId;
+        $externalId = $sitmsId ?? $employeeId ?? $genericId;
         $fullName = trim((string)($row['full_name'] ?? ''));
         $unitName = trim((string)($row['working_unit_name'] ?? $row['unit_name'] ?? ''));
         $posName  = trim((string)($row['position_name'] ?? $row['position'] ?? ''));
@@ -431,31 +416,45 @@ class SyncSitmsMasterJob implements ShouldQueue
             self::$tableColumnsCache[$table] = Schema::hasTable($table) ? Schema::getColumnListing($table) : [];
         } return self::$tableColumnsCache[$table];
     }
+    protected static function columnMeta(string $table): array {
+        if (isset(self::$tableColumnsMeta[$table])) return self::$tableColumnsMeta[$table];
+        $meta = [];
+        if (!Schema::hasTable($table)) return $meta;
+        try {
+            $cols = DB::select("SHOW COLUMNS FROM `$table`");
+            foreach ($cols as $c) {
+                $meta[$c->Field] = [
+                    'type' => $c->Type,
+                    'null' => strtoupper((string)$c->Null) === 'YES',
+                    'default' => $c->Default,
+                    'key' => $c->Key ?? '',
+                ];
+            }
+        } catch (\Throwable $e) { /* ignore */ }
+        return self::$tableColumnsMeta[$table] = $meta;
+    }
 
     /* ==================== LOOKUP & LOCATION ==================== */
     protected static function sitmsEnsureLookupId(string $table, ?string $name, array $extras = []): ?int
     {
-        $name = self::nullIfEmpty($name); 
+        $name = self::nullIfEmpty($name);
         if (!$name || !Schema::hasTable($table)) return null;
-        
+
         $cols = self::tableColumns($table);
-        // Cari berdasarkan nama (case insensitive) only if `name` column exists
         if (in_array('name', $cols, true)) {
             $id = DB::table($table)->whereRaw('LOWER(`name`) = ?', [mb_strtolower($name)])->value('id');
             if ($id) return (int)$id;
         }
 
-        // If `code` column doesn't exist, fall back to inserting only name (if available)
         $baseCode = Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]/', '', $name), 0, 10));
         $code = $baseCode;
         $counter = 1;
 
-        // Only try to generate/check code collisions when table has `code` column
         if (in_array('code', $cols, true)) {
             while (DB::table($table)->where('code', $code)->exists()) {
                 $code = $baseCode . $counter;
                 $counter++;
-                if ($counter > 100) { // safety limit
+                if ($counter > 100) {
                     $code = $baseCode . '_' . Str::random(4);
                     break;
                 }
@@ -468,7 +467,6 @@ class SyncSitmsMasterJob implements ShouldQueue
         if (in_array('created_at',$cols,true)) $row['created_at'] = now();
         if (in_array('updated_at',$cols,true)) $row['updated_at'] = now();
 
-        // If row would be empty (no compatible columns), bail out
         if (empty($row)) return null;
 
         return DB::table($table)->insertGetId($row);
@@ -572,27 +570,17 @@ class SyncSitmsMasterJob implements ShouldQueue
     {
         if (!Schema::hasTable('portfolio_histories')) return;
         $cols = self::tableColumns('portfolio_histories');
-        
-        // FIX: Potong title dengan batas yang lebih ketat - cek panjang kolom sebenarnya
-        $title = isset($data['title']) ? self::cut($data['title'], 150) : null;
-        
-        // FIX: Cek panjang kolom title di database dan adjust accordingly
-        $maxTitleLength = 150; // Default safe value
+
+        $maxTitleLength = 150;
         try {
             $tableInfo = DB::select("SHOW COLUMNS FROM portfolio_histories WHERE Field = 'title'");
-            if (!empty($tableInfo)) {
-                preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $matches);
-                if (isset($matches[1])) {
-                    $maxTitleLength = (int)$matches[1];
-                }
+            if (!empty($tableInfo) && isset($tableInfo[0]->Type) && preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $m)) {
+                $maxTitleLength = (int)$m[1];
             }
-        } catch (\Exception $e) {
-            // Fallback to default if we can't get column info
-        }
-        
-        // Apply the actual column length limit
+        } catch (\Throwable $e) { /* ignore */ }
+
         $title = isset($data['title']) ? self::cut($data['title'], $maxTitleLength) : null;
-            
+
         $row = [
             'person_id'=>$personId,'category'=>$category,
             'title'=>$title,'organization'=>self::cut($data['organization'] ?? null, 150),
@@ -612,13 +600,11 @@ class SyncSitmsMasterJob implements ShouldQueue
             ->exists();
 
         if (!$dup) {
-            try {
-                DB::table('portfolio_histories')->insert($row);
-            } catch (\Throwable $e) {
+            try { DB::table('portfolio_histories')->insert($row); }
+            catch (\Throwable $e) {
                 Log::warning('SITMS portfolio insert failed', [
                     'error'=>$e->getMessage(),
-                    'person_id'=>$personId,
-                    'category'=>$category,
+                    'person_id'=>$personId,'category'=>$category,
                     'title_length' => $title ? strlen($title) : 0,
                     'title_sample' => $title ? substr($title, 0, 50) : null
                 ]);
@@ -630,6 +616,17 @@ class SyncSitmsMasterJob implements ShouldQueue
     {
         if (!Schema::hasTable('documents')) return;
         $cols = self::tableColumns('documents');
+
+        $maxDocTypeLen = 50; $docTypeField = in_array('doc_type',$cols,true) ? 'doc_type' : (in_array('document_type',$cols,true) ? 'document_type' : null);
+        if ($docTypeField) {
+            try {
+                $tableInfo = DB::select("SHOW COLUMNS FROM documents WHERE Field = ?", [$docTypeField]);
+                if (!empty($tableInfo) && isset($tableInfo[0]->Type) && preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $m)) {
+                    $maxDocTypeLen = (int)$m[1];
+                }
+            } catch (\Throwable $e) { /* ignore */ }
+        }
+
         foreach (Arr::get($row,'documents_list.documents_data',[]) as $d) {
             $payload = [
                 'person_id'=>$personId,
@@ -639,44 +636,16 @@ class SyncSitmsMasterJob implements ShouldQueue
                 'due_date'=>DS::toDateOrNull($d['document_duedate'] ?? null),
                 'created_at'=>now(),'updated_at'=>now(),
             ];
-            
-            // FIX: Handle doc_type field dengan truncation yang lebih agresif
-            if (in_array('doc_type', $cols, true)) {
-                $docType = self::nullIfEmpty($d['document_type'] ?? null) ?? 'unknown';
-                
-                // FIX KRITIS: Mapping untuk doc_type yang terlalu panjang
-                $docType = self::mapLongDocType($docType);
-                
-                // Cek panjang kolom sebenarnya di database
-                $maxDocTypeLength = 50; // Default safe value
-                try {
-                    $tableInfo = DB::select("SHOW COLUMNS FROM documents WHERE Field = 'doc_type'");
-                    if (!empty($tableInfo)) {
-                        preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $matches);
-                        if (isset($matches[1])) {
-                            $maxDocTypeLength = (int)$matches[1];
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Fallback to default if we can't get column info
-                }
-                
-                // Batasi sesuai panjang kolom sebenarnya
-                $payload['doc_type'] = self::cut($docType, $maxDocTypeLength);
+
+            if ($docTypeField) {
+                $payload[$docTypeField] = self::cut(self::nullIfEmpty($d['document_type'] ?? null) ?? 'unknown', $maxDocTypeLen);
             }
-            
-            // Handle column name variations
-            if (!in_array('type',$cols,true) && in_array('document_type',$cols,true)) {
-                $docType = self::nullIfEmpty($d['document_type'] ?? null) ?? 'unknown';
-                $docType = self::mapLongDocType($docType);
-                $payload['document_type'] = self::cut($docType, 50);
-                unset($payload['type']);
-            }
+
             if (!in_array('file_path',$cols,true) && in_array('path',$cols,true)) {
                 $payload['path'] = $payload['file_path'];
                 unset($payload['file_path']);
             }
-            
+
             $payload = array_intersect_key($payload, array_flip($cols));
 
             $dup = DB::table('documents')
@@ -687,53 +656,16 @@ class SyncSitmsMasterJob implements ShouldQueue
                 ->exists();
 
             if (!$dup) {
-                try {
-                    DB::table('documents')->insert($payload);
-                } catch (\Throwable $e) {
+                try { DB::table('documents')->insert($payload); }
+                catch (\Throwable $e) {
                     Log::warning('SITMS document insert failed', [
                         'error'=>$e->getMessage(),
                         'person_id'=>$personId,
                         'document_title'=>$payload['title'] ?? 'unknown',
-                        'doc_type' => $payload['doc_type'] ?? ($payload['document_type'] ?? 'unknown')
+                        $docTypeField => $payload[$docTypeField] ?? 'unknown'
                     ]);
                 }
             }
         }
-    }
-
-    // FIX KRITIS: Mapping untuk doc_type yang terlalu panjang
-    protected static function mapLongDocType(?string $docType): string
-    {
-        if (!$docType) return 'unknown';
-        
-        $mapping = [
-            'Berita Acara Serah Terima Pekerjaan dan Fasilitas Kerja' => 'BAST Pekerjaan',
-            'Berita Acara Serah Terima Pekerjaan' => 'BAST Pekerjaan',
-            'Berita Acara Serah Terima Fasilitas Kerja' => 'BAST Fasilitas',
-            'Surat Pernyataan Tanggung Jawab Mutlak' => 'SP Tanggung Jawab',
-            'Surat Pernyataan' => 'Surat Pernyataan',
-            'Kontrak Kerja' => 'Kontrak Kerja',
-            'Perjanjian Kerja' => 'Perjanjian Kerja',
-            'Surat Keputusan' => 'SK',
-            'Surat Tugas' => 'ST',
-            'Izin Mendirikan Bangunan' => 'IMB',
-            'Sertifikat' => 'Sertifikat',
-            // Tambahkan mapping lainnya sesuai kebutuhan
-        ];
-        
-        // Cari exact match terlebih dahulu
-        if (isset($mapping[$docType])) {
-            return $mapping[$docType];
-        }
-        
-        // Cari partial match
-        foreach ($mapping as $long => $short) {
-            if (str_contains($docType, $long)) {
-                return $short;
-            }
-        }
-        
-        // Jika masih panjang, potong menjadi 50 karakter
-        return self::cut($docType, 50);
     }
 }
