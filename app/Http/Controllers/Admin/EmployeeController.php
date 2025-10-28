@@ -4,24 +4,66 @@ namespace App\Http\Controllers\Admin;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Routing\Controller;
 
 class EmployeeController extends Controller
 {
-    /** Kunci tampilan ID karyawan (utama employee_id, fallback id_sitms -> id) */
     private function employeeKeyExpr(): string
     {
-        // Di schema kamu: employees.employee_id (NOT NULL, unique) + id_sitms (nullable)
         return "COALESCE(NULLIF(e.employee_id, ''), e.id_sitms, CAST(e.id AS CHAR))";
+    }
+
+    private function docPathExpr(): string
+    {
+        $hasPath = Schema::hasTable('documents') && Schema::hasColumn('documents','path');
+        $hasFile = Schema::hasTable('documents') && Schema::hasColumn('documents','file_path');
+        if ($hasPath && $hasFile) return "COALESCE(docs.path, docs.file_path)";
+        if ($hasPath) return "docs.path";
+        if ($hasFile) return "docs.file_path";
+        return "NULL";
+    }
+
+    private function docTypeFilterSnippet(): string
+    {
+        $hasDocType      = Schema::hasTable('documents') && Schema::hasColumn('documents','doc_type');
+        $hasDocumentType = Schema::hasTable('documents') && Schema::hasColumn('documents','document_type');
+        if     ($hasDocType)      return "AND docs.doc_type IN ('profile_photo','photo','avatar')";
+        elseif ($hasDocumentType) return "AND docs.document_type IN ('profile_photo','photo','avatar')";
+        return "";
+    }
+
+    private function docOrderExpr(): string
+    {
+        $hasUpd = Schema::hasTable('documents') && Schema::hasColumn('documents','updated_at');
+        $hasCre = Schema::hasTable('documents') && Schema::hasColumn('documents','created_at');
+        if ($hasUpd && $hasCre) return "COALESCE(docs.updated_at, docs.created_at)";
+        if ($hasUpd) return "docs.updated_at";
+        if ($hasCre) return "docs.created_at";
+        return "1";
+    }
+
+    private function personPhotoSubquery(): string
+    {
+        $pathExpr   = $this->docPathExpr();
+        if ($pathExpr === "NULL") return "NULL";
+        $typeFilter = $this->docTypeFilterSnippet();
+        $orderExpr  = $this->docOrderExpr();
+        return "(SELECT {$pathExpr}
+                  FROM documents docs
+                 WHERE docs.person_id = p.id
+                   {$typeFilter}
+                 ORDER BY {$orderExpr} DESC
+                 LIMIT 1)";
     }
 
     public function index(Request $req)
     {
-        $q       = trim((string) $req->get('q', ''));
-        $perPage = 20;
-        $empKey  = $this->employeeKeyExpr();
+        $q      = trim((string) $req->get('q', ''));
+        $empKey = $this->employeeKeyExpr();
+        $docSub = $this->personPhotoSubquery();
 
-        $rows = DB::table('employees as e')
+        $base = DB::table('employees as e')
             ->leftJoin('persons as p', 'p.id', '=', 'e.person_id')
             ->leftJoin('units as u', 'u.id', '=', 'e.unit_id')
             ->leftJoin('directorates as d', 'd.id', '=', 'e.directorate_id')
@@ -34,42 +76,49 @@ class EmployeeController extends Controller
             ->selectRaw("
                 e.id,
                 {$empKey} as employee_key,
-                e.employee_id,         -- ID payroll/internal (string)
-                e.id_sitms,            -- ID dari SITMS (string/nullable)
+                e.employee_id,
+                e.id_sitms,
                 p.full_name,
                 COALESCE(e.latest_jobs_title, pos.name) as job_title,
                 COALESCE(e.latest_jobs_unit,  u.name)  as unit_name,
                 d.name as directorate_name,
                 em.email,
-                NULL as person_photo,  -- tidak ada kolom photo di persons; isi nanti dari assets/documents jika perlu
-                e.company_name, e.employee_status, e.talent_class_level, e.is_active,
-                e.home_base_raw, e.home_base_city, e.home_base_province,
+                p.phone as phone,
+                COALESCE({$docSub}, e.profile_photo_url) as person_photo,
+                e.company_name,
+                e.employee_status,
+                e.talent_class_level,
+                e.is_active,
+                e.home_base_city,
+                e.home_base_province,
                 loc.city  as location_city,
                 loc.province as location_province,
                 e.latest_jobs_start_date
-            ")
-            ->when($q !== '', function ($qr) use ($q) {
-                $like = '%' . str_replace('%', '\%', $q) . '%';
-                $qr->where(function ($w) use ($like) {
-                    $w->where('p.full_name', 'like', $like)
-                      ->orWhere('e.employee_id', 'like', $like)
-                      ->orWhere('e.id_sitms', 'like', $like)
-                      ->orWhere('em.email', 'like', $like)
-                      ->orWhere('u.name', 'like', $like)
-                      ->orWhere('d.name', 'like', $like)
-                      ->orWhere('pos.name', 'like', $like)
-                      ->orWhere('pl.name', 'like', $like)
-                      ->orWhere('e.latest_jobs_unit', 'like', $like)
-                      ->orWhere('e.latest_jobs_title', 'like', $like)
-                      ->orWhere('loc.city', 'like', $like)
-                      ->orWhere('loc.province', 'like', $like)
-                      ->orWhere('e.company_name', 'like', $like)
-                      ->orWhere('e.employee_status', 'like', $like);
-                });
-            })
+            ");
+
+        if ($q !== '') {
+            $like = '%' . str_replace('%', '\%', $q) . '%';
+            $base->where(function ($w) use ($like) {
+                $w->where('p.full_name', 'like', $like)
+                  ->orWhere('e.employee_id', 'like', $like)
+                  ->orWhere('e.id_sitms', 'like', $like)
+                  ->orWhere('em.email', 'like', $like)
+                  ->orWhere('u.name', 'like', $like)
+                  ->orWhere('d.name', 'like', $like)
+                  ->orWhere('pos.name', 'like', $like)
+                  ->orWhere('pl.name', 'like', $like)
+                  ->orWhere('e.latest_jobs_unit', 'like', $like)
+                  ->orWhere('e.latest_jobs_title', 'like', $like)
+                  ->orWhere('loc.city', 'like', $like)
+                  ->orWhere('loc.province', 'like', $like)
+                  ->orWhere('e.company_name', 'like', $like)
+                  ->orWhere('e.employee_status', 'like', $like);
+            });
+        }
+
+        $rows = $base
             ->orderByRaw("COALESCE(NULLIF(p.full_name,''), e.employee_id) ASC")
-            ->paginate($perPage)
-            ->withQueryString();
+            ->get();
 
         return view('admin.employees.index', [
             'rows' => $rows,
@@ -80,6 +129,7 @@ class EmployeeController extends Controller
     public function show(string $id)
     {
         $empKey = $this->employeeKeyExpr();
+        $docSub = $this->personPhotoSubquery();
 
         $emp = DB::table('employees as e')
             ->leftJoin('persons as p', 'p.id', '=', 'e.person_id')
@@ -97,7 +147,7 @@ class EmployeeController extends Controller
                 {$empKey} as employee_key,
                 e.employee_id, e.id_sitms,
                 p.full_name, p.gender, p.date_of_birth, p.place_of_birth, p.phone,
-                NULL as person_photo, -- placeholder
+                COALESCE({$docSub}, e.profile_photo_url) as person_photo,
                 em.email,
                 e.company_name, e.employee_status, e.is_active,
                 d.name as directorate_name,
@@ -105,48 +155,125 @@ class EmployeeController extends Controller
                 COALESCE(e.latest_jobs_title, pos.name) as job_title,
                 pl.name as level_name,
                 e.talent_class_level,
-                e.home_base_raw, e.home_base_city, e.home_base_province,
                 loc.city  as location_city,
                 loc.province as location_province,
                 e.latest_jobs_start_date, e.created_at, e.updated_at
             ")
             ->first();
 
-        if (!$emp) {
-            abort(404);
-        }
+        if (!$emp) abort(404);
 
         $personId = $emp->person_id;
 
-        // ----- TABS: ambil berdasarkan person_id (paling stabil) -----
-        $certs = DB::table('certifications')
-            ->where('person_id', $personId)
-            ->orderByDesc('issued_at')
-            ->limit(200)->get();
+        // ===== Primary tables (pakai kalau ada) =====
+        $hasCert = Schema::hasTable('certifications');
+        $hasJob  = Schema::hasTable('job_histories');
+        $hasEdu  = Schema::hasTable('educations');
+        $hasTrn  = Schema::hasTable('trainings');
+        $hasPort = Schema::hasTable('portfolio_histories');
 
-        $jobs = DB::table('job_histories as jh')
-            ->leftJoin('units as u', 'u.id', '=', 'jh.unit_id')
-            ->leftJoin('positions as pos', 'pos.id', '=', 'jh.position_id')
-            ->where('jh.person_id', $personId)
-            ->orderByDesc('jh.start_date')
-            ->limit(200)->get();
+        $certs = $hasCert
+            ? DB::table('certifications')->where('person_id',$personId)
+                ->orderByDesc(Schema::hasColumn('certifications','issued_at')?'issued_at':'created_at')
+                ->limit(500)->get()
+            : collect();
 
-        $edus = DB::table('educations')
-            ->where('person_id', $personId)
-            ->orderByDesc('graduation_year')
-            ->limit(200)->get();
+        $jobs  = $hasJob
+            ? DB::table('job_histories as jh')
+                ->leftJoin('units as u','u.id','=','jh.unit_id')
+                ->leftJoin('positions as pos','pos.id','=','jh.position_id')
+                ->where('jh.person_id',$personId)
+                ->orderByDesc(Schema::hasColumn('job_histories','start_date')?'jh.start_date':'jh.created_at')
+                ->limit(500)
+                ->selectRaw("
+                    jh.id,
+                    ".(Schema::hasColumn('job_histories','start_date')?'jh.start_date':'NULL')." as start_date,
+                    ".(Schema::hasColumn('job_histories','end_date')  ?'jh.end_date'  :'NULL')." as end_date,
+                    COALESCE(jh.title, pos.name) as job_title,
+                    COALESCE(jh.unit_name, u.name) as unit_name
+                ")
+                ->get()
+            : collect();
 
-        $trns = DB::table('trainings')
-            ->where('person_id', $personId)
-            ->orderByDesc('start_date')
-            ->limit(200)->get();
+        $edus = $hasEdu
+            ? DB::table('educations')->where('person_id',$personId)
+                ->orderByDesc(Schema::hasColumn('educations','graduation_year')?'graduation_year':'created_at')
+                ->limit(500)->get()
+            : collect();
+
+        $trns = $hasTrn
+            ? DB::table('trainings')->where('person_id',$personId)
+                ->orderByDesc(Schema::hasColumn('trainings','start_date')?'start_date':'created_at')
+                ->limit(500)->get()
+            : collect();
+
+        // ===== Fallback isi dari portfolio_histories kalau kosong/ga ada tabel =====
+        if ($hasPort) {
+            $ports = DB::table('portfolio_histories')->where('person_id',$personId)->limit(2000)->get();
+
+            if ($certs->isEmpty()) {
+                $certs = $ports->where('category','certification')->map(function($r){
+                    $meta = is_string($r->meta) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
+                    return (object)[
+                        'id'         => $r->id ?? null,
+                        'title'      => $r->title,
+                        'organization'=> $r->organization,
+                        'issued_at'  => $r->start_date,
+                        'valid_until'=> $r->end_date,
+                        'level'      => $meta['level'] ?? null,
+                        'certificate_no' => $meta['certificate_no'] ?? null,
+                    ];
+                })->values();
+            }
+
+            if ($jobs->isEmpty()) {
+                $jobs = $ports->whereIn('category',['job','assignment','taskforce'])->map(function($r){
+                    return (object)[
+                        'id'         => $r->id ?? null,
+                        'start_date' => $r->start_date,
+                        'end_date'   => $r->end_date,
+                        'job_title'  => $r->title,
+                        'unit_name'  => $r->organization,
+                    ];
+                })->sortByDesc('start_date')->values();
+            }
+
+            if ($edus->isEmpty()) {
+                $edus = $ports->where('category','education')->map(function($r){
+                    $meta = is_string($r->meta) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
+                    return (object)[
+                        'id'              => $r->id ?? null,
+                        'school_name'     => $r->organization ?? $r->title,
+                        'degree'          => $meta['degree'] ?? null,
+                        'major'           => $meta['major'] ?? null,
+                        'graduation_year' => $meta['year']  ?? (optional($r->end_date) ? date('Y', strtotime($r->end_date)) : null),
+                    ];
+                })->values();
+            }
+
+            if ($trns->isEmpty()) {
+                $trns = $ports->where('category','training')->map(function($r){
+                    $meta = is_string($r->meta) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
+                    return (object)[
+                        'id'           => $r->id ?? null,
+                        'title'        => $r->title,
+                        'organization' => $r->organization,
+                        'start_date'   => $r->start_date,
+                        'end_date'     => $r->end_date,
+                        'level'        => $meta['level'] ?? null,
+                        'type'         => $meta['type'] ?? null,
+                        'year'         => $meta['year'] ?? (optional($r->start_date) ? date('Y', strtotime($r->start_date)) : null),
+                    ];
+                })->sortByDesc('start_date')->values();
+            }
+        }
 
         return response()->json([
-            'employee'      => $emp,
-            'certifications'=> $certs,
-            'job_histories' => $jobs,
-            'educations'    => $edus,
-            'trainings'     => $trns,
+            'employee'       => $emp,
+            'certifications' => $certs,
+            'job_histories'  => $jobs,
+            'educations'     => $edus,
+            'trainings'      => $trns,
         ]);
     }
 }

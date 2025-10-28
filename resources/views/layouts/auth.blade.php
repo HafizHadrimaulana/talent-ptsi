@@ -7,9 +7,9 @@
 
   {{-- Vite assets khusus halaman auth --}}
   @vite([
-    'resources/css/app.css',       {{-- berisi import tailwind + token + glass utilities --}}
-    'resources/css/auth.css',      {{-- style khusus halaman login --}}
-    'resources/js/app.js'          {{-- opsional, kalau ada --}}
+    'resources/css/app.css',      
+    'resources/css/auth.css',     
+    'resources/js/app.js'         
   ])
 </head>
 <body class="min-h-screen">

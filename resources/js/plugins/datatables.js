@@ -1,8 +1,9 @@
-// resources/js/plugins/datatables.js
 import $ from 'jquery';
 window.$ = window.jQuery = $;
+
 import DataTable from 'datatables.net';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
+
 import 'datatables.net-responsive';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
 
@@ -24,18 +25,19 @@ const helpers = window.__DT_HELPERS__ || (() => {
     orderMulti: false,
     autoWidth: false,
     stateSave: true,
+    deferRender: true,
     responsive: {
       breakpoints: [
         { name: 'desktop', width: BREAKPOINTS.desktop },
-        { name: 'lg', width: BREAKPOINTS.lg },
-        { name: 'md', width: BREAKPOINTS.md },
-        { name: 'sm', width: BREAKPOINTS.sm },
-        { name: 'xs', width: BREAKPOINTS.xs },
+        { name: 'lg',      width: BREAKPOINTS.lg      },
+        { name: 'md',      width: BREAKPOINTS.md      },
+        { name: 'sm',      width: BREAKPOINTS.sm      },
+        { name: 'xs',      width: BREAKPOINTS.xs      },
       ],
       details: {
         type: 'inline',
         target: 'tr',
-        renderer: function (api, rowIdx, columns) {
+        renderer: function ( api, rowIdx, columns ) {
           const hidden = columns.filter(c => c.hidden);
           if (!hidden.length) return false;
           const html = hidden.map(c => `

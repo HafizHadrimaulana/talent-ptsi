@@ -196,18 +196,15 @@ class SyncSitmsMasterJob implements ShouldQueue
     /* ================== CORE UPSERT ================== */
     protected static function upsertEmployeeRawFromSitmsRow(array $row): bool
     {
-        // Keys
         $sitmsId    = self::nullIfEmpty($row['id_sitms'] ?? null);
         $employeeId = self::nullIfEmpty($row['employee_id'] ?? null);
         $genericId  = self::nullIfEmpty($row['id'] ?? null);
         $externalId = $sitmsId ?? $employeeId ?? $genericId;
         if ($externalId) self::$seenExternalIds[] = (string)$externalId;
 
-        // Person (STRICT: hanya by employee_id / id_sitms; tanpa merge by nama)
         $existingPersonId = self::findExistingPersonIdByEmployeeKeys($employeeId, $sitmsId);
         $personId = self::ensurePersonIdForRow($row, $existingPersonId);
 
-        // Lookups + lokasi
         [$hbProv, $hbCity] = self::sitmsParseHomeBase(self::nullIfEmpty($row['home_base'] ?? null));
         $directorateId     = self::sitmsEnsureLookupId('directorates', self::nullIfEmpty($row['directorat_name'] ?? null));
         $unitId            = self::sitmsEnsureLookupId('units',        self::nullIfEmpty($row['working_unit_name'] ?? null));
@@ -223,14 +220,11 @@ class SyncSitmsMasterJob implements ShouldQueue
         $colsEmp = self::tableColumns('employees');
         $metaEmp = self::columnMeta('employees');
 
-        // ==== EMPLOYEE ID fallback (dinamis, no hardcode) ====
         $employeeIdFinal = $employeeId ?? $sitmsId ?? $genericId ?? (string) Str::ulid();
         if (isset($metaEmp['employee_id'])) {
-            // Simpan supaya mirror pakai masuk
             self::$seenEmployeeIds[] = (string)$employeeIdFinal;
         }
 
-        // Payload minimal
         $minimal = ['person_id' => $personId];
         if (in_array('employee_id',$colsEmp,true))   $minimal['employee_id']   = self::cut($employeeIdFinal);
         if (in_array('id_sitms',$colsEmp,true) && $sitmsId !== null) $minimal['id_sitms'] = self::cut($sitmsId);
@@ -246,7 +240,6 @@ class SyncSitmsMasterJob implements ShouldQueue
         if (in_array('home_base_city',$colsEmp,true))     $minimal['home_base_city']     = self::cut($hbCity);
         if (in_array('home_base_province',$colsEmp,true)) $minimal['home_base_province'] = self::cut($hbProv);
 
-        // API → flat
         $apiFlat = self::flattenEmployeePayload($row);
         foreach ($apiFlat as $k=>$v) {
             if (in_array($k, ['latest_jobs_start_date', 'date_of_birth'], true)) {
@@ -255,10 +248,15 @@ class SyncSitmsMasterJob implements ShouldQueue
             }
             if (is_string($v)) $apiFlat[$k] = self::cut($v);
         }
-        $apiFlat = self::filterColumns('employees', $apiFlat);
-        unset($apiFlat['id']); // jaga-jaga
 
-        // Merge (minimal override)
+        // Map profile_picture_url => employees.profile_photo_url (kolom baru)
+        if (!empty($apiFlat['profile_picture_url']) && in_array('profile_photo_url', $colsEmp, true)) {
+            $minimal['profile_photo_url'] = self::cut($apiFlat['profile_picture_url'], 500);
+        }
+
+        $apiFlat = self::filterColumns('employees', $apiFlat);
+        unset($apiFlat['id']); 
+
         $payload = array_merge($apiFlat, $minimal);
         if (in_array('updated_at',$colsEmp,true)) $payload['updated_at'] = $now;
         if (!DB::table('employees')->where('person_id', $personId)->exists()
@@ -304,12 +302,26 @@ class SyncSitmsMasterJob implements ShouldQueue
             }
         }
 
-        // Portfolio & Documents
+        // === ISI TABEL DOMAIN (biar modal kebaca) ===
         try { self::sitmsSyncPortfolio($personId, $row); } 
         catch (\Throwable $e) { Log::error('SITMS portfolio sync failed', ['error'=>$e->getMessage(), 'person_id'=>$personId]); }
 
         try { self::sitmsSyncDocuments($personId, $row); } 
         catch (\Throwable $e) { Log::error('SITMS documents sync failed', ['error'=>$e->getMessage(), 'person_id'=>$personId]); self::$errInserts++; }
+
+        // Tambahan khusus untuk domain:
+        foreach (Arr::get($row,'education_list.education_data',[]) as $e) {
+            self::upsertEducation($personId, (array)$e);
+        }
+        foreach (Arr::get($row,'training_list.training_data',[]) as $t) {
+            self::upsertTraining($personId, (array)$t);
+        }
+        foreach (Arr::get($row,'brevet_list.brevet_data',[]) as $c) {
+            self::upsertCertification($personId, (array)$c);
+        }
+        foreach (Arr::get($row,'jobs_list.jobs_data',[]) as $j) {
+            self::upsertJobHistory($personId, (array)$j);
+        }
 
         return true;
     }
@@ -370,7 +382,7 @@ class SyncSitmsMasterJob implements ShouldQueue
         $out = [];
         foreach ($keys as $k) {
             if (array_key_exists($k, $emp)) {
-                $out[$k] = self::nullIfEmpty($emp[$k]); // '' -> null
+                $out[$k] = self::nullIfEmpty($emp[$k]);
             }
         }
 
@@ -511,6 +523,7 @@ class SyncSitmsMasterJob implements ShouldQueue
     protected static function sitmsSyncPortfolio(string $personId, array $row): void
     {
         if (!Schema::hasTable('portfolio_histories')) return;
+
         foreach (Arr::get($row,'jobs_list.jobs_data',[]) as $j) {
             self::sitmsInsertPortfolio($personId,'job',[
                 'title'=>self::nullIfEmpty($j['jobs'] ?? null),
@@ -667,5 +680,84 @@ class SyncSitmsMasterJob implements ShouldQueue
                 }
             }
         }
+    }
+
+    /* ====== DOMAIN UPSERTS (baru) ====== */
+    protected static function upsertEducation(string $personId, array $e): void {
+        if (!Schema::hasTable('educations')) return;
+        $row = [
+            'person_id'       => $personId,
+            'level'           => self::nullIfEmpty($e['education_level'] ?? null),
+            'institution'     => self::nullIfEmpty($e['education_name'] ?? null),
+            'major'           => self::nullIfEmpty($e['major_name'] ?? null),
+            'graduation_year' => (int)($e['graduation_year'] ?? 0) ?: null,
+            'updated_at'      => now(),
+        ];
+        $row['created_at'] = now();
+        DB::table('educations')->updateOrInsert([
+            'person_id'=>$personId,
+            'institution'=>$row['institution'],
+            'major'=>$row['major'],
+            'graduation_year'=>$row['graduation_year'],
+        ], $row);
+    }
+
+    protected static function upsertTraining(string $personId, array $t): void {
+        if (!Schema::hasTable('trainings')) return;
+        $row = [
+            'person_id'   => $personId,
+            'title'       => self::nullIfEmpty($t['training_name'] ?? null),
+            'provider'    => self::nullIfEmpty($t['training_organizer'] ?? null),
+            'start_date'  => DS::toDateOrNull(($t['training_year'] ?? null)?($t['training_year'].'-01-01'):null),
+            'meta'        => json_encode([
+                'level'=>self::nullIfEmpty($t['training_level'] ?? null),
+                'type' =>self::nullIfEmpty($t['training_type'] ?? null),
+                'year' =>self::nullIfEmpty($t['training_year'] ?? null),
+            ], JSON_UNESCAPED_UNICODE),
+            'updated_at'  => now(),
+        ];
+        $row['created_at'] = now();
+        DB::table('trainings')->updateOrInsert([
+            'person_id'=>$personId,
+            'title'=>$row['title'],
+            'provider'=>$row['provider'],
+            'start_date'=>$row['start_date'],
+        ], $row);
+    }
+
+    protected static function upsertCertification(string $personId, array $c): void {
+        if (!Schema::hasTable('certifications')) return;
+        $row = [
+            'person_id'  => $personId,
+            'name'       => self::nullIfEmpty($c['brevet_name'] ?? null),
+            'issuer'     => self::nullIfEmpty($c['brevet_organizer'] ?? null),
+            'issued_at'  => DS::toDateOrNull(($c['brevet_year'] ?? null)?($c['brevet_year'].'-01-01'):null),
+            'expires_at' => DS::toDateOrNull($c['certificate_due'] ?? null),
+            'number'     => self::nullIfEmpty($c['certificate_number'] ?? null),
+            'level'      => self::nullIfEmpty($c['brevet_level'] ?? null),
+            'updated_at' => now(),
+        ]; $row['created_at'] = now();
+        DB::table('certifications')->updateOrInsert([
+            'person_id'=>$personId,'name'=>$row['name'],'issuer'=>$row['issuer'],'number'=>$row['number']
+        ], $row);
+    }
+
+    protected static function upsertJobHistory(string $personId, array $j): void {
+        if (!Schema::hasTable('job_histories')) return;
+        $row = [
+            'person_id'  => $personId,
+            'title'      => self::nullIfEmpty($j['jobs'] ?? null),
+            'unit_name'  => self::nullIfEmpty($j['jobs_unit'] ?? null),
+            'start_date' => DS::toDateOrNull($j['jobs_start_date'] ?? null),
+            'end_date'   => DS::toDateOrNull($j['jobs_end_date'] ?? null),
+            'description'=> self::nullIfEmpty($j['jobs_description'] ?? null),
+            'updated_at' => now(),
+        ]; $row['created_at'] = now();
+        DB::table('job_histories')->updateOrInsert([
+            'person_id'=>$personId,
+            'title'=>$row['title'],
+            'unit_name'=>$row['unit_name'],
+            'start_date'=>$row['start_date'],
+        ], $row);
     }
 }
