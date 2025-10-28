@@ -19,19 +19,28 @@
   }
 
   @keyframes sk {
-    from {
-      background-position: 200% 0
-    }
-
-    to {
-      background-position: -200% 0
-    }
+    from { background-position: 200% 0 }
+    to   { background-position: -200% 0 }
   }
 
-  .srow {
-    height: 12px;
-    margin: .35rem 0
-  }
+  .srow { height: 12px; margin: .35rem 0 }
+  .table-compact td, .table-compact th { padding: .55rem .7rem; }
+  .text-ellipsis { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom;}
+  .cell-actions { width: 110px; }
+  .ios-tabs{ display:flex; gap:8px; margin:12px 0;}
+  .ios-tab{ padding:.45rem .8rem; border-radius:999px; border:1px solid var(--border, #e5e7eb); background:var(--surface, #fff); }
+  .ios-tab.is-active{ font-weight:700; box-shadow:0 0 0 2px rgba(0,0,0,.04) inset; }
+  .ios-tab-panels .ios-panel{ display:none; }
+  .ios-tab-panels .ios-panel.is-active{ display:block; }
+  .ios-card{ background:var(--surface, #fff); border:1px solid var(--border, #e5e7eb); border-radius:16px; padding:12px;}
+  .list .list-item{ border-bottom:1px dashed var(--border,#e5e7eb); padding:.6rem 0;}
+  .avatar.lg{ width:48px;height:48px;border-radius:12px;object-fit:cover;background:#e5e7eb}
+  .modal[hidden]{ display:none !important; }
+  .modal-panel{ background:var(--surface,#fff); border-radius:18px; max-width:920px; width:92vw; }
+  .modal .modal-header, .modal .modal-actions{ padding:12px 16px; display:flex; align-items:center; justify-content:space-between;}
+  .modal .modal-body{ padding:12px 16px; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width: 768px){ .grid-2{ grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -63,50 +72,48 @@
         </tr>
       </thead>
       <tbody>
-        @if (count($rows))
         @foreach($rows as $r)
-        @php
-        $employee_id = $r->employee_key ?? $r->employee_id ?? null;
-        $full_name = $r->full_name ?? null;
-        $unit_name = $r->unit_name ?? null;
-        $job_title = $r->job_title ?? null;
-        $email = $r->email ?? null;
-        $searchBlob = trim(implode(' ', array_filter([
-        $r->directorate_name ?? null,
-        $r->location_city ?? null,
-        $r->location_province?? null,
-        $r->company_name ?? null,
-        $r->employee_status ?? null,
-        $r->talent_class_level ?? null,
-        ])));
-        $payload = [
-        'id' => $r->id ?? null,
-        'employee_id' => $employee_id,
-        'full_name' => $full_name,
-        'unit_name' => $unit_name,
-        'job_title' => $job_title,
-        'email' => $email,
-        'phone' => $r->phone ?? null,
-        'photo_url' => $r->person_photo ?? null,
-        ];
-        @endphp
+          @php
+            $employee_id = $r->employee_key ?? $r->employee_id ?? null;
+            $full_name   = $r->full_name ?? null;
+            $unit_name   = $r->unit_name ?? null;
+            $job_title   = $r->job_title ?? null;
+            $email       = $r->email ?? null;
+            $searchBlob  = trim(implode(' ', array_filter([
+              $r->directorate_name ?? null,
+              $r->location_city ?? null,
+              $r->location_province ?? null,
+              $r->company_name ?? null,
+              $r->employee_status ?? null,
+              $r->talent_class_level ?? null,
+            ])));
+            $payload = [
+              'id'         => $r->id ?? null,
+              'employee_id'=> $employee_id,
+              'full_name'  => $full_name,
+              'unit_name'  => $unit_name,
+              'job_title'  => $job_title,
+              'email'      => $email,
+              'phone'      => $r->phone ?? null,
+              'photo_url'  => $r->person_photo ?? null,
+            ];
+          @endphp
 
-        <tr>
-          <td class="text-ellipsis">{{ $employee_id ?? '—' }}</td>
-          <td><span class="text-ellipsis">{{ $full_name ?? '—' }}</span></td>
-          <td><span class="text-ellipsis">{{ $job_title ?? '—' }}</span></td>
-          <td><span class="text-ellipsis">{{ $unit_name ?? '—' }}</span></td>
-          <td class="hsearch">{{ $email ?? '' }}</td>
-          <td class="hsearch">{{ $searchBlob }}</td>
-          <td class="cell-actions">
-            <button class="btn btn-outline btn-sm"
-              data-show-emp="{{ $r->id }}"
-              data-show-url="{{ route('admin.employees.show', $r->id) }}"
-              data-emp='@json($payload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>Details</button>
-          </td>
-        </tr>
+          <tr>
+            <td class="text-ellipsis">{{ $employee_id ?? '—' }}</td>
+            <td><span class="text-ellipsis">{{ $full_name ?? '—' }}</span></td>
+            <td><span class="text-ellipsis">{{ $job_title ?? '—' }}</span></td>
+            <td><span class="text-ellipsis">{{ $unit_name ?? '—' }}</span></td>
+            <td class="hsearch">{{ $email ?? '' }}</td>
+            <td class="hsearch">{{ $searchBlob }}</td>
+            <td class="cell-actions">
+              <button class="btn btn-outline btn-sm"
+                data-show-emp="{{ $r->id }}"
+                data-show-url="{{ route('admin.employees.show', $r->id) }}"
+                data-emp='@json($payload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>Details</button>
+            </td>
+          </tr>
         @endforeach
-        @endif
       </tbody>
     </table>
   </div>
@@ -116,7 +123,7 @@
   <div class="modal-card modal-panel">
     <div class="modal-header iosglass-head">
       <div style="display:flex; align-items:center; gap:12px">
-        <img id="empPhoto" class="avatar lg" alt="Photo" style="width:48px;height:48px;border-radius:12px;object-fit:cover;background:#e5e7eb" />
+        <img id="empPhoto" class="avatar lg" alt="Photo" />
         <div>
           <div id="empName" class="title" style="font-weight:800; font-size:1.05rem"></div>
           <div class="text-soft text-sm" id="empId"></div>
@@ -176,131 +183,173 @@
 @endsection
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" defer></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js" defer></script>
+
 <script>
-(function(){
-  const $ = (sel, ctx=document) => ctx.querySelector(sel);
-  const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-  const modal   = $('#empModal');
-  const closeBtn= $('#empClose');
-  const closeBt2= $('#empCloseBottom');
-  const nameEl  = $('#empName');
-  const idEl    = $('#empId');
-  const photoEl = $('#empPhoto');
-  const ovLeft  = $('#ov-left');
-  const ovRight = $('#ov-right');
-  const skel    = $('#empLoading');
-
-  function openModal(){ modal.removeAttribute('hidden'); modal.open = true; }
-  function closeModal(){ modal.setAttribute('hidden',''); modal.open = false; }
-
-  closeBtn?.addEventListener('click', closeModal);
-  closeBt2?.addEventListener('click', closeModal);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-  function setActiveTab(key){
-    $$('.ios-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === key));
-    $$('.ios-panel').forEach(p => p.classList.toggle('is-active', p.id === 'tab-'+key));
-  }
-  $$('.ios-tab').forEach(b => b.addEventListener('click', () => setActiveTab(b.dataset.tab)));
-
-  function fmtDate(s){
-    if (!s) return '—';
-    const d = new Date(s); if (isNaN(d)) return s;
-    return d.toISOString().slice(0,10);
-  }
-
-  function safe(v){ return (v===null || v===undefined || v==='') ? '—' : v; }
-
-  async function loadDetail(url, seed){
-    skel.style.display = 'block';
-    ovLeft.innerHTML = ''; ovRight.innerHTML = '';
-    $('#brevet-list').innerHTML = '';
-    $('#job-list').innerHTML    = '';
-    $('#edu-list').innerHTML    = '';
-    $('#train-list').innerHTML  = '';
-    $('#cert-list').innerHTML   = '';
-
-    try{
-      const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      if (!resp.ok) throw new Error('HTTP '+resp.status);
-      const data = await resp.json();
-
-      const e = data.employee || {};
-      const photo = seed.photo_url || e.person_photo || '';
-      photoEl.src = photo || '';
-      nameEl.textContent = safe(seed.full_name || e.full_name);
-      idEl.textContent   = 'ID: '+ safe(seed.employee_id || e.employee_key);
-
-      // Overview kiri
-      ovLeft.innerHTML = `
-        <div><strong>Job Title</strong><br>${safe(seed.job_title || e.job_title)}</div>
-        <div class="mt-2"><strong>Unit</strong><br>${safe(seed.unit_name || e.unit_name)}</div>
-        <div class="mt-2"><strong>Directorate</strong><br>${safe(e.directorate_name)}</div>
-        <div class="mt-2"><strong>Location</strong><br>${safe([e.location_city, e.location_province].filter(Boolean).join(', '))}</div>
-      `;
-      // Overview kanan
-      ovRight.innerHTML = `
-        <div><strong>Email</strong><br>${safe(seed.email || e.email)}</div>
-        <div class="mt-2"><strong>Phone</strong><br>${safe(seed.phone || e.phone)}</div>
-        <div class="mt-2"><strong>Talent Class</strong><br>${safe(e.talent_class_level)}</div>
-        <div class="mt-2"><strong>Latest Job Start</strong><br>${fmtDate(e.latest_jobs_start_date)}</div>
-      `;
-
-      // Job history
-      (data.job_histories||[]).forEach(j=>{
-        const li = document.createElement('div');
-        li.className = 'list-item';
-        li.innerHTML = `<div><strong>${safe(j.job_title)}</strong><br>${safe(j.unit_name||'')}<div class="text-sm">${fmtDate(j.start_date)} — ${fmtDate(j.end_date)}</div></div>`;
-        $('#job-list').appendChild(li);
-      });
-
-      // Education
-      (data.educations||[]).forEach(ed=>{
-        const li = document.createElement('div');
-        li.className = 'list-item';
-        li.innerHTML = `<div><strong>${safe(ed.school_name||ed.education_name||'')}</strong><br>${safe(ed.degree||ed.education_level||'')} ${safe(ed.major||ed.major_name||'')}<div class="text-sm">Year: ${safe(ed.graduation_year)}</div></div>`;
-        $('#edu-list').appendChild(li);
-      });
-
-      // Training
-      (data.trainings||[]).forEach(tr=>{
-        const li = document.createElement('div');
-        li.className = 'list-item';
-        li.innerHTML = `<div><strong>${safe(tr.title||tr.training_name||'')}</strong><br>${safe(tr.organization||tr.training_organizer||'')}<div class="text-sm">${fmtDate(tr.start_date)} ${tr.year?(' • '+tr.year):''} ${tr.level?(' • '+tr.level):''} ${tr.type?(' • '+tr.type):''}</div></div>`;
-        $('#train-list').appendChild(li);
-      });
-
-      // Certificates (Brevet + Certs tab)
-      (data.certifications||[]).forEach(cf=>{
-        const brevet = document.createElement('div');
-        brevet.className = 'list-item';
-        brevet.innerHTML = `<div><strong>${safe(cf.title||cf.brevet_name||'')}</strong><br>${safe(cf.organization||cf.brevet_organizer||'')}<div class="text-sm">Issued: ${fmtDate(cf.issued_at||cf.start_date)} • Valid: ${fmtDate(cf.valid_until||cf.end_date)} ${cf.level?('• '+cf.level):''} ${cf.certificate_no?('• #'+cf.certificate_no):''}</div></div>`;
-        $('#brevet-list').appendChild(brevet);
-
-        const cert = document.createElement('div');
-        cert.className = 'list-item';
-        cert.innerHTML = brevet.innerHTML;
-        $('#cert-list').appendChild(cert);
-      });
-
-      setActiveTab('ov');
-    }catch(err){
-      ovLeft.innerHTML = `<div class="text-red-600">Gagal memuat data (${err.message}).</div>`;
-    }finally{
-      skel.style.display = 'none';
-    }
-  }
-
-  // Bind tombol "Details"
-  $$('#employees-table [data-show-emp]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const url  = btn.getAttribute('data-show-url');
-      const seed = JSON.parse(btn.getAttribute('data-emp')||'{}');
-      openModal();
-      setActiveTab('ov');
-      loadDetail(url, seed);
+document.addEventListener('DOMContentLoaded', function () {
+  // Datatable init (hindari double init)
+  if (!$('#employees-table').hasClass('dt-initialized')) {
+    $('#employees-table').DataTable({
+      pageLength: 25,
+      order: [[1, 'asc']],
+      autoWidth: false,
+      columnDefs: [
+        { targets: [4,5], visible: false, searchable: true }, // hidden search cols
+        { targets: -1, orderable: false }
+      ],
+      drawCallback: function(){ $('#employees-table').addClass('dt-initialized'); }
     });
+  }
+
+  // Search form
+  const form  = document.getElementById('empSearchForm');
+  const input = document.getElementById('empSearchInput');
+  const clear = document.getElementById('empSearchClear');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = (input?.value || '').trim();
+    const url = new URL(window.location.href);
+    if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+    window.location.href = url.toString();
   });
-})();
+  clear?.addEventListener('click', () => {
+    input.value = '';
+    const url = new URL(window.location.href);
+    url.searchParams.delete('q');
+    window.location.href = url.toString();
+  });
+
+  // Modal logic
+  (function() {
+    const $ = (sel, ctx = document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
+    const modal   = $('#empModal');
+    const closeBtn= $('#empClose');
+    const closeBt2= $('#empCloseBottom');
+    const nameEl  = $('#empName');
+    const idEl    = $('#empId');
+    const photoEl = $('#empPhoto');
+    const ovLeft  = $('#ov-left');
+    const ovRight = $('#ov-right');
+    const skel    = $('#empLoading');
+
+    function openModal() { modal.removeAttribute('hidden'); modal.open = true; }
+    function closeModal(){ modal.setAttribute('hidden',''); modal.open = false; }
+
+    closeBtn?.addEventListener('click', closeModal);
+    closeBt2?.addEventListener('click', closeModal);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    function setActiveTab(key) {
+      $$('.ios-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === key));
+      $$('.ios-panel').forEach(p => p.classList.toggle('is-active', p.id === 'tab-' + key));
+    }
+    $$('.ios-tab').forEach(b => b.addEventListener('click', () => setActiveTab(b.dataset.tab)));
+
+    function fmtDate(s) {
+      if (!s) return '—';
+      const d = new Date(s);
+      if (isNaN(d)) return ('' + s).slice(0, 10);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function safe(v) {
+      return (v === null || v === undefined || v === '') ? '—' : v;
+    }
+
+    async function loadDetail(url, seed) {
+      skel.style.display = 'block';
+      ovLeft.innerHTML = '';
+      ovRight.innerHTML = '';
+      $('#brevet-list').innerHTML = '';
+      $('#job-list').innerHTML = '';
+      $('#edu-list').innerHTML = '';
+      $('#train-list').innerHTML = '';
+      $('#cert-list').innerHTML = '';
+
+      try {
+        const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+
+        const e = data.employee || {};
+        const photo = seed.photo_url || e.person_photo || '';
+        photoEl.src = photo || '';
+        nameEl.textContent = safe(seed.full_name || e.full_name);
+        idEl.textContent   = 'ID: ' + safe(seed.employee_id || e.employee_key);
+
+        // Overview kiri
+        ovLeft.innerHTML = `
+          <div><strong>Job Title</strong><br>${safe(seed.job_title || e.job_title)}</div>
+          <div class="mt-2"><strong>Unit</strong><br>${safe(seed.unit_name || e.unit_name)}</div>
+          <div class="mt-2"><strong>Directorate</strong><br>${safe(e.directorate_name)}</div>
+          <div class="mt-2"><strong>Location</strong><br>${safe([e.location_city, e.location_province].filter(Boolean).join(', '))}</div>
+        `;
+        // Overview kanan
+        ovRight.innerHTML = `
+          <div><strong>Email</strong><br>${safe(seed.email || e.email)}</div>
+          <div class="mt-2"><strong>Phone</strong><br>${safe(seed.phone || e.phone)}</div>
+          <div class="mt-2"><strong>Talent Class</strong><br>${safe(e.talent_class_level)}</div>
+          <div class="mt-2"><strong>Latest Job Start</strong><br>${fmtDate(e.latest_jobs_start_date)}</div>
+        `;
+
+        // Job history
+        (data.job_histories || []).forEach(j => {
+          const li = document.createElement('div');
+          li.className = 'list-item';
+          li.innerHTML = `<div><strong>${safe(j.job_title)}</strong><br>${safe(j.unit_name||'')}<div class="text-sm">${fmtDate(j.start_date)} — ${fmtDate(j.end_date)}</div></div>`;
+          $('#job-list').appendChild(li);
+        });
+
+        // Education
+        (data.educations || []).forEach(ed => {
+          const li = document.createElement('div');
+          li.className = 'list-item';
+          li.innerHTML = `<div><strong>${safe(ed.school_name||ed.education_name||'')}</strong><br>${safe(ed.degree||ed.education_level||'')} ${safe(ed.major||ed.major_name||'')}<div class="text-sm">Year: ${safe(ed.graduation_year)}</div></div>`;
+          $('#edu-list').appendChild(li);
+        });
+
+        // Training
+        (data.trainings || []).forEach(tr => {
+          const li = document.createElement('div');
+          li.className = 'list-item';
+          li.innerHTML = `<div><strong>${safe(tr.title||tr.training_name||'')}</strong><br>${safe(tr.organization||tr.training_organizer||'')}<div class="text-sm">${fmtDate(tr.start_date)} ${tr.year?(' • '+tr.year):''} ${tr.level?(' • '+tr.level):''} ${tr.type?(' • '+tr.type):''}</div></div>`;
+          $('#train-list').appendChild(li);
+        });
+
+        // Certificates (Brevet + Certs tab)
+        (data.certifications || []).forEach(cf => {
+          const brevet = document.createElement('div');
+          brevet.className = 'list-item';
+          brevet.innerHTML = `<div><strong>${safe(cf.title||cf.brevet_name||'')}</strong><br>${safe(cf.organization||cf.brevet_organizer||'')}<div class="text-sm">Issued: ${fmtDate(cf.issued_at||cf.start_date)} • Valid: ${fmtDate(cf.valid_until||cf.end_date)} ${cf.level?('• '+cf.level):''} ${cf.certificate_no?('• #'+cf.certificate_no):''}</div></div>`;
+          $('#brevet-list').appendChild(brevet);
+
+          const cert = document.createElement('div');
+          cert.className = 'list-item';
+          cert.innerHTML = brevet.innerHTML;
+          $('#cert-list').appendChild(cert);
+        });
+
+        setActiveTab('ov');
+      } catch (err) {
+        ovLeft.innerHTML = `<div class="text-red-600">Gagal memuat data (${err.message}).</div>`;
+      } finally {
+        skel.style.display = 'none';
+      }
+    }
+
+    // Bind tombol "Details"
+    Array.from(document.querySelectorAll('#employees-table [data-show-emp]')).forEach(btn => {
+      btn.addEventListener('click', () => {
+        const url  = btn.getAttribute('data-show-url');
+        const seed = JSON.parse(btn.getAttribute('data-emp') || '{}');
+        openModal();
+        setActiveTab('ov');
+        loadDetail(url, seed);
+      });
+    });
+  })();
+});
 </script>
 @endpush

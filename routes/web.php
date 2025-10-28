@@ -25,9 +25,9 @@ Route::middleware('web')->group(function () {
     });
 
     // ====== AUTHENTICATED SHELL ======
-    Route::middleware(['auth','team.scope'])->group(function () {
-        Route::get('/', fn () => redirect()->route('dashboard'));
-        Route::get('/dashboard', fn () => view('dashboard'))->name('dashboard');
+    Route::middleware(['auth', 'team.scope'])->group(function () {
+        Route::get('/', fn() => redirect()->route('dashboard'));
+        Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
 
         // Account (modal actions; project-local only)
         Route::post('/account/profile',  [AccountController::class, 'updateProfile'])->name('account.profile.update');
@@ -38,5 +38,5 @@ Route::middleware('web')->group(function () {
     });
 
     // ====== LOAD INTERNAL / ADMIN ROUTES ======
-    require __DIR__.'/admin.php';
+    require __DIR__ . '/admin.php';
 });

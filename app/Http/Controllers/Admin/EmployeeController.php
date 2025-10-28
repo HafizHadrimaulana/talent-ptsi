@@ -165,104 +165,109 @@ class EmployeeController extends Controller
 
         $personId = $emp->person_id;
 
-        // ===== Primary tables (pakai kalau ada) =====
+        // ===== Primary tables kalau ada =====
         $hasCert = Schema::hasTable('certifications');
         $hasJob  = Schema::hasTable('job_histories');
         $hasEdu  = Schema::hasTable('educations');
         $hasTrn  = Schema::hasTable('trainings');
         $hasPort = Schema::hasTable('portfolio_histories');
 
+        // Certifications - ambil dari tabel certifications
         $certs = $hasCert
             ? DB::table('certifications')->where('person_id',$personId)
-                ->orderByDesc(Schema::hasColumn('certifications','issued_at')?'issued_at':'created_at')
+                ->orderByDesc('issued_at')
                 ->limit(500)->get()
             : collect();
 
+        // Job histories
         $jobs  = $hasJob
-            ? DB::table('job_histories as jh')
-                ->leftJoin('units as u','u.id','=','jh.unit_id')
-                ->leftJoin('positions as pos','pos.id','=','jh.position_id')
-                ->where('jh.person_id',$personId)
-                ->orderByDesc(Schema::hasColumn('job_histories','start_date')?'jh.start_date':'jh.created_at')
-                ->limit(500)
-                ->selectRaw("
-                    jh.id,
-                    ".(Schema::hasColumn('job_histories','start_date')?'jh.start_date':'NULL')." as start_date,
-                    ".(Schema::hasColumn('job_histories','end_date')  ?'jh.end_date'  :'NULL')." as end_date,
-                    COALESCE(jh.title, pos.name) as job_title,
-                    COALESCE(jh.unit_name, u.name) as unit_name
-                ")
-                ->get()
+            ? DB::table('job_histories')->where('person_id',$personId)
+                ->orderByDesc('start_date')
+                ->limit(500)->get()
             : collect();
 
+        // Educations - FIX: ambil langsung dari tabel educations
         $edus = $hasEdu
             ? DB::table('educations')->where('person_id',$personId)
-                ->orderByDesc(Schema::hasColumn('educations','graduation_year')?'graduation_year':'created_at')
+                ->orderByDesc('graduation_year')
                 ->limit(500)->get()
             : collect();
 
+        // Trainings
         $trns = $hasTrn
             ? DB::table('trainings')->where('person_id',$personId)
-                ->orderByDesc(Schema::hasColumn('trainings','start_date')?'start_date':'created_at')
+                ->orderByDesc('start_date')
                 ->limit(500)->get()
             : collect();
 
-        // ===== Fallback isi dari portfolio_histories kalau kosong/ga ada tabel =====
+        // ===== Fallback dari portfolio_histories =====
+        $brevets = collect();
         if ($hasPort) {
             $ports = DB::table('portfolio_histories')->where('person_id',$personId)->limit(2000)->get();
 
+            // Brevets khusus dari portfolio (category = 'certification')
+            $brevets = $ports->where('category', 'certification')->map(function($r){
+                $meta = is_string($r->meta ?? null) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
+                return (object)[
+                    'id'             => $r->id ?? null,
+                    'title'          => $r->title,
+                    'organization'   => $r->organization,
+                    'issued_at'      => $r->start_date,
+                    'valid_until'    => $r->end_date,
+                    'level'          => $meta['level'] ?? null,
+                    'certificate_no' => $meta['certificate_no'] ?? null,
+                    'year'           => $meta['year'] ?? ($r->start_date ? date('Y', strtotime($r->start_date)) : null),
+                ];
+            })->sortByDesc(function($item) {
+                return $item->issued_at ?? $item->year ?? '0000';
+            })->values();
+
+            // Jika certifications kosong, gunakan brevets
             if ($certs->isEmpty()) {
-                $certs = $ports->where('category','certification')->map(function($r){
-                    $meta = is_string($r->meta) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
-                    return (object)[
-                        'id'         => $r->id ?? null,
-                        'title'      => $r->title,
-                        'organization'=> $r->organization,
-                        'issued_at'  => $r->start_date,
-                        'valid_until'=> $r->end_date,
-                        'level'      => $meta['level'] ?? null,
-                        'certificate_no' => $meta['certificate_no'] ?? null,
-                    ];
-                })->values();
+                $certs = $brevets;
             }
 
+            // Fallback untuk jobs
             if ($jobs->isEmpty()) {
-                $jobs = $ports->whereIn('category',['job','assignment','taskforce'])->map(function($r){
+                $jobs = $ports->whereIn('category', ['job','assignment'])->map(function($r){
                     return (object)[
                         'id'         => $r->id ?? null,
                         'start_date' => $r->start_date,
                         'end_date'   => $r->end_date,
-                        'job_title'  => $r->title,
-                        'unit_name'  => $r->organization,
+                        'title'      => $r->title,
+                        'unit_name'  => $r->organization ?? $r->unit_name,
+                        'description'=> $r->description,
                     ];
                 })->sortByDesc('start_date')->values();
             }
 
+            // Fallback untuk educations - FIX: ambil dari category 'education'
             if ($edus->isEmpty()) {
                 $edus = $ports->where('category','education')->map(function($r){
-                    $meta = is_string($r->meta) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
+                    $meta = is_string($r->meta ?? null) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
                     return (object)[
                         'id'              => $r->id ?? null,
-                        'school_name'     => $r->organization ?? $r->title,
-                        'degree'          => $meta['degree'] ?? null,
+                        'level'           => $meta['level'] ?? null,
+                        'institution'     => $r->organization ?? $r->title,
                         'major'           => $meta['major'] ?? null,
-                        'graduation_year' => $meta['year']  ?? (optional($r->end_date) ? date('Y', strtotime($r->end_date)) : null),
+                        'graduation_year' => $meta['graduation_year'] ?? ($r->start_date ? date('Y', strtotime($r->start_date)) : null),
                     ];
-                })->values();
+                })->sortByDesc('graduation_year')->values();
             }
 
+            // Fallback untuk trainings
             if ($trns->isEmpty()) {
                 $trns = $ports->where('category','training')->map(function($r){
-                    $meta = is_string($r->meta) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
+                    $meta = is_string($r->meta ?? null) ? json_decode($r->meta,true) : (array)($r->meta ?? []);
                     return (object)[
                         'id'           => $r->id ?? null,
                         'title'        => $r->title,
-                        'organization' => $r->organization,
+                        'provider'     => $r->organization ?? $r->unit_name,
                         'start_date'   => $r->start_date,
                         'end_date'     => $r->end_date,
                         'level'        => $meta['level'] ?? null,
                         'type'         => $meta['type'] ?? null,
-                        'year'         => $meta['year'] ?? (optional($r->start_date) ? date('Y', strtotime($r->start_date)) : null),
+                        'year'         => $meta['year'] ?? ($r->start_date ? date('Y', strtotime($r->start_date)) : null),
                     ];
                 })->sortByDesc('start_date')->values();
             }
@@ -271,6 +276,7 @@ class EmployeeController extends Controller
         return response()->json([
             'employee'       => $emp,
             'certifications' => $certs,
+            'brevets'        => $brevets,
             'job_histories'  => $jobs,
             'educations'     => $edus,
             'trainings'      => $trns,
