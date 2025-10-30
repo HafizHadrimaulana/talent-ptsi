@@ -7,134 +7,249 @@
   $meUnit = $me?->unit_id;
 @endphp
 
-<div class="card-glass mb-2 p-4 rounded-2xl shadow-md space-y-4">
-  {{-- ===== Header Row (Title + Button) ===== --}}
-  <div class="flex justify-between items-center">
-    <h2 class="text-xl font-semibold">Izin Prinsip</h2>
+<div class="u-card u-card--glass u-hover-lift">
+  <div class="u-flex u-items-center u-justify-between u-mb-md">
+    <h2 class="u-title">Izin Prinsip</h2>
     @can('recruitment.update')
-      <button class="btn btn-brand" type="button" onclick="openIpModal()">Buat Permintaan</button>
+    <button class="u-btn u-btn--brand u-hover-lift" data-modal-open="createApprovalModal">
+      <i class="fas fa-plus u-mr-xs"></i> Buat Permintaan
+    </button>
     @endcan
   </div>
 
-  {{-- ===== Alerts (Optional) ===== --}}
-  @if(session('ok'))
-    <div class="alert success">{{ session('ok') }}</div>
+  @if(session('ok')) 
+    <div class="u-card u-mb-md u-success">
+      <div class="u-flex u-items-center u-gap-sm">
+        <i class='fas fa-check-circle u-success-icon'></i>
+        <span>{{ session('ok') }}</span>
+      </div>
+    </div>
   @endif
+  
   @if($errors->any())
-    <div class="alert danger">{{ $errors->first() }}</div>
+    <div class="u-card u-mb-md u-error">
+      <div class="u-flex u-items-center u-gap-sm u-mb-sm">
+        <i class='fas fa-exclamation-circle u-error-icon'></i>
+        <span class="u-font-semibold">Please fix the following errors:</span>
+      </div>
+      <ul class="u-list">
+        @foreach($errors->all() as $e)
+          <li class="u-item">{{ $e }}</li>
+        @endforeach
+      </ul>
+    </div>
   @endif
 
-  {{-- ===== DataTable Wrapper ===== --}}
-  <div class="dt-wrapper bg-white/70 dark:bg-slate-900/60 rounded-xl shadow-sm p-3 space-y-3 ios-glass">
-    <table id="ip-table" class="display table-ui table-compact table-sticky w-full" data-dt>
-      <thead>
-        <tr>
-          <th>Judul</th>
-          <th>Posisi</th>
-          <th>HC</th>
-          <th>Status</th>
-          <th class="cell-actions">Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach($list as $r)
+  <div class="dt-wrapper">
+    <div class="u-scroll-x">
+      <table id="ip-table" class="u-table">
+        <thead>
+          <tr>
+            <th>Judul</th>
+            <th>Posisi</th>
+            <th>HC</th>
+            <th>Status</th>
+            <th class="cell-actions">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($list as $r)
           @php
             $sameUnit = $meUnit && $meUnit === $r->unit_id;
           @endphp
           <tr>
-            <td>{{ $r->title }}</td>
-            <td>{{ $r->position }}</td>
-            <td>{{ $r->headcount }}</td>
             <td>
-              <span class="badge
-                @if($r->status === 'rejected') danger
-                @elseif($r->status === 'draft') warn
-                @elseif($r->status === 'approved') success
-                @else soft @endif">
+              <div class="u-flex u-items-center u-gap-sm">
+                <div class="u-avatar u-avatar--sm u-avatar--brand">
+                  <i class='fas fa-clipboard-list u-text-xs'></i>
+                </div>
+                <span class="u-font-medium">{{ $r->title }}</span>
+              </div>
+            </td>
+            <td>{{ $r->position }}</td>
+            <td>
+              <span class="u-badge u-badge--glass">{{ $r->headcount }} orang</span>
+            </td>
+            <td>
+              <span class="u-badge
+                @if($r->status === 'rejected') u-badge--danger
+                @elseif($r->status === 'draft') u-badge--warn
+                @elseif($r->status === 'approved') u-badge--success
+                @else u-badge--soft @endif">
                 {{ ucfirst($r->status) }}
               </span>
             </td>
             <td class="cell-actions">
-              {{-- SDM: submit DRAFT (unit sama + izin) --}}
-              @if($r->status === 'draft' && $sameUnit)
-                @can('recruitment.submit')
-                  <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" class="inline">
+              <div class="cell-actions__group">
+                {{-- SDM: submit DRAFT (unit sama + izin) --}}
+                @if($r->status === 'draft' && $sameUnit)
+                  @can('recruitment.submit')
+                  <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" class="u-inline">
                     @csrf
-                    <button class="btn btn-sm" title="Submit for approval">Submit</button>
+                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Submit for approval">
+                      <i class="fas fa-paper-plane u-mr-xs"></i> Submit
+                    </button>
                   </form>
-                @endcan
-              @endif
+                  @endcan
+                @endif
 
-              {{-- GM/VP: approve/reject SUBMITTED (unit sama + izin) --}}
-              @if($r->status === 'submitted' && $sameUnit)
-                @can('recruitment.approve')
-                  <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}" class="inline">
+                {{-- GM/VP: approve/reject SUBMITTED (unit sama + izin) --}}
+                @if($r->status === 'submitted' && $sameUnit)
+                  @can('recruitment.approve')
+                  <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}" class="u-inline">
                     @csrf
-                    <button class="btn btn-sm success" title="Approve">Approve</button>
+                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success" title="Approve">
+                      <i class="fas fa-check u-mr-xs"></i> Approve
+                    </button>
                   </form>
-                  <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}" class="inline ml-1">
+                  <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}" class="u-inline">
                     @csrf
-                    <button class="btn btn-sm danger" title="Reject">Reject</button>
+                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-danger" title="Reject">
+                      <i class="fas fa-times u-mr-xs"></i> Reject
+                    </button>
                   </form>
-                @endcan
-              @endif
+                  @endcan
+                @endif
+              </div>
             </td>
           </tr>
-        @endforeach
-      </tbody>
-    </table>
-  </div>
-
-  {{-- ===== Pagination ===== --}}
-  <div class="mt-3">
-    {{ $list->links() }}
-  </div>
-</div>
-
-{{-- ===== Modal: Buat Izin Prinsip ===== --}}
-@can('recruitment.update')
-<div id="ipModal" class="modal" hidden>
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3>Buat Izin Prinsip</h3>
-      <button class="close-btn" type="button" onclick="closeIpModal()">✖</button>
+          @endforeach
+        </tbody>
+      </table>
     </div>
-    <form id="ipForm" method="POST" action="{{ route('recruitment.principal-approval.store') }}">
-      @csrf
-      <div class="modal-body">
-        <div class="mb-2">
-          <label>Judul</label>
-          <input class="input" name="title" required>
-        </div>
-        <div class="mb-2">
-          <label>Posisi</label>
-          <input class="input" name="position" required>
-        </div>
-        <div class="mb-2">
-          <label>Headcount</label>
-          <input class="input" type="number" min="1" name="headcount" value="1" required>
-        </div>
-        <div class="mb-2">
-          <label>Justifikasi</label>
-          <textarea class="input" name="justification" rows="4"></textarea>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" type="button" onclick="closeIpModal()">Batal</button>
-        <button class="btn btn-brand">Simpan Draft</button>
-      </div>
-    </form>
+  </div>
+
+  <div class="u-flex u-items-center u-justify-between u-mt-lg">
+    <div class="u-text-sm u-muted">
+      Showing {{ $list->count() }} of {{ $list->total() }} requests
+    </div>
+    <div>{{ $list->links() }}</div>
   </div>
 </div>
-@endcan
+
+<!-- Create Approval Modal -->
+<div id="createApprovalModal" class="u-modal" hidden>
+  <div class="u-modal__card">
+    <div class="u-modal__head">
+      <div class="u-flex u-items-center u-gap-md">
+        <div class="u-avatar u-avatar--lg u-avatar--brand">
+          <i class='fas fa-clipboard-check'></i>
+        </div>
+        <div>
+          <div class="u-title">Buat Izin Prinsip Baru</div>
+          <div class="u-muted u-text-sm">Ajukan permintaan rekrutmen baru</div>
+        </div>
+      </div>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+        <i class='fas fa-times'></i>
+      </button>
+    </div>
+
+    <div class="u-modal__body">
+      <form method="POST" action="{{ route('recruitment.principal-approval.store') }}" class="u-space-y-md u-p-md" id="createApprovalForm">
+        @csrf
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
+          <input class="u-input" name="title" placeholder="Masukkan judul permintaan" required>
+          <p class="u-text-xs u-muted u-mt-xs">Contoh: "Rekrutmen Software Engineer Q4 2024"</p>
+        </div>
+
+        <div class="u-grid-2 u-stack-mobile u-gap-md">
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi</label>
+            <input class="u-input" name="position" placeholder="Masukkan posisi" required>
+          </div>
+
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
+            <input class="u-input" type="number" min="1" name="headcount" value="1" placeholder="Jumlah orang" required>
+          </div>
+        </div>
+
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Justifikasi</label>
+          <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan alasan dan kebutuhan rekrutmen ini..."></textarea>
+          <p class="u-text-xs u-muted u-mt-xs">Berikan penjelasan mengapa posisi ini diperlukan</p>
+        </div>
+      </form>
+    </div>
+
+    <div class="u-modal__foot">
+      <div class="u-muted u-text-sm">Press <kbd>Esc</kbd> to close</div>
+      <div class="u-flex u-gap-sm">
+        <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+        <button form="createApprovalForm" class="u-btn u-btn--brand u-hover-lift">
+          <i class='fas fa-save u-mr-xs'></i> Simpan Draft
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-  function openIpModal(){ document.getElementById('ipModal').hidden = false; }
-  function closeIpModal(){ document.getElementById('ipModal').hidden = true; }
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof DataTable !== 'undefined') {
-      new DataTable('#ip-table', { responsive:true, paging:false, info:false });
+// Approval Management JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+  const approvalManager = {
+    init: function() {
+      this.bindModalEvents();
+      this.initDataTable();
+    },
+    
+    bindModalEvents: function() {
+      // Modal open/close handlers
+      document.addEventListener('click', function(e) {
+        if (e.target.matches('[data-modal-open]')) {
+          const modalId = e.target.getAttribute('data-modal-open');
+          this.openModal(modalId);
+        }
+        
+        if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
+          this.closeModal(e.target.closest('.u-modal'));
+        }
+      }.bind(this));
+
+      // ESC key handler
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          const openModal = document.querySelector('.u-modal:not([hidden])');
+          if (openModal) {
+            this.closeModal(openModal);
+          }
+        }
+      }.bind(this));
+    },
+    
+    openModal: function(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.hidden = false;
+        document.body.classList.add('modal-open');
+      }
+    },
+    
+    closeModal: function(modal) {
+      modal.hidden = true;
+      document.body.classList.remove('modal-open');
+    },
+    
+    initDataTable: function() {
+      if (typeof DataTable !== 'undefined') {
+        new DataTable('#ip-table', { 
+          responsive: true, 
+          paging: false, 
+          info: false,
+          language: {
+            search: "Cari:",
+            zeroRecords: "Tidak ada data izin prinsip yang ditemukan",
+            infoEmpty: "Menampilkan 0 data",
+            infoFiltered: "(disaring dari _MAX_ total data)"
+          }
+        });
+      }
     }
-  });
+  };
+  
+  approvalManager.init();
+});
 </script>
 @endsection

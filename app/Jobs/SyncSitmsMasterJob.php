@@ -195,12 +195,10 @@ class SyncSitmsMasterJob implements ShouldQueue
                 $stopReason = 'max_pages';
                 break;
             }
-
             if ($countRows < $limit) {
                 $stopReason = 'short_page';
                 break;
             }
-
             if ($current > 30000) {
                 Log::warning('SITMS guard (page>30000)');
                 $stopReason = 'guard_page_limit';
@@ -295,13 +293,18 @@ class SyncSitmsMasterJob implements ShouldQueue
             if (is_string($v)) $apiFlat[$k] = self::cut($v);
         }
 
-        // Map profile_picture_url => employees.profile_photo_url (kolom baru)
+        // profile_picture_url => employees.profile_photo_url (kalau ada kolom)
         if (!empty($apiFlat['profile_picture_url']) && in_array('profile_photo_url', $colsEmp, true)) {
             $minimal['profile_photo_url'] = self::cut($apiFlat['profile_picture_url'], 500);
         }
 
         $apiFlat = self::filterColumns('employees', $apiFlat);
         unset($apiFlat['id']);
+
+        // push email ke employees juga (kalau kolom ada)
+        if (isset($row['email']) && in_array('email', $colsEmp, true)) {
+            $apiFlat['email'] = self::cut($row['email'], 150);
+        }
 
         $payload = array_merge($apiFlat, $minimal);
         if (in_array('updated_at', $colsEmp, true)) $payload['updated_at'] = $now;
@@ -350,13 +353,14 @@ class SyncSitmsMasterJob implements ShouldQueue
             }
         }
 
-        // === ISI TABEL DOMAIN (biar modal kebaca) ===
+        // === Portfolio: education, job, assignment, taskforce, training, brevet ===
         try {
             self::sitmsSyncPortfolio($personId, $row);
         } catch (\Throwable $e) {
             Log::error('SITMS portfolio sync failed', ['error' => $e->getMessage(), 'person_id' => $personId]);
         }
 
+        // === Documents ===
         try {
             self::sitmsSyncDocuments($personId, $row);
         } catch (\Throwable $e) {
@@ -364,7 +368,7 @@ class SyncSitmsMasterJob implements ShouldQueue
             self::$errInserts++;
         }
 
-        // Tambahan khusus untuk domain:
+        // === Optional mirror ke tabel domain terpisah ===
         foreach (Arr::get($row, 'education_list.education_data', []) as $e) {
             self::upsertEducation($personId, (array)$e);
         }
@@ -400,17 +404,32 @@ class SyncSitmsMasterJob implements ShouldQueue
         $tbl = 'persons';
         $now = now();
         if (!Schema::hasTable($tbl)) return (string) Str::ulid();
-        if ($existingPersonId) return (string)$existingPersonId;
 
         $cols = self::tableColumns($tbl);
+
+        if ($existingPersonId) {
+            $upd = [];
+            if (in_array('full_name', $cols, true) && !empty($row['full_name'])) $upd['full_name'] = self::cut($row['full_name']);
+            if (in_array('gender', $cols, true) && isset($row['gender']))        $upd['gender'] = self::cut($row['gender']);
+            if (in_array('date_of_birth', $cols, true))                          $upd['date_of_birth'] = DS::toDateOrNull($row['date_of_birth'] ?? null);
+            if (in_array('place_of_birth', $cols, true) && isset($row['place_of_birth'])) $upd['place_of_birth'] = self::cut($row['place_of_birth']);
+            if (in_array('phone', $cols, true) && isset($row['contact_no']))     $upd['phone'] = self::cut($row['contact_no'], 50);
+            if (in_array('email', $cols, true) && isset($row['email']))          $upd['email'] = self::cut($row['email'], 150);
+            if (in_array('updated_at', $cols, true))                             $upd['updated_at'] = $now;
+            if (!empty($upd)) {
+                DB::table($tbl)->where('id', $existingPersonId)->update($upd);
+            }
+            return (string)$existingPersonId;
+        }
+
         $newId = (string) Str::ulid();
         $person = ['id' => $newId];
-
         if (in_array('full_name', $cols, true))     $person['full_name'] = self::cut(self::nullIfEmpty($row['full_name'] ?? null)) ?? '-';
         if (in_array('gender', $cols, true))        $person['gender']    = self::cut(self::nullIfEmpty($row['gender'] ?? null));
         if (in_array('date_of_birth', $cols, true)) $person['date_of_birth'] = DS::toDateOrNull($row['date_of_birth'] ?? null);
         if (in_array('place_of_birth', $cols, true)) $person['place_of_birth'] = self::cut(self::nullIfEmpty($row['place_of_birth'] ?? null));
-        if (in_array('phone', $cols, true))         $person['phone']     = self::cut(self::nullIfEmpty($row['contact_no'] ?? null));
+        if (in_array('phone', $cols, true))         $person['phone']     = self::cut(self::nullIfEmpty($row['contact_no'] ?? null), 50);
+        if (in_array('email', $cols, true))         $person['email']     = self::cut(self::nullIfEmpty($row['email'] ?? null), 150);
         if (in_array('created_at', $cols, true))    $person['created_at'] = $now;
         if (in_array('updated_at', $cols, true))    $person['updated_at'] = $now;
 
@@ -540,12 +559,351 @@ class SyncSitmsMasterJob implements ShouldQueue
                     'key' => $c->Key ?? '',
                 ];
             }
-        } catch (\Throwable $e) { /* ignore */
-        }
+        } catch (\Throwable $e) { /* ignore */ }
         return self::$tableColumnsMeta[$table] = $meta;
     }
 
-    /* ==================== LOOKUP & LOCATION ==================== */
+    /* ==================== PORTFOLIO & DOCUMENTS ==================== */
+    protected static function sitmsSyncPortfolio(string $personId, array $row): void
+    {
+        if (!Schema::hasTable('portfolio_histories')) return;
+
+        foreach (Arr::get($row, 'education_list.education_data', []) as $e) {
+            self::sitmsInsertPortfolio($personId, 'education', [
+                'title' => self::nullIfEmpty($e['education_name'] ?? null),
+                'organization' => self::nullIfEmpty($e['education_name'] ?? null),
+                'start_date' => DS::toDateOrNull(($e['graduation_year'] ?? null) ? ($e['graduation_year'] . '-01-01') : null),
+                'end_date' => null,
+                'description' => null,
+                'meta' => [
+                    'level' => self::nullIfEmpty($e['education_level'] ?? null),
+                    'major' => self::nullIfEmpty($e['major_name'] ?? null),
+                    'graduation_year' => self::nullIfEmpty($e['graduation_year'] ?? null),
+                ],
+            ]);
+        }
+
+        foreach (Arr::get($row, 'jobs_list.jobs_data', []) as $j) {
+            self::sitmsInsertPortfolio($personId, 'job', [
+                'title' => self::nullIfEmpty($j['jobs'] ?? null),
+                'organization' => self::nullIfEmpty($j['jobs_unit'] ?? $j['jobs_company'] ?? null),
+                'start_date' => DS::toDateOrNull($j['jobs_start_date'] ?? null),
+                'end_date' => DS::toDateOrNull($j['jobs_end_date'] ?? null),
+                'description' => self::nullIfEmpty($j['jobs_description'] ?? null),
+                'meta' => [
+                    'company' => self::nullIfEmpty($j['jobs_company'] ?? null),
+                    'masterpiece' => self::nullIfEmpty($j['jobs_masterpiece'] ?? null),
+                    'period' => self::nullIfEmpty($j['jobs_period'] ?? null),
+                ],
+            ]);
+        }
+
+        foreach (Arr::get($row, 'assignments_list.assignments_data', []) as $a) {
+            self::sitmsInsertPortfolio($personId, 'assignment', [
+                'title' => self::nullIfEmpty($a['assignment_title'] ?? null),
+                'organization' => self::nullIfEmpty($a['assignment_company'] ?? null),
+                'start_date' => DS::toDateOrNull($a['assignment_start_date'] ?? null),
+                'end_date' => DS::toDateOrNull($a['assignment_end_date'] ?? null),
+                'description' => self::nullIfEmpty($a['assignment_description'] ?? null),
+                'meta' => ['period' => self::nullIfEmpty($a['assignment_period'] ?? null)],
+            ]);
+        }
+
+        foreach (Arr::get($row, 'taskforces_list.taskforces_data', []) as $t) {
+            self::sitmsInsertPortfolio($personId, 'taskforce', [
+                'title' => self::nullIfEmpty($t['taskforce_name'] ?? null),
+                'organization' => self::nullIfEmpty($t['taskforce_company'] ?? null),
+                'start_date' => DS::toDateOrNull(($t['taskforce_year_start'] ?? null) ? ($t['taskforce_year_start'] . '-01-01') : null),
+                'end_date' => DS::toDateOrNull(($t['taskforce_year_end'] ?? null) ? ($t['taskforce_year_end'] . '-12-31') : null),
+                'description' => self::nullIfEmpty($t['taskforce_desc'] ?? null),
+                'meta' => [
+                    'type' => self::nullIfEmpty($t['taskforce_type'] ?? null),
+                    'position' => self::nullIfEmpty($t['taskforce_position'] ?? null)
+                ],
+            ]);
+        }
+
+        foreach (Arr::get($row, 'training_list.training_data', []) as $tr) {
+            self::sitmsInsertPortfolio($personId, 'training', [
+                'title' => self::nullIfEmpty($tr['training_name'] ?? null),
+                'organization' => self::nullIfEmpty($tr['training_organizer'] ?? null),
+                'start_date' => DS::toDateOrNull(($tr['training_year'] ?? null) ? ($tr['training_year'] . '-01-01') : null),
+                'end_date' => null,
+                'description' => null,
+                'meta' => [
+                    'level' => self::nullIfEmpty($tr['training_level'] ?? null),
+                    'type' => self::nullIfEmpty($tr['training_type'] ?? null),
+                    'year' => self::nullIfEmpty($tr['training_year'] ?? null)
+                ],
+            ]);
+        }
+
+        foreach (Arr::get($row, 'brevet_list.brevet_data', []) as $b) {
+            self::sitmsInsertPortfolio($personId, 'brevet', [
+                'title' => self::nullIfEmpty($b['brevet_name'] ?? null),
+                'organization' => self::nullIfEmpty($b['brevet_organizer'] ?? null),
+                'start_date' => DS::toDateOrNull(($b['brevet_year'] ?? null) ? ($b['brevet_year'] . '-01-01') : null),
+                'end_date' => DS::toDateOrNull($b['certificate_due'] ?? null),
+                'description' => null,
+                'meta' => [
+                    'level' => self::nullIfEmpty($b['brevet_level'] ?? null),
+                    'certificate_no' => self::nullIfEmpty($b['certificate_number'] ?? null)
+                ],
+            ]);
+        }
+    }
+
+    protected static function sitmsInsertPortfolio(string $personId, string $category, array $data): void
+    {
+        if (!Schema::hasTable('portfolio_histories')) return;
+        $cols = self::tableColumns('portfolio_histories');
+
+        $maxTitleLength = 150;
+        try {
+            $tableInfo = DB::select("SHOW COLUMNS FROM portfolio_histories WHERE Field = 'title'");
+            if (!empty($tableInfo) && isset($tableInfo[0]->Type) && preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $m)) {
+                $maxTitleLength = (int)$m[1];
+            }
+        } catch (\Throwable $e) { /* ignore */ }
+
+        $title = isset($data['title']) ? self::cut($data['title'], $maxTitleLength) : null;
+
+        $row = [
+            'person_id'    => $personId,
+            'category'     => $category, // education, job, assignment, taskforce, training, brevet
+            'title'        => $title,
+            'organization' => self::cut($data['organization'] ?? null, 150),
+            'start_date'   => $data['start_date'] ?? null,
+            'end_date'     => $data['end_date'] ?? null,
+            'description'  => self::cut($data['description'] ?? null, 300),
+            'meta'         => $data['meta'] ?? null,
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ];
+
+        if (!in_array('category', $cols, true)) {
+            $prefix = $category ? ('[' . $category . '] ') : '';
+            if (in_array('notes', $cols, true)) {
+                $row['notes'] = $prefix . ($row['description'] ?? '');
+            }
+            unset($row['category']);
+        }
+        if (!in_array('organization', $cols, true) && in_array('unit_name', $cols, true)) {
+            $row['unit_name'] = $row['organization'] ?? null;
+            unset($row['organization']);
+        }
+        if (!in_array('description', $cols, true) && in_array('notes', $cols, true)) {
+            $row['notes'] = trim(($row['notes'] ?? '') . ' ' . ($row['description'] ?? ''));
+            unset($row['description']);
+        }
+        if (in_array('meta', $cols, true)) {
+            if (is_array($row['meta'])) $row['meta'] = json_encode($row['meta'], JSON_UNESCAPED_UNICODE);
+        } else {
+            unset($row['meta']);
+        }
+
+        $row = array_intersect_key($row, array_flip($cols));
+
+        $existing = DB::table('portfolio_histories')
+            ->where('person_id', $personId)
+            ->when(isset($row['category']), fn($q) => $q->where('category', $row['category']))
+            ->when(isset($row['title']), fn($q) => $q->where('title', $row['title']))
+            ->when(isset($row['organization']), fn($q) => $q->where('organization', $row['organization']))
+            ->when(isset($row['unit_name']), fn($q) => $q->where('unit_name', $row['unit_name']))
+            ->when(isset($row['start_date']), fn($q) => $q->whereDate('start_date', $row['start_date']))
+            ->first();
+
+        if ($existing) {
+            try {
+                DB::table('portfolio_histories')->where('id', $existing->id)->update($row);
+            } catch (\Throwable $e) {
+                Log::warning('SITMS portfolio update failed', [
+                    'error'        => $e->getMessage(),
+                    'person_id'    => $personId,
+                    'category'     => $category,
+                    'title_length' => $title ? strlen($title) : 0,
+                    'title_sample' => $title ? substr($title, 0, 50) : null,
+                ]);
+            }
+        } else {
+            try {
+                DB::table('portfolio_histories')->insert($row);
+            } catch (\Throwable $e) {
+                Log::warning('SITMS portfolio insert failed', [
+                    'error'        => $e->getMessage(),
+                    'person_id'    => $personId,
+                    'category'     => $category,
+                    'title_length' => $title ? strlen($title) : 0,
+                    'title_sample' => $title ? substr($title, 0, 50) : null,
+                ]);
+            }
+        }
+    }
+
+    protected static function sitmsSyncDocuments(string $personId, array $row): void
+    {
+        if (!Schema::hasTable('documents')) return;
+        $cols = self::tableColumns('documents');
+
+        $maxDocTypeLen = 50;
+        $docTypeField = in_array('doc_type', $cols, true) ? 'doc_type' : (in_array('document_type', $cols, true) ? 'document_type' : null);
+        if ($docTypeField) {
+            try {
+                $tableInfo = DB::select("SHOW COLUMNS FROM documents WHERE Field = ?", [$docTypeField]);
+                if (!empty($tableInfo) && isset($tableInfo[0]->Type) && preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $m)) {
+                    $maxDocTypeLen = (int)$m[1];
+                }
+            } catch (\Throwable $e) { /* ignore */ }
+        }
+
+        foreach (Arr::get($row, 'documents_list.documents_data', []) as $d) {
+            $payload = [
+                'person_id' => $personId,
+                'type' => self::nullIfEmpty($d['document_type'] ?? null),
+                'title' => self::nullIfEmpty($d['document_title'] ?? null),
+                'file_path' => self::nullIfEmpty($d['document_file'] ?? null),
+                'due_date' => DS::toDateOrNull($d['document_duedate'] ?? null),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            if ($docTypeField) {
+                $payload[$docTypeField] = self::cut(self::nullIfEmpty($d['document_type'] ?? null) ?? 'unknown', $maxDocTypeLen);
+            }
+
+            if (!in_array('file_path', $cols, true) && in_array('path', $cols, true)) {
+                $payload['path'] = $payload['file_path'];
+                unset($payload['file_path']);
+            }
+
+            $payload = array_intersect_key($payload, array_flip($cols));
+
+            $existing = DB::table('documents')
+                ->where('person_id', $personId)
+                ->when(isset($payload['title']), fn($q) => $q->where('title', $payload['title']))
+                ->when(isset($payload['file_path']), fn($q) => $q->where('file_path', $payload['file_path']))
+                ->when(isset($payload['path']), fn($q) => $q->where('path', $payload['path']))
+                ->first();
+
+            if ($existing) {
+                try {
+                    DB::table('documents')->where('id', $existing->id)->update($payload);
+                } catch (\Throwable $e) {
+                    Log::warning('SITMS document update failed', [
+                        'error' => $e->getMessage(),
+                        'person_id' => $personId,
+                        'document_title' => $payload['title'] ?? 'unknown',
+                        $docTypeField => $payload[$docTypeField] ?? 'unknown'
+                    ]);
+                }
+            } else {
+                try {
+                    DB::table('documents')->insert($payload);
+                } catch (\Throwable $e) {
+                    Log::warning('SITMS document insert failed', [
+                        'error' => $e->getMessage(),
+                        'person_id' => $personId,
+                        'document_title' => $payload['title'] ?? 'unknown',
+                        $docTypeField => $payload[$docTypeField] ?? 'unknown'
+                    ]);
+                }
+            }
+        }
+    }
+
+    /* ====== DOMAIN UPSERTS (opsional) ====== */
+    protected static function upsertEducation(string $personId, array $e): void
+    {
+        if (!Schema::hasTable('educations')) return;
+        $row = [
+            'person_id'       => $personId,
+            'level'           => self::nullIfEmpty($e['education_level'] ?? null),
+            'institution'     => self::nullIfEmpty($e['education_name'] ?? null),
+            'major'           => self::nullIfEmpty($e['major_name'] ?? null),
+            'graduation_year' => (int)($e['graduation_year'] ?? 0) ?: null,
+            'updated_at'      => now(),
+        ];
+        $row['created_at'] = now();
+
+        DB::table('educations')->updateOrInsert([
+            'person_id' => $personId,
+            'institution' => $row['institution'],
+            'major' => $row['major'],
+            'graduation_year' => $row['graduation_year'],
+        ], $row);
+    }
+
+    protected static function upsertTraining(string $personId, array $t): void
+    {
+        if (!Schema::hasTable('trainings')) return;
+        $row = [
+            'person_id'   => $personId,
+            'title'       => self::nullIfEmpty($t['training_name'] ?? null),
+            'provider'    => self::nullIfEmpty($t['training_organizer'] ?? null),
+            'start_date'  => DS::toDateOrNull(($t['training_year'] ?? null) ? ($t['training_year'] . '-01-01') : null),
+            'meta'        => json_encode([
+                'level' => self::nullIfEmpty($t['training_level'] ?? null),
+                'type' => self::nullIfEmpty($t['training_type'] ?? null),
+                'year' => self::nullIfEmpty($t['training_year'] ?? null),
+            ], JSON_UNESCAPED_UNICODE),
+            'updated_at'  => now(),
+        ];
+        $row['created_at'] = now();
+
+        DB::table('trainings')->updateOrInsert([
+            'person_id' => $personId,
+            'title' => $row['title'],
+            'provider' => $row['provider'],
+            'start_date' => $row['start_date'],
+        ], $row);
+    }
+
+    protected static function upsertCertification(string $personId, array $c): void
+    {
+        if (!Schema::hasTable('certifications')) return;
+        $row = [
+            'person_id'  => $personId,
+            'name'       => self::nullIfEmpty($c['brevet_name'] ?? null),
+            'issuer'     => self::nullIfEmpty($c['brevet_organizer'] ?? null),
+            'issued_at'  => DS::toDateOrNull(($c['brevet_year'] ?? null) ? ($c['brevet_year'] . '-01-01') : null),
+            'expires_at' => DS::toDateOrNull($c['certificate_due'] ?? null),
+            'number'     => self::nullIfEmpty($c['certificate_number'] ?? null),
+            'level'      => self::nullIfEmpty($c['brevet_level'] ?? null),
+            'updated_at' => now(),
+        ];
+        $row['created_at'] = now();
+
+        DB::table('certifications')->updateOrInsert([
+            'person_id' => $personId,
+            'name' => $row['name'],
+            'issuer' => $row['issuer'],
+            'number' => $row['number']
+        ], $row);
+    }
+
+    protected static function upsertJobHistory(string $personId, array $j): void
+    {
+        if (!Schema::hasTable('job_histories')) return;
+        $row = [
+            'person_id'  => $personId,
+            'title'      => self::nullIfEmpty($j['jobs'] ?? null),
+            'unit_name'  => self::nullIfEmpty($j['jobs_unit'] ?? null),
+            'start_date' => DS::toDateOrNull($j['jobs_start_date'] ?? null),
+            'end_date'   => DS::toDateOrNull($j['jobs_end_date'] ?? null),
+            'description' => self::nullIfEmpty($j['jobs_description'] ?? null),
+            'updated_at' => now(),
+        ];
+        $row['created_at'] = now();
+
+        DB::table('job_histories')->updateOrInsert([
+            'person_id' => $personId,
+            'title' => $row['title'],
+            'unit_name' => $row['unit_name'],
+            'start_date' => $row['start_date'],
+        ], $row);
+    }
+
+    /* ==================== LOOKUP & LOCATION (helpers yang hilang) ==================== */
     protected static function sitmsEnsureLookupId(string $table, ?string $name, array $extras = []): ?int
     {
         $name = self::nullIfEmpty($name);
@@ -620,353 +978,5 @@ class SyncSitmsMasterJob implements ShouldQueue
             $prov = self::nullIfEmpty(trim(Str::replaceLast($m[0], '', $txt)));
         }
         return [$prov, $city];
-    }
-
-    /* ==================== PORTFOLIO & DOCUMENTS ==================== */
-    protected static function sitmsSyncPortfolio(string $personId, array $row): void
-    {
-        if (!Schema::hasTable('portfolio_histories')) return;
-
-        // Education - tambahkan ke portfolio
-        foreach (Arr::get($row, 'education_list.education_data', []) as $e) {
-            self::sitmsInsertPortfolio($personId, 'education', [
-                'title' => self::nullIfEmpty($e['education_name'] ?? null),
-                'organization' => self::nullIfEmpty($e['education_name'] ?? null),
-                'start_date' => DS::toDateOrNull(($e['graduation_year'] ?? null) ? ($e['graduation_year'] . '-01-01') : null),
-                'end_date' => null,
-                'description' => null,
-                'meta' => [
-                    'level' => self::nullIfEmpty($e['education_level'] ?? null),
-                    'major' => self::nullIfEmpty($e['major_name'] ?? null),
-                    'graduation_year' => self::nullIfEmpty($e['graduation_year'] ?? null),
-                ],
-            ]);
-        }
-
-        foreach (Arr::get($row, 'jobs_list.jobs_data', []) as $j) {
-            self::sitmsInsertPortfolio($personId, 'job', [
-                'title' => self::nullIfEmpty($j['jobs'] ?? null),
-                'organization' => self::nullIfEmpty($j['jobs_unit'] ?? $j['jobs_company'] ?? null),
-                'start_date' => DS::toDateOrNull($j['jobs_start_date'] ?? null),
-                'end_date' => DS::toDateOrNull($j['jobs_end_date'] ?? null),
-                'description' => self::nullIfEmpty($j['jobs_description'] ?? null),
-                'meta' => [
-                    'company' => self::nullIfEmpty($j['jobs_company'] ?? null),
-                    'masterpiece' => self::nullIfEmpty($j['jobs_masterpiece'] ?? null),
-                    'period' => self::nullIfEmpty($j['jobs_period'] ?? null),
-                ],
-            ]);
-        }
-        foreach (Arr::get($row, 'assignments_list.assignments_data', []) as $a) {
-            self::sitmsInsertPortfolio($personId, 'assignment', [
-                'title' => self::nullIfEmpty($a['assignment_title'] ?? null),
-                'organization' => self::nullIfEmpty($a['assignment_company'] ?? null),
-                'start_date' => DS::toDateOrNull($a['assignment_start_date'] ?? null),
-                'end_date' => DS::toDateOrNull($a['assignment_end_date'] ?? null),
-                'description' => self::nullIfEmpty($a['assignment_description'] ?? null),
-                'meta' => ['period' => self::nullIfEmpty($a['assignment_period'] ?? null)],
-            ]);
-        }
-        foreach (Arr::get($row, 'taskforces_list.taskforces_data', []) as $t) {
-            self::sitmsInsertPortfolio($personId, 'taskforce', [
-                'title' => self::nullIfEmpty($t['taskforce_name'] ?? null),
-                'organization' => self::nullIfEmpty($t['taskforce_company'] ?? null),
-                'start_date' => DS::toDateOrNull(($t['taskforce_year_start'] ?? null) ? ($t['taskforce_year_start'] . '-01-01') : null),
-                'end_date' => DS::toDateOrNull(($t['taskforce_year_end'] ?? null) ? ($t['taskforce_year_end'] . '-12-31') : null),
-                'description' => self::nullIfEmpty($t['taskforce_desc'] ?? null),
-                'meta' => ['type' => self::nullIfEmpty($t['taskforce_type'] ?? null), 'position' => self::nullIfEmpty($t['taskforce_position'] ?? null)],
-            ]);
-        }
-        foreach (Arr::get($row, 'training_list.training_data', []) as $tr) {
-            self::sitmsInsertPortfolio($personId, 'training', [
-                'title' => self::nullIfEmpty($tr['training_name'] ?? null),
-                'organization' => self::nullIfEmpty($tr['training_organizer'] ?? null),
-                'start_date' => DS::toDateOrNull(($tr['training_year'] ?? null) ? ($tr['training_year'] . '-01-01') : null),
-                'end_date' => null,
-                'description' => null,
-                'meta' => ['level' => self::nullIfEmpty($tr['training_level'] ?? null), 'type' => self::nullIfEmpty($tr['training_type'] ?? null), 'year' => self::nullIfEmpty($tr['training_year'] ?? null)],
-            ]);
-        }
-        foreach (Arr::get($row, 'brevet_list.brevet_data', []) as $b) {
-            self::sitmsInsertPortfolio($personId, 'certification', [
-                'title' => self::nullIfEmpty($b['brevet_name'] ?? null),
-                'organization' => self::nullIfEmpty($b['brevet_organizer'] ?? null),
-                'start_date' => DS::toDateOrNull(($b['brevet_year'] ?? null) ? ($b['brevet_year'] . '-01-01') : null),
-                'end_date' => DS::toDateOrNull($b['certificate_due'] ?? null),
-                'description' => null,
-                'meta' => ['level' => self::nullIfEmpty($b['brevet_level'] ?? null), 'certificate_no' => self::nullIfEmpty($b['certificate_number'] ?? null)],
-            ]);
-        }
-    }
-
-    protected static function sitmsInsertPortfolio(string $personId, string $category, array $data): void
-    {
-        if (!Schema::hasTable('portfolio_histories')) return;
-        $cols = self::tableColumns('portfolio_histories');
-
-        // Cari panjang kolom title aktual
-        $maxTitleLength = 150;
-        try {
-            $tableInfo = DB::select("SHOW COLUMNS FROM portfolio_histories WHERE Field = 'title'");
-            if (!empty($tableInfo) && isset($tableInfo[0]->Type) && preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $m)) {
-                $maxTitleLength = (int)$m[1];
-            }
-        } catch (\Throwable $e) { /* ignore */
-        }
-
-        $title = isset($data['title']) ? self::cut($data['title'], $maxTitleLength) : null;
-
-        // Payload "ideal"
-        $row = [
-            'person_id'    => $personId,
-            'category'     => $category,
-            'title'        => $title,
-            'organization' => self::cut($data['organization'] ?? null, 150),
-            'start_date'   => $data['start_date'] ?? null,
-            'end_date'     => $data['end_date'] ?? null,
-            'description'  => self::cut($data['description'] ?? null, 300),
-            'meta'         => $data['meta'] ?? null,
-            'created_at'   => now(),
-            'updated_at'   => now(),
-        ];
-
-        // === Fallback ke skema lama ===
-        if (!in_array('category', $cols, true)) {
-            // Selipkan kategori di notes kalau kolom category belum ada
-            $prefix = $category ? ('[' . $category . '] ') : '';
-            if (in_array('notes', $cols, true)) {
-                $row['notes'] = $prefix . ($row['description'] ?? '');
-            }
-            unset($row['category']); // hilangkan agar intersect aman
-        }
-        if (!in_array('organization', $cols, true) && in_array('unit_name', $cols, true)) {
-            $row['unit_name'] = $row['organization'] ?? null;
-            unset($row['organization']);
-        }
-        if (!in_array('description', $cols, true) && in_array('notes', $cols, true)) {
-            // Kalau tidak ada col description, taruh ke notes (append, biar ga hilang)
-            $row['notes'] = trim(($row['notes'] ?? '') . ' ' . ($row['description'] ?? ''));
-            unset($row['description']);
-        }
-        if (in_array('meta', $cols, true)) {
-            if (is_array($row['meta'])) $row['meta'] = json_encode($row['meta'], JSON_UNESCAPED_UNICODE);
-        } else {
-            unset($row['meta']);
-        }
-
-        $row = array_intersect_key($row, array_flip($cols));
-
-        // Cek duplikasi dengan logika mirroring (update jika ada, insert jika belum)
-        $existing = DB::table('portfolio_histories')
-            ->where('person_id', $personId)
-            ->when(isset($row['category']), fn($q) => $q->where('category', $row['category']))
-            ->when(isset($row['title']), fn($q) => $q->where('title', $row['title']))
-            ->when(isset($row['organization']), fn($q) => $q->where('organization', $row['organization']))
-            ->when(isset($row['unit_name']), fn($q) => $q->where('unit_name', $row['unit_name']))
-            ->when(isset($row['start_date']), fn($q) => $q->whereDate('start_date', $row['start_date']))
-            ->first();
-
-        if ($existing) {
-            // Update existing record
-            try {
-                DB::table('portfolio_histories')
-                    ->where('id', $existing->id)
-                    ->update($row);
-            } catch (\Throwable $e) {
-                Log::warning('SITMS portfolio update failed', [
-                    'error'        => $e->getMessage(),
-                    'person_id'    => $personId,
-                    'category'     => $category,
-                    'title_length' => $title ? strlen($title) : 0,
-                    'title_sample' => $title ? substr($title, 0, 50) : null,
-                ]);
-            }
-        } else {
-            // Insert new record
-            try {
-                DB::table('portfolio_histories')->insert($row);
-            } catch (\Throwable $e) {
-                Log::warning('SITMS portfolio insert failed', [
-                    'error'        => $e->getMessage(),
-                    'person_id'    => $personId,
-                    'category'     => $category,
-                    'title_length' => $title ? strlen($title) : 0,
-                    'title_sample' => $title ? substr($title, 0, 50) : null,
-                ]);
-            }
-        }
-    }
-
-    protected static function sitmsSyncDocuments(string $personId, array $row): void
-    {
-        if (!Schema::hasTable('documents')) return;
-        $cols = self::tableColumns('documents');
-
-        $maxDocTypeLen = 50;
-        $docTypeField = in_array('doc_type', $cols, true) ? 'doc_type' : (in_array('document_type', $cols, true) ? 'document_type' : null);
-        if ($docTypeField) {
-            try {
-                $tableInfo = DB::select("SHOW COLUMNS FROM documents WHERE Field = ?", [$docTypeField]);
-                if (!empty($tableInfo) && isset($tableInfo[0]->Type) && preg_match('/varchar\((\d+)\)/', $tableInfo[0]->Type, $m)) {
-                    $maxDocTypeLen = (int)$m[1];
-                }
-            } catch (\Throwable $e) { /* ignore */
-            }
-        }
-
-        foreach (Arr::get($row, 'documents_list.documents_data', []) as $d) {
-            $payload = [
-                'person_id' => $personId,
-                'type' => self::nullIfEmpty($d['document_type'] ?? null),
-                'title' => self::nullIfEmpty($d['document_title'] ?? null),
-                'file_path' => self::nullIfEmpty($d['document_file'] ?? null),
-                'due_date' => DS::toDateOrNull($d['document_duedate'] ?? null),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-
-            if ($docTypeField) {
-                $payload[$docTypeField] = self::cut(self::nullIfEmpty($d['document_type'] ?? null) ?? 'unknown', $maxDocTypeLen);
-            }
-
-            if (!in_array('file_path', $cols, true) && in_array('path', $cols, true)) {
-                $payload['path'] = $payload['file_path'];
-                unset($payload['file_path']);
-            }
-
-            $payload = array_intersect_key($payload, array_flip($cols));
-
-            // Cek duplikasi dengan logika mirroring
-            $existing = DB::table('documents')
-                ->where('person_id', $personId)
-                ->when(isset($payload['title']), fn($q) => $q->where('title', $payload['title']))
-                ->when(isset($payload['file_path']), fn($q) => $q->where('file_path', $payload['file_path']))
-                ->when(isset($payload['path']), fn($q) => $q->where('path', $payload['path']))
-                ->first();
-
-            if ($existing) {
-                // Update existing
-                try {
-                    DB::table('documents')
-                        ->where('id', $existing->id)
-                        ->update($payload);
-                } catch (\Throwable $e) {
-                    Log::warning('SITMS document update failed', [
-                        'error' => $e->getMessage(),
-                        'person_id' => $personId,
-                        'document_title' => $payload['title'] ?? 'unknown',
-                        $docTypeField => $payload[$docTypeField] ?? 'unknown'
-                    ]);
-                }
-            } else {
-                // Insert new
-                try {
-                    DB::table('documents')->insert($payload);
-                } catch (\Throwable $e) {
-                    Log::warning('SITMS document insert failed', [
-                        'error' => $e->getMessage(),
-                        'person_id' => $personId,
-                        'document_title' => $payload['title'] ?? 'unknown',
-                        $docTypeField => $payload[$docTypeField] ?? 'unknown'
-                    ]);
-                }
-            }
-        }
-    }
-
-    /* ====== DOMAIN UPSERTS (baru) ====== */
-    protected static function upsertEducation(string $personId, array $e): void
-    {
-        if (!Schema::hasTable('educations')) return;
-        $row = [
-            'person_id'       => $personId,
-            'level'           => self::nullIfEmpty($e['education_level'] ?? null),
-            'institution'     => self::nullIfEmpty($e['education_name'] ?? null),
-            'major'           => self::nullIfEmpty($e['major_name'] ?? null),
-            'graduation_year' => (int)($e['graduation_year'] ?? 0) ?: null,
-            'updated_at'      => now(),
-        ];
-        $row['created_at'] = now();
-        
-        // Gunakan updateOrInsert untuk mirroring (tidak duplikat)
-        DB::table('educations')->updateOrInsert([
-            'person_id' => $personId,
-            'institution' => $row['institution'],
-            'major' => $row['major'],
-            'graduation_year' => $row['graduation_year'],
-        ], $row);
-    }
-
-    protected static function upsertTraining(string $personId, array $t): void
-    {
-        if (!Schema::hasTable('trainings')) return;
-        $row = [
-            'person_id'   => $personId,
-            'title'       => self::nullIfEmpty($t['training_name'] ?? null),
-            'provider'    => self::nullIfEmpty($t['training_organizer'] ?? null),
-            'start_date'  => DS::toDateOrNull(($t['training_year'] ?? null) ? ($t['training_year'] . '-01-01') : null),
-            'meta'        => json_encode([
-                'level' => self::nullIfEmpty($t['training_level'] ?? null),
-                'type' => self::nullIfEmpty($t['training_type'] ?? null),
-                'year' => self::nullIfEmpty($t['training_year'] ?? null),
-            ], JSON_UNESCAPED_UNICODE),
-            'updated_at'  => now(),
-        ];
-        $row['created_at'] = now();
-        
-        // Gunakan updateOrInsert untuk mirroring
-        DB::table('trainings')->updateOrInsert([
-            'person_id' => $personId,
-            'title' => $row['title'],
-            'provider' => $row['provider'],
-            'start_date' => $row['start_date'],
-        ], $row);
-    }
-
-    protected static function upsertCertification(string $personId, array $c): void
-    {
-        if (!Schema::hasTable('certifications')) return;
-        $row = [
-            'person_id'  => $personId,
-            'name'       => self::nullIfEmpty($c['brevet_name'] ?? null),
-            'issuer'     => self::nullIfEmpty($c['brevet_organizer'] ?? null),
-            'issued_at'  => DS::toDateOrNull(($c['brevet_year'] ?? null) ? ($c['brevet_year'] . '-01-01') : null),
-            'expires_at' => DS::toDateOrNull($c['certificate_due'] ?? null),
-            'number'     => self::nullIfEmpty($c['certificate_number'] ?? null),
-            'level'      => self::nullIfEmpty($c['brevet_level'] ?? null),
-            'updated_at' => now(),
-        ];
-        $row['created_at'] = now();
-        
-        // Gunakan updateOrInsert untuk mirroring
-        DB::table('certifications')->updateOrInsert([
-            'person_id' => $personId,
-            'name' => $row['name'],
-            'issuer' => $row['issuer'],
-            'number' => $row['number']
-        ], $row);
-    }
-
-    protected static function upsertJobHistory(string $personId, array $j): void
-    {
-        if (!Schema::hasTable('job_histories')) return;
-        $row = [
-            'person_id'  => $personId,
-            'title'      => self::nullIfEmpty($j['jobs'] ?? null),
-            'unit_name'  => self::nullIfEmpty($j['jobs_unit'] ?? null),
-            'start_date' => DS::toDateOrNull($j['jobs_start_date'] ?? null),
-            'end_date'   => DS::toDateOrNull($j['jobs_end_date'] ?? null),
-            'description' => self::nullIfEmpty($j['jobs_description'] ?? null),
-            'updated_at' => now(),
-        ];
-        $row['created_at'] = now();
-        
-        // Gunakan updateOrInsert untuk mirroring
-        DB::table('job_histories')->updateOrInsert([
-            'person_id' => $personId,
-            'title' => $row['title'],
-            'unit_name' => $row['unit_name'],
-            'start_date' => $row['start_date'],
-        ], $row);
     }
 }
