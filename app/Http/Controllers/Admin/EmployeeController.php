@@ -7,7 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Filesystem\FilesystemAdapter; // <-- penting buat hint
+use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Support\Str;
 
 class EmployeeController extends Controller
 {
@@ -29,7 +30,6 @@ class EmployeeController extends Controller
                 COALESCE(e.email, p.email)                                            as email,
                 p.phone                                                               as phone,
                 e.profile_photo_url                                                   as person_photo,
-
                 dir.name                                                              as directorate_name,
                 e.home_base_city                                                      as location_city,
                 e.home_base_province                                                  as location_province,
@@ -73,23 +73,22 @@ class EmployeeController extends Controller
             ->leftJoin('directorates as dir', 'dir.id', '=', 'e.directorate_id')
             ->where('e.id', $id)
             ->selectRaw("
-            e.id, e.person_id, e.employee_id, e.id_sitms,
-            COALESCE(NULLIF(e.employee_id,''), e.id_sitms, CAST(e.id AS CHAR))    as employee_key,
-            COALESCE(p.full_name, e.employee_id, CAST(e.id AS CHAR))              as full_name,
-            COALESCE(pos.name, e.latest_jobs_title)                                as job_title,
-            COALESCE(u.name,  e.latest_jobs_unit)                                  as unit_name,
-            COALESCE(e.email, p.email)                                            as email,
-            p.phone                                                               as phone,
-            e.profile_photo_url                                                   as person_photo,
-
-            dir.name                                                              as directorate_name,
-            e.home_base_city                                                      as location_city,
-            e.home_base_province                                                  as location_province,
-            e.company_name, 
-            e.employee_status, 
-            e.talent_class_level,
-            e.latest_jobs_start_date
-        ")
+                e.id, e.person_id, e.employee_id, e.id_sitms,
+                COALESCE(NULLIF(e.employee_id,''), e.id_sitms, CAST(e.id AS CHAR))    as employee_key,
+                COALESCE(p.full_name, e.employee_id, CAST(e.id AS CHAR))              as full_name,
+                COALESCE(pos.name, e.latest_jobs_title)                                as job_title,
+                COALESCE(u.name,  e.latest_jobs_unit)                                  as unit_name,
+                COALESCE(e.email, p.email)                                            as email,
+                p.phone                                                               as phone,
+                e.profile_photo_url                                                   as person_photo,
+                dir.name                                                              as directorate_name,
+                e.home_base_city                                                      as location_city,
+                e.home_base_province                                                  as location_province,
+                e.company_name, 
+                e.employee_status, 
+                e.talent_class_level,
+                e.latest_jobs_start_date
+            ")
             ->first();
 
         if (!$e) return response()->json(['error' => 'Not found'], 404);
@@ -111,42 +110,42 @@ class EmployeeController extends Controller
             return $qb->orderByRaw("COALESCE(end_date, start_date, '0001-01-01') desc")->get();
         };
 
-        $brevets        = $port(['brevet']);
-        $educations     = $port(['education', 'pendidikan']);
-        $trainings      = $port(['training']);
-        $jobs           = $port(['job', 'job_history', 'experience', 'work', 'assignment']); // job-like
-        $taskforces     = $port(['taskforce', 'project']);
-        $assignments    = $port(['assignment']); // <<— TAMBAHAN SPESIFIK ASSIGNMENT
+        $brevets     = $port(['brevet']);
+        $educations  = $port(['education', 'pendidikan']);
+        $trainings   = $port(['training']);
+        $jobs        = $port(['job', 'job_history', 'experience', 'work', 'assignment']);
+        $taskforces  = $port(['taskforce', 'project']);
+        $assignments = $port(['assignment']);
 
         $documents = $this->tableExists('documents')
             ? DB::table('documents as d')
-            ->where(function ($w) use ($e) {
-                if (!empty($e->person_id)  && Schema::hasColumn('documents', 'person_id'))   $w->orWhere('d.person_id',  $e->person_id);
-                if (!empty($e->employee_id) && Schema::hasColumn('documents', 'employee_id')) $w->orWhere('d.employee_id', $e->employee_id);
-                if (!empty($e->id_sitms)   && Schema::hasColumn('documents', 'id_sitms'))    $w->orWhere('d.id_sitms',   $e->id_sitms);
-            })
-            ->selectRaw("
-                d.doc_type,
-                d.storage_disk,
-                d.path,
-                d.mime,
-                d.size_bytes,
-                d.hash_sha256,
-                JSON_UNQUOTE(JSON_EXTRACT(d.meta, '$.document_title'))   as meta_title,
-                JSON_UNQUOTE(JSON_EXTRACT(d.meta, '$.document_duedate')) as meta_due_date,
-                d.created_at
-            ")
-            ->orderByRaw("
-                COALESCE(
-                  JSON_UNQUOTE(JSON_EXTRACT(d.meta, '$.document_duedate')),
-                  DATE_FORMAT(d.created_at, '%Y-%m-%d')
-                ) desc
-            ")
-            ->get()
-            ->map(function ($d) {
-                $d->url = $this->fsUrl($d->storage_disk, $d->path);
-                return $d;
-            })
+                ->where(function ($w) use ($e) {
+                    if (!empty($e->person_id)  && Schema::hasColumn('documents', 'person_id'))   $w->orWhere('d.person_id',  $e->person_id);
+                    if (!empty($e->employee_id) && Schema::hasColumn('documents', 'employee_id')) $w->orWhere('d.employee_id', $e->employee_id);
+                    if (!empty($e->id_sitms)   && Schema::hasColumn('documents', 'id_sitms'))    $w->orWhere('d.id_sitms',   $e->id_sitms);
+                })
+                ->selectRaw("
+                    d.doc_type,
+                    d.storage_disk,
+                    d.path,
+                    d.mime,
+                    d.size_bytes,
+                    d.hash_sha256,
+                    JSON_UNQUOTE(JSON_EXTRACT(d.meta, '$.document_title'))   as meta_title,
+                    JSON_UNQUOTE(JSON_EXTRACT(d.meta, '$.document_duedate')) as meta_due_date,
+                    d.created_at
+                ")
+                ->orderByRaw("
+                    COALESCE(
+                      JSON_UNQUOTE(JSON_EXTRACT(d.meta, '$.document_duedate')),
+                      DATE_FORMAT(d.created_at, '%Y-%m-%d')
+                    ) desc
+                ")
+                ->get()
+                ->map(function ($d) {
+                    $d->url = $this->fsUrl($d->storage_disk, $d->path);
+                    return $d;
+                })
             : collect();
 
         return response()->json([
@@ -167,18 +166,15 @@ class EmployeeController extends Controller
                 'talent_class_level'     => $e->talent_class_level,
                 'latest_jobs_start_date' => $e->latest_jobs_start_date,
             ],
-            // Kategori yang kita pakai:
             'assignments'    => $assignments,
             'brevet_list'    => $brevets,
             'educations'     => $educations,
             'job_histories'  => $jobs,
             'taskforces'     => $taskforces,
             'trainings'      => $trainings,
-            // certifications DIHAPUS dari payload
             'documents'      => $documents,
         ]);
     }
-
 
     private function tableExists(string $table): bool
     {
@@ -189,30 +185,39 @@ class EmployeeController extends Controller
         }
     }
 
-    /**
-     * Safely resolve file URL from a given disk + path, with IDE-friendly typing.
-     */
     private function fsUrl(?string $disk, ?string $path): string
     {
         if (!$path) return '';
+
+        $pathTrim = ltrim((string) $path, '/');
+        if (preg_match('~^https?://~i', $pathTrim)) return $pathTrim;
+
+        $baseRaw = (string) env('SITMS_BASE_URL', 'https://sitms.ptsi.co.id');
+        $p = parse_url($baseRaw);
+        $scheme = $p['scheme'] ?? 'https';
+        $host   = $p['host']   ?? $baseRaw;
+        $port   = isset($p['port']) ? ':' . $p['port'] : '';
+        $sitmsBase = rtrim($scheme . '://' . $host . $port, '/');
+
+        if (Str::startsWith($pathTrim, 'uploads/')) {
+            return $sitmsBase . '/' . $pathTrim;
+        }
+
         $disk = $disk ?: config('filesystems.default');
 
         try {
             /** @var FilesystemAdapter $fs */
             $fs = Storage::disk($disk);
             if (method_exists($fs, 'url')) {
-                return (string) $fs->url($path);
+                return (string) $fs->url($pathTrim);
             }
         } catch (\Throwable $e) {
-            // ignore and try fallback
         }
 
-        // Fallback: untuk local 'public' biasanya file bisa diakses via /storage/...
         if ($disk === 'public') {
-            return asset('storage/' . ltrim($path, '/'));
+            return asset('storage/' . $pathTrim);
         }
 
-        // Last resort: kembalikan path mentah (tetap berguna kalau sudah absolute URL)
         return $path;
     }
 }

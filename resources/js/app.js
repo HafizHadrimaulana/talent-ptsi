@@ -205,24 +205,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return {};
   };
 
-const renderList = (container, arr, tmpl) => {
-  if (!container) return;
-  container.innerHTML = '';
-  if (!arr || !arr.length) {
-    container.innerHTML = '<div class="empty">No data</div>';
-    return;
-  }
-  const frag = document.createDocumentFragment();
-  arr.forEach(item => {
-    const card = document.createElement('div');
-    card.className = 'u-card item';
-    card.innerHTML = tmpl(item);
-    frag.appendChild(card);
-  });
-  container.appendChild(frag);
-};
-
-
+  const renderList = (container, arr, tmpl) => {
+    if (!container) return;
+    container.innerHTML = '';
+    if (!arr || !arr.length) {
+      container.innerHTML = '<div class="empty">No data</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    arr.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'u-card item';
+      card.innerHTML = tmpl(item);
+      frag.appendChild(card);
+    });
+    container.appendChild(frag);
+  };
 
   // ================================
   // Detail Employee (fetch + cache)
@@ -382,5 +380,43 @@ const renderList = (container, arr, tmpl) => {
     let fallback = {};
     try { fallback = JSON.parse(btn.getAttribute('data-emp') || '{}'); } catch (_) {}
     showEmpByUrl(url, fallback);
+  });
+
+  // ================================
+  // Change Password Modal (u-modal) opener (global)
+  // ================================
+  window.openPwModal = function () {
+    const m = document.getElementById('changePasswordModal');
+    if (!m) return;
+    m.hidden = false;
+    document.body.classList.add('modal-open');
+    const first = m.querySelector('input.u-input');
+    if (first) setTimeout(() => first.focus(), 50);
+  };
+
+  // Close via [data-modal-close], backdrop & ESC
+  document.addEventListener('click', (e) => {
+    const closer = e.target.closest('[data-modal-close]');
+    if (!closer) return;
+    const modal = closer.closest('.u-modal');
+    if (modal) {
+      modal.hidden = true;
+      document.body.classList.remove('modal-open');
+    }
+  });
+  document.getElementById('changePasswordModal')?.addEventListener('click', function (e) {
+    if (e.target === this) {
+      this.hidden = true;
+      document.body.classList.remove('modal-open');
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const m = document.getElementById('changePasswordModal');
+      if (m && !m.hidden) {
+        m.hidden = true;
+        document.body.classList.remove('modal-open');
+      }
+    }
   });
 });

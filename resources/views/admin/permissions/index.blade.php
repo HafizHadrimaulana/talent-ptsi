@@ -6,12 +6,6 @@
   <div class="u-flex u-items-center u-justify-between u-mb-md">
     <h2 class="u-title">Permission Management</h2>
     <div class="u-flex u-items-center u-gap-md">
-      <div class="u-search" style="max-width: 320px;">
-        <svg class="u-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        </svg>
-        <input id="permSearchInput" type="search" class="u-search__input" placeholder="Search permissions…" />
-      </div>
     </div>
   </div>
 
@@ -66,7 +60,7 @@
                 <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" 
                         data-modal-open="editPermModal" 
                         data-perm='@json(["id"=>$p->id,"name"=>$p->name])'>
-                  <i class='bx bx-edit u-mr-xs'></i> Edit
+                  <i class='fas fa-edit u-mr-xs'></i> Edit
                 </button>
               </div>
             </td>
@@ -174,7 +168,7 @@
       <div class="u-flex u-gap-sm">
         <button type="button" class="u-btn u-btn--ghost" data-modal-close>Cancel</button>
         <button form="editPermForm" class="u-btn u-btn--brand u-hover-lift">
-          <i class='bx bx-save u-mr-xs'></i> Update Permission
+          <i class='fas fa-save u-mr-xs'></i> Update Permission
         </button>
       </div>
     </div>
