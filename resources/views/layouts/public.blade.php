@@ -29,7 +29,7 @@
       transition: color 0.3s ease;
     }
     .nav-links {
-      margin-right:8rem;
+      margin-left:1.5rem;
     }
 
     nav a:hover,
@@ -125,7 +125,10 @@
       <a href="#contact" class="nav-link hover:text-gray-100">Kontak</a>
     </nav>
     </div>
+    <div class = "nav-links">
     <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 hover:bg-gray-100">Login</a>
+   <a href="#" class="btn btn-sm bg-transparent text-white border border-white px-5 rounded-full hover:bg-gray-100 hover:text-[#00A29A]-900">Register</a>
+  </div>
   </div>
 </header>
 
@@ -214,7 +217,7 @@
   </section>
 
 <!-- ===== FOOTER ===== -->
-<footer class="bg-[#0b132b] text-gray-200 py-12 relative overflow-hidden fade-section">
+<footer id="contact" class="bg-[#0b132b] text-gray-200 py-12 relative overflow-hidden fade-section">
   <!-- Background pattern (optional subtle lines) -->
   <div class="absolute inset-0 opacity-5 bg-[url('/images/pattern-lines.svg')] bg-center bg-cover"></div>
 
@@ -248,7 +251,7 @@
       <!-- Back to top -->
       <button
         onclick="window.scrollTo({top:0, behavior:'smooth'})"
-        class="mt-6 border border-gray-600 hover:border-[#49D4A9] hover:text-[#49D4A9] text-xs uppercase px-4 py-2 rounded-md transition flex items-center gap-2">
+        class="mt-6 border border-gray-600 hover:border-[#49D4A9] hover:text-[#49D4A9] text-xs uppercase px-4 py-2 rounded-md transition flex items-center gap-2 ">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
         </svg>
