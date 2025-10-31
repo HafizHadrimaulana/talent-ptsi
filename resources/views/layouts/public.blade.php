@@ -29,7 +29,7 @@
       transition: color 0.3s ease;
     }
     .nav-links {
-      margin-right:8rem;
+      margin-left:1.5rem;
     }
 
     nav a:hover,
@@ -74,6 +74,32 @@
       opacity: 1;
       transform: translateY(0);
     }
+    /* ===== HERO SLIDESHOW ===== */
+      .hero-slideshow {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .hero-slideshow .slide {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: opacity 1s ease-in-out, transform 1.5s ease-in-out;
+    }
+
+    .hero-slideshow .slide.active {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .hero-slideshow .slide.prev {
+      transform: translateX(-100%);
+    }
 
   </style>
 </head>
@@ -99,29 +125,40 @@
       <a href="#contact" class="nav-link hover:text-gray-100">Kontak</a>
     </nav>
     </div>
+    <div class = "nav-links">
     <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 hover:bg-gray-100">Login</a>
+   <a href="#" class="btn btn-sm bg-transparent text-white border border-white px-5 rounded-full hover:bg-gray-100 hover:text-[#00A29A]-900">Register</a>
+  </div>
   </div>
 </header>
 
-  <!-- ===== HERO SECTION ===== -->
-  <section 
-    class="relative min-h-[90vh] flex flex-col justify-center items-center text-center text-white px-6"
-    style="background:url('/images/office-team.jpg') center/cover no-repeat;">
-    <div class="absolute inset-0 bg-gradient-to-r from-[#1F337E]/80 to-[#49D4A9]/60"></div>
-
-    <div class="relative z-10 max-w-3xl space-y-6 fade-section">
-      <h1 class="text-4xl md:text-5xl font-bold leading-tight">
-        Bangun Karier Masa Depan Bersama <span class="text-[#A4F5DD]">Test Company</span>
-      </h1>
-      <p class="text-lg text-white/90">
-        Kami membuka peluang bagi talenta terbaik untuk berkembang dan berkontribusi dalam lingkungan kerja yang dinamis dan kolaboratif.
-      </p>
-      <div class="flex justify-center gap-4 pt-4">
-        <a href="#jobs" class="px-6 py-3 rounded-full font-semibold bg-[#49D4A9] hover:bg-[#38c29a] text-white">Lihat Lowongan</a>
-        <a href="#about" class="px-6 py-3 rounded-full font-semibold border border-white/70 hover:bg-white/10">Pelajari Kami</a>
-      </div>
+<!-- ===== HERO SECTION (SLIDESHOW) ===== -->
+<section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center text-white px-6 overflow-hidden">
+  <!-- Slideshow container -->
+  <div class="absolute inset-0">
+    <div class="hero-slideshow absolute inset-0">
+<div class="slide" style="background-image:url('/images/1.jpg');"></div>
+<div class="slide" style="background-image:url('/images/2.jpg');"></div>
+<div class="slide" style="background-image:url('/images/3.jpg');"></div>
     </div>
-  </section>
+    <div class="absolute inset-0 bg-gradient-to-r from-[#1F337E]/80 to-[#49D4A9]/60"></div>
+  </div>
+
+  <!-- Hero content -->
+  <div class="relative z-10 max-w-3xl space-y-6 fade-section">
+    <h1 class="text-4xl md:text-5xl font-bold leading-tight">
+      Bangun Karier Masa Depan Bersama <span class="text-[#A4F5DD]">Test Company</span>
+    </h1>
+    <p class="text-lg text-white/90">
+      Kami membuka peluang bagi talenta terbaik untuk berkembang dan berkontribusi dalam lingkungan kerja yang dinamis dan kolaboratif.
+    </p>
+    <div class="flex justify-center gap-4 pt-4">
+      <a href="#jobs" class="px-6 py-3 rounded-full font-semibold bg-[#49D4A9] hover:bg-[#38c29a] text-white">Lihat Lowongan</a>
+      <a href="#about" class="px-6 py-3 rounded-full font-semibold border border-white/70 hover:bg-white/10">Pelajari Kami</a>
+    </div>
+  </div>
+</section>
+
 
   <!-- ===== ABOUT ===== -->
   <section id="about" class="py-20 bg-white fade-section">
@@ -179,29 +216,81 @@
     <p class="text-center text-gray-600">Belum ada lowongan saat ini.</p>
   </section>
 
-  <!-- ===== CONTACT ===== -->
-  <footer id="contact" class="bg-[#0b132b] text-white py-12 fade-section">
-    <div class="container mx-auto px-6 grid md:grid-cols-3 gap-8 text-sm">
-      <div>
-        <h3 class="font-semibold text-lg mb-2">Test Company</h3>
-        <p>Jl. Contoh No.123, Jakarta Selatan</p>
+<!-- ===== FOOTER ===== -->
+<footer id="contact" class="bg-[#0b132b] text-gray-200 py-12 relative overflow-hidden fade-section">
+  <!-- Background pattern (optional subtle lines) -->
+  <div class="absolute inset-0 opacity-5 bg-[url('/images/pattern-lines.svg')] bg-center bg-cover"></div>
+
+  <div class="relative container mx-auto px-6 grid md:grid-cols-3 gap-10 text-sm">
+    <!-- Left: Logo + Mission -->
+    <div>
+      <h3 class="text-xl font-semibold text-[#49D4A9] mb-3">Test Company</h3>
+      <p class="leading-relaxed mb-4">
+        Meningkatkan masa depan dengan solusi cerdas dan inovatif, memberdayakan bisnis serta individu untuk tumbuh bersama.
+      </p>
+      <!-- Social Media Buttons -->
+      <div class="flex gap-4 mt-4">
+        <a href="https://linkedin.com" target="_blank"
+          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+        <a href="https://instagram.com" target="_blank"
+          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
+          <i class="fab fa-instagram"></i>
+        </a>
+        <a href="https://x.com" target="_blank"
+          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
+          <i class="fab fa-x-twitter"></i>
+        </a>
+        <a href="https://facebook.com" target="_blank"
+          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
+          <i class="fab fa-facebook-f"></i>
+        </a>
       </div>
-      <div>
-        <h3 class="font-semibold text-lg mb-2">Kontak</h3>
-        <p>Email: hr@testcompany.co.id</p>
-        <p>Telepon: +62 812-3456-7890</p>
-      </div>
-      <div>
-        <h3 class="font-semibold text-lg mb-2">Ikuti Kami</h3>
-        <div class="flex gap-3 mt-2">
-          <a href="#" class="hover:text-[#49D4A9]">LinkedIn</a>
-          <a href="#" class="hover:text-[#49D4A9]">Instagram</a>
-          <a href="#" class="hover:text-[#49D4A9]">Facebook</a>
-        </div>
-      </div>
+
+      <!-- Back to top -->
+      <button
+        onclick="window.scrollTo({top:0, behavior:'smooth'})"
+        class="mt-6 border border-gray-600 hover:border-[#49D4A9] hover:text-[#49D4A9] text-xs uppercase px-4 py-2 rounded-md transition flex items-center gap-2 ">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+        Back to Top
+      </button>
     </div>
-    <div class="text-center text-xs mt-8 opacity-70">© {{ date('Y') }} Test Company — All rights reserved.</div>
-  </footer>
+
+    <!-- Middle: Site Map -->
+    <div>
+      <h4 class="font-semibold text-lg mb-3 text-white">Site Map</h4>
+      <ul class="space-y-2">
+        <li><a href="#about" class="hover:text-[#49D4A9] transition">Tentang Kami</a></li>
+        <li><a href="#vision" class="hover:text-[#49D4A9] transition">Visi & Misi</a></li>
+        <li><a href="#jobs" class="hover:text-[#49D4A9] transition">Lowongan</a></li>
+        <li><a href="#contact" class="hover:text-[#49D4A9] transition">Kontak</a></li>
+      </ul>
+    </div>
+
+    <!-- Right: Legal -->
+    <div>
+      <h4 class="font-semibold text-lg mb-3 text-white">Legal</h4>
+      <ul class="space-y-2">
+        <li><a href="#" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
+        <li><a href="#" class="hover:text-[#49D4A9] transition">Syarat & Ketentuan</a></li>
+        <li><a href="#" class="hover:text-[#49D4A9] transition">Hak Cipta</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="relative mt-10 border-t border-gray-700 pt-6 text-center text-xs text-gray-400">
+    <p>© {{ date('Y') }} Test Company — All Rights Reserved.</p>
+  </div>
+</footer>
+
+<!-- FontAwesome Icons -->
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+
 
   <!-- ===== JS: smooth scroll + fade-in ===== -->
   <script>
@@ -263,7 +352,19 @@
     }, { threshold: 0.15 });
 
     document.querySelectorAll('.fade-section').forEach(sec => observer.observe(sec));
+     // Hero slideshow
+      const slides = document.querySelectorAll('.hero-slideshow .slide');
+      let currentSlide = 0;
 
+      function showNextSlide() {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add('active');
+      }
+
+      // Initialize slideshow
+      slides[currentSlide].classList.add('active');
+      setInterval(showNextSlide, 5000); // Change every 5 seconds
   </script>
 
 </body>

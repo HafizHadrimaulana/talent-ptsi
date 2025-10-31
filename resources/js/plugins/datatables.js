@@ -116,10 +116,34 @@ const helpers = window.__DT_HELPERS__ || (() => {
 
       /* table look (uses your tokens) */
       .u-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface-0);font-size:.875rem;border-radius:var(--radius-lg);overflow:hidden}
-      .u-table thead th{
-        position:sticky;top:0;z-index:1;padding:1rem .8rem;font-weight:700;letter-spacing:.05em;color:#fff;
-        background:linear-gradient(135deg,#1F337E 0%,#49D4A9 100%)!important;border:none;text-transform:uppercase;font-size:.8rem
-      }
+      .u-table thead tr {
+      background: linear-gradient(135deg, #1F337E 0%, #49D4A9 100%) !important;
+      border-radius: 1rem;
+      overflow: hidden;
+    }
+
+    /* Make each cell transparent to let the row gradient show through */
+    .u-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 1rem .8rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      color: #fff;
+      background: transparent !important; /* ← key fix */
+      border: none;
+      text-transform: uppercase;
+      font-size: .8rem;
+    }
+
+    /* Optional: round outer corners */
+    .u-table thead th:first-child {
+      border-top-left-radius: 1rem;
+    }
+    .u-table thead th:last-child {
+      border-top-right-radius: 1rem;
+    }
       .u-table tbody td{padding:.875rem .8rem;border-bottom:1px solid color-mix(in srgb,var(--border) 30%, transparent);background:var(--surface-0);transition:all .2s ease}
       .u-table tbody tr:hover td{background:var(--surface-1)}
       .u-dt-actions{text-align:right;white-space:nowrap}
