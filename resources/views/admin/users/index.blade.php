@@ -37,7 +37,7 @@
 
   <div class="dt-wrapper">
     <div class="u-scroll-x">
-      <table id="users-table" class="u-table">
+      <table id="users-table" class="u-table u-table-mobile">
         <thead>
           <tr>
             <th>Name</th>
@@ -51,22 +51,17 @@
           <tr>
             <td>
               <div class="u-flex u-items-center u-gap-sm">
-                <div class="u-avatar u-avatar--sm u-avatar--brand">
-                  {{ substr($u->name, 0, 1) }}
-                </div>
                 <span class="u-font-medium">{{ $u->name }}</span>
               </div>
             </td>
             <td class="u-hide-mobile">{{ $u->email }}</td>
             <td>
-              <div class="u-flex u-flex-wrap u-gap-xs">
+              <div class="u-flex u-gap-sm" style="flex-wrap: wrap">
                 @foreach($u->roles as $role)
-                <span class="u-badge u-badge--primary">
-                  {{ $role->name }}
-                </span>
+                  <span class="u-badge u-badge--primary">{{ $role->name }}</span>
                 @endforeach
                 @if($u->roles->isEmpty())
-                <span class="u-text-sm u-muted">—</span>
+                  <span class="u-text-sm u-muted">—</span>
                 @endif
               </div>
             </td>
@@ -105,9 +100,11 @@
           </tr>
           @empty
           <tr>
-            <td colspan="4" class="u-text-center u-py-xl u-muted">
-              <i class="fas fa-users u-empty__icon"></i>
-              <p>No users found</p>
+            <td colspan="4">
+              <div class="u-empty">
+                <i class="fas fa-users u-empty__icon"></i>
+                <div>No users found</div>
+              </div>
             </td>
           </tr>
           @endforelse
@@ -120,7 +117,7 @@
     <div class="u-text-sm u-muted">
       Showing {{ $users->count() }} of {{ $users->total() }} users
     </div>
-    <div class="u-hidden">{{ $users->links() }}</div>
+    <div>{{ $users->links() }}</div>
   </div>
 </div>
 
@@ -142,28 +139,30 @@
       </button>
     </div>
 
-    <form method="post" action="{{ route('admin.users.store') }}" class="u-modal__body u-grid u-gap-md u-p-md" id="createUserForm">
+    <form method="post" action="{{ route('admin.users.store') }}" class="u-modal__body u-p-md" id="createUserForm">
       @csrf
-      <div>
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Full Name</label>
-        <input name="name" required class="u-input" placeholder="Enter user's full name">
-      </div>
-      
-      <div>
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Email Address</label>
-        <input type="email" name="email" required class="u-input" placeholder="Enter email address">
-      </div>
-      
-      <div>
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Password</label>
-        <input type="password" name="password" required class="u-input" placeholder="Enter password">
-        <p class="u-text-xs u-muted u-mt-xs">Minimum 8 characters</p>
-      </div>
+      <div class="u-grid-2 u-stack-mobile u-gap-md">
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Full Name</label>
+          <input name="name" required class="u-input" placeholder="Enter user's full name">
+        </div>
+        
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Email Address</label>
+          <input type="email" name="email" required class="u-input" placeholder="Enter email address">
+        </div>
+        
+        <div class="u-grid-col-span-2 u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Password</label>
+          <input type="password" name="password" required class="u-input" placeholder="Enter password">
+          <p class="u-text-xs u-muted u-mt-xs">Minimum 8 characters</p>
+        </div>
 
-      <div class="u-grid-col-span-2">
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Assign Roles</label>
-        <div class="u-grid u-grid-cols-1 u-gap-sm u-max-h-48 u-overflow-y-auto u-p-sm u-border u-rounded-lg" id="createUserRoles">
-          <!-- Roles will be loaded here -->
+        <div class="u-grid-col-span-2 u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Assign Roles</label>
+          <div class="u-list u-max-h-96 u-overflow-y-auto u-p-sm" id="createUserRoles">
+            <!-- Roles will be loaded here -->
+          </div>
         </div>
       </div>
     </form>
@@ -198,28 +197,30 @@
       </button>
     </div>
 
-    <form id="editUserForm" method="post" class="u-modal__body u-grid u-gap-md u-p-md">
+    <form id="editUserForm" method="post" class="u-modal__body u-p-md">
       @csrf @method('put')
-      <div>
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Full Name</label>
-        <input name="name" required class="u-input" placeholder="Enter user's full name">
-      </div>
-      
-      <div>
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Email Address</label>
-        <input type="email" name="email" required class="u-input" placeholder="Enter email address">
-      </div>
-      
-      <div>
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Password</label>
-        <input type="password" name="password" class="u-input" placeholder="Leave blank to keep current password">
-        <p class="u-text-xs u-muted u-mt-xs">Only enter if you want to change the password</p>
-      </div>
+      <div class="u-grid-2 u-stack-mobile u-gap-md">
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Full Name</label>
+          <input name="name" required class="u-input" placeholder="Enter user's full name">
+        </div>
+        
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Email Address</label>
+          <input type="email" name="email" required class="u-input" placeholder="Enter email address">
+        </div>
+        
+        <div class="u-grid-col-span-2 u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Password</label>
+          <input type="password" name="password" class="u-input" placeholder="Leave blank to keep current password">
+          <p class="u-text-xs u-muted u-mt-xs">Only enter if you want to change the password</p>
+        </div>
 
-      <div class="u-grid-col-span-2">
-        <label class="u-block u-text-sm u-font-medium u-mb-sm">Assign Roles</label>
-        <div class="u-grid u-grid-cols-1 u-gap-sm u-max-h-48 u-overflow-y-auto u-p-sm u-border u-rounded-lg" id="editUserRoles">
-          <!-- Roles will be loaded here -->
+        <div class="u-grid-col-span-2 u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Assign Roles</label>
+          <div class="u-list u-max-h-96 u-overflow-y-auto u-p-sm" id="editUserRoles">
+            <!-- Roles will be loaded here -->
+          </div>
         </div>
       </div>
     </form>
@@ -236,85 +237,103 @@
   </div>
 </div>
 
-<script>
-window.__INITIAL_ROLES__ = @json(($roles ?? collect())->map(function($r) {
-  return ['id' => $r->id, 'name' => $r->name];
-})->values());
+{{-- Safer JSON injection: roles payload --}}
+<script type="application/json" id="rolesData">
+{!! json_encode(($roles ?? collect())->map(function($r){ return ['id'=>$r->id,'name'=>$r->name]; })->values()->all(), JSON_UNESCAPED_UNICODE) !!}
+</script>
 
-// Users JavaScript
+<script>
 document.addEventListener('DOMContentLoaded', function() {
-  const userManager = {
-    init: function() {
+  // parse roles safely from embedded JSON
+  var __INITIAL_ROLES__ = [];
+  (function() {
+    var el = document.getElementById('rolesData');
+    if (el) {
+      try { __INITIAL_ROLES__ = JSON.parse(el.textContent || '[]'); } catch(e) { __INITIAL_ROLES__ = []; }
+    }
+  })();
+
+  var userManager = {
+    init: function () {
       this.bindModalEvents();
-      this.bindRoleLoading();
+      this.initDT();
     },
-    
-    bindModalEvents: function() {
-      // Generic modal handlers
-      document.addEventListener('click', function(e) {
-        const opener = e.target.closest('[data-modal-open]');
+
+    // ===== DataTables (opsional) =====
+    initDT: function () {
+      if (typeof DataTable !== 'undefined') {
+        new DataTable('#users-table', {
+          responsive: true,
+          paging: false,
+          info: false,
+          language: {
+            search: "Cari:",
+            zeroRecords: "Tidak ada data pengguna",
+            infoEmpty: "Menampilkan 0 data",
+            infoFiltered: "(disaring dari _MAX_ total data)"
+          }
+        });
+      }
+    },
+
+    // ===== Modal handlers =====
+    bindModalEvents: function () {
+      document.addEventListener('click', function (e) {
+        var opener = e.target.closest('[data-modal-open]');
         if (opener) {
           e.preventDefault();
           this.openModal(opener.getAttribute('data-modal-open'), opener);
         }
-        
-        const closer = e.target.closest('[data-modal-close]');
+        var closer = e.target.closest('[data-modal-close]');
         if (closer) {
           e.preventDefault();
           this.closeModal(closer.closest('.u-modal'));
         }
       }.bind(this));
-      
-      // Backdrop click
-      document.querySelectorAll('.u-modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
-          if (e.target === this) {
-            this.closeModal(this);
-          }
-        }.bind(this));
+
+      // backdrop click
+      Array.prototype.forEach.call(document.querySelectorAll('.u-modal'), function (modal) {
+        modal.addEventListener('click', function (e) {
+          if (e.target === modal) userManager.closeModal(modal);
+        });
       });
-      
-      // Escape key
-      document.addEventListener('keydown', function(e) {
+
+      // ESC
+      document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-          const openModals = Array.from(document.querySelectorAll('.u-modal')).filter(m => !m.hidden);
-          const top = openModals.pop();
-          if (top) this.closeModal(top);
+          var open = Array.prototype.find.call(document.querySelectorAll('.u-modal'), function (m) { return !m.hidden; });
+          if (open) this.closeModal(open);
         }
       }.bind(this));
     },
-    
-    openModal: function(modalId, opener) {
-      const modal = document.getElementById(modalId);
+
+    openModal: function (modalId, opener) {
+      var modal = document.getElementById(modalId);
       if (!modal) return;
-      
+
       if (modalId === 'editUserModal') {
         this.loadEditUserData(opener);
       } else if (modalId === 'createUserModal') {
-        this.loadCreateUserRoles();
+        this.loadUserRoles('createUserRoles', null, '');
       }
-      
+
       modal.hidden = false;
       document.body.classList.add('modal-open');
     },
-    
-    closeModal: function(modal) {
+
+    closeModal: function (modal) {
       if (!modal) return;
       modal.hidden = true;
       document.body.classList.remove('modal-open');
     },
-    
-    bindRoleLoading: function() {
-      // Role loading logic remains the same as previous implementation
-      // but now uses our universal classes
-    },
-    
-    loadEditUserData: function(opener) {
-      const form = document.getElementById('editUserForm');
-      const userId = opener.getAttribute('data-id') || '';
-      const userName = opener.getAttribute('data-name') || '';
-      const userEmail = opener.getAttribute('data-email') || '';
-      const userRoles = opener.getAttribute('data-roles') || '';
+
+    // ===== Roles renderer (DOM API, tanpa template literal) =====
+    loadEditUserData: function (opener) {
+      var form = document.getElementById('editUserForm');
+      var userId = opener.getAttribute('data-id') || '';
+      var userName = opener.getAttribute('data-name') || '';
+      var userEmail = opener.getAttribute('data-email') || '';
+      var userRoles = opener.getAttribute('data-roles') || '';
 
       if (form) {
         form.action = "{{ url('admin/settings/access/users') }}/" + userId;
@@ -323,40 +342,49 @@ document.addEventListener('DOMContentLoaded', function() {
         form.querySelector('input[name=password]').value = '';
       }
 
-      // Update modal header
-      document.getElementById('editUserName').textContent = userName;
-      document.getElementById('editUserId').textContent = 'ID: ' + userId;
+      var titleEl = document.getElementById('editUserName');
+      var idEl = document.getElementById('editUserId');
+      if (titleEl) titleEl.textContent = userName || 'Edit User';
+      if (idEl) idEl.textContent = 'ID: ' + userId;
 
-      // Load roles
       this.loadUserRoles('editUserRoles', userId, userRoles);
     },
-    
-    loadCreateUserRoles: function() {
-      this.loadUserRoles('createUserRoles');
-    },
-    
-    loadUserRoles: function(containerId, userId, currentRoles = '') {
-      const container = document.getElementById(containerId);
+
+    loadUserRoles: function (containerId, userId, currentRoles) {
+      var container = document.getElementById(containerId);
       if (!container) return;
-      
-      const rolesArray = currentRoles.split(',').map(s => s.trim()).filter(Boolean);
-      const roles = Array.isArray(window.__INITIAL_ROLES__) ? window.__INITIAL_ROLES__ : [];
-      
-      this.renderRoles(container, roles, rolesArray);
-    },
-    
-    renderRoles: function(container, roles, assignedIds) {
-      const picked = (assignedIds || []).map(String);
-      container.innerHTML = roles.map(role => `
-        <label class="u-flex u-items-center u-gap-md u-p-sm u-rounded-lg u-border u-border-gray-200 u-hover:border-blue-300 u-transition-colors">
-          <input type="checkbox" name="roles[]" value="${role.id}" ${picked.includes(String(role.id)) ? 'checked' : ''} 
-                 class="u-rounded u-border-gray-300 u-text-blue-600 u-focus:ring-blue-500">
-          <span class="u-text-sm u-font-medium">${role.name}</span>
-        </label>
-      `).join('');
+
+      // clear
+      container.innerHTML = '';
+
+      var picked = [];
+      if (typeof currentRoles === 'string' && currentRoles.length) {
+        picked = currentRoles.split(',').map(function (s) { return String(s).trim(); }).filter(Boolean);
+      }
+
+      (__INITIAL_ROLES__ || []).forEach(function (role) {
+        var idStr = String(role.id);
+
+        var label = document.createElement('label');
+        label.className = 'u-item u-flex u-items-center u-gap-md';
+
+        var input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'roles[]';
+        input.value = idStr;
+        if (picked.indexOf(idStr) !== -1) input.checked = true;
+
+        var span = document.createElement('span');
+        span.className = 'u-text-sm u-font-medium';
+        span.textContent = role.name;
+
+        label.appendChild(input);
+        label.appendChild(span);
+        container.appendChild(label);
+      });
     }
   };
-  
+
   userManager.init();
 });
 </script>

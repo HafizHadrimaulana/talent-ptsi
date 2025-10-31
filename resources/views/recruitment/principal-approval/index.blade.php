@@ -60,9 +60,6 @@
           <tr>
             <td>
               <div class="u-flex u-items-center u-gap-sm">
-                <div class="u-avatar u-avatar--sm u-avatar--brand">
-                  <i class='fas fa-clipboard-list u-text-xs'></i>
-                </div>
                 <span class="u-font-medium">{{ $r->title }}</span>
               </div>
             </td>
@@ -74,7 +71,7 @@
               <span class="u-badge
                 @if($r->status === 'rejected') u-badge--danger
                 @elseif($r->status === 'draft') u-badge--warn
-                @elseif($r->status === 'approved') u-badge--success
+                @elseif($r->status === 'approved') u-badge u-badge--primary
                 @else u-badge--soft @endif">
                 {{ ucfirst($r->status) }}
               </span>

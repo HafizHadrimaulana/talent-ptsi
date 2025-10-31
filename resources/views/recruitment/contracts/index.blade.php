@@ -18,19 +18,19 @@
     @endcan
   </div>
 
-  @if(session('ok')) 
+  @if(session('ok'))
     <div class="u-card u-mb-md u-success">
       <div class="u-flex u-items-center u-gap-sm">
-        <i class='fas fa-check-circle u-success-icon'></i>
+        <i class="fas fa-check-circle u-success-icon"></i>
         <span>{{ session('ok') }}</span>
       </div>
     </div>
   @endif
-  
+
   @if($errors->any())
     <div class="u-card u-mb-md u-error">
       <div class="u-flex u-items-center u-gap-sm u-mb-sm">
-        <i class='fas fa-exclamation-circle u-error-icon'></i>
+        <i class="fas fa-exclamation-circle u-error-icon"></i>
         <span class="u-font-semibold">Please fix the following errors:</span>
       </div>
       <ul class="u-list">
@@ -43,7 +43,7 @@
 
   <div class="dt-wrapper">
     <div class="u-scroll-x">
-      <table id="contracts-table" class="u-table">
+      <table id="contracts-table" class="u-table u-table-mobile">
         <thead>
           <tr>
             <th>No</th>
@@ -56,80 +56,69 @@
         </thead>
         <tbody>
           @foreach($list as $c)
-          @php
-            $sameUnit = $meUnit && $meUnit === $c->unit_id;
-            $jenis = $c->type ?? $c->contract_type ?? '—';
-          @endphp
-          <tr>
-            <td>
-              <div class="u-flex u-items-center u-gap-sm">
-                <div class="u-badge u-badge--primary">
-                  <i class='fas fa-file-contract u-text-xs u-mr-xs'></i>
-                  {{ $c->number ?? '—' }}
+            @php
+              $sameUnit = $meUnit && $meUnit === $c->unit_id;
+              $jenis = $c->type ?? $c->contract_type ?? '—';
+              $st = $c->status;
+              $badge = in_array($st,['approved','signed']) ? 'u-badge--primary' : ($st==='draft' ? 'u-badge--warn' : 'u-badge--glass');
+            @endphp
+            <tr>
+              <td>
+                <div class="u-flex u-items-center u-gap-sm">
+                  <div class="u-badge u-badge--primary">
+                    <i class="fas fa-file-contract u-text-xs u-mr-xs"></i>
+                    {{ $c->number ?? '—' }}
+                  </div>
                 </div>
-              </div>
-            </td>
-            <td>
-              <div class="u-flex u-items-center u-gap-sm">
-                <div class="u-avatar u-avatar--sm u-avatar--brand">
-                  {{ substr($c->person_name, 0, 1) }}
+              </td>
+              <td>
+                <div class="u-flex u-items-center u-gap-sm">
+                  <span class="u-font-medium">{{ $c->person_name }}</span>
                 </div>
-                <span class="u-font-medium">{{ $c->person_name }}</span>
-              </div>
-            </td>
-            <td>{{ $c->position }}</td>
-            <td>
-              <span class="u-badge u-badge--glass">{{ $jenis }}</span>
-            </td>
-            <td>
-              <span class="u-badge
-                @if($c->status === 'rejected') u-badge--danger
-                @elseif($c->status === 'draft') u-badge--warn
-                @elseif($c->status === 'approved' || $c->status === 'signed') u-badge--success
-                @else u-badge--soft @endif">
-                {{ ucfirst($c->status) }}
-              </span>
-            </td>
-            <td class="cell-actions">
-              <div class="cell-actions__group">
-                {{-- SDM submit draft -> review (unit sama + izin) --}}
-                @if($c->status === 'draft' && $sameUnit)
-                  @can('contract.update')
-                  <form method="POST" action="{{ route('recruitment.contracts.submit',$c) }}" class="u-inline">
-                    @csrf
-                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Submit for review">
-                      <i class="fas fa-paper-plane u-mr-xs"></i> Submit
-                    </button>
-                  </form>
-                  @endcan
-                @endif
+              </td>
+              <td>{{ $c->position }}</td>
+              <td><span class="u-badge u-badge--glass">{{ $jenis }}</span></td>
+              <td><span class="u-badge {{ $badge }}">{{ ucfirst($st) }}</span></td>
+              <td class="cell-actions">
+                <div class="cell-actions__group">
+                  {{-- SDM submit draft -> review --}}
+                  @if($c->status === 'draft' && $sameUnit)
+                    @can('contract.update')
+                    <form method="POST" action="{{ route('recruitment.contracts.submit',$c) }}" class="u-inline">
+                      @csrf
+                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Submit for review">
+                        <i class="fas fa-paper-plane u-mr-xs"></i> Submit
+                      </button>
+                    </form>
+                    @endcan
+                  @endif
 
-                {{-- GM/VP approve review (unit sama + izin) --}}
-                @if($c->status === 'review' && $sameUnit)
-                  @can('contract.approve')
-                  <form method="POST" action="{{ route('recruitment.contracts.approve',$c) }}" class="u-inline">
-                    @csrf
-                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success" title="Approve contract">
-                      <i class="fas fa-check u-mr-xs"></i> Approve
-                    </button>
-                  </form>
-                  @endcan
-                @endif
+                  {{-- GM/VP approve review --}}
+                  @if($c->status === 'review' && $sameUnit)
+                    @can('contract.approve')
+                    <form method="POST" action="{{ route('recruitment.contracts.approve',$c) }}" class="u-inline">
+                      @csrf
+                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success" title="Approve contract">
+                        <i class="fas fa-check u-mr-xs"></i> Approve
+                      </button>
+                    </form>
+                    @endcan
+                  @endif
 
-                {{-- Mark signed (opsional role khusus) --}}
-                @if($c->status === 'approved' && $sameUnit)
-                  @can('contract.sign')
-                  <form method="POST" action="{{ route('recruitment.contracts.sign',$c) }}" class="u-inline">
-                    @csrf
-                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Mark as signed">
-                      <i class="fas fa-signature u-mr-xs"></i> Sign
-                    </button>
-                  </form>
-                  @endcan
-                @endif
-              </div>
-            </td>
-          </tr>
+                  {{-- Mark signed --}}
+                  @if($c->status === 'approved' && $sameUnit)
+                    @can('contract.sign')
+                    <form method="POST" action="{{ route('recruitment.contracts.sign',$c) }}" class="u-inline">
+                      @csrf
+                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Mark as signed">
+                        <i class="fas fa-signature u-mr-xs"></i> Sign
+                      </button>
+                    </form>
+                    @endcan
+                  @endif
+                </div>
+              </td>
+            </tr>
           @endforeach
         </tbody>
       </table>
@@ -137,20 +126,18 @@
   </div>
 
   <div class="u-flex u-items-center u-justify-between u-mt-lg">
-    <div class="u-text-sm u-muted">
-      Showing {{ $list->count() }} of {{ $list->total() }} contracts
-    </div>
+    <div class="u-text-sm u-muted">Showing {{ $list->count() }} of {{ $list->total() }} contracts</div>
     <div>{{ $list->links() }}</div>
   </div>
 </div>
 
-<!-- Create Contract Modal -->
+{{-- Create Contract Modal --}}
 <div id="createContractModal" class="u-modal" hidden>
   <div class="u-modal__card">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand">
-          <i class='fas fa-file-contract'></i>
+          <i class="fas fa-file-contract"></i>
         </div>
         <div>
           <div class="u-title">Draft Kontrak Baru</div>
@@ -158,7 +145,7 @@
         </div>
       </div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
-        <i class='fas fa-times'></i>
+        <i class="fas fa-times"></i>
       </button>
     </div>
 
@@ -216,12 +203,10 @@
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai</label>
                 <input type="date" name="start_date" class="u-input" form="createContractForm">
               </div>
-
               <div class="u-space-y-sm">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Selesai</label>
                 <input type="date" name="end_date" class="u-input" form="createContractForm">
               </div>
-
               <div class="u-grid-col-span-2 u-space-y-sm">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji</label>
                 <input type="number" step="0.01" name="salary" class="u-input" placeholder="Masukkan jumlah gaji" form="createContractForm">
@@ -238,7 +223,7 @@
       <div class="u-flex u-gap-sm">
         <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
         <button form="createContractForm" class="u-btn u-btn--brand u-hover-lift">
-          <i class='fas fa-save u-mr-xs'></i> Simpan Draft
+          <i class="fas fa-save u-mr-xs"></i> Simpan Draft
         </button>
       </div>
     </div>
@@ -246,86 +231,47 @@
 </div>
 
 <script>
-// Contract Management JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-  const contractManager = {
-    init: function() {
-      this.bindModalEvents();
-      this.bindTabs();
-      this.initDataTable();
-    },
-    
-    bindModalEvents: function() {
-      // Modal open/close handlers
-      document.addEventListener('click', function(e) {
+  const app = {
+    init() { this.bindModal(); this.bindTabs(); this.initDT(); },
+    bindModal() {
+      document.addEventListener('click', (e) => {
         if (e.target.matches('[data-modal-open]')) {
-          const modalId = e.target.getAttribute('data-modal-open');
-          this.openModal(modalId);
+          const id = e.target.getAttribute('data-modal-open');
+          const modal = document.getElementById(id);
+          if (modal) { modal.hidden = false; document.body.classList.add('modal-open'); }
         }
-        
         if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
-          this.closeModal(e.target.closest('.u-modal'));
+          const modal = e.target.closest('.u-modal');
+          if (modal) { modal.hidden = true; document.body.classList.remove('modal-open'); }
         }
-      }.bind(this));
-
-      // ESC key handler
-      document.addEventListener('keydown', function(e) {
+      });
+      document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          const openModal = document.querySelector('.u-modal:not([hidden])');
-          if (openModal) {
-            this.closeModal(openModal);
-          }
+          const open = document.querySelector('.u-modal:not([hidden])');
+          if (open) { open.hidden = true; document.body.classList.remove('modal-open'); }
         }
-      }.bind(this));
+      });
     },
-    
-    openModal: function(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) {
-        modal.hidden = false;
-        document.body.classList.add('modal-open');
-      }
-    },
-    
-    closeModal: function(modal) {
-      modal.hidden = true;
-      document.body.classList.remove('modal-open');
-    },
-    
-    bindTabs: function() {
-      // Initialize tabs for contract modal
-      this.initTabs('createContractTabs');
-    },
-    
-    initTabs: function(containerId) {
+    bindTabs() { this.initTabs('createContractTabs'); },
+    initTabs(containerId) {
       const tabs = document.querySelectorAll(`#${containerId} .u-tab`);
       const panels = document.querySelectorAll(`#${containerId} ~ .u-panels .u-panel`);
-      
       tabs.forEach(tab => {
         tab.addEventListener('click', function() {
-          const targetTab = this.dataset.tab;
-          
-          // Update active tab
+          const target = this.dataset.tab;
           tabs.forEach(t => t.classList.remove('is-active'));
           this.classList.add('is-active');
-          
-          // Show target panel
-          panels.forEach(panel => {
-            panel.classList.remove('is-active');
-            if (panel.id === 'tab-' + targetTab) {
-              panel.classList.add('is-active');
-            }
+          panels.forEach(p => {
+            p.classList.toggle('is-active', p.id === 'tab-' + target);
           });
         });
       });
     },
-    
-    initDataTable: function() {
+    initDT() {
       if (typeof DataTable !== 'undefined') {
-        new DataTable('#contracts-table', { 
-          responsive: true, 
-          paging: false, 
-          info: false,
+        new DataTable('#contracts-table', {
+          responsive: true, paging: false, info: false,
           language: {
             search: "Cari:",
             zeroRecords: "Tidak ada data kontrak yang ditemukan",
@@ -336,8 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   };
-  
-  contractManager.init();
+  app.init();
 });
 </script>
 @endsection
