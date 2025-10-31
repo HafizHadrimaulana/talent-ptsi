@@ -45,7 +45,10 @@
 
     </div>
   </div>
+</div>
 
+<div class="dt-wrapper bg-white/70 dark:bg-slate-900/60 rounded-xl shadow-sm p-3 space-y-3 ios-glass">
+  @include('training.dashboard.partials.table')
 </div>
 
 @endsection

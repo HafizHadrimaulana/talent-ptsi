@@ -9,13 +9,7 @@
     <div class="flex gap-4">
         <button type="button" class="btn btn-brand btn-import">Import Data</button>
         <button type="button" class="btn btn-brand btn-add">Input Data</button>
-
-        {{-- Tombol download template --}}
-        <a href="{{ route('training.download-template') }}">
-          <button type="button" class="btn btn-brand">
-            Download Template Excel
-          </button>
-        </a>
+        <button type="button" class="btn btn-brand btn-download-template">Download Template Excel</button>
     </div>
     @endrole
   </div>

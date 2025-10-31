@@ -1,6 +1,6 @@
 import { postJSON } from "@/utils/fetch";
 
-document.addEventListener("DOMContentLoaded", () => {
+export function initAllApprovalHandler() {
     const approveAllButton = document.querySelector("#btn-all-approve");
 
     approveAllButton.addEventListener("click", async () => {
@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (res.status === "success") {
                 alert(res.message);
-                location.reload(); // refresh tabel agar data terupdate
+                location.reload();
             } else {
                 alert(
                     res.message || "Terjadi kesalahan saat approve semua data."
@@ -23,4 +23,4 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Gagal meng-approve semua data.");
         }
     });
-});
+}

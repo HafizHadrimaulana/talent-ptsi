@@ -1,12 +1,12 @@
 import { getJSON } from "@/utils/fetch";
 import { initDeleteHandler } from "./deleteHandler";
 import { initEditHandler } from "./editHandler";
-import { initApprovalHandler } from "./bulkApprovalHandler";
+import { initApproveHandler } from "./approveHandler";
+import { initRejectHandler } from "./rejectHandler";
 
-document.addEventListener("DOMContentLoaded", () => {
+export function initGetDataTable() {
+    
     const tableBody = document.querySelector("#training-table tbody");
-    const bulkApproveBtn = document.querySelector("#btn-bulk-approve");
-
     const userRole = window.currentUserRole;
 
     function renderTable(data) {
@@ -18,13 +18,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-
         tableBody.innerHTML = data
-        .map((item, index) => {
-            let actionButtons = "";
+            .map((item, index) => {
+                let actionButtons = "";
 
-            if (userRole === "SDM Unit") {
-                actionButtons = `
+                if (userRole === "SDM Unit") {
+                    actionButtons = `
                     <button class="btn btn-xs btn-outline btn-danger" data-action="edit" data-id="${item.id}">
                         Edit
                     </button>
@@ -32,8 +31,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         Hapus
                     </button>
                 `;
-            } else if (["GM/VP Unit", "VP DHC"].includes(userRole)) {
-                actionButtons = `
+                } else if (
+                    ["GM/VP Unit", "VP DHC", "DBS Unit"].includes(userRole)
+                ) {
+                    actionButtons = `
                     <button class="btn btn-xs btn-outline btn-success" data-action="approve" data-id="${item.id}">
                         Terima
                     </button>
@@ -41,17 +42,19 @@ document.addEventListener("DOMContentLoaded", () => {
                         Tolak
                     </button>
                 `;
-            } else {
-                actionButtons = `
-                    <button class="btn btn-xs btn-outline btn-success" data-action="approve" data-id="${item.id}">
+                } else {
+                    actionButtons = `
+                    <button class="btn btn-xs btn-outline btn-success" data-action="details" data-id="${item.id}">
                         Details
                     </button>`;
-            }
+                }
 
-            return `
+                return `
                 <tr>
                     <td>
-                        <input type="checkbox" name="selected[]" value="${item.id}" class="row-checkbox">
+                        <input type="checkbox" name="selected[]" value="${
+                            item.id
+                        }" class="row-checkbox">
                     </td>
                     <td>${index + 1}</td>
                     <td>${item.nik ?? "-"}</td>
@@ -75,8 +78,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     </td>
                 </tr>
             `;
-        })
-        .join("");
+            })
+            .join("");
     }
 
     async function loadTrainings() {
@@ -91,21 +94,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadTrainings();
 
-    initDeleteHandler(tableBody, loadTrainings);
     initEditHandler(tableBody, loadTrainings);
-
-    // bulk approve
-    if (bulkApproveBtn) {
-        bulkApproveBtn.addEventListener("click", initApprovalHandler);
-    }
-
-    document.querySelector("#select-all")?.addEventListener("change", (e) => {
-        const checked = e.target.checked;
-        document.querySelectorAll("input[name='selected[]']").forEach((cb) => {
-            cb.checked = checked;
-        });
-    });
-    // end
+    initDeleteHandler(tableBody, loadTrainings);
+    initApproveHandler(tableBody);
+    initRejectHandler(tableBody);
 
     document.addEventListener("training:imported", loadTrainings);
-});
+}

@@ -128,6 +128,10 @@ Route::prefix('admin')->name('admin.')->group(function() {
         Route::delete('delete/{id}', [TrainingMonitoringController::class,'destroy'])
             ->name('delete');
 
+        Route::post('monitoring/{id}/approve', [TrainingMonitoringController::class,'approveStatus'])
+            ->name('monitoring.approveStatus');
+        Route::post('monitoring/{id}/reject', [TrainingMonitoringController::class,'rejectStatus'])
+            ->name('monitoring.rejectStatus');
         Route::post('all-approve', [TrainingMonitoringController::class,'updateAllStatus'])
             ->name('allApprove');
         Route::post('bulk-approve', [TrainingMonitoringController::class,'bulkApprove'])

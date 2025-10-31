@@ -1,18 +1,20 @@
 import { postFormData } from "@/utils/fetch";
 
-document.addEventListener("DOMContentLoaded", () => {
+export function initInputHandler() {
     const inputButton = document.querySelector(".btn-add");
     const modal = document.querySelector("#add-modal");
     const closeModal = document.querySelector("#close-input-modal");
     const inputForm = document.querySelector("#add-form");
-    
-    inputButton.addEventListener("click", () => {
-        modal.classList.remove("hidden");
-    });
 
-    closeModal.addEventListener("click", () => {
-        modal.classList.add("hidden");
-    });
+    if (inputButton && modal && closeModal) {
+        inputButton.addEventListener("click", () => {
+            modal.classList.remove("hidden");
+        });
+
+        closeModal.addEventListener("click", () => {
+            modal.classList.add("hidden");
+        });
+    }
 
     inputForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -29,12 +31,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert(res.message);
                 window.location.reload();
             }
-            
-            document.dispatchEvent(new CustomEvent("training:imported"));
 
+            // document.dispatchEvent(new CustomEvent("training:imported"));
         } catch (error) {
             alert("Gagal import data");
             console.error(error);
         }
     });
-});
+}
