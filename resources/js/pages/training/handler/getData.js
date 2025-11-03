@@ -63,6 +63,7 @@ export function initGetDataTable() {
                             </div>
                         </div>
                     </td>
+                    <td>${item.jenis_pelatihan ?? "-"}</td>
                     <td>${item.nik ?? "-"}</td>
                     <td>${item.nama_peserta ?? "-"}</td>
                     <td>${item.status_pegawai ?? "-"}</td>
@@ -72,12 +73,16 @@ export function initGetDataTable() {
                     <td>${item.penyelenggara ?? "-"}</td>
                     <td>${item.jumlah_jam ?? "-"}</td>
                     <td>${item.waktu_pelaksanaan ?? "-"}</td>
-                    <td>${item.nama_proyek ?? "-"}</td>
                     <td>${item.biaya_pelatihan ?? "-"}</td>
                     <td>${item.uhpd ?? "-"}</td>
                     <td>${item.biaya_akomodasi ?? "-"}</td>
                     <td>${item.estimasi_total_biaya ?? "-"}</td>
+                    <td>${item.nama_proyek ?? "-"}</td>
                     <td>${item.jenis_portofolio ?? "-"}</td>
+                    <td>${item.fungsi ?? "-"}</td>
+                    <td>${item.alasan ?? "-"}</td>
+                    <td>${item.start_date ?? "-"}</td>
+                    <td>${item.end_date ?? "-"}</td>
                     <td>${item.status_approval.status_approval ?? "-"}</td>
                     <td class="cell-actions text-center">
                         ${actionButtons}

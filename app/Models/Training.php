@@ -11,38 +11,22 @@ class Training extends Model
     protected $table = 'training';
     
     protected $fillable = [
-        'file_training_id',
-        'no',
-        'nik',
+        'status_training_id',
+        'nama_pelatihan',
         'nama_peserta',
-        'status_pegawai',
-        'jabatan_saat_ini',
-        'unit_kerja',
-        'judul_sertifikasi',
-        'penyelenggara',
-        'jumlah_jam',
-        'waktu_pelaksanaan',
-        'nama_proyek',
-        'biaya_pelatihan',
-        'uhpd',
-        'biaya_akomodasi',
-        'estimasi_total_biaya',
-        'jenis_portofolio',
-        'status_approval_training_id',
-        'alasan',
         'start_date',
-        'end_date'
+        'realisasi_date',
+        'dokumen_sertifikasi',
     ];
-
-    // relation to FileTraining
-    public function file()
-    {
-        return $this->belongsTo(FileTraining::class, 'file_training_id');
-    }
 
     // relation to StatusApprovalTraining
     public function statusApproval()
     {
         return $this->belongsTo(StatusApprovalTraining::class, 'status_approval_training_id');
     }
+
+    protected $casts = [
+        'start_date' => 'date',
+        'realisasi_date' => 'date',
+    ];
 }

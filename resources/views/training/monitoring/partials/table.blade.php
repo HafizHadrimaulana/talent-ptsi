@@ -6,6 +6,7 @@
                 <input type="checkbox" id="select-all">
             </th>
             <th>No</th>
+            <th>Jenis Pelatihan</th>
             <th>NIK</th>
             <th>Nama</th>
             <th>Status Pegawai</th>
@@ -15,12 +16,16 @@
             <th>Penyelenggara</th>
             <th>Jumlah Jam</th>
             <th>Waktu Pelaksanaan</th>
-            <th>Nama Proyek</th>
             <th>Biaya Pelatihan</th>
             <th>UHPD</th>
             <th>Biaya Akomodasi</th>
             <th>Estimasi Total Biaya</th>
+            <th>Nama Proyek</th>
             <th>Jenis Portofolio</th>
+            <th>Fungsi</th>
+            <th>Alasan</th>
+            <th>Tanggal Mulai</th>
+            <th>Tanggal Berakhir</th>
             <th>Status Approval</th>
             <th class="cell-actions">Aksi</th>
         </tr>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\FileTraining;
 use App\Models\Training;
+use App\Models\TrainingTemp;
 use App\Models\StatusApprovalTraining;
 use App\Imports\Training\TrainingImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -64,7 +65,7 @@ class MonitoringController extends Controller
 
     public function list()
     {
-        $query = Training::query()
+        $query = TrainingTemp::query()
             ->with('statusApproval');
     
         if (auth()->user()->hasRole('GM/VP Unit')) {
@@ -91,7 +92,7 @@ class MonitoringController extends Controller
         $role = $user->getRoleNames()->first();
 
         $statusId = null;
-        $query = Training::query();
+        $query = TrainingTemp::query();
     
         switch ($role) {
             case 'SDM Unit':
@@ -155,7 +156,7 @@ class MonitoringController extends Controller
             ], 403);
         }
 
-        $updatedCount = Training::whereIn('id', $selectedIds)
+        $updatedCount = TrainingTemp::whereIn('id', $selectedIds)
             ->whereNotIn('status_approval_training_id', [4, 5])
             ->update([
                 'status_approval_training_id' => $statusId,
@@ -170,7 +171,7 @@ class MonitoringController extends Controller
 
     public function approveStatus($id)
     {
-        $training = Training::find($id);
+        $training = TrainingTemp::find($id);
 
         if (!$training) {
             return response()->json([
@@ -231,7 +232,7 @@ class MonitoringController extends Controller
 
     public function rejectStatus($id)
     {
-        $training = Training::find($id);
+        $training = TrainingTemp::find($id);
 
         if (!$training) {
             return response()->json([
@@ -337,7 +338,7 @@ class MonitoringController extends Controller
         $validated['status_approval_training_id'] = 6;
 
         try {
-            $training = Training::create($validated);
+            $training = TrainingTemp::create($validated);
     
             return response()->json([
                 'status' => 'success',
@@ -358,7 +359,7 @@ class MonitoringController extends Controller
 
     public function getEditData($id)
     {
-        $item = Training::findOrFail($id);
+        $item = TrainingTemp::findOrFail($id);
 
         return response()->json([
             'status' => 'success',
@@ -368,7 +369,7 @@ class MonitoringController extends Controller
 
     public function update(Request $request, $id)
     {
-        $training = Training::findOrFail($id);
+        $training = TrainingTemp::findOrFail($id);
 
         try {
             $training->update([

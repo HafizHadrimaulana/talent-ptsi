@@ -11,12 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('evaluation', function (Blueprint $table) {
+        Schema::create('training', function (Blueprint $table) {
             $table->id();
+
+            $table->unsignedBigInteger('status_training_id');
+
             $table->string('nama_pelatihan');
             $table->string('nama_peserta');
-            $table->date('tanggal_realisasi')->nullable();
-            $table->string('dokumen_sertifikat')->nullable();
+
+            $table->date('start_date');
+            $table->date('realisasi_date');
+
+            $table->string('dokumen_sertifikasi');
+
+            $table->foreign('status_training_id')
+                ->references('id')
+                ->on('status_approval_training')
+                ->onDelete('cascade');
+            
             $table->timestamps();
         });
     }
@@ -26,6 +38,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('evaluation');
+        Schema::dropIfExists('training');
     }
 };

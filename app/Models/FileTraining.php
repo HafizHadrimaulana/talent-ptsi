@@ -20,6 +20,6 @@ class FileTraining extends Model
     // relation to training
     public function trainings()
     {
-        return $this->hasMany(Training::class, 'file_training_id');
+        return $this->hasMany(TrainingTemp::class, 'file_training_id');
     }
 }

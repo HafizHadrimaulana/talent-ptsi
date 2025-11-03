@@ -2,7 +2,7 @@
 
 namespace App\Imports\Training;
 
-use App\Models\Training;
+use App\Models\TrainingTemp;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -49,7 +49,8 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
 
             $data[] = [
                 'file_training_id' => $this->fileTrainingId,
-                'no' => $row['no'] ?? null,
+                'status_approval_training_id' => 1,
+                'jenis_pelatihan' => $row['kompetensi_porto/non_porto/resertifikasi'] ?? null,
                 'nik' => $row['nik'] ?? null,
                 'nama_peserta' => $row['nama_peserta'] ?? null,
                 'status_pegawai' => $row['status_pegawai'] ?? null,
@@ -59,20 +60,20 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'penyelenggara' => $row['penyelenggara'] ?? null,
                 'jumlah_jam' => $row['jumlah_jam'] ?? null,
                 'waktu_pelaksanaan' => $row['waktu_pelaksanaan'] ?? null,
-                'nama_proyek' => $row[$namaProyekHeader] ?? null,
                 'biaya_pelatihan' => $this->parseRupiah($row['biaya_pelatihan'] ?? null),
                 'uhpd' => $this->parseRupiah($row['uhpd'] ?? null),
                 'biaya_akomodasi' => $this->parseRupiah($row['biaya_akomodasi'] ?? null),
+                'estimasi_total_biaya' => $this->parseRupiah($row['estimasi_total_biaya'] ?? null),
+                'nama_proyek' => $row[$namaProyekHeader] ?? null,
                 'jenis_portofolio' => $row['jenis_portofolio'] ?? null,
                 'alasan' => null,
-                'status_approval_training_id' => 1,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
             ];
         }
 
         if (!empty($data)) {
-            Training::insert($data);
+            TrainingTemp::insert($data);
         }
     }
 
