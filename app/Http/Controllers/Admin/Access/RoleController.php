@@ -14,32 +14,39 @@ class RoleController extends Controller
         $roles = Role::withCount('users')->orderBy('name')->paginate(20);
         $permissions = Permission::orderBy('name')->get();
         $grouped = $permissions->groupBy(fn($p)=>explode('.',$p->name)[0]);
+
         return view('admin.roles.index', [
-            'roles'=>$roles,
-            'groupedPerms'=>$grouped,
-            'allPerms'=>$permissions->pluck('name')->all(),
+            'roles'        => $roles,
+            'groupedPerms' => $grouped,
+            'allPerms'     => $permissions->pluck('name')->all(),
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'=>'required|string|unique:roles,name',
-            'permissions'=>'array'
+            'name'          => 'required|string|unique:roles,name',
+            'permissions'   => 'array',
+            'permissions.*' => 'string'
         ]);
-        $role = Role::create(['name'=>$data['name']]);
+
+        $role = Role::create(['name' => $data['name']]);
         $role->syncPermissions($data['permissions'] ?? []);
+
         return back()->with('ok','Role created');
     }
 
     public function update(Request $request, Role $role)
     {
         $data = $request->validate([
-            'name'=>"required|string|unique:roles,name,{$role->id}",
-            'permissions'=>'array'
+            'name'          => "required|string|unique:roles,name,{$role->id}",
+            'permissions'   => 'array',
+            'permissions.*' => 'string'
         ]);
-        $role->update(['name'=>$data['name']]);
+
+        $role->update(['name' => $data['name']]);
         $role->syncPermissions($data['permissions'] ?? []);
+
         return back()->with('ok','Role updated');
     }
 

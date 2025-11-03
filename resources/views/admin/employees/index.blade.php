@@ -5,14 +5,14 @@
 <div class="u-card u-card--glass u-mb-lg u-hover-lift">
   <div class="u-flex u-items-center u-justify-between u-mb-md">
     <h2 class="u-title">Employee Directory</h2>
-    <form id="empSearchForm" class="u-search" style="max-width: 520px;">
+    <!-- <form id="empSearchForm" class="u-search" style="max-width: 520px;">
       <svg class="u-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
       </svg>
       <input id="empSearchInput" type="search" class="u-search__input" name="q" value="{{ $q }}" placeholder="Search everything…" />
       <button class="u-btn u-btn--brand u-btn--sm" type="submit" id="empSearchBtn">Search</button>
       <button class="u-btn u-btn--outline u-btn--sm" type="button" id="empSearchClear" title="Clear">Clear</button>
-    </form>
+    </form> -->
   </div>
 
   <div class="dt-wrapper">
@@ -703,7 +703,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
               </div>
               <div class="u-text-right">
-                <span class="u-badge u-badge--glass">${this.formatDateSimple(doc.created_at)}</span>
                 ${doc.url ? `<a href="${doc.url}" target="_blank" class="u-btn u-btn--sm u-btn--outline u-mt-xs">View</a>` : ''}
               </div>
             </div>

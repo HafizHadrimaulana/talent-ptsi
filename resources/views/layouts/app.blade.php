@@ -302,33 +302,54 @@
   <!-- FAB -->
   <button id="dmFab" class="dm-fab" type="button" title="Toggle theme" aria-pressed="false">🌞</button>
 
-  <!-- ===== Password Modal ===== -->
-  <div id="pwModal" class="modal" hidden aria-hidden="true">
-    <div class="modal-backdrop" data-close="#pwModal"></div>
-    <div class="modal-panel max-w-md">
-      <div class="modal-header">
-        <h3 class="text-lg font-semibold">Ganti Password</h3>
-        <button class="icon-btn" data-close="#pwModal">✖</button>
+  <!-- ===== Password Modal (u-modal) ===== -->
+  <div id="changePasswordModal" class="u-modal" hidden>
+    <div class="u-modal__card">
+      <div class="u-modal__head">
+        <div class="u-flex u-items-center u-gap-md">
+          <div class="u-avatar u-avatar--lg u-avatar--brand">
+            <i class="fas fa-key"></i>
+          </div>
+          <div>
+            <div class="u-title">Ganti Password</div>
+            <div class="u-muted u-text-sm">Perbarui kata sandi akun Anda</div>
+          </div>
+        </div>
+        <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Tutup">
+          <i class="fas fa-times"></i>
+        </button>
       </div>
-      <form method="POST" action="{{ route('account.password.update') }}" class="modal-body space-y-4">
+
+      <form method="POST" action="{{ route('account.password.update') }}" class="u-modal__body u-p-md" id="changePwForm">
         @csrf
-        <div>
-          <label class="label">Password Saat Ini</label>
-          <input name="current_password" type="password" class="input" required>
-        </div>
-        <div>
-          <label class="label">Password Baru</label>
-          <input name="password" type="password" class="input" required minlength="8">
-        </div>
-        <div>
-          <label class="label">Konfirmasi Password Baru</label>
-          <input name="password_confirmation" type="password" class="input" required minlength="8">
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-ghost" data-close="#pwModal">Batal</button>
-          <button class="btn btn-brand">Simpan</button>
+        <div class="u-grid-2 u-stack-mobile u-gap-md">
+          <div class="u-grid-col-span-2 u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Password Saat Ini</label>
+            <input name="current_password" type="password" class="u-input" required>
+          </div>
+
+          <div class="u-grid-col-span-2 u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Password Baru</label>
+            <input name="password" type="password" class="u-input" required minlength="8">
+            <p class="u-text-xs u-muted u-mt-xs">Minimal 8 karakter</p>
+          </div>
+
+          <div class="u-grid-col-span-2 u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Konfirmasi Password Baru</label>
+            <input name="password_confirmation" type="password" class="u-input" required minlength="8">
+          </div>
         </div>
       </form>
+
+      <div class="u-modal__foot">
+        <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
+        <div class="u-flex u-gap-sm">
+          <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+          <button form="changePwForm" class="u-btn u-btn--brand u-hover-lift">
+            <i class="fas fa-save u-mr-xs"></i> Simpan
+          </button>
+        </div>
+      </div>
     </div>
   </div>
   @stack('scripts')
