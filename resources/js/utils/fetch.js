@@ -36,7 +36,6 @@ export async function postJSON(url, formData = null) {
 }
 
 export async function postFormData(url, formData) {
-    console.log('form data', formData)
     const res = await fetch(url, {
         method: "POST",
         body: formData,

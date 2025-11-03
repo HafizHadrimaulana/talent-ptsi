@@ -45,9 +45,11 @@ export function initEditHandler(tableBody, reloadCallback) {
 
             try {
                 const res = await postJSON(`/training/edit/${id}`, formData);
+                console.log('res edit', res)
                 if (res.status === "success") {
                     alert(res.message);
                     modal.classList.add("hidden");
+                    window.location.reload();
                     reloadCallback();
                 } else {
                     alert("Gagal memperbarui data");
@@ -75,6 +77,8 @@ export function initEditHandler(tableBody, reloadCallback) {
         document.querySelector("#edit-biaya_akomodasi").value = data.biaya_akomodasi;
         document.querySelector("#edit-estimasi_total_biaya").value = data.estimasi_total_biaya;
         document.querySelector("#edit-jenis_portofolio").value = data.jenis_portofolio;
+        document.querySelector("#edit-start_date").value = data.start_date;
+        document.querySelector("#edit-end_date").value = data.end_date;
     }
 
 }

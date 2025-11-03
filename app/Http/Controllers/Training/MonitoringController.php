@@ -327,6 +327,8 @@ class MonitoringController extends Controller
             'estimasi_total_biaya' => 'nullable|numeric',
             'jenis_portofolio' => 'nullable',
             'alasan' => 'nullable',
+            'start_date' => 'nullable',
+            'end_date' => 'nullable',
         ]);
 
         $latestFileTraining = FileTraining::latest()->first();
@@ -344,6 +346,8 @@ class MonitoringController extends Controller
             ], 201);
     
         } catch (\Exception $e) {
+
+            Log::error('Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => 'Terjadi kesalahan saat menyimpan data.',
@@ -366,17 +370,29 @@ class MonitoringController extends Controller
     {
         $training = Training::findOrFail($id);
 
-        $training->update([
-            'nik' => $request->nik,
-            'nama_peserta' => $request->nama_peserta,
-            'unit_kerja' => $request->unit_kerja,
-            'judul_sertifikasi' => $request->judul_sertifikasi,
-        ]);
-        
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Data berhasil diperbarui!',
-        ], 200);
+        try {
+            $training->update([
+                'nik' => $request->nik,
+                'nama_peserta' => $request->nama_peserta,
+                'unit_kerja' => $request->unit_kerja,
+                'judul_sertifikasi' => $request->judul_sertifikasi,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+            ]);
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data berhasil diperbarui!',
+            ], 200);
+
+        } catch (ValidationException $e) {
+            Log::info('eror', $e->errors());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Edit gagal',
+                'errors' => $e->errors(),
+            ], 422);
+        }
     }
 
     public function downloadTemplate()

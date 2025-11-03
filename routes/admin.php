@@ -93,6 +93,15 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         // Dashboard
         Route::get('dashboard', [TrainingDashboardController::class,'dataDashboard'])
             ->middleware('permission:training.view')->name('dashboard');
+        Route::get('dashboard/data-evaluation', [TrainingDashboardController::class,'getDataEvaluation'])
+            ->name('dashboard.data-evaluation');
+        Route::post('dashboard/input-evaluation', [TrainingDashboardController::class,'inputEvaluation'])
+        ->name('dashboard.input-evaluation');
+
+        Route::get('dashboard/{id}/data-upload-certif', [TrainingDashboardController::class,'getDataUploadCertif'])
+            ->name('dashboard.data-upload-certif');
+        Route::post('dashboard/upload-certif-evaluation', [TrainingDashboardController::class,'uploadCertifEvaluation'])
+            ->name('dashboard.upload-certif-evaluation');
 
         // Monitoring
         Route::get('monitoring', fn () => view('training.monitoring.monitoring'))

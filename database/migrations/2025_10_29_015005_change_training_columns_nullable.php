@@ -62,7 +62,7 @@ return new class extends Migration
             $table->decimal('biaya_akomodasi', 15, 2)->nullable(false)->change();
             $table->decimal('estimasi_total_biaya', 15, 2)->nullable(false)->change();
             
-            $table->string('alasan')->nullable(false);
+            $table->dropColumn('alasan')->nullable(false);
 
             $table->string('jenis_portofolio')->nullable(false)->change();
         });

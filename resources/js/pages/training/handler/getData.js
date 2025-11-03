@@ -24,10 +24,10 @@ export function initGetDataTable() {
 
                 if (userRole === "SDM Unit") {
                     actionButtons = `
-                    <button class="btn btn-xs btn-outline btn-danger" data-action="edit" data-id="${item.id}">
+                    <button class="u-btn u-btn--brand u-hover-lift" data-action="edit" data-id="${item.id}">
                         Edit
                     </button>
-                    <button class="btn btn-xs btn-outline btn-danger" data-action="delete" data-id="${item.id}">
+                    <button class="u-btn u-btn--brand u-hover-lift" data-action="delete" data-id="${item.id}">
                         Hapus
                     </button>
                 `;
@@ -35,16 +35,16 @@ export function initGetDataTable() {
                     ["GM/VP Unit", "VP DHC", "DBS Unit"].includes(userRole)
                 ) {
                     actionButtons = `
-                    <button class="btn btn-xs btn-outline btn-success" data-action="approve" data-id="${item.id}">
+                    <button class="u-btn u-btn--brand u-hover-lift" data-action="approve" data-id="${item.id}">
                         Terima
                     </button>
-                    <button class="btn btn-xs btn-outline btn-warning" data-action="reject" data-id="${item.id}">
+                    <button class="u-btn u-btn--brand u-hover-lift" data-action="reject" data-id="${item.id}">
                         Tolak
                     </button>
                 `;
                 } else {
                     actionButtons = `
-                    <button class="btn btn-xs btn-outline btn-success" data-action="details" data-id="${item.id}">
+                    <button class="u-btn u-btn--brand u-hover-lift" data-action="details" data-id="${item.id}">
                         Details
                     </button>`;
                 }
@@ -56,7 +56,13 @@ export function initGetDataTable() {
                             item.id
                         }" class="row-checkbox">
                     </td>
-                    <td>${index + 1}</td>
+                    <td>
+                        <div class="u-flex u-items-center u-gap-sm">
+                            <div class="u-badge u-badge--primary">
+                            ${index + 1}
+                            </div>
+                        </div>
+                    </td>
                     <td>${item.nik ?? "-"}</td>
                     <td>${item.nama_peserta ?? "-"}</td>
                     <td>${item.status_pegawai ?? "-"}</td>

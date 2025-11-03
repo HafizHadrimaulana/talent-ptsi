@@ -1,17 +1,5 @@
-<div class="flex gap-5 mb-3">
-    @hasanyrole('SDM Unit|GM/VP Unit|VP DHC')
-    <div class="flex justify-between w-full">
-        <div class="flex gap-5">
-            <button id="btn-all-approve" class="btn btn-brand">Kirim Semua Data</button>
-            <button id="btn-bulk-approve" class="btn btn-brand">Kirim Data yang Dipilih</button>
-        </div>
-        <button id="btn-export" class="btn btn-brand">Export Data</button>
-    </div>
-    @endhasanyrole
-</div>
-
 <table id="training-table"
-    class="display table-ui table-compact table-sticky w-full" data-dt>
+    class="u-table">
     <thead>
         <tr>
             <th>

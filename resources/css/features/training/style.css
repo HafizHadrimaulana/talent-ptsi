@@ -1,0 +1,56 @@
+/* Modal */
+@layer components {
+    .training-modal {
+        @apply ;
+    }
+
+    .training-modal-content {
+        @apply ;
+    }
+
+    .training-modal-header {
+        @apply ;
+    }
+
+    .training-modal-title {
+        @apply ;
+    }
+}
+
+/* Table */
+@layer components {
+    .training-table-container {
+        @apply relative bg-black rounded-xl shadow-md overflow-hidden border border-gray-200;
+    }
+
+    .training-table-scroll {
+        @apply w-full overflow-auto max-h-[70vh];
+    }
+
+    .training-table-data {
+        @apply w-full text-sm border-collapse min-w-max;
+    }
+
+    .training-table-data thead {
+        @apply sticky top-0 z-10 bg-gray-100 text-gray-700 text-xs uppercase tracking-wider;
+    }
+
+    .training-table-data th {
+        @apply px-4 py-3 text-left font-semibold border-b border-gray-200 whitespace-nowrap;
+    }
+}
+
+
+/* Form */
+
+/* Card */
+
+/* Tabs */
+
+/* Buttons */
+
+/* Grid */
+
+/* Utilities */
+
+/* Other */

@@ -32,10 +32,9 @@ export function initInputHandler() {
                 window.location.reload();
             }
 
-            // document.dispatchEvent(new CustomEvent("training:imported"));
         } catch (error) {
             alert("Gagal import data");
-            console.error(error);
+            console.error('eror', error);
         }
     });
 }

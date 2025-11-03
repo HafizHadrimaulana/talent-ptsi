@@ -28,7 +28,10 @@ class Training extends Model
         'biaya_akomodasi',
         'estimasi_total_biaya',
         'jenis_portofolio',
-        'status_approval_training_id'
+        'status_approval_training_id',
+        'alasan',
+        'start_date',
+        'end_date'
     ];
 
     // relation to FileTraining
