@@ -9,6 +9,148 @@ document.addEventListener('DOMContentLoaded', () => {
     set: (k,v)=>{ try{ localStorage.setItem(k,v); }catch{} },
   };
 
+  /* ========= iOS Liquid Glass Loader (Universal) ========= */
+  (function initAppLoader(){
+    // inject SVG filter (gooey) once
+    const ensureDefs = ()=>{
+      if ($('#gooeyDefs')) return;
+      const svg = d.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width','0'); svg.setAttribute('height','0'); svg.style.position='absolute';
+      svg.innerHTML = `
+        <defs id="gooeyDefs">
+          <filter id="gooey">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+            <feColorMatrix in="blur" mode="matrix"
+              values="1 0 0 0 0
+                      0 1 0 0 0
+                      0 0 1 0 0
+                      0 0 0 18 -7" result="goo"/>
+            <feBlend in="SourceGraphic" in2="goo"/>
+          </filter>
+        </defs>`;
+      d.body.appendChild(svg);
+    };
+
+    const ensureLoaderDOM = ()=>{
+      let el = $('#appLoader');
+      if (!el){
+        el = d.createElement('div');
+        el.id = 'appLoader';
+        el.setAttribute('aria-live','polite');
+        el.setAttribute('aria-busy','true');
+        el.className = 'entering';
+        el.innerHTML = `
+          <div class="loader-card glass">
+            <div class="liquid" aria-hidden="true">
+              <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            </div>
+            <div class="loader-title">Loading…</div>
+          </div>
+        `;
+        d.body.appendChild(el);
+      }
+      return el;
+    };
+
+    // scroll lock helpers (non-intrusive)
+    const lockScroll = ()=>{
+      if (body.classList.contains('scroll-lock')) return;
+      const top = w.scrollY || d.documentElement.scrollTop || 0;
+      html.classList.add('scroll-lock');
+      body.classList.add('scroll-lock');
+      body.style.setProperty('--lock-top', `-${top}px`);
+    };
+    const unlockScroll = ()=>{
+      if (!body.classList.contains('scroll-lock')) return;
+      const topVal = getComputedStyle(body).getPropertyValue('--lock-top');
+      const top = parseInt(topVal || '0') || 0;
+      html.classList.remove('scroll-lock');
+      body.classList.remove('scroll-lock');
+      body.style.removeProperty('--lock-top');
+      w.scrollTo(0, -top);
+    };
+
+    ensureDefs();
+    const loaderEl = ensureLoaderDOM();
+
+    let pending = 0;
+    let autoWrappedFetch = false;
+    let hideTimer = null;
+
+    const show = ()=>{
+      clearTimeout(hideTimer);
+      loaderEl.hidden = false;
+      loaderEl.classList.remove('leaving');
+      loaderEl.classList.add('entering');
+      lockScroll();
+      // small RAF to ensure render before removing 'entering'
+      requestAnimationFrame(()=> loaderEl.classList.remove('entering'));
+    };
+
+    const hide = (delay=120)=>{
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(()=>{
+        loaderEl.classList.add('leaving');
+        setTimeout(()=>{
+          loaderEl.hidden = true;
+          loaderEl.classList.remove('leaving');
+          unlockScroll();
+        }, 260);
+      }, delay);
+    };
+
+    const trackPromise = (p)=>{
+      if (!p || typeof p.then !== 'function') return p;
+      pending++;
+      show();
+      return p.finally(()=> {
+        pending = Math.max(0, pending - 1);
+        if (pending === 0) hide();
+      });
+    };
+
+    const trackFetch = (enable=true)=>{
+      if (!enable || autoWrappedFetch) return;
+      if (!('fetch' in w)) return;
+      const _fetch = w.fetch.bind(w);
+      w.fetch = function(...args){
+        pending++;
+        show();
+        return _fetch(...args).finally(()=>{
+          pending = Math.max(0, pending - 1);
+          if (pending === 0) hide();
+        });
+      };
+      autoWrappedFetch = true;
+    };
+
+    // Expose API
+    w.AppLoader = {
+      show, hide, trackPromise, trackFetch,
+      markReady(){ pending = 0; hide(60); }
+    };
+
+    // Default behavior:
+    // 1) Show at DOMContentLoaded
+    show();
+    // 2) Hide at window.load (fallback)
+    w.addEventListener('load', ()=> w.AppLoader.markReady(), { once:true });
+
+    // 3) Auto-hide when DataTables finishes init (if jQuery present)
+    if (w.jQuery && w.jQuery.fn && w.jQuery.fn.dataTable){
+      w.jQuery(d).on('init.dt', function(){ w.AppLoader.markReady(); });
+    }
+
+    // 4) Optional: enable fetch tracking if kamu mau (matikan saja kalau gak perlu)
+    // w.AppLoader.trackFetch(true);
+
+    // 5) If your app sets data-app-ready="1" on body/main, observe it
+    const mo = new MutationObserver(()=> {
+      if (body.dataset.appReady === '1') w.AppLoader.markReady();
+    });
+    mo.observe(body, { attributes:true, attributeFilter:['data-app-ready'] });
+  })();
+
   /* ========= z-index & basic states ========= */
   (function injectTopZ(){
     const css = `
@@ -234,8 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ========= Sidebar accordion (left aligned) ========= */
   (function accordion(){
     const setOpen = (group, open)=>{
-      const btn   = d.querySelector(`[data-accordion="${group}"]`);
-      const panel = d.querySelector(`[data-accordion-panel="${group}"]`);
+      const btn   = document.querySelector(`[data-accordion="${group}"]`);
+      const panel = document.querySelector(`[data-accordion-panel="${group}"]`);
       if (!btn || !panel) return;
       btn.classList.toggle('open', open);
       panel.classList.toggle('open', open);
@@ -249,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     $$('[data-accordion]').forEach(btn=>{
       const g = btn.getAttribute('data-accordion');
-      const panel = d.querySelector(`[data-accordion-panel="${g}"]`);
+      const panel = document.querySelector(`[data-accordion-panel="${g}"]`);
       const should =
         btn.classList.contains('open') ||
         panel?.classList.contains('open') ||
@@ -262,10 +404,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ========= init visuals ========= */
   (function init(){
-    // collapse sidebar state (desktop) seeded di atas
     // overlay default hidden
+    const overlay = $('#overlay');
     overlay && (overlay.hidden = true);
     // close all dropdowns by default
+    const notifDropdown = $('#notifDropdown');
+    const userDropdown  = $('#userDropdown');
     [notifDropdown, userDropdown].forEach(p=>{ if(p){ p.hidden=true; }});
   })();
 });
