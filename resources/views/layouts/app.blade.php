@@ -299,17 +299,6 @@
       </div>
     </div>
   </header>
-                    <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
-                        @csrf
-                        <div id="poweroff" class="poweroff" data-threshold="0.6" role="slider"
-                             aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
-                             tabindex="0">
-                            <span class="power-icon">⏻</span>
-                            <span class="power-text">Swipe To Sign out</span>
-                            <div class="power-knob" id="powerKnob"></div>
-                        </div>
-                        <noscript><button class="btn btn-outline w-full mt-2">Logout</button></noscript>
-                    </form>
                 </div>
             </div>
         </div>
