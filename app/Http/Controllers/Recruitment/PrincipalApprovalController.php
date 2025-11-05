@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\RecruitmentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class PrincipalApprovalController extends Controller
 {
     public function index()
     {
+        /** @var \App\Models\User|null $me */
+        $me = Auth::user();
+
         $list = RecruitmentRequest::query()
-            ->forViewer(auth()->user())
+            ->forViewer($me)   // biar Intelephense paham: variabel bertipe User|null
             ->latest()
             ->paginate(12);
 
@@ -29,6 +33,10 @@ class PrincipalApprovalController extends Controller
             'justification' => 'nullable|string',
         ]);
 
+        /** @var \App\Models\User|null $me */
+        $me   = Auth::user();
+        $meId = Auth::id();
+
         $model = new RecruitmentRequest();
         $tbl   = $model->getTable();
 
@@ -41,12 +49,12 @@ class PrincipalApprovalController extends Controller
         $insert = [];
 
         // kolom meta yang umum
-        if (Schema::hasColumn($tbl, 'unit_id'))  $insert['unit_id'] = auth()->user()->unit_id;
+        if (Schema::hasColumn($tbl, 'unit_id'))  $insert['unit_id'] = $me?->unit_id;
         if (Schema::hasColumn($tbl, 'status'))   $insert['status']  = 'draft';
 
         // requested_by fallback ke varian lain
         if ($col = $pick(['requested_by','requested_by_user_id','created_by','created_by_user_id'])) {
-            $insert[$col] = auth()->id();
+            $insert[$col] = $meId;
         }
 
         // map field logis -> kemungkinan nama kolom di DB
@@ -122,11 +130,15 @@ class PrincipalApprovalController extends Controller
             return back()->withErrors('Only SUBMITTED can be approved.');
         }
 
+        /** @var \App\Models\User|null $me */
+        $me   = Auth::user();
+        $meId = Auth::id();
+
         // update status approved (kolom-kolom opsional)
         $tbl = $req->getTable();
         $changes = [];
         if (Schema::hasColumn($tbl, 'status'))        $changes['status'] = 'approved';
-        if (Schema::hasColumn($tbl, 'approved_by'))   $changes['approved_by'] = auth()->id();
+        if (Schema::hasColumn($tbl, 'approved_by'))   $changes['approved_by'] = $meId;
         if (Schema::hasColumn($tbl, 'approved_at'))   $changes['approved_at'] = now();
         if ($changes) $req->update($changes);
 
@@ -144,7 +156,7 @@ class PrincipalApprovalController extends Controller
                     $apprChanges = [];
                     if (Schema::hasColumn($apprTable, 'status'))    $apprChanges['status'] = 'approved';
                     if (Schema::hasColumn($apprTable, 'state'))     $apprChanges['state']  = 'approved';
-                    if (Schema::hasColumn($apprTable, 'user_id'))   $apprChanges['user_id'] = auth()->id();
+                    if (Schema::hasColumn($apprTable, 'user_id'))   $apprChanges['user_id'] = $meId;
                     if (Schema::hasColumn($apprTable, 'decided_at'))$apprChanges['decided_at'] = now();
                     if (Schema::hasColumn($apprTable, 'note') && $r->filled('note')) $apprChanges['note'] = $r->note;
 
@@ -166,6 +178,10 @@ class PrincipalApprovalController extends Controller
             return back()->withErrors('Only SUBMITTED can be rejected.');
         }
 
+        /** @var \App\Models\User|null $me */
+        $me   = Auth::user();
+        $meId = Auth::id();
+
         $tbl = $req->getTable();
         if (Schema::hasColumn($tbl, 'status')) {
             $req->update(['status' => 'rejected']);
@@ -184,7 +200,7 @@ class PrincipalApprovalController extends Controller
                     $apprChanges = [];
                     if (Schema::hasColumn($apprTable, 'status'))    $apprChanges['status'] = 'rejected';
                     if (Schema::hasColumn($apprTable, 'state'))     $apprChanges['state']  = 'rejected';
-                    if (Schema::hasColumn($apprTable, 'user_id'))   $apprChanges['user_id'] = auth()->id();
+                    if (Schema::hasColumn($apprTable, 'user_id'))   $apprChanges['user_id'] = $meId;
                     if (Schema::hasColumn($apprTable, 'decided_at'))$apprChanges['decided_at'] = now();
                     if (Schema::hasColumn($apprTable, 'note') && $r->filled('note')) $apprChanges['note'] = $r->note;
 
@@ -200,8 +216,16 @@ class PrincipalApprovalController extends Controller
 
     protected function authorizeUnit($unitId): void
     {
-        $meUnit = auth()->user()->unit_id;
-        if ($meUnit && $meUnit != $unitId && !auth()->user()->hasRole('Superadmin')) {
+        /** @var \App\Models\User|null $me */
+        $me = Auth::user();
+        $meUnit = $me?->unit_id;
+
+        // Superadmin selalu lolos; jika bukan, unit harus sama
+        if ($me && $me->hasRole('Superadmin')) {
+            return;
+        }
+
+        if ($meUnit && $unitId && (string)$meUnit !== (string)$unitId) {
             abort(403);
         }
     }

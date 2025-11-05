@@ -4,7 +4,7 @@
 @section('content')
 @php
   /** @var \App\Models\User $me */
-  $me = auth()->user();
+  $me     = auth()->user();
   $meUnit = $me?->unit_id;
 @endphp
 
@@ -18,13 +18,11 @@
     @endcan
   </div>
 
+  {{-- Jika masih pakai session("ok"), tampilkan sebagai toast --}}
   @if(session('ok'))
-    <div class="u-card u-mb-md u-success">
-      <div class="u-flex u-items-center u-gap-sm">
-        <i class="fas fa-check-circle u-success-icon"></i>
-        <span>{{ session('ok') }}</span>
-      </div>
-    </div>
+    @push('swal')
+      <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script>
+    @endpush
   @endif
 
   @if($errors->any())
@@ -57,10 +55,11 @@
         <tbody>
           @foreach($list as $c)
             @php
-              $sameUnit = $meUnit && $meUnit === $c->unit_id;
-              $jenis = $c->type ?? $c->contract_type ?? '—';
-              $st = $c->status;
-              $badge = in_array($st,['approved','signed']) ? 'u-badge--primary' : ($st==='draft' ? 'u-badge--warn' : 'u-badge--glass');
+              $sameUnit = $meUnit && (string)$meUnit === (string)$c->unit_id;
+              $jenis    = $c->type ?? $c->contract_type ?? '—';
+              $st       = $c->status;
+              $badge    = in_array($st,['approved','signed']) ? 'u-badge--primary'
+                         : ($st==='draft' ? 'u-badge--warn' : 'u-badge--glass');
             @endphp
             <tr>
               <td>
@@ -81,10 +80,15 @@
               <td><span class="u-badge {{ $badge }}">{{ ucfirst($st) }}</span></td>
               <td class="cell-actions">
                 <div class="cell-actions__group">
-                  {{-- SDM submit draft -> review --}}
+                  {{-- SDM: submit draft -> review --}}
                   @if($c->status === 'draft' && $sameUnit)
                     @can('contract.update')
-                    <form method="POST" action="{{ route('recruitment.contracts.submit',$c) }}" class="u-inline">
+                    <form method="POST"
+                          action="{{ route('recruitment.contracts.submit',$c) }}"
+                          class="u-inline js-confirm"
+                          data-confirm-title="Submit kontrak?"
+                          data-confirm-text="Kontrak akan dikirim untuk review oleh atasan."
+                          data-confirm-icon="question">
                       @csrf
                       <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Submit for review">
                         <i class="fas fa-paper-plane u-mr-xs"></i> Submit
@@ -93,10 +97,15 @@
                     @endcan
                   @endif
 
-                  {{-- GM/VP approve review --}}
+                  {{-- GM/VP: approve review --}}
                   @if($c->status === 'review' && $sameUnit)
                     @can('contract.approve')
-                    <form method="POST" action="{{ route('recruitment.contracts.approve',$c) }}" class="u-inline">
+                    <form method="POST"
+                          action="{{ route('recruitment.contracts.approve',$c) }}"
+                          class="u-inline js-confirm"
+                          data-confirm-title="Setujui kontrak?"
+                          data-confirm-text="Status akan berubah menjadi Approved."
+                          data-confirm-icon="success">
                       @csrf
                       <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success" title="Approve contract">
                         <i class="fas fa-check u-mr-xs"></i> Approve
@@ -105,10 +114,15 @@
                     @endcan
                   @endif
 
-                  {{-- Mark signed --}}
+                  {{-- Tandai sudah ditandatangani --}}
                   @if($c->status === 'approved' && $sameUnit)
                     @can('contract.sign')
-                    <form method="POST" action="{{ route('recruitment.contracts.sign',$c) }}" class="u-inline">
+                    <form method="POST"
+                          action="{{ route('recruitment.contracts.sign',$c) }}"
+                          class="u-inline js-confirm"
+                          data-confirm-title="Tandai sudah ditandatangani?"
+                          data-confirm-text="Status akan berubah menjadi Signed."
+                          data-confirm-icon="info">
                       @csrf
                       <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Mark as signed">
                         <i class="fas fa-signature u-mr-xs"></i> Sign
@@ -159,7 +173,10 @@
 
       <div class="u-panels">
         <div class="u-panel is-active" id="tab-basic">
-          <form method="POST" action="{{ route('recruitment.contracts.store') }}" class="u-grid-2 u-stack-mobile u-gap-md u-p-md" id="createContractForm">
+          <form method="POST"
+                action="{{ route('recruitment.contracts.store') }}"
+                class="u-grid-2 u-stack-mobile u-gap-md u-p-md"
+                id="createContractForm">
             @csrf
             <div class="u-space-y-sm">
               <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak</label>
@@ -233,20 +250,20 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const app = {
-    init() { this.bindModal(); this.bindTabs(); this.initDT(); },
+    init() { this.bindModal(); this.bindTabs(); this.initDT(); this.bindExternalSearch(); },
     bindModal() {
-      document.addEventListener('click', (e) => {
+      document.addEventListener('click', function(e) {
         if (e.target.matches('[data-modal-open]')) {
           const id = e.target.getAttribute('data-modal-open');
           const modal = document.getElementById(id);
           if (modal) { modal.hidden = false; document.body.classList.add('modal-open'); }
         }
-        if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
-          const modal = e.target.closest('.u-modal');
+        if (e.target.matches('[data-modal-close]') || (e.target.closest && e.target.closest('[data-modal-close]'))) {
+          const modal = e.target.closest ? e.target.closest('.u-modal') : null;
           if (modal) { modal.hidden = true; document.body.classList.remove('modal-open'); }
         }
       });
-      document.addEventListener('keydown', (e) => {
+      document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
           const open = document.querySelector('.u-modal:not([hidden])');
           if (open) { open.hidden = true; document.body.classList.remove('modal-open'); }
@@ -255,31 +272,62 @@ document.addEventListener('DOMContentLoaded', function() {
     },
     bindTabs() { this.initTabs('createContractTabs'); },
     initTabs(containerId) {
-      const tabs = document.querySelectorAll(`#${containerId} .u-tab`);
-      const panels = document.querySelectorAll(`#${containerId} ~ .u-panels .u-panel`);
-      tabs.forEach(tab => {
+      const tabs   = document.querySelectorAll('#' + containerId + ' .u-tab');
+      const panels = document.querySelectorAll('#' + containerId + ' ~ .u-panels .u-panel');
+      tabs.forEach(function(tab) {
         tab.addEventListener('click', function() {
-          const target = this.dataset.tab;
-          tabs.forEach(t => t.classList.remove('is-active'));
-          this.classList.add('is-active');
-          panels.forEach(p => {
-            p.classList.toggle('is-active', p.id === 'tab-' + target);
-          });
+          const target = tab.dataset.tab;
+          tabs.forEach(function(t){ t.classList.remove('is-active'); });
+          tab.classList.add('is-active');
+          panels.forEach(function(p){ p.classList.toggle('is-active', p.id === 'tab-' + target); });
         });
       });
     },
     initDT() {
-      if (typeof DataTable !== 'undefined') {
-        new DataTable('#contracts-table', {
+      // jQuery DataTables (jika ada) atau simple-DataTable
+      if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
+        jQuery('#contracts-table').DataTable({
           responsive: true, paging: false, info: false,
           language: {
-            search: "Cari:",
-            zeroRecords: "Tidak ada data kontrak yang ditemukan",
-            infoEmpty: "Menampilkan 0 data",
-            infoFiltered: "(disaring dari _MAX_ total data)"
+            search: "Cari:", zeroRecords: "Tidak ada data kontrak yang ditemukan",
+            infoEmpty: "Menampilkan 0 data", infoFiltered: "(disaring dari _MAX_ total data)"
           }
         });
+        return;
       }
+      if (typeof window.DataTable !== 'undefined') {
+        // simple-datatables
+        new window.DataTable('#contracts-table', {
+          responsive: true,
+          perPageSelect: false
+        });
+      }
+    },
+    bindExternalSearch() {
+      // optional: input[name="q"] dari topbar layout; aman jika tidak ada
+      const ext = document.querySelector('input[name="q"]');
+      if (!ext) return;
+
+      ext.addEventListener('input', function(){
+        const tableEl = document.querySelector('#contracts-table');
+        if (!tableEl) return;
+
+        // jQuery DataTables
+        if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
+          const dt = jQuery('#contracts-table').DataTable();
+          dt.search(ext.value || '').draw();
+          return;
+        }
+
+        // simple-datatables: cari input internal dan trigger input
+        const wrapper = tableEl.closest ? tableEl.closest('.dataTable-wrapper') : null;
+        const qs = wrapper ? wrapper.querySelector('.dataTable-input') : null;
+        if (qs) {
+          qs.value = ext.value || '';
+          const evt = new Event('input', { bubbles: true });
+          qs.dispatchEvent(evt);
+        }
+      });
     }
   };
   app.init();

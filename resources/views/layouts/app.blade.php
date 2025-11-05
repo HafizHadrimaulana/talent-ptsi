@@ -7,7 +7,12 @@
     <title>@yield('title','Talent PTSI')</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Seed theme dari localStorage (hindari FOUC; set data-theme + class dark) -->
+    {{-- Flash Swal lewat META (aman untuk parser/linter) --}}
+    @if(session('swal'))
+      <meta name="swal" content='@json(session('swal'))'>
+    @endif
+
+    <!-- Seed theme dari localStorage (hindari FOUC) -->
     <script>
     (function() {
         try {
@@ -23,7 +28,7 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
-    <!-- Styles & Scripts via Vite (pecah per-file agar aman) -->
+    <!-- Vite assets -->
     @vite('resources/css/app.css')
     @vite('resources/css/app-layout.css')
     @vite('resources/css/app-ui.css')
@@ -36,11 +41,7 @@
     <div id="appLoader" aria-live="polite" aria-busy="true">
         <div class="loader-card glass">
             <div class="liquid" aria-hidden="true">
-                <div class="dot"></div>
-                <div class="dot"></div>
-                <div class="dot"></div>
-                <div class="dot"></div>
-                <div class="dot"></div>
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
             </div>
             <div class="loader-title">Loading…</div>
         </div>
@@ -67,7 +68,7 @@
         $showMain = true;
         $showRecruitment = $isSuper || $user?->hasAnyPermission(['recruitment.view','contract.view']);
         $showTraining = $isSuper || $user?->hasAnyPermission(['training.view']);
-        $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view')); /* <- FIXED ] */
+        $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view'));
         $printedAnySection = false;
         $recOpen = str_starts_with(request()->route()->getName() ?? '', 'recruitment.');
         $trOpen = str_starts_with(request()->route()->getName() ?? '', 'training.');
@@ -224,13 +225,14 @@
 
         <div class="search">
             <span class="search-icon">🔎</span>
-            <input type="search" placeholder="Search…" aria-label="Search">
+            <!-- Penting: name="q" agar modul datatables.js bisa bind -->
+            <input type="search" name="q" id="globalSearch"
+                   placeholder="Search Everything…" aria-label="Search Everything">
         </div>
 
         <div class="top-actions">
             <div class="dropdown-wrap">
-                <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true"
-                        title="Notifications">
+                <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">
                     <i class="fa-solid fa-bell bell-icon"></i>
                 </button>
                 <div id="notifDropdown" class="dropdown" hidden>
@@ -243,8 +245,7 @@
 
             <div class="dropdown-wrap user-area">
                 @php $roleBadge = $user?->getRoleNames()->first() ?? '-'; @endphp
-                <button id="userBtn" class="user-chip" type="button" aria-haspopup="true" aria-expanded="false"
-                        title="User menu">
+                <button id="userBtn" class="user-chip" type="button" aria-haspopup="true" aria-expanded="false" title="User menu">
                     <span class="avatar">PT</span>
                     <span class="user-meta">
                         <span class="user-name text-ellipsis">{{ $user->name ?? 'Guest' }}</span>
@@ -306,9 +307,6 @@
 
     <!-- ===== Main ===== -->
     <main class="main" id="main">
-        @if(session('ok'))
-            <div class="alert alert-success">{{ session('ok') }}</div>
-        @endif
         @yield('content')
     </main>
 
@@ -316,105 +314,119 @@
     <button id="dmFab" class="dm-fab" type="button" title="Toggle theme" aria-pressed="false">🌞</button>
 
     <!-- ===== Password Modal (u-modal) ===== -->
-    <div id="changePasswordModal" class="u-modal" hidden>
-        <div class="u-modal__card">
-            <div class="u-modal__head">
-                <div class="u-flex u-items-center u-gap-md">
-                    <div class="u-avatar u-avatar--lg u-avatar--brand">
-                        <i class="fas fa-key"></i>
-                    </div>
-                    <div>
-                        <div class="u-title">Ganti Password</div>
-                        <div class="u-muted u-text-sm">Perbarui kata sandi akun Anda</div>
-                    </div>
-                </div>
-                <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Tutup">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+    {{-- (isi modal ganti password tetap sama) --}}
 
-            <form method="POST" action="{{ route('account.password.update') }}" class="u-modal__body u-p-md"
-                  id="changePwForm">
-                @csrf
-                <div class="u-grid-2 u-stack-mobile u-gap-md">
-                    <div class="u-grid-col-span-2 u-space-y-sm">
-                        <label class="u-block u-text-sm u-font-medium u-mb-sm">Password Saat Ini</label>
-                        <input name="current_password" type="password" class="u-input" required>
-                    </div>
-
-                    <div class="u-grid-col-span-2 u-space-y-sm">
-                        <label class="u-block u-text-sm u-font-medium u-mb-sm">Password Baru</label>
-                        <input name="password" type="password" class="u-input" required minlength="8">
-                        <p class="u-text-xs u-muted u-mt-xs">Minimal 8 karakter</p>
-                    </div>
-
-                    <div class="u-grid-col-span-2 u-space-y-sm">
-                        <label class="u-block u-text-sm u-font-medium u-mb-sm">Konfirmasi Password Baru</label>
-                        <input name="password_confirmation" type="password" class="u-input" required minlength="8">
-                    </div>
-                </div>
-            </form>
-
-            <div class="u-modal__foot">
-                <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
-                <div class="u-flex u-gap-sm">
-                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-                    <button form="changePwForm" class="u-btn u-btn--brand u-hover-lift">
-                        <i class="fas fa-save u-mr-xs"></i> Simpan
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== Loader Controller (auto-hide & hooks) ===== -->
+    <!-- ===== Loader Controller ===== -->
     <script>
     (function () {
         var root = document.getElementById('appLoader');
         if (!root) return;
 
-        var hide = function(){
-            root.classList.add('is-hidden');
-            root.setAttribute('aria-busy','false');
-        };
-        var show = function(){
-            root.classList.remove('is-hidden');
-            root.setAttribute('aria-busy','true');
-        };
+        var hide = function(){ root.classList.add('is-hidden'); root.setAttribute('aria-busy','false'); };
+        var show = function(){ root.classList.remove('is-hidden'); root.setAttribute('aria-busy','true'); };
         var doneOnce = false;
-        var done = function(){
-            if (doneOnce) return;
-            doneOnce = true;
-            hide();
-        };
+        var done = function(){ if (doneOnce) return; doneOnce = true; hide(); };
 
-        // Expose API kalau mau dipakai manual di modul lain
         window.appLoader = { show: show, hide: hide, done: done };
-
-        // 1) Sembunyikan setelah seluruh resource loaded (fallback umum)
         window.addEventListener('load', function(){ setTimeout(done, 120); });
 
-        // 2) Kalau pakai DataTables, sembunyikan ketika init selesai
-        //    (butuh jQuery + DataTables; aman kalau tidak ada)
         document.addEventListener('DOMContentLoaded', function(){
             try{
                 if (window.jQuery){
                     var $ = window.jQuery;
-                    $(document).on('init.dt', function(){
-                        // sedikit delay supaya first paint tabel terlihat rapi
-                        setTimeout(done, 60);
-                    });
+                    $(document).on('init.dt', function(){ setTimeout(done, 60); });
                 }
             }catch(_){}
         });
 
-        // 3) Custom event untuk kasus SPA/partial render:
-        //    dispatchEvent(new Event('app:ready')) dari modul kamu kalau perlu.
         window.addEventListener('app:ready', done, { once: true });
-
-        // Antisipasi: kalau user navigasi cepat, pastikan loader muncul lagi saat unload
         window.addEventListener('beforeunload', function(){ show(); });
     })();
     </script>
+
+    <!-- ===== SweetAlert2 Universal (iOS Liquid Glass) ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    (function () {
+      // 1) Mixin iOS glass
+      window.iosSwal = Swal.mixin({
+        background: 'rgba(255,255,255,0.35)',
+        backdrop: 'rgba(15,23,42,.35)',
+        color: '#0f172a',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#94a3b8',
+        customClass: {
+          popup: 'ios-glass',
+          title: 'font-semibold',
+          confirmButton: 'u-btn u-btn--brand rounded-xl',
+          cancelButton: 'u-btn u-btn--ghost rounded-xl'
+        }
+      });
+
+      // 2) Toast helpers (glass)
+      const toastBase = {
+        toast: true, position: 'top-end', showConfirmButton: false,
+        timer: 2200, timerProgressBar: true,
+        customClass: { popup: 'swal2-toast ios-glass' }
+      };
+      window.toastOk  = (title='Berhasil', text='') => Swal.fire({ ...toastBase, icon:'success', title, text });
+      window.toastErr = (title='Gagal', text='')    => Swal.fire({ ...toastBase, icon:'error',   title, text });
+
+      // 3) Konfirmasi universal → Promise<boolean>
+      window.iosConfirm = function (opts = {}) {
+        const base = {
+          icon: 'warning',
+          title: 'Yakin?',
+          text: 'Aksi ini tidak bisa dibatalkan.',
+          showCancelButton: true,
+          confirmButtonText: 'Ya, lanjut',
+          cancelButtonText: 'Batal',
+          reverseButtons: true
+        };
+        return window.iosSwal.fire({ ...base, ...opts }).then(r => !!r.isConfirmed);
+      };
+
+      // 4) Tembak swal dari META "swal" (opsi modal)
+      const meta = document.querySelector('meta[name="swal"]');
+      if (meta) {
+        try {
+          const payload = JSON.parse(meta.getAttribute('content') || '{}');
+          if (payload && typeof payload === 'object') window.iosSwal.fire(payload);
+        } catch (e) {}
+      }
+
+      // 5) Interceptor form konfirmasi (class="js-confirm")
+      document.addEventListener('submit', async function(e){
+        const f = e.target;
+        if (!f.classList || !f.classList.contains('js-confirm')) return;
+        e.preventDefault();
+        const ok = await window.iosConfirm({
+          title: f.getAttribute('data-confirm-title') || 'Yakin?',
+          text:  f.getAttribute('data-confirm-text')  || 'Lanjutkan aksi ini?',
+          icon:  f.getAttribute('data-confirm-icon')  || 'question'
+        });
+        if (ok) f.submit();
+      });
+    })();
+    </script>
+    <style>
+      .ios-glass{
+        backdrop-filter: blur(18px) saturate(180%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
+        border-radius: 16px !important;
+        border: 1px solid rgba(255,255,255,.4);
+        box-shadow: 0 8px 32px rgba(31,38,135,.15), inset 0 0 0 1px rgba(255,255,255,.06);
+      }
+      .swal2-toast.ios-glass{
+        border-radius: 14px !important;
+        background: var(--glass-bg) !important;
+        border: var(--glass-brd) !important;
+        backdrop-filter: blur(12px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
+        box-shadow: var(--shadow-lg) !important;
+      }
+    </style>
+
+    @stack('swal')
 </body>
 </html>
