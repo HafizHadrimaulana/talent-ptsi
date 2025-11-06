@@ -7,7 +7,7 @@
     <title>@yield('title','Talent PTSI')</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    {{-- Flash Swal lewat META (aman untuk parser/linter) --}}
+    {{-- Flash Swal lewat META --}}
     @if(session('swal'))
       <meta name="swal" content='@json(session('swal'))'>
     @endif
@@ -34,6 +34,11 @@
     @vite('resources/css/app-ui.css')
     @vite('resources/js/app-layout.js')
     @vite('resources/js/app.js')
+
+    <style>
+      /* jaga-jaga kalau ada override lain */
+      .u-modal{z-index:2000}
+    </style>
 </head>
 
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
@@ -225,7 +230,6 @@
 
         <div class="search">
             <span class="search-icon">🔎</span>
-            <!-- Penting: name="q" agar modul datatables.js bisa bind -->
             <input type="search" name="q" id="globalSearch"
                    placeholder="Search Everything…" aria-label="Search Everything">
         </div>
@@ -277,29 +281,25 @@
                         </div>
                     </div>
 
-          <div class="menu-list">
-            <button id="changePwBtn" type="button" class="menu-item cursor-pointer" onclick="openPwModal()"><span>Change Password</span></button>
-          </div>
                     <div class="menu-list">
-                        <button id="changePwBtn" type="button" class="menu-item" onclick="openPwModal()">
+                        <button id="changePwBtn" type="button" class="menu-item"
+                                data-open="pwModal"
+                                onclick="window.__openModal && window.__openModal('pwModal')">
                             <span>Change Password</span>
                         </button>
                     </div>
 
-          <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
-            @csrf
-            <div id="poweroff" class="poweroff cursor-pointer" data-threshold="0.6" role="slider"
-                 aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
-              <span class="power-icon">⏻</span>
-              <span class="power-text">Swipe To Sign out</span>
-              <div class="power-knob" id="powerKnob"></div>
-            </div>
-            <noscript><button class="btn btn-outline w-full mt-2">Logout</button></noscript>
-          </form>
-        </div>
-      </div>
-    </div>
-  </header>
+                    <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
+                        @csrf
+                        <div id="poweroff" class="poweroff" data-threshold="0.6" role="slider"
+                             aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                             tabindex="0">
+                            <span class="power-icon">⏻</span>
+                            <span class="power-text">Swipe To Sign out</span>
+                            <div class="power-knob" id="powerKnob"></div>
+                        </div>
+                        <noscript><button class="btn btn-outline w-full mt-2">Logout</button></noscript>
+                    </form>
                 </div>
             </div>
         </div>
@@ -314,7 +314,52 @@
     <button id="dmFab" class="dm-fab" type="button" title="Toggle theme" aria-pressed="false">🌞</button>
 
     <!-- ===== Password Modal (u-modal) ===== -->
-    {{-- (isi modal ganti password tetap sama) --}}
+    @php
+      $pwAction = \Illuminate\Support\Facades\Route::has('password.update')
+        ? route('password.update')
+        : null; // fallback AJAX kalau route ini tidak ada
+    @endphp
+
+    <div id="pwModal" class="u-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+      <div class="u-modal__card" role="document">
+        <div class="u-modal__head">
+          <h3 id="pwTitle" class="u-title">Change Password</h3>
+          <button type="button" class="u-btn u-btn--sm u-btn--ghost" data-close="#pwModal" aria-label="Close">✖</button>
+        </div>
+
+        <form id="pwForm" method="POST" @if($pwAction) action="{{ $pwAction }}" @endif autocomplete="off" novalidate>
+          @csrf
+          @if($pwAction) @method('PUT') @endif
+
+          <div class="u-modal__body u-p-lg u-flex u-flex-col u-gap-md">
+            <div>
+              <label class="u-text-sm u-font-medium">Current Password</label>
+              <input name="current_password" type="password" class="u-input" required minlength="8" autocomplete="current-password">
+              @error('current_password')
+                <div class="u-text-xs u-error u-mt-xs">{{ $message }}</div>
+              @enderror
+            </div>
+            <div>
+              <label class="u-text-sm u-font-medium">New Password</label>
+              <input name="password" type="password" class="u-input" required minlength="8" autocomplete="new-password">
+              @error('password')
+                <div class="u-text-xs u-error u-mt-xs">{{ $message }}</div>
+              @enderror
+            </div>
+            <div>
+              <label class="u-text-sm u-font-medium">Confirm New Password</label>
+              <input name="password_confirmation" type="password" class="u-input" required minlength="8" autocomplete="new-password">
+            </div>
+            <p class="u-text-xs u-muted">Minimal 8 karakter. Gunakan kombinasi huruf, angka, dan simbol.</p>
+          </div>
+
+          <div class="u-modal__foot">
+            <button type="button" class="u-btn u-btn--ghost" data-close="#pwModal">Batal</button>
+            <button id="pwSubmitBtn" type="submit" class="u-btn u-btn--brand">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- ===== Loader Controller ===== -->
     <script>
@@ -372,7 +417,7 @@
       window.toastOk  = (title='Berhasil', text='') => Swal.fire({ ...toastBase, icon:'success', title, text });
       window.toastErr = (title='Gagal', text='')    => Swal.fire({ ...toastBase, icon:'error',   title, text });
 
-      // 3) Konfirmasi universal → Promise<boolean>
+      // 3) Konfirmasi universal
       window.iosConfirm = function (opts = {}) {
         const base = {
           icon: 'warning',
@@ -386,7 +431,7 @@
         return window.iosSwal.fire({ ...base, ...opts }).then(r => !!r.isConfirmed);
       };
 
-      // 4) Tembak swal dari META "swal" (opsi modal)
+      // 4) Tembak swal dari META
       const meta = document.querySelector('meta[name="swal"]');
       if (meta) {
         try {
@@ -395,7 +440,7 @@
         } catch (e) {}
       }
 
-      // 5) Interceptor form konfirmasi (class="js-confirm")
+      // 5) Interceptor form konfirmasi
       document.addEventListener('submit', async function(e){
         const f = e.target;
         if (!f.classList || !f.classList.contains('js-confirm')) return;
@@ -407,26 +452,106 @@
         });
         if (ok) f.submit();
       });
+
+      // ===== Modal helpers (global + delegasi) =====
+      function __qs(sel){ return document.querySelector(sel); }
+      window.__openModal = function(id){
+        const m = typeof id === 'string' ? document.getElementById(id) : id;
+        if (!m) return;
+        m.hidden = false;
+        document.body.classList.add('modal-open');
+        const first = m.querySelector('input,button,select,textarea,[tabindex]:not([tabindex="-1"])');
+        first && first.focus();
+      };
+      window.__closeModal = function(id){
+        const m = typeof id === 'string' ? document.getElementById(id) : id;
+        if (!m) return;
+        m.hidden = true;
+        document.body.classList.remove('modal-open');
+        const f = m.querySelector('form'); if (f) f.reset();
+      };
+
+      document.addEventListener('click', function(e){
+        const op = e.target.closest('[data-open]');
+        if (op){ e.preventDefault(); window.__openModal(op.getAttribute('data-open')); return; }
+        const cl = e.target.closest('[data-close]');
+        if (cl){ e.preventDefault(); window.__closeModal(cl.getAttribute('data-close')); return; }
+      });
+
+      document.getElementById('pwModal')?.addEventListener('click', function(e){
+        if (e.target === this) window.__closeModal(this);
+      });
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') window.__closeModal('pwModal');
+      });
+
+      // ===== Auto-open kalau balik dari server dgn error/flag =====
+      @if(session('modal') === 'changePassword' || $errors->has('current_password') || $errors->has('password'))
+        document.addEventListener('DOMContentLoaded', function(){
+          window.__openModal('pwModal');
+        });
+      @endif
+
+      // ===== AJAX fallback bila route password.update tidak tersedia =====
+      const pwForm = document.getElementById('pwForm');
+      pwForm?.addEventListener('submit', async function(e){
+        if (pwForm.getAttribute('action')) return; // ada route → submit normal
+
+        e.preventDefault();
+        const btn = document.getElementById('pwSubmitBtn');
+        btn.disabled = true;
+
+        const fd = new FormData(pwForm);
+        const payload = {
+          current_password: String(fd.get('current_password')||''),
+          password: String(fd.get('password')||''),
+          password_confirmation: String(fd.get('password_confirmation')||'')
+        };
+
+        if (!payload.current_password || !payload.password || !payload.password_confirmation){
+          btn.disabled = false; return (window.toastErr ? toastErr('Gagal','Lengkapi semua kolom.') : alert('Lengkapi semua kolom.'));
+        }
+        if (payload.password.length < 8){
+          btn.disabled = false; return (window.toastErr ? toastErr('Gagal','Password minimal 8 karakter.') : alert('Password minimal 8 karakter.'));
+        }
+        if (payload.password !== payload.password_confirmation){
+          btn.disabled = false; return (window.toastErr ? toastErr('Gagal','Konfirmasi password tidak cocok.') : alert('Konfirmasi tidak cocok.'));
+        }
+
+        try{
+          const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+          const endpoint = "{{ url('/account/password') }}"; // sesuai AccountController@updatePassword
+          const resp = await fetch(endpoint, {
+            method: 'PUT',
+            headers: { 'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':csrf },
+            body: JSON.stringify(payload),
+            credentials: 'same-origin'
+          });
+
+          if (resp.status === 204){
+            window.toastOk ? toastOk('Berhasil','Password diperbarui.') : alert('Password diperbarui.');
+            window.__closeModal('pwModal'); return;
+          }
+          if (resp.ok){
+            let data={}; try{ data = await resp.json(); }catch(_){}
+            window.toastOk ? toastOk('Berhasil', data.message || 'Password diperbarui.') : alert('Password diperbarui.');
+            window.__closeModal('pwModal'); return;
+          }
+          if (resp.status === 422){
+            let j={}; try{ j = await resp.json(); }catch(_){}
+            const msg = (j.errors && (j.errors.current_password?.[0] || j.errors.password?.[0])) || j.message || 'Validasi gagal';
+            throw new Error(msg);
+          }
+          let j={}; try{ j = await resp.json(); }catch(_){}
+          throw new Error(j.message || 'Gagal memperbarui password.');
+        }catch(err){
+          window.toastErr ? toastErr('Gagal', err?.message || 'Terjadi kesalahan.') : alert(err?.message || 'Terjadi kesalahan.');
+        }finally{
+          btn.disabled = false;
+        }
+      });
     })();
     </script>
-    <style>
-      .ios-glass{
-        backdrop-filter: blur(18px) saturate(180%);
-        -webkit-backdrop-filter: blur(18px) saturate(180%);
-        border-radius: 16px !important;
-        border: 1px solid rgba(255,255,255,.4);
-        box-shadow: 0 8px 32px rgba(31,38,135,.15), inset 0 0 0 1px rgba(255,255,255,.06);
-      }
-      .swal2-toast.ios-glass{
-        border-radius: 14px !important;
-        background: var(--glass-bg) !important;
-        border: var(--glass-brd) !important;
-        backdrop-filter: blur(12px) saturate(160%) !important;
-        -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
-        box-shadow: var(--shadow-lg) !important;
-      }
-    </style>
-
     @stack('swal')
 </body>
 </html>
