@@ -145,8 +145,6 @@
       <div class="slide" style="background-image:url('/images/2.jpg');"></div>
       <div class="slide" style="background-image:url('/images/3.jpg');"></div>
     </div>
-    <!-- ✅ Keep gradient mask exactly as is -->
-    <div class="absolute inset-0 bg-gradient-to-r from-[#1F337E]/80 to-[#49D4A9]/60"></div>
   </div>
 
   <!-- Text content (changes per slide) -->
@@ -158,9 +156,9 @@
       Kami membuka peluang bagi talenta terbaik untuk berkembang dan berkontribusi dalam lingkungan kerja yang dinamis dan kolaboratif.
     </p>
     <div class="hero-buttons flex justify-center gap-4 pt-4 opacity-0 translate-y-5 transition-all duration-700">
-      <a href="#jobs" class="px-6 py-3 rounded-full font-semibold bg-[#49D4A9] hover:bg-[#38c29a] text-white transition">Lihat Lowongan</a>
+      <a href="#jobs" class="px-6 py-3 rounded-full font-semibold bg-[#49D4A9] hover:bg-[#3FCC97] text-white transition">Lihat Lowongan</a>
       <a href="#about" 
-      class="px-6 py-3 rounded-full font-semibold bg-white text-[#00A29A] border border-transparent hover:bg-[#A4F5DD]/20 transition">
+      class="px-6 py-3 rounded-full font-semibold bg-white text-[#00A29A] border border-transparent hover:bg-[#CCF9EA] transition">
       Pelajari Kami
      </a>
     </div>
@@ -288,23 +286,36 @@
       </p>
       <!-- Social Media Buttons -->
       <div class="flex gap-4 mt-4">
-        <a href="https://linkedin.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-linkedin-in"></i>
-        </a>
-        <a href="https://instagram.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-instagram"></i>
-        </a>
-        <a href="https://x.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-x-twitter"></i>
-        </a>
-        <a href="https://facebook.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-facebook-f"></i>
-        </a>
-      </div>
+  <!-- LinkedIn -->
+  <a href="https://linkedin.com" target="_blank"
+     class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+    <img src="/images/LinkedIn_logo_initials.png" alt="LinkedIn"
+         class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+
+  <!-- Instagram -->
+  <a href="https://instagram.com" target="_blank"
+     class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+    <img src="/images/Instagram_icon.png" alt="Instagram"
+         class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+
+  <!-- X (Twitter) -->
+  <a href="https://x.com" target="_blank"
+    class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden bg-white hover:border-[#49D4A9] transition group">
+    <img src="/images/X_logo_2023.svg.png" alt="X (Twitter)"
+        class="w-full h-full object-contain scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+
+  <!-- Facebook -->
+  <a href="https://facebook.com" target="_blank"
+     class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+    <img src="/images/2021_Facebook_icon.svg.png" alt="Facebook"
+         class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+</div>
+
+
 
       <!-- Back to top -->
       <button

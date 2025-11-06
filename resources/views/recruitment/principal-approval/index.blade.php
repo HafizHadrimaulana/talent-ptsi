@@ -26,7 +26,7 @@
 
   <div class="dt-wrapper">
     <div class="u-scroll-x">
-      <table id="ip-table" class="u-table">
+      <table id="ip-table" class="u-table" data-dt>
         <thead>
           <tr>
             <th>Judul</th>
