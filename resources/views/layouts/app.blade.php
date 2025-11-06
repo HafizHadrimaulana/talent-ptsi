@@ -361,7 +361,7 @@
       </div>
     </div>
 
-    <!-- ===== Loader Controller ===== -->
+    <!-- ===== Loader & Utilities ===== -->
     <script>
     (function () {
         var root = document.getElementById('appLoader');
@@ -486,11 +486,16 @@
       });
 
       // ===== Auto-open kalau balik dari server dgn error/flag =====
-      @if(session('modal') === 'changePassword' || $errors->has('current_password') || $errors->has('password'))
+      const SHOULD_OPEN_PW = @json(
+        session('modal') === 'changePassword'
+        || $errors->has('current_password')
+        || $errors->has('password')
+      );
+      if (SHOULD_OPEN_PW) {
         document.addEventListener('DOMContentLoaded', function(){
           window.__openModal('pwModal');
         });
-      @endif
+      }
 
       // ===== AJAX fallback bila route password.update tidak tersedia =====
       const pwForm = document.getElementById('pwForm');

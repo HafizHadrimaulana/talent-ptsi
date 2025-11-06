@@ -1,4 +1,4 @@
-// resources/js/dt-helpers.js
+// resources/js/plugins/datatables.js
 import $ from 'jquery';
 window.$ = window.jQuery = $;
 
