@@ -3,15 +3,15 @@ import { getJSON, postFormData } from "@/utils/fetch";
 /**
  * Inisialisasi event handler untuk tombol Edit
  * @param {Element} tableBody
- * @param {Function} reloadCallback 
+ * @param {Function} reloadCallback
  */
 
-export function initUploadCertifHandler(tableBody, reloadCallback) {
+export function initUploadCertifHandler(tableBody) {
     const modal = document.querySelector("#modal-upload-certif");
     const form = document.querySelector("#upload-certif-form");
     const cancelBtn = document.querySelector("#close-upload-certif");
 
-    const trainingIdInput = document.querySelector("#evaluation_id");
+    const trainingIdInput = document.querySelector("#training_id");
     const namaPelatihanInput = document.querySelector("#nama_pelatihan");
     const namaPesertaInput = document.querySelector("#nama_peserta");
 
@@ -23,10 +23,27 @@ export function initUploadCertifHandler(tableBody, reloadCallback) {
         modal.classList.remove("hidden");
     }
 
-    // Tutup modal
-    function hideModal() {
-        modal.classList.add("hidden");
-        form.reset();
+    function getMonthDifference(endDate, realisasiDate) {
+        if (!endDate || !realisasiDate) {
+            console.warn("Tanggal tidak lengkap:", { endDate, realisasiDate });
+            return null;
+        }
+
+        const d1 = new Date(endDate);
+        const d2 = new Date(realisasiDate);
+
+        if (isNaN(d1) || isNaN(d2)) {
+            console.warn("Format tanggal tidak valid:", {
+                endDate,
+                realisasiDate,
+            });
+            return null;
+        }
+
+        return (
+            (d2.getFullYear() - d1.getFullYear()) * 12 +
+            (d2.getMonth() - d1.getMonth())
+        );
     }
 
     tableBody.addEventListener("click", async (e) => {
@@ -39,6 +56,21 @@ export function initUploadCertifHandler(tableBody, reloadCallback) {
             const res = await getJSON(
                 `/training/dashboard/${id}/data-upload-certif`
             );
+
+            console.log("pp", res);
+
+            const monthDiff = getMonthDifference(
+                res.data.end_date,
+                res.data.realisasi_date
+            );
+            console.log("monthDiff", monthDiff);
+
+            if (monthDiff > 3) {
+                alert(
+                    "Pengunggahan sertifikat sudah melewati batas waktu 3 bulan setelah tanggal realisasi."
+                );
+                return;
+            }
 
             if (res.status === "success") {
                 showModal(res.data);
@@ -62,12 +94,15 @@ export function initUploadCertifHandler(tableBody, reloadCallback) {
             const formData = new FormData(form);
 
             try {
-                const res = await postFormData(`/training/dashboard/upload-certif-evaluation`, formData);
+                const res = await postFormData(
+                    `/training/dashboard/upload-certif-evaluation`,
+                    formData
+                );
                 console.log("response post form", res);
                 if (res.status === "success") {
                     alert(res.message);
                     // modal.classList.add("hidden");
-                    // reloadCallback();
+                    location.reload();
                 } else {
                     alert("Gagal memperbarui data");
                 }

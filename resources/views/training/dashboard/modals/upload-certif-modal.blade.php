@@ -8,7 +8,7 @@
     <div class="u-modal__body">
       <form id="upload-certif-form" action="{{ route('training.dashboard.upload-certif-evaluation') }}" method="POST" enctype="multipart/form-data">
         @csrf
-        <input type="hidden" name="evaluation_id" id="evaluation_id">
+        <input type="hidden" name="training_id" id="training_id">
 
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -27,10 +27,10 @@
         </div>
 
         <div class="mb-4">
-          <label for="dokumen_sertifikat" class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="certificate_document" class="block text-sm font-medium text-gray-700 mb-1">
             Dokumen Sertifikat (PDF)
           </label>
-          <input type="file" name="dokumen_sertifikat" id="dokumen_sertifikat"
+          <input type="file" name="certificate_document" id="certificate_document"
                 accept=".pdf,.jpg,.jpeg,.png"
                 class="w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer focus:outline-none">
           <p class="text-xs text-gray-500 mt-1">Format: PDF, JPG, PNG</p>

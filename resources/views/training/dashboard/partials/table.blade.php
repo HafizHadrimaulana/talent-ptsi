@@ -1,9 +1,3 @@
-<div class="flex gap-5 mb-3">
-    @hasanyrole('GM/VP Unit|VP DHC')
-        <button id="btn-input-evaluation" class="u-btn u-btn--brand u-hover-lift">Tambah Form Evaluasi</button>
-    @endhasanyrole
-</div>
-
 <table id="dashboard-table"
     class="u-table">
     <thead>

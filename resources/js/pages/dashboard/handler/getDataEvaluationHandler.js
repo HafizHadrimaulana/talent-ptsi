@@ -3,7 +3,6 @@ import { initUploadCertifHandler } from "./uploadCertifEvaluation";
 
 export function initGetDataEvaluationTable() {
     const tableBody = document.querySelector("#dashboard-table tbody");
-    const userRole = window.currentUserRole;
 
     function renderTable(data) {
         if (!data || data.length === 0) {
@@ -21,17 +20,29 @@ export function initGetDataEvaluationTable() {
                     <td>${index + 1}</td>
                     <td>${item.nama_pelatihan ?? '-'}</td>
                     <td>${item.nama_peserta ?? '-'}</td>
-                    <td>${item.tanggal_realisasi ?? '-'}</td>
-                    <td>${item.dokumen_sertifikat ? 'Tersedia' : 'Belum Ada'}</td>
+                    <td>
+                        ${
+                            item.realisasi_date
+                                ? `${item.realisasi_date}`
+                                : `<input 
+                                        type="date" 
+                                        class="realisasi-date-input border border-gray-300 rounded p-1 w-full" 
+                                        data-id="${item.id}" 
+                                        value=""
+                                        placeholder="Pilih tanggal realisasi"
+                                    >`
+                        }
+                    </td>
+                    <td>${item.certificate_document ? 'Tersedia' : 'Belum Ada'}</td>
                     <td class="cell-actions text-center">
                         <button class="u-btn u-btn--brand" data-action="upload-certif" data-id="${item.id}">
                             Upload Sertifikat
                         </button>
+                        <button class="u-btn u-btn--brand" data-action="input-evaluation" data-id="${item.id}">
+                            Input Evaluasi
+                        </button>
                         <button class="u-btn u-btn--brand" data-action="edit" data-id="${item.id}">
                             Edit
-                        </button>
-                        <button class="u-btn u-btn--brand" data-action="delete" data-id="${item.id}">
-                            Hapus
                         </button>
                     </td>
                 </tr>
