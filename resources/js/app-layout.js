@@ -1,4 +1,3 @@
-// resources/js/app-layout.js
 document.addEventListener('DOMContentLoaded', () => {
   /* ========= utils ========= */
   const d = document, w = window, html = d.documentElement, body = d.body;
@@ -8,6 +7,146 @@ document.addEventListener('DOMContentLoaded', () => {
     get: (k, fb=null)=>{ try{return localStorage.getItem(k) ?? fb;}catch{ return fb; } },
     set: (k,v)=>{ try{ localStorage.setItem(k,v); }catch{} },
   };
+
+  /* ========= iOS Liquid Glass Loader (Universal) ========= */
+  (function initAppLoader(){
+    // inject SVG filter (gooey) once
+    const ensureDefs = ()=>{
+      if ($('#gooeyDefs')) return;
+      const svg = d.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width','0'); svg.setAttribute('height','0'); svg.style.position='absolute';
+      svg.innerHTML = `
+        <defs id="gooeyDefs">
+          <filter id="gooey">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+            <feColorMatrix in="blur" mode="matrix"
+              values="1 0 0 0 0
+                      0 1 0 0 0
+                      0 0 1 0 0
+                      0 0 0 18 -7" result="goo"/>
+            <feBlend in="SourceGraphic" in2="goo"/>
+          </filter>
+        </defs>`;
+      d.body.appendChild(svg);
+    };
+
+    const ensureLoaderDOM = ()=>{
+      let el = $('#appLoader');
+      if (!el){
+        el = d.createElement('div');
+        el.id = 'appLoader';
+        el.setAttribute('aria-live','polite');
+        el.setAttribute('aria-busy','true');
+        el.className = 'entering';
+        el.innerHTML = `
+          <div class="loader-card glass">
+            <div class="liquid" aria-hidden="true">
+              <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            </div>
+            <div class="loader-title">Loading…</div>
+          </div>
+        `;
+        d.body.appendChild(el);
+      }
+      return el;
+    };
+
+    // scroll lock helpers (non-intrusive)
+    const lockScroll = ()=>{
+      if (body.classList.contains('scroll-lock')) return;
+      const top = w.scrollY || d.documentElement.scrollTop || 0;
+      html.classList.add('scroll-lock');
+      body.classList.add('scroll-lock');
+      body.style.setProperty('--lock-top', `-${top}px`);
+    };
+    const unlockScroll = ()=>{
+      if (!body.classList.contains('scroll-lock')) return;
+      const topVal = getComputedStyle(body).getPropertyValue('--lock-top');
+      const top = parseInt(topVal || '0') || 0;
+      html.classList.remove('scroll-lock');
+      body.classList.remove('scroll-lock');
+      body.style.removeProperty('--lock-top');
+      w.scrollTo(0, -top);
+    };
+
+    ensureDefs();
+    const loaderEl = ensureLoaderDOM();
+
+    let pending = 0;
+    let autoWrappedFetch = false;
+    let hideTimer = null;
+
+    const show = ()=>{
+      clearTimeout(hideTimer);
+      loaderEl.hidden = false;
+      loaderEl.classList.remove('leaving');
+      loaderEl.classList.add('entering');
+      lockScroll();
+      requestAnimationFrame(()=> loaderEl.classList.remove('entering'));
+    };
+
+    const hide = (delay=120)=>{
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(()=>{
+        loaderEl.classList.add('leaving');
+        setTimeout(()=>{
+          loaderEl.hidden = true;
+          loaderEl.classList.remove('leaving');
+          unlockScroll();
+        }, 260);
+      }, delay);
+    };
+
+    const trackPromise = (p)=>{
+      if (!p || typeof p.then !== 'function') return p;
+      pending++;
+      show();
+      return p.finally(()=> {
+        pending = Math.max(0, pending - 1);
+        if (pending === 0) hide();
+      });
+    };
+
+    const trackFetch = (enable=true)=>{
+      if (!enable || autoWrappedFetch) return;
+      if (!('fetch' in w)) return;
+      const _fetch = w.fetch.bind(w);
+      w.fetch = function(...args){
+        pending++;
+        show();
+        return _fetch(...args).finally(()=>{
+          pending = Math.max(0, pending - 1);
+          if (pending === 0) hide();
+        });
+      };
+      autoWrappedFetch = true;
+    };
+
+    // Expose API
+    w.AppLoader = {
+      show, hide, trackPromise, trackFetch,
+      markReady(){ pending = 0; hide(60); }
+    };
+
+    // 1) Show at DOMContentLoaded
+    show();
+    // 2) Hide at window.load (fallback)
+    w.addEventListener('load', ()=> w.AppLoader.markReady(), { once:true });
+
+    // 3) Auto-hide when DataTables finishes init (if jQuery present)
+    if (w.jQuery && w.jQuery.fn && w.jQuery.fn.dataTable){
+      w.jQuery(d).on('init.dt', function(){ w.AppLoader.markReady(); });
+    }
+
+    // 4) Optional: enable fetch tracking
+    // w.AppLoader.trackFetch(true);
+
+    // 5) Observe data-app-ready flag
+    const mo = new MutationObserver(()=> {
+      if (body.dataset.appReady === '1') w.AppLoader.markReady();
+    });
+    mo.observe(body, { attributes:true, attributeFilter:['data-app-ready'] });
+  })();
 
   /* ========= z-index & basic states ========= */
   (function injectTopZ(){
@@ -37,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const userDropdown = $('#userDropdown');
 
   const changePwBtn = $('#changePwBtn');
-  const pwModal     = $('#pwModal');
+  const pwModal     = $('#changePasswordModal'); // FIX id
 
   const logoutForm  = $('#logoutForm');
   const powerTrack  = $('#poweroff');
@@ -49,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const KEY = 'theme';
     const apply = (t)=>{
       html.setAttribute('data-theme', t);
-      html.classList.toggle('dark', t === 'dark'); // untuk Tailwind dark:
+      html.classList.toggle('dark', t === 'dark');
       safeStore.set(KEY, t);
       dmFab.textContent = (t === 'dark') ? '🌙' : '🌞';
       dmFab.setAttribute('aria-pressed', String(t === 'dark'));
@@ -87,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       d.addEventListener('keydown', (e)=>{ if (e.key==='Escape' && !panel.hidden) close(); });
 
-      // tombol close generic
       $$('[data-close="#'+panel.id+'"]').forEach(x=> x.addEventListener('click', close));
     };
 
@@ -102,10 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const hide = ()=>{ pwModal.hidden=true;  pwModal.setAttribute('aria-hidden','true');  };
     if (changePwBtn) changePwBtn.addEventListener('click', (e)=>{ e.stopPropagation(); show(); });
     pwModal.addEventListener('click', (e)=>{
-      if (e.target.matches('[data-close="#pwModal"], .modal-backdrop, .icon-btn')) hide();
+      if (e.target.matches('[data-modal-close], .modal-backdrop, .icon-btn')) hide();
     });
     d.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !pwModal.hidden) hide(); });
-    // support onclick="openPwModal()" yg sudah ada
     window.openPwModal  = show;
     window.closePwModal = hide;
   })();
@@ -116,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mq = w.matchMedia('(max-width:1024px)');
     const isMobile = ()=> mq.matches;
 
-    // seed collapse from localStorage (desktop only) — run once
+    // seed collapse from localStorage (desktop only)
     try{
       const saved = safeStore.get('sidebar-collapsed','0')==='1';
       if (!isMobile() && saved) body.classList.add('sidebar-collapsed');
@@ -144,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.contains('open') ? closeDrawer() : openDrawer();
       } else {
         body.classList.toggle('sidebar-collapsed');
+        // FIX: missing quote in classList.contains argument
         safeStore.set('sidebar-collapsed', body.classList.contains('sidebar-collapsed') ? '1':'0');
       }
       setBurgerVisual();
@@ -231,11 +369,11 @@ document.addEventListener('DOMContentLoaded', () => {
     powerTrack.addEventListener('transitionend', ()=> powerTrack.setAttribute('aria-valuenow', String(Math.round(progress*100))) );
   })();
 
-  /* ========= Sidebar accordion (left aligned) ========= */
+  /* ========= Sidebar accordion ========= */
   (function accordion(){
     const setOpen = (group, open)=>{
-      const btn   = d.querySelector(`[data-accordion="${group}"]`);
-      const panel = d.querySelector(`[data-accordion-panel="${group}"]`);
+      const btn   = document.querySelector(`[data-accordion="${group}"]`);
+      const panel = document.querySelector(`[data-accordion-panel="${group}"]`);
       if (!btn || !panel) return;
       btn.classList.toggle('open', open);
       panel.classList.toggle('open', open);
@@ -249,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     $$('[data-accordion]').forEach(btn=>{
       const g = btn.getAttribute('data-accordion');
-      const panel = d.querySelector(`[data-accordion-panel="${g}"]`);
+      const panel = document.querySelector(`[data-accordion-panel="${g}"]`);
       const should =
         btn.classList.contains('open') ||
         panel?.classList.contains('open') ||
@@ -262,10 +400,91 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ========= init visuals ========= */
   (function init(){
-    // collapse sidebar state (desktop) seeded di atas
-    // overlay default hidden
     overlay && (overlay.hidden = true);
-    // close all dropdowns by default
+    const notifDropdown = $('#notifDropdown');
+    const userDropdown  = $('#userDropdown');
     [notifDropdown, userDropdown].forEach(p=>{ if(p){ p.hidden=true; }});
+  })();
+
+  /* ========= SweetAlert2 (Universal iOS Glass) ========= */
+  (function initSwalIOS(){
+    const ensureSwal = () => new Promise((resolve, reject)=>{
+      if (window.Swal) return resolve(window.Swal);
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js';
+      s.async = true;
+      s.onload = ()=> resolve(window.Swal);
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+
+    const buildMixin = () => {
+      const ios = Swal.mixin({
+        customClass: {
+          container: 'swal-ios-container',
+          popup:     'swal-ios-popup glass',
+          title:     'swal-ios-title',
+          htmlContainer: 'swal-ios-html',
+          confirmButton: 'swal-ios-btn swal-ios-btn--confirm',
+          cancelButton:  'swal-ios-btn swal-ios-btn--cancel',
+          denyButton:    'swal-ios-btn swal-ios-btn--danger',
+          actions:   'swal-ios-actions',
+          icon:      'swal-ios-icon',
+          input:     'swal-ios-input',
+          timerProgressBar: 'swal-ios-progress'
+        },
+        buttonsStyling: false,
+        backdrop: true,
+        background: 'transparent',
+        showClass: { popup: 'swal2-show' },
+        hideClass: { popup: 'swal2-hide' }
+      });
+      return ios;
+    };
+
+    const readFlashMeta = () => {
+      const meta = document.querySelector('meta[name="swal"]');
+      if (meta?.content) {
+        try { return JSON.parse(meta.content); } catch(_){}
+      }
+      return null;
+    };
+
+    ensureSwal().then(()=>{
+      const IOS = buildMixin();
+
+      const api = {
+        fire: (opts)=> IOS.fire(opts),
+        success: (title='Berhasil', text='')=> IOS.fire({icon:'success', title, text}),
+        error:   (title='Gagal', text='')   => IOS.fire({icon:'error',   title, text}),
+        info:    (title='Info', text='')    => IOS.fire({icon:'info',    title, text}),
+        warn:    (title='Perhatian', text='')=> IOS.fire({icon:'warning', title, text}),
+        toast:   (title='Tersimpan', icon='success')=> IOS.fire({
+          toast:true, position:'top-end', icon, title,
+          showConfirmButton:false, timer:2500, timerProgressBar:true
+        }),
+        confirm: async (title='Apakah Anda yakin?', text='Tindakan ini tidak dapat dibatalkan.', confirmText='Ya, lanjut', cancelText='Batal', icon='question')=>{
+          const res = await IOS.fire({
+            icon, title, text, showCancelButton:true,
+            confirmButtonText:confirmText, cancelButtonText:cancelText,
+            reverseButtons:true, focusCancel:true
+          });
+          return res.isConfirmed === true;
+        }
+      };
+      window.SwalIOS = api;
+
+      // Auto flash jika ada payload dari server (via <meta name="swal">)
+      const flash = readFlashMeta();
+      if (flash && typeof flash === 'object') {
+        api.fire(flash);
+        try {
+          const meta = document.querySelector('meta[name="swal"]');
+          if (meta) meta.remove();
+        } catch(_){}
+      }
+    }).catch(()=> {
+      console.warn('SweetAlert2 gagal dimuat.');
+    });
   })();
 });

@@ -17,32 +17,16 @@
     @endcan
   </div>
 
-  @if(session('ok')) 
-    <div class="u-card u-mb-md u-success">
-      <div class="u-flex u-items-center u-gap-sm">
-        <i class='fas fa-check-circle u-success-icon'></i>
-        <span>{{ session('ok') }}</span>
-      </div>
-    </div>
-  @endif
-  
-  @if($errors->any())
-    <div class="u-card u-mb-md u-error">
-      <div class="u-flex u-items-center u-gap-sm u-mb-sm">
-        <i class='fas fa-exclamation-circle u-error-icon'></i>
-        <span class="u-font-semibold">Please fix the following errors:</span>
-      </div>
-      <ul class="u-list">
-        @foreach($errors->all() as $e)
-          <li class="u-item">{{ $e }}</li>
-        @endforeach
-      </ul>
-    </div>
+  {{-- Jika masih pakai session("ok"), tampilkan toast --}}
+  @if(session('ok'))
+    @push('swal')
+      <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script>
+    @endpush
   @endif
 
   <div class="dt-wrapper">
     <div class="u-scroll-x">
-      <table id="ip-table" class="u-table">
+      <table id="ip-table" class="u-table" data-dt>
         <thead>
           <tr>
             <th>Judul</th>
@@ -54,34 +38,30 @@
         </thead>
         <tbody>
           @foreach($list as $r)
-          @php
-            $sameUnit = $meUnit && $meUnit === $r->unit_id;
-          @endphp
+          @php $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id; @endphp
           <tr>
-            <td>
-              <div class="u-flex u-items-center u-gap-sm">
-                <span class="u-font-medium">{{ $r->title }}</span>
-              </div>
-            </td>
+            <td><span class="u-font-medium">{{ $r->title }}</span></td>
             <td>{{ $r->position }}</td>
-            <td>
-              <span class="u-badge u-badge--glass">{{ $r->headcount }} orang</span>
-            </td>
+            <td><span class="u-badge u-badge--glass">{{ $r->headcount }} orang</span></td>
             <td>
               <span class="u-badge
                 @if($r->status === 'rejected') u-badge--danger
                 @elseif($r->status === 'draft') u-badge--warn
-                @elseif($r->status === 'approved') u-badge u-badge--primary
+                @elseif($r->status === 'approved') u-badge--primary
                 @else u-badge--soft @endif">
                 {{ ucfirst($r->status) }}
               </span>
             </td>
             <td class="cell-actions">
               <div class="cell-actions__group">
-                {{-- SDM: submit DRAFT (unit sama + izin) --}}
+                {{-- SDM: submit DRAFT --}}
                 @if($r->status === 'draft' && $sameUnit)
                   @can('recruitment.submit')
-                  <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" class="u-inline">
+                  <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}"
+                        class="u-inline js-confirm"
+                        data-confirm-title="Submit permintaan?"
+                        data-confirm-text="Permintaan akan dikirim ke VP/GM untuk persetujuan."
+                        data-confirm-icon="question">
                     @csrf
                     <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Submit for approval">
                       <i class="fas fa-paper-plane u-mr-xs"></i> Submit
@@ -90,16 +70,25 @@
                   @endcan
                 @endif
 
-                {{-- GM/VP: approve/reject SUBMITTED (unit sama + izin) --}}
+                {{-- GM/VP: approve/reject SUBMITTED --}}
                 @if($r->status === 'submitted' && $sameUnit)
                   @can('recruitment.approve')
-                  <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}" class="u-inline">
+                  <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}"
+                        class="u-inline js-confirm"
+                        data-confirm-title="Setujui permintaan?"
+                        data-confirm-text="Status akan berubah menjadi Approved."
+                        data-confirm-icon="success">
                     @csrf
                     <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success" title="Approve">
                       <i class="fas fa-check u-mr-xs"></i> Approve
                     </button>
                   </form>
-                  <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}" class="u-inline">
+
+                  <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}"
+                        class="u-inline js-confirm"
+                        data-confirm-title="Tolak permintaan?"
+                        data-confirm-text="Status akan berubah menjadi Rejected."
+                        data-confirm-icon="error">
                     @csrf
                     <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-danger" title="Reject">
                       <i class="fas fa-times u-mr-xs"></i> Reject
@@ -129,21 +118,18 @@
   <div class="u-modal__card">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
-        <div class="u-avatar u-avatar--lg u-avatar--brand">
-          <i class='fas fa-clipboard-check'></i>
-        </div>
+        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
         <div>
           <div class="u-title">Buat Izin Prinsip Baru</div>
           <div class="u-muted u-text-sm">Ajukan permintaan rekrutmen baru</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
-        <i class='fas fa-times'></i>
-      </button>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
     </div>
 
     <div class="u-modal__body">
-      <form method="POST" action="{{ route('recruitment.principal-approval.store') }}" class="u-space-y-md u-p-md" id="createApprovalForm">
+      <form method="POST" action="{{ route('recruitment.principal-approval.store') }}"
+            class="u-space-y-md u-p-md" id="createApprovalForm">
         @csrf
         <div class="u-space-y-sm">
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
@@ -176,7 +162,7 @@
       <div class="u-flex u-gap-sm">
         <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
         <button form="createApprovalForm" class="u-btn u-btn--brand u-hover-lift">
-          <i class='fas fa-save u-mr-xs'></i> Simpan Draft
+          <i class="fas fa-save u-mr-xs"></i> Simpan Draft
         </button>
       </div>
     </div>
@@ -184,69 +170,68 @@
 </div>
 
 <script>
-// Approval Management JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-  const approvalManager = {
+  const page = {
+    dt: null,
     init: function() {
-      this.bindModalEvents();
-      this.initDataTable();
+      this.bindModal();
+      this.initDT();
+      this.bindExternalSearch();
     },
-    
-    bindModalEvents: function() {
-      // Modal open/close handlers
+    bindModal: function() {
       document.addEventListener('click', function(e) {
         if (e.target.matches('[data-modal-open]')) {
-          const modalId = e.target.getAttribute('data-modal-open');
-          this.openModal(modalId);
+          const id = e.target.getAttribute('data-modal-open');
+          const el = document.getElementById(id);
+          if (el) { el.hidden = false; document.body.classList.add('modal-open'); }
         }
-        
-        if (e.target.matches('[data-modal-close]') || e.target.closest('[data-modal-close]')) {
-          this.closeModal(e.target.closest('.u-modal'));
+        if (e.target.matches('[data-modal-close]') || (e.target.closest && e.target.closest('[data-modal-close]'))) {
+          const el = e.target.closest ? e.target.closest('.u-modal') : null;
+          if (el) { el.hidden = true; document.body.classList.remove('modal-open'); }
         }
-      }.bind(this));
-
-      // ESC key handler
+      });
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-          const openModal = document.querySelector('.u-modal:not([hidden])');
-          if (openModal) {
-            this.closeModal(openModal);
-          }
+          const open = document.querySelector('.u-modal:not([hidden])');
+          if (open) { open.hidden = true; document.body.classList.remove('modal-open'); }
         }
-      }.bind(this));
+      });
     },
-    
-    openModal: function(modalId) {
-      const modal = document.getElementById(modalId);
-      if (modal) {
-        modal.hidden = false;
-        document.body.classList.add('modal-open');
-      }
-    },
-    
-    closeModal: function(modal) {
-      modal.hidden = true;
-      document.body.classList.remove('modal-open');
-    },
-    
-    initDataTable: function() {
-      if (typeof DataTable !== 'undefined') {
-        new DataTable('#ip-table', { 
-          responsive: true, 
-          paging: false, 
-          info: false,
+    initDT: function() {
+      // jQuery DataTables (prioritas) atau simple-DataTable
+      if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
+        this.dt = jQuery('#ip-table').DataTable({
+          responsive: true, paging: false, info: false,
           language: {
-            search: "Cari:",
-            zeroRecords: "Tidak ada data izin prinsip yang ditemukan",
-            infoEmpty: "Menampilkan 0 data",
-            infoFiltered: "(disaring dari _MAX_ total data)"
+            search: "Cari:", zeroRecords: "Tidak ada data",
+            infoEmpty: "Menampilkan 0 data", infoFiltered: "(disaring dari _MAX_ total data)"
           }
         });
+        return;
       }
+      if (typeof window.DataTable !== 'undefined') {
+        this.dt = new window.DataTable('#ip-table', { responsive: true, perPageSelect: false });
+      }
+    },
+    bindExternalSearch: function() {
+      const ext = document.querySelector('input[name="q"]');
+      if (!ext) return;
+      const self = this;
+      let t = null;
+      function run(v) {
+        if (!self.dt) return;
+        // jQuery DT
+        if (self.dt.search && self.dt.draw) { self.dt.search(v).draw(); return; }
+        // simple-DataTable
+        if (typeof self.dt.search === 'function') self.dt.search(v);
+      }
+      ext.addEventListener('input', function(e) {
+        clearTimeout(t);
+        t = setTimeout(function(){ run(e.target.value || ''); }, 120);
+      });
     }
   };
-  
-  approvalManager.init();
+  page.init();
 });
 </script>
 @endsection

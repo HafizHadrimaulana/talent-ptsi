@@ -50,7 +50,7 @@
                 <td>
                   @php
                     $st = $req->status;
-                    $badge = $st==='draft' ? 'u-badge--warn' : ($st==='approved' ? 'u-badge--primary' : 'u-badge--glass');
+                    $badge = $st==='draft' ? 'u-badge--warn' : ($st==='approved' ? 'u-badge--success' : 'u-badge--glass'); 
                   @endphp
                   <span class="u-badge {{ $badge }}">{{ ucfirst($st) }}</span>
                 </td>
@@ -87,7 +87,7 @@
                 $start = $c->start_date ? \Carbon\Carbon::parse($c->start_date)->format('d M Y') : '—';
                 $end   = $c->end_date ? \Carbon\Carbon::parse($c->end_date)->format('d M Y') : null;
                 $st    = $c->status;
-                $badge = in_array($st,['approved','signed']) ? 'u-badge--primary' : ($st==='draft' ? 'u-badge--warn' : 'u-badge--glass');
+                $badge = in_array($st,['approved','signed']) ? 'u-badge--success' : ($st==='draft' ? 'u-badge--warn' : 'u-badge--glass');
               @endphp
               <tr>
                 <td>{{ $nama }}</td>

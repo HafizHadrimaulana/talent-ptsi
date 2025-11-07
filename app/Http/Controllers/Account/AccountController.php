@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Account;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 
 class AccountController extends Controller
 {
@@ -37,15 +36,28 @@ class AccountController extends Controller
         ]);
 
         if (!Hash::check($validated['current_password'], $user->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect'])->with('modal','changePassword');
+            // AJAX → balikin 422 dgn struktur errors Laravel
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'The given data was invalid.',
+                    'errors'  => ['current_password' => ['Current password is incorrect']],
+                ], 422);
+            }
+
+            // Non-AJAX fallback
+            return back()
+                ->withErrors(['current_password' => 'Current password is incorrect'])
+                ->with('modal','changePassword');
         }
 
         $user->password = Hash::make($validated['password']);
         $user->save();
 
         if ($request->wantsJson()) {
-            return response()->json(['ok' => true, 'message' => 'Password updated']);
+            // 204 → sukses tanpa body (pas buat modal + Swal loading)
+            return response()->noContent();
         }
+
         return back()->with('ok','Password updated')->with('modal','');
     }
 }

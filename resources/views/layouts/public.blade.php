@@ -8,7 +8,7 @@
   <style>
     /* ===== GLOBAL STYLES ===== */
     html {
-      scroll-behavior: smooth;
+      
       scroll-padding-top: 90px;
     }
 
@@ -74,32 +74,36 @@
       opacity: 1;
       transform: translateY(0);
     }
-    /* ===== HERO SLIDESHOW ===== */
-      .hero-slideshow {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
+   /* ===== HERO SLIDESHOW ===== */
+  .hero-slideshow {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
 
-    .hero-slideshow .slide {
-      position: absolute;
-      inset: 0;
-      background-size: cover;
-      background-position: center;
-      opacity: 0;
-      transform: translateX(100%);
-      transition: opacity 1s ease-in-out, transform 1.5s ease-in-out;
-    }
+  .hero-slideshow .slide {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transform: scale(1.08) translateX(2%);
+    transition:
+      opacity 1.5s ease-in-out,
+      transform 7s ease-in-out;
+  }
 
-    .hero-slideshow .slide.active {
-      opacity: 1;
-      transform: translateX(0);
-    }
+  .hero-slideshow .slide.active {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+    z-index: 1;
+  }
 
-    .hero-slideshow .slide.prev {
-      transform: translateX(-100%);
-    }
+  .hero-slideshow .slide.prev {
+    opacity: 0;
+    transform: scale(1.05) translateX(-2%);
+  }
 
   </style>
 </head>
@@ -134,27 +138,29 @@
 
 <!-- ===== HERO SECTION (SLIDESHOW) ===== -->
 <section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center text-white px-6 overflow-hidden">
-  <!-- Slideshow container -->
+  <!-- Background slides -->
   <div class="absolute inset-0">
     <div class="hero-slideshow absolute inset-0">
-<div class="slide" style="background-image:url('/images/1.jpg');"></div>
-<div class="slide" style="background-image:url('/images/2.jpg');"></div>
-<div class="slide" style="background-image:url('/images/3.jpg');"></div>
+      <div class="slide" style="background-image:url('/images/1.jpg');"></div>
+      <div class="slide" style="background-image:url('/images/2.jpg');"></div>
+      <div class="slide" style="background-image:url('/images/3.jpg');"></div>
     </div>
-    <div class="absolute inset-0 bg-gradient-to-r from-[#1F337E]/80 to-[#49D4A9]/60"></div>
   </div>
 
-  <!-- Hero content -->
-  <div class="relative z-10 max-w-3xl space-y-6 fade-section">
-    <h1 class="text-4xl md:text-5xl font-bold leading-tight">
+  <!-- Text content (changes per slide) -->
+  <div id="heroTextContainer" class="relative z-10 max-w-3xl space-y-6 transition-all duration-700">
+    <h1 class="hero-title text-4xl md:text-5xl font-bold leading-tight opacity-0 translate-y-5 transition-all duration-700">
       Bangun Karier Masa Depan Bersama <span class="text-[#A4F5DD]">Test Company</span>
     </h1>
-    <p class="text-lg text-white/90">
+    <p class="hero-desc text-lg text-white/90 opacity-0 translate-y-5 transition-all duration-700">
       Kami membuka peluang bagi talenta terbaik untuk berkembang dan berkontribusi dalam lingkungan kerja yang dinamis dan kolaboratif.
     </p>
-    <div class="flex justify-center gap-4 pt-4">
-      <a href="#jobs" class="px-6 py-3 rounded-full font-semibold bg-[#49D4A9] hover:bg-[#38c29a] text-white">Lihat Lowongan</a>
-      <a href="#about" class="px-6 py-3 rounded-full font-semibold border border-white/70 hover:bg-white/10">Pelajari Kami</a>
+    <div class="hero-buttons flex justify-center gap-4 pt-4 opacity-0 translate-y-5 transition-all duration-700">
+      <a href="#jobs" class="px-6 py-3 rounded-full font-semibold bg-[#49D4A9] hover:bg-[#3FCC97] text-white transition">Lihat Lowongan</a>
+      <a href="#about" 
+      class="px-6 py-3 rounded-full font-semibold bg-white text-[#00A29A] border border-transparent hover:bg-[#CCF9EA] transition">
+      Pelajari Kami
+     </a>
     </div>
   </div>
 </section>
@@ -210,12 +216,62 @@
     </div>
   </section>
 
-  <!-- ===== JOBS ===== -->
-  <section id="jobs" class="py-20 container mx-auto px-6 fade-section bg-white">
-    <h2 class="text-3xl font-bold text-center mb-10 text-[#00A29A]">Lowongan Tersedia</h2>
-    <p class="text-center text-gray-600">Belum ada lowongan saat ini.</p>
-  </section>
+<!-- ===== JOBS ===== -->
+<section id="jobs" class="py-24 bg-gradient-to-b from-white to-gray-50">
+  <div class="max-w-7xl mx-auto px-6">
+    <h2 class="text-4xl font-bold text-center mb-6 text-[#00A29A]">Lowongan Tersedia</h2>
+    <p class="text-center text-gray-600 mb-12">Temukan posisi yang sesuai dengan keahlianmu.</p>
 
+    <!-- Carousel wrapper -->
+    <div class="relative">
+      <!-- Left button -->
+      <button id="prevJob" class="absolute -left-5 top-1/2 -translate-y-1/2 bg-[#00A29A] text-white p-3 rounded-full shadow-lg hover:scale-110 transition" style = "cursor:pointer">
+        &#10094;
+      </button>
+
+      <!-- Cards container -->
+      <div id="jobCarousel" class="flex gap-6 overflow-hidden scroll-smooth px-2" style = "cursor:pointer">
+        <!-- Job card -->
+        <div class="min-w-[320px] bg-white p-8 rounded-2xl shadow-md hover:shadow-xl transition transform hover:-translate-y-2 border border-gray-100">
+          <h3 class="font-semibold text-2xl mb-2 text-gray-800">Frontend Developer</h3>
+          <p class="text-gray-600 mb-1">PT. Kreatif Digital</p>
+          <p class="text-sm text-gray-500 mb-4">Jakarta, Indonesia</p>
+          <p class="text-gray-600 mb-4">Membangun antarmuka web interaktif menggunakan React & Tailwind.</p>
+          <a href="#" class="text-[#00A29A] font-semibold hover:underline">Lihat Detail</a>
+        </div>
+
+        <div class="min-w-[320px] bg-white p-8 rounded-2xl shadow-md hover:shadow-xl transition transform hover:-translate-y-2 border border-gray-100">
+          <h3 class="font-semibold text-2xl mb-2 text-gray-800">UI/UX Designer</h3>
+          <p class="text-gray-600 mb-1">CV. Desain Cerdas</p>
+          <p class="text-sm text-gray-500 mb-4">Bandung, Indonesia</p>
+          <p class="text-gray-600 mb-4">Merancang pengalaman pengguna yang intuitif dan menarik.</p>
+          <a href="#" class="text-[#00A29A] font-semibold hover:underline">Lihat Detail</a>
+        </div>
+
+        <div class="min-w-[320px] bg-white p-8 rounded-2xl shadow-md hover:shadow-xl transition transform hover:-translate-y-2 border border-gray-100">
+          <h3 class="font-semibold text-2xl mb-2 text-gray-800">Backend Engineer</h3>
+          <p class="text-gray-600 mb-1">TechnoWorks</p>
+          <p class="text-sm text-gray-500 mb-4">Surabaya, Indonesia</p>
+          <p class="text-gray-600 mb-4">Membangun API yang efisien dengan Node.js dan PostgreSQL.</p>
+          <a href="#" class="text-[#00A29A] font-semibold hover:underline">Lihat Detail</a>
+        </div>
+
+        <div class="min-w-[320px] bg-white p-8 rounded-2xl shadow-md hover:shadow-xl transition transform hover:-translate-y-2 border border-gray-100">
+          <h3 class="font-semibold text-2xl mb-2 text-gray-800">Data Analyst</h3>
+          <p class="text-gray-600 mb-1">Insight Analytics</p>
+          <p class="text-sm text-gray-500 mb-4">Yogyakarta, Indonesia</p>
+          <p class="text-gray-600 mb-4">Menganalisis data bisnis untuk memberikan insight strategis.</p>
+          <a href="#" class="text-[#00A29A] font-semibold hover:underline">Lihat Detail</a>
+        </div>
+      </div>
+
+      <!-- Right button -->
+      <button id="nextJob" class="absolute -right-5 top-1/2 -translate-y-1/2 bg-[#00A29A] text-white p-3 rounded-full shadow-lg hover:scale-110 transition" style = "cursor:pointer">
+        &#10095;
+      </button>
+    </div>
+  </div>
+</section>
 <!-- ===== FOOTER ===== -->
 <footer id="contact" class="bg-[#0b132b] text-gray-200 py-12 relative overflow-hidden fade-section">
   <!-- Background pattern (optional subtle lines) -->
@@ -230,28 +286,41 @@
       </p>
       <!-- Social Media Buttons -->
       <div class="flex gap-4 mt-4">
-        <a href="https://linkedin.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-linkedin-in"></i>
-        </a>
-        <a href="https://instagram.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-instagram"></i>
-        </a>
-        <a href="https://x.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-x-twitter"></i>
-        </a>
-        <a href="https://facebook.com" target="_blank"
-          class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full hover:border-[#49D4A9] hover:text-[#49D4A9] transition">
-          <i class="fab fa-facebook-f"></i>
-        </a>
-      </div>
+  <!-- LinkedIn -->
+  <a href="https://linkedin.com" target="_blank"
+     class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+    <img src="/images/LinkedIn_logo_initials.png" alt="LinkedIn"
+         class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+
+  <!-- Instagram -->
+  <a href="https://instagram.com" target="_blank"
+     class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+    <img src="/images/Instagram_icon.png" alt="Instagram"
+         class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+
+  <!-- X (Twitter) -->
+  <a href="https://x.com" target="_blank"
+    class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden bg-white hover:border-[#49D4A9] transition group">
+    <img src="/images/X_logo_2023.svg.png" alt="X (Twitter)"
+        class="w-full h-full object-contain scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+
+  <!-- Facebook -->
+  <a href="https://facebook.com" target="_blank"
+     class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+    <img src="/images/2021_Facebook_icon.svg.png" alt="Facebook"
+         class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
+  </a>
+</div>
+
+
 
       <!-- Back to top -->
       <button
         onclick="window.scrollTo({top:0, behavior:'smooth'})"
-        class="mt-6 border border-gray-600 hover:border-[#49D4A9] hover:text-[#49D4A9] text-xs uppercase px-4 py-2 rounded-md transition flex items-center gap-2 ">
+        class="mt-6 border border-gray-600 hover:border-[#49D4A9] hover:text-[#49D4A9] text-xs uppercase px-4 py-2 rounded-md transition flex items-center gap-2 " style = " cursor: pointer;">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
         </svg>
@@ -352,19 +421,73 @@
     }, { threshold: 0.15 });
 
     document.querySelectorAll('.fade-section').forEach(sec => observer.observe(sec));
-     // Hero slideshow
-      const slides = document.querySelectorAll('.hero-slideshow .slide');
-      let currentSlide = 0;
+    const slides = document.querySelectorAll('.hero-slideshow .slide');
+    const title = document.querySelector('.hero-title');
+    const desc = document.querySelector('.hero-desc');
+    const buttons = document.querySelector('.hero-buttons');
 
-      function showNextSlide() {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (currentSlide + 1) % slides.length;
-        slides[currentSlide].classList.add('active');
-      }
+    const slideTexts = [
+      {
+        title: `Bangun Karier Masa Depan Bersama <span class="text-[#A4F5DD]">Test Company</span>`,
+        desc: `Kami membuka peluang bagi talenta terbaik untuk berkembang dan berkontribusi dalam lingkungan kerja yang dinamis dan kolaboratif.`,
+      },
+      {
+        title: `Jadilah Bagian dari <span class="text-[#A4F5DD]">Perubahan Besar</span>`,
+        desc: `Berkolaborasi dengan tim inovatif yang berkomitmen membangun solusi berdampak.`,
+      },
+      {
+        title: `Temukan <span class="text-[#A4F5DD]">Peluang Karier</span> Terbaikmu`,
+        desc: `Kami percaya talenta seperti kamu dapat membawa perbedaan nyata di dunia kerja.`,
+      },
+    ];
 
-      // Initialize slideshow
-      slides[currentSlide].classList.add('active');
-      setInterval(showNextSlide, 5000); // Change every 5 seconds
+    let currentSlide = 0;
+
+    function fadeTextOut() {
+      [title, desc, buttons].forEach(el => {
+        el.classList.remove('opacity-100', 'translate-y-0');
+        el.classList.add('opacity-0', 'translate-y-5');
+      });
+    }
+
+    function fadeTextIn() {
+      [title, desc, buttons].forEach(el => {
+        el.classList.remove('opacity-0', 'translate-y-5');
+        el.classList.add('opacity-100', 'translate-y-0');
+      });
+    }
+
+    function updateSlide(index) {
+      slides.forEach((s, i) => s.classList.toggle('active', i === index));
+      fadeTextOut();
+      setTimeout(() => {
+        title.innerHTML = slideTexts[index].title;
+        desc.innerHTML = slideTexts[index].desc;
+        fadeTextIn();
+      }, 500);
+    }
+
+    function nextSlide() {
+      currentSlide = (currentSlide + 1) % slides.length;
+      updateSlide(currentSlide);
+    }
+
+    // Initialize
+    updateSlide(currentSlide);
+    setInterval(nextSlide, 6500); // change every 6.5s
+
+  const carousel = document.getElementById('jobCarousel');
+  const next = document.getElementById('nextJob');
+  const prev = document.getElementById('prevJob');
+  const scrollAmount = 340; // pixels per click
+
+  next.addEventListener('click', () => {
+    carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  });
+
+  prev.addEventListener('click', () => {
+    carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+  });
   </script>
 
 </body>

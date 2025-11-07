@@ -650,7 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
               </div>
               ${graduationYear ? `
               <div class="u-text-right">
-                <span class="u-badge u-badge--glass">${graduationYear}</span>
+                <span class="u-badge u-badge--glass">Graduate : ${graduationYear}</span>
               </div>
               ` : ''}
             </div>

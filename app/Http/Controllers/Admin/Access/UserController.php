@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Guard;
 use Spatie\Permission\Models\Role;
@@ -32,7 +33,9 @@ class UserController extends Controller
 
         $roles = Role::where('guard_name', $guard)
             // ->where(function($q){
-            //     $q->whereNull('unit_id')->orWhere('unit_id', auth()->user()->unit_id);
+            //     /** @var \App\Models\User|null $me */
+            //     $me = Auth::user();
+            //     $q->whereNull('unit_id')->orWhere('unit_id', $me?->unit_id);
             // })
             ->orderBy('name')
             ->get(['id','name']);
@@ -52,11 +55,14 @@ class UserController extends Controller
             'roles.*'  => ['integer', Rule::exists('roles','id')->where(fn($q)=>$q->where('guard_name',$guard))],
         ]);
 
+        /** @var \App\Models\User|null $me */
+        $me = Auth::user();
+
         $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'],
             'password' => bcrypt($data['password']),
-            'unit_id'  => auth()->user()->unit_id ?? null,
+            'unit_id'  => $me?->unit_id, // aman buat analyzer
         ]);
 
         $roleModels = empty($data['roles'])
@@ -100,11 +106,11 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        abort_if(auth()->id() === $user->id, 403, 'Tidak boleh menghapus diri sendiri.');
+        $meId = Auth::id();
+        abort_if($meId === $user->id, 403, 'Tidak boleh menghapus diri sendiri.');
         $user->delete();
         return back()->with('ok','User deleted');
     }
-
 
     public function roleOptions(Request $request): JsonResponse
     {
@@ -112,7 +118,9 @@ class UserController extends Controller
 
         $roles = Role::where('guard_name', $guard)
             // ->where(function($q){
-            //     $q->whereNull('unit_id')->orWhere('unit_id', auth()->user()->unit_id);
+            //     /** @var \App\Models\User|null $me */
+            //     $me = Auth::user();
+            //     $q->whereNull('unit_id')->orWhere('unit_id', $me?->unit_id);
             // })
             ->orderBy('name')
             ->get(['id','name']);

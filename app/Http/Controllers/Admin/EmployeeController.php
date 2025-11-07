@@ -21,6 +21,29 @@ class EmployeeController extends Controller
             ->leftJoin('units as u', 'u.id', '=', 'e.unit_id')
             ->leftJoin('positions as pos', 'pos.id', '=', 'e.position_id')
             ->leftJoin('directorates as dir', 'dir.id', '=', 'e.directorate_id')
+
+            // ====== BASE CONSTRAINTS (tetap aktif walau ada search) ======
+            // Company: terima NULL/kosong sebagai PTSI + normalisasi ejaan umum
+            ->where(function ($w) {
+                $w->whereNull('e.company_name')
+                  ->orWhereRaw("TRIM(e.company_name) = ''")
+                  ->orWhereRaw("LOWER(TRIM(e.company_name)) IN ('pt surveyor indonesia','pt. surveyor indonesia')");
+            })
+            // Exclude alihdaya/outsourcing (berbagai variasi ejaan)
+            ->where(function ($w) {
+                $w->whereNull('e.employee_status')
+                  ->orWhereRaw("TRIM(e.employee_status) = ''")
+                  ->orWhereRaw("LOWER(e.employee_status) NOT LIKE '%alih%'")
+                  ->whereRaw("LOWER(e.employee_status) NOT LIKE '%outsour%'");
+            })
+            // Exclude unit: KSO SCI-SI (cover variasi spasi/dash/ndash & fallback latest_jobs_unit)
+            ->where(function ($w) {
+                // normalisasi: trim, ganti ndash → dash, turunkan huruf
+                $normUnit = "LOWER(REPLACE(TRIM(COALESCE(u.name, e.latest_jobs_unit, '')),'–','-'))";
+                $w->whereRaw("$normUnit NOT IN ('kso sci-si','kso sci - si','kso sci si')");
+            })
+            // =============================================================
+
             ->selectRaw("
                 e.id,
                 COALESCE(NULLIF(e.employee_id,''), e.id_sitms, CAST(e.id AS CHAR))   as employee_key,
@@ -33,7 +56,7 @@ class EmployeeController extends Controller
                 dir.name                                                              as directorate_name,
                 e.home_base_city                                                      as location_city,
                 e.home_base_province                                                  as location_province,
-                e.company_name, 
+                'PT Surveyor Indonesia'                                               as company_name,
                 e.employee_status,
                 e.talent_class_level,
                 e.latest_jobs_start_date
@@ -42,17 +65,16 @@ class EmployeeController extends Controller
                 $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
                 $qb->where(function ($w) use ($like) {
                     $w->where('e.employee_id', 'like', $like)
-                        ->orWhere('e.id_sitms', 'like', $like)
-                        ->orWhere('p.full_name', 'like', $like)
-                        ->orWhere('pos.name', 'like', $like)
-                        ->orWhere('u.name', 'like', $like)
-                        ->orWhere('e.latest_jobs_unit', 'like', $like)
-                        ->orWhere('e.latest_jobs_title', 'like', $like)
-                        ->orWhere('e.company_name', 'like', $like)
-                        ->orWhere('e.home_base_city', 'like', $like)
-                        ->orWhere('e.home_base_province', 'like', $like)
-                        ->orWhere('e.email', 'like', $like)
-                        ->orWhere('p.email', 'like', $like);
+                      ->orWhere('e.id_sitms', 'like', $like)
+                      ->orWhere('p.full_name', 'like', $like)
+                      ->orWhere('pos.name', 'like', $like)
+                      ->orWhere('u.name', 'like', $like)
+                      ->orWhere('e.latest_jobs_unit', 'like', $like)
+                      ->orWhere('e.latest_jobs_title', 'like', $like)
+                      ->orWhere('e.home_base_city', 'like', $like)
+                      ->orWhere('e.home_base_province', 'like', $like)
+                      ->orWhere('e.email', 'like', $like)
+                      ->orWhere('p.email', 'like', $like);
                 });
             })
             ->orderBy('full_name', 'asc')
@@ -72,6 +94,25 @@ class EmployeeController extends Controller
             ->leftJoin('positions as pos', 'pos.id', '=', 'e.position_id')
             ->leftJoin('directorates as dir', 'dir.id', '=', 'e.directorate_id')
             ->where('e.id', $id)
+
+            // ====== BASE CONSTRAINTS show() (harus sama dgn index) ======
+            ->where(function ($w) {
+                $w->whereNull('e.company_name')
+                  ->orWhereRaw("TRIM(e.company_name) = ''")
+                  ->orWhereRaw("LOWER(TRIM(e.company_name)) IN ('pt surveyor indonesia','pt. surveyor indonesia')");
+            })
+            ->where(function ($w) {
+                $w->whereNull('e.employee_status')
+                  ->orWhereRaw("TRIM(e.employee_status) = ''")
+                  ->orWhereRaw("LOWER(e.employee_status) NOT LIKE '%alih%'")
+                  ->whereRaw("LOWER(e.employee_status) NOT LIKE '%outsour%'");
+            })
+            ->where(function ($w) {
+                $normUnit = "LOWER(REPLACE(TRIM(COALESCE(u.name, e.latest_jobs_unit, '')),'–','-'))";
+                $w->whereRaw("$normUnit NOT IN ('kso sci-si','kso sci - si','kso sci si')");
+            })
+            // ============================================================
+
             ->selectRaw("
                 e.id, e.person_id, e.employee_id, e.id_sitms,
                 COALESCE(NULLIF(e.employee_id,''), e.id_sitms, CAST(e.id AS CHAR))    as employee_key,
@@ -84,7 +125,7 @@ class EmployeeController extends Controller
                 dir.name                                                              as directorate_name,
                 e.home_base_city                                                      as location_city,
                 e.home_base_province                                                  as location_province,
-                e.company_name, 
+                'PT Surveyor Indonesia'                                               as company_name,
                 e.employee_status, 
                 e.talent_class_level,
                 e.latest_jobs_start_date
