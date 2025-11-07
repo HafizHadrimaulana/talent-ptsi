@@ -31,6 +31,7 @@ class TrainingTemp extends Model
         'nama_proyek',
         'jenis_portofolio',
         'fungsi',
+        'alasan',
         'start_date',
         'end_date',
     ];

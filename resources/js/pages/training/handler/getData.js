@@ -21,6 +21,25 @@ export function initGetDataTable() {
         tableBody.innerHTML = data
             .map((item, index) => {
                 let actionButtons = "";
+                let jenisPelatihanCell = "";
+
+                if (userRole === "SDM Unit") {
+                    jenisPelatihanCell = `
+                        <select class="jenis-pelatihan-select border border-gray-300 rounded p-1 w-full" data-id="${item.id}">
+                            <option value="" ${!item.jenis_pelatihan ? "selected" : ""}>-- Pilih Jenis Pelatihan --</option>
+                            <option value="EDP - Sertifikat Profesi" ${item.jenis_pelatihan === "EDP - Sertifikat Profesi" ? "selected" : ""}>
+                                EDP - Sertifikat Profesi
+                            </option>
+                            <option value="EDP - Sertifikat Industri" ${item.jenis_pelatihan === "EDP - Sertifikat Industri" ? "selected" : ""}>
+                                EDP - Sertifikat Industri
+                            </option>
+                        </select>
+                    `;
+                } else {
+                    jenisPelatihanCell = `
+                        <td>${item.jenis_pelatihan ?? "-"}</td>
+                    `;
+                }
 
                 if (userRole === "SDM Unit") {
                     actionButtons = `
@@ -48,7 +67,7 @@ export function initGetDataTable() {
                         Details
                     </button>`;
                 }
-
+                
                 return `
                 <tr>
                     <td>
@@ -63,7 +82,7 @@ export function initGetDataTable() {
                             </div>
                         </div>
                     </td>
-                    <td>${item.jenis_pelatihan ?? "-"}</td>
+                    <td>${jenisPelatihanCell}</td>
                     <td>${item.nik ?? "-"}</td>
                     <td>${item.nama_peserta ?? "-"}</td>
                     <td>${item.status_pegawai ?? "-"}</td>

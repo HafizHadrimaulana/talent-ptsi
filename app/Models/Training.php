@@ -11,10 +11,10 @@ class Training extends Model
     protected $table = 'training';
     
     protected $fillable = [
-        'status_training_id',
+        'status_approval_training_id',
+        'training_temp_id',
         'nama_pelatihan',
         'nama_peserta',
-        'start_date',
         'realisasi_date',
         'dokumen_sertifikasi',
     ];
@@ -25,8 +25,13 @@ class Training extends Model
         return $this->belongsTo(StatusApprovalTraining::class, 'status_approval_training_id');
     }
 
+    // relation to TrainingTemp
+    public function trainingTemp()
+    {
+        return $this->belongsTo(trainingTemp::class, 'training_temp_id');
+    }
+
     protected $casts = [
-        'start_date' => 'date',
         'realisasi_date' => 'date',
     ];
 }

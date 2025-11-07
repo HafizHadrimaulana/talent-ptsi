@@ -73,7 +73,7 @@ class MonitoringController extends Controller
         } elseif (auth()->user()->hasRole('DHC Unit') || auth()->user()->hasRole('VP DHC')) {
             $query->where('status_approval_training_id', 3);
         } elseif (auth()->user()->hasRole('DBS Unit')) {
-            $query->where('status_approval_training_id', 6);
+            $query->where('status_approval_training_id', 4);
         }
     
         $list = $query->orderBy('id', 'asc')->paginate(12);
@@ -85,53 +85,65 @@ class MonitoringController extends Controller
         ], 200);
     }
 
+    // Approve all data
     public function updateAllStatus(Request $request)
     {
-        $user = auth()->user()->load('roles');
-
+        $user = auth()->user();
         $role = $user->getRoleNames()->first();
 
-        $statusId = null;
-        $query = TrainingTemp::query();
-    
-        switch ($role) {
-            case 'SDM Unit':
-                $statusId = 2;
-                $query->where('status_approval_training_id', [1, null]);
-                break;
-    
-            case 'GM/VP Unit':
-                $statusId = 3;
-                $query->where('status_approval_training_id', 2);
-                break;
-    
-            case 'VP DHC':
-                $statusId = 4;
-                $query->where('status_approval_training_id', 3);
-                break;
+        $query = TrainingTemp::query()
+            ->whereNotIn('status_approval_training_id', [4, 5]);
 
-            default:
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Anda tidak memiliki izin untuk melakukan approval.',
-                ], 403);
+        $trainings = $query->get();
+
+        if ($trainings->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tidak ada data yang dapat di-approve.',
+            ], 404);
         }
 
-        $query->whereNotIn('status_approval_training_id', [4, 5]);
+        $invalidTrainings = $trainings->filter(function ($training) {
+            return empty($training->jenis_pelatihan) || empty($training->start_date) || empty($training->end_date);
+        });
     
-        $count = $query->update([
-            'status_approval_training_id' => $statusId,
-        ]);
+        if ($invalidTrainings->count() > 0) {
+            $invalidIds = $invalidTrainings->pluck('id')->implode(', ');
+            Log::warning('Data belum lengkap saat updateAllStatus', [
+                'invalid_ids' => $invalidIds,
+                'count' => $invalidTrainings->count(),
+                'user' => $user->id,
+                'role' => $role,
+            ]);
     
+            return response()->json([
+                'status' => 'error',
+                'message' => "Terdapat data yang belum lengkap (jenis pelatihan / tanggal mulai / tanggal selesai belum diisi): ID {$invalidIds}",
+            ], 422);
+        }
+
+        $count = 0;
+    
+        foreach ($trainings as $training) {
+            try {
+                $this->processApproval($training, $role);
+                $count++;
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+
         return response()->json([
             'status' => 'success',
             'message' => "{$count} data berhasil di-approve oleh {$role}.",
-        ], 200);
+        ]);
     }
 
+    // Approve bulk data
     public function bulkApprove(Request $request)
     {
         $selectedIds = (array) $request->input('selected', []);
+        Log::info('selected id', $selectedIds);
         
         if (empty($selectedIds)) {
             return response()->json([
@@ -140,94 +152,70 @@ class MonitoringController extends Controller
             ], 400);
         }
 
-        $user = auth()->user()->load('roles');
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
 
-        $statusId = match (true) {
-            $user->hasRole('SDM Unit') => 2,
-            $user->hasRole('GM/VP Unit') => 3,
-            $user->hasRole('VP DHC') => 4,
-            default => null,
-        };
+        $trainings = TrainingTemp::whereIn('id', $selectedIds)
+            ->whereNotIn('status_approval_training_id', [4, 5])
+            ->get();
+
+        $invalidTrainings = $trainings->filter(function ($t) {
+            return empty($t->jenis_pelatihan) || empty($t->start_date) || empty($t->end_date);
+        });
     
-        if (!$statusId) {
+        if ($invalidTrainings->count() > 0) {
+            $invalidIds = $invalidTrainings->pluck('id')->implode(', ');
             return response()->json([
                 'status' => 'error',
-                'message' => 'Anda tidak memiliki izin untuk melakukan approval.',
-            ], 403);
+                'message' => "Terdapat data yang belum lengkap (jenis pelatihan / tanggal belum diisi): ID {$invalidIds}",
+            ], 422);
         }
 
-        $updatedCount = TrainingTemp::whereIn('id', $selectedIds)
-            ->whereNotIn('status_approval_training_id', [4, 5])
-            ->update([
-                'status_approval_training_id' => $statusId,
-                'updated_at' => now(),
-            ]);
+        $approvedCount = 0;
+
+        foreach ($trainings as $trainingTemp) {
+            try {
+                $this->processApproval($trainingTemp, $role);
+                $approvedCount++;
+            } catch (\Exception $e) {
+                Log::warning("Skip ID {$trainingTemp->id}: {$e->getMessage()}");
+                continue;
+            }
+        }
 
         return response()->json([
             'status' => 'success',
-            'message' => "{$updatedCount} data berhasil di-approve oleh {$user->getRoleNames()->first()}",
+            'message' => "{$approvedCount} data berhasil di-approve oleh {$role}.",
         ]);
     }
 
+    // Approve single data
     public function approveStatus($id)
     {
-        $training = TrainingTemp::find($id);
-
-        if (!$training) {
+        $trainingTemp = TrainingTemp::find($id);
+        if (!$trainingTemp) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Data tidak ditemukan.',
             ], 404);
         }
 
-        $user = auth()->user()->load('roles');
+        $user = auth()->user();
         $role = $user->getRoleNames()->first();
 
-        $nextStatusId = null;
-        $allowedCurrentStatus = null;
-
-        switch ($role) {
-            case 'GM/VP Unit':
-                $nextStatusId = 3;
-                $allowedCurrentStatus = 2;
-                break;
-    
-            case 'VP DHC':
-                $nextStatusId = 4;
-                $allowedCurrentStatus = 3;
-                break;
-            
-            case 'DBS Unit':
-                $nextStatusId = 2;
-                $allowedCurrentStatus = 6;
-                break;
-    
-            case 'Admin':
-                $nextStatusId = 4;
-                break;
-    
-            default:
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Anda tidak memiliki izin untuk melakukan approval.',
-                ], 403);
-        }
-    
-        if ($allowedCurrentStatus && $training->status_approval_training_id != $allowedCurrentStatus) {
+        try {
+            $this->processApproval($trainingTemp, $role);
+            return response()->json([
+                'status' => 'success',
+                'message' => "Data ID {$id} berhasil di-approve oleh {$role}.",
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Approve error', ['error' => $e->getMessage()]);
             return response()->json([
                 'status' => 'error',
-            ], 403);
+                'message' => $e->getMessage(),
+            ], 400);
         }
-    
-        $training->update([
-            'status_approval_training_id' => $nextStatusId,
-            'updated_at' => now(),
-        ]);
-    
-        return response()->json([
-            'status' => 'success',
-            'message' => "Data ID {$id} berhasil di-approve oleh {$role}.",
-        ]);
     }
 
     public function rejectStatus($id)
@@ -405,5 +393,60 @@ class MonitoringController extends Controller
         }
 
         return response()->download($filePath, 'Template_Training.xlsx');
+    }
+
+    // To approve training
+    private function processApproval(TrainingTemp $trainingTemp, string $role): void
+    {
+        $statusMap = [
+            'SDM Unit'   => 2,
+            'GM/VP Unit' => 3,
+            'VP DHC'     => 4,
+        ];
+
+        if (!isset($statusMap[$role])) {
+            throw new \Exception('Anda tidak memiliki izin untuk approve.');
+        }
+
+        $newStatus = $statusMap[$role];
+
+        $allowedStatus = [
+            1 => 2,
+            2 => 3,
+            3 => 4,
+        ];
+
+        if (isset($allowedStatus[$trainingTemp->status_approval_training_id]) &&
+            $allowedStatus[$trainingTemp->status_approval_training_id] !== $newStatus) {
+            throw new \Exception("Data ID {$trainingTemp->id} tidak bisa di-approve oleh {$role}.");
+        }
+
+        $trainingTemp->update([
+            'status_approval_training_id' => $newStatus,
+            'updated_at' => now(),
+        ]);
+
+        Log::info("TrainingTemp ID {$trainingTemp->id} updated", [
+            'new_status' => $newStatus,
+            'role' => $role,
+        ]);
+
+        if ($newStatus === 4) {
+            $this->insertToTraining($trainingTemp);
+        }
+    }
+
+    private function insertToTraining(TrainingTemp $trainingTemp)
+    {
+        Log::info('trainign temp');
+        Training::updateOrCreate(
+            ['training_temp_id' => $trainingTemp->id],
+            [
+                'status_approval_training_id' => 4,
+                'nama_pelatihan' => $trainingTemp->judul_sertifikasi,
+                'nama_peserta' => $trainingTemp->nama_peserta,
+                ]
+            );
+        Log::info('asde');
     }
 }

@@ -4,11 +4,15 @@ import { initDownloadTemplateHandler } from "./handler/downloadTemplateHandler";
 import { initGetDataTable } from "./handler/getData";
 import { initImportHandler } from "./handler/importHandler";
 import { initInputHandler } from "./handler/inputHandler";
+import { initUpdateJenisPelatihanHandler } from "./handler/updateJenisPelatihanHandler";
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    if (document.querySelector("#training-table tbody"))
+    const tableBody = document.querySelector("#training-table tbody");
+    if(tableBody) {
         initGetDataTable();
+        initUpdateJenisPelatihanHandler(tableBody);
+    }
     
     if (document.querySelector(".btn-import")) 
         initImportHandler();

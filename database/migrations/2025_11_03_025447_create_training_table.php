@@ -14,19 +14,23 @@ return new class extends Migration
         Schema::create('training', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger('status_training_id');
+            $table->unsignedBigInteger('status_approval_training_id');
+            $table->unsignedBigInteger('training_temp_id');
 
             $table->string('nama_pelatihan');
             $table->string('nama_peserta');
 
-            $table->date('start_date');
-            $table->date('realisasi_date');
+            $table->date('realisasi_date')->nullable();
 
-            $table->string('dokumen_sertifikasi');
+            $table->string('certificate_document')->nullable();
 
-            $table->foreign('status_training_id')
+            $table->foreign('status_approval_training_id')
                 ->references('id')
                 ->on('status_approval_training')
+                ->onDelete('cascade');
+            $table->foreign('training_temp_id')
+                ->references('id')
+                ->on('training_temp')
                 ->onDelete('cascade');
             
             $table->timestamps();

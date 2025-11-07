@@ -17,9 +17,9 @@ class StatusApprovalTrainingSeeder extends Seeder
             ['id' => 1, 'status_approval' => 'Pending'],
             ['id' => 2, 'status_approval' => 'Menunggu Persetujuan'],
             ['id' => 3, 'status_approval' => 'Menunggu Persetujuan Akhir'],
-            ['id' => 4, 'status_approval' => 'Menunggu Persetujuan DBS'],
+            ['id' => 4, 'status_approval' => 'Diterima'],
             ['id' => 5, 'status_approval' => 'Ditolak'],
-            ['id' => 6, 'status_approval' => 'Diterima'],
+            ['id' => 6, 'status_approval' => 'Menunggu Persetujuan DBS'],
         ]);
     }
 }
