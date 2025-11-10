@@ -3,33 +3,32 @@
 namespace App\Http\Controllers\Admin\Access;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use Illuminate\Http\Request;
 
 class PermissionController extends Controller
 {
     public function index()
     {
-        $permissions = Permission::orderBy('name')->paginate(50);
+        // Blade permissions kamu memakai variabel $permissions (bukan $perms)
+        $permissions = Permission::query()
+            ->where('guard_name','web')
+            ->orderBy('name')
+            ->paginate(20);
+
+        // -> resources/views/admin/permissions/index.blade.php
         return view('admin.permissions.index', compact('permissions'));
     }
 
-    public function update(Request $request, Permission $permission)
+    public function update(Request $req, Permission $permission)
     {
-        $data = $request->validate([
-            'name'   => "required|string|unique:permissions,name,{$permission->id}",
-            'roles'  => 'array',
-            'roles.*'=> 'string'
+        $data = $req->validate([
+            'name' => ['required','string','max:150'],
         ]);
 
-        $permission->update(['name' => $data['name']]);
+        $permission->name = $data['name'];
+        $permission->save();
 
-        if ($request->has('roles')) {
-            // roles[] berisi NAMA role
-            $permission->syncRoles($data['roles']);
-        }
-
-        return back()->with('ok','Permission updated');
+        return back()->with('ok','Permission updated.');
     }
 }

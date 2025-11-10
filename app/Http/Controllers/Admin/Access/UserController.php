@@ -4,139 +4,222 @@ namespace App\Http\Controllers\Admin\Access;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
+use App\Models\Role; // extend Spatie\Permission\Models\Role
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Spatie\Permission\Guard;
-use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Unified table: Employee Directory + User account (password/roles) in one page
+     * Route: GET /admin/settings/access/users
+     */
+    public function index(Request $req)
     {
-        $q = $request->get('q');
+        $unitId = auth()->user()?->unit_id;
+        $q = trim((string) $req->get('q', ''));
 
-        $users = User::query()
-            ->when($q, function ($qr) use ($q) {
-                $qr->where(function ($w) use ($q) {
-                    $w->where('name', 'like', "%{$q}%")
-                      ->orWhere('email', 'like', "%{$q}%");
-                });
+        // Roles options (scoped team/null) untuk checklist di modal
+        $roles = Role::query()
+            ->where('guard_name','web')
+            ->where(function($w) use ($unitId){
+                $w->whereNull('unit_id')->orWhere('unit_id',$unitId);
             })
-            ->with('roles:id,name')
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
-
-        $guard = Guard::getDefaultName(User::class);
-
-        $roles = Role::where('guard_name', $guard)
-            // ->where(function($q){
-            //     /** @var \App\Models\User|null $me */
-            //     $me = Auth::user();
-            //     $q->whereNull('unit_id')->orWhere('unit_id', $me?->unit_id);
-            // })
-            ->orderBy('name')
+            ->orderBy('name','asc')
             ->get(['id','name']);
 
-        return view('admin.users.index', compact('users','q','roles'));
-    }
+        // Unified rows: employees LEFT JOIN users by employee_id
+        $rows = DB::table('employees as e')
+            ->leftJoin('persons as p', 'p.id', '=', 'e.person_id')
+            ->leftJoin('units as u', 'u.id', '=', 'e.unit_id')
+            ->leftJoin('positions as pos', 'pos.id', '=', 'e.position_id')
+            ->leftJoin('users as us', 'us.employee_id', '=', 'e.employee_id') // akun (optional)
+            // BASE CONSTRAINTS (PTSI only, exclude outsourcing, exclude KSO SCI-SI)
+            ->where(function ($w) {
+                $w->whereNull('e.company_name')
+                  ->orWhereRaw("TRIM(e.company_name) = ''")
+                  ->orWhereRaw("LOWER(TRIM(e.company_name)) IN ('pt surveyor indonesia','pt. surveyor indonesia')");
+            })
+            ->where(function ($w) {
+                $w->whereNull('e.employee_status')
+                  ->orWhereRaw("TRIM(e.employee_status) = ''")
+                  ->orWhereRaw("LOWER(e.employee_status) NOT LIKE '%alih%'")
+                  ->whereRaw("LOWER(e.employee_status) NOT LIKE '%outsour%'");
+            })
+            ->where(function ($w) {
+                $normUnit = "LOWER(REPLACE(TRIM(COALESCE(u.name, e.latest_jobs_unit, '')),'–','-'))";
+                $w->whereRaw("$normUnit NOT IN ('kso sci-si','kso sci - si','kso sci si')");
+            })
+            ->when($q !== '', function ($qb) use ($q) {
+                $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
+                $qb->where(function ($w) use ($like) {
+                    $w->where('e.employee_id', 'like', $like)
+                      ->orWhere('e.id_sitms', 'like', $like)
+                      ->orWhere('p.full_name', 'like', $like)
+                      ->orWhere('pos.name', 'like', $like)
+                      ->orWhere('u.name', 'like', $like)
+                      ->orWhere('e.latest_jobs_unit', 'like', $like)
+                      ->orWhere('e.latest_jobs_title', 'like', $like)
+                      ->orWhere('e.home_base_city', 'like', $like)
+                      ->orWhere('e.home_base_province', 'like', $like)
+                      ->orWhere('e.email', 'like', $like)
+                      ->orWhere('p.email', 'like', $like);
+                });
+            })
+            ->selectRaw("
+                e.id as employee_pk,
+                e.employee_id,
+                e.id_sitms,
+                COALESCE(p.full_name, e.employee_id, CAST(e.id AS CHAR))  as full_name,
+                COALESCE(pos.name, e.latest_jobs_title)                    as job_title,
+                COALESCE(u.name,  e.latest_jobs_unit)                     as unit_name,
+                COALESCE(e.email, p.email)                                as employee_email,
+                e.employee_status                                         as employee_status,
+                us.id                                                     as user_id,
+                us.email                                                  as user_email,
+                us.name                                                   as user_name,
+                us.unit_id                                                as user_unit_id
+            ")
+            ->orderBy('full_name','asc')
+            ->get()
+            ->map(function($r){
+                // normalisasi key utk front-end
+                $r->employee_key = $r->employee_id ?: ($r->id_sitms ?: (string)$r->employee_pk);
+                return $r;
+            });
 
-    public function store(Request $request)
-    {
-        $guard = Guard::getDefaultName(User::class);
+        // Prefetch roles per user scoped by team (1 query, lalu group)
+        $userIds = $rows->pluck('user_id')->filter()->unique()->values();
+        $userRolesMap = [];
+        if ($userIds->isNotEmpty()) {
+            $pivot = DB::table('model_has_roles as mhr')
+                ->join('roles as r','r.id','=','mhr.role_id')
+                ->where('mhr.model_type', '=', User::class)
+                ->whereIn('mhr.model_id', $userIds)
+                ->where('r.guard_name','=','web')
+                ->where(function($w) use ($unitId){
+                    $w->whereNull('r.unit_id')->orWhere('r.unit_id',$unitId);
+                })
+                ->select('mhr.model_id as user_id','r.id as role_id','r.name as role_name')
+                ->orderBy('r.name','asc')
+                ->get()
+                ->groupBy('user_id');
 
-        $data = $request->validate([
-            'name'     => ['required','string','max:255'],
-            'email'    => ['required','email','unique:users,email'],
-            'password' => ['required','min:6'],
-            'roles'    => ['nullable','array'],
-            'roles.*'  => ['integer', Rule::exists('roles','id')->where(fn($q)=>$q->where('guard_name',$guard))],
-        ]);
-
-        /** @var \App\Models\User|null $me */
-        $me = Auth::user();
-
-        $user = User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
-            'password' => bcrypt($data['password']),
-            'unit_id'  => $me?->unit_id, // aman buat analyzer
-        ]);
-
-        $roleModels = empty($data['roles'])
-            ? collect()
-            : Role::where('guard_name',$guard)->whereIn('id', $data['roles'])->get();
-
-        $user->syncRoles($roleModels);
-
-        return back()->with('ok','User created');
-    }
-
-    public function update(Request $request, User $user)
-    {
-        $guard = Guard::getDefaultName(User::class);
-
-        $data = $request->validate([
-            'name'     => ['required','string','max:255'],
-            'email'    => ['required','email', Rule::unique('users','email')->ignore($user->id)],
-            'password' => ['nullable','min:6'],
-            'roles'    => ['nullable','array'],
-            'roles.*'  => ['integer', Rule::exists('roles','id')->where(fn($q)=>$q->where('guard_name',$guard))],
-        ]);
-
-        $payload = [
-            'name'  => $data['name'],
-            'email' => $data['email'],
-        ];
-        if (!empty($data['password'])) {
-            $payload['password'] = bcrypt($data['password']);
+            foreach ($pivot as $uid => $list) {
+                $userRolesMap[$uid] = [
+                    'ids'   => $list->pluck('role_id')->values()->all(),
+                    'names' => $list->pluck('role_name')->values()->all(),
+                ];
+            }
         }
-        $user->update($payload);
 
-        $roleModels = empty($data['roles'])
-            ? collect()
-            : Role::where('guard_name',$guard)->whereIn('id', $data['roles'])->get();
+        return view('admin.users.index', [
+            'rows'  => $rows,
+            'roles' => $roles,
+            'userRolesMap' => $userRolesMap,
+            'q'     => $q,
+        ]);
+    }
 
-        $user->syncRoles($roleModels);
+    /** Create account + assign roles (teams=true) — password default "password" bila kosong */
+    public function store(Request $req)
+    {
+        $data = $req->validate([
+            'name'        => ['required','string','max:255'],
+            'email'       => ['required','email','max:255', Rule::unique('users','email')],
+            'password'    => ['nullable','string','min:8'],
+            'employee_id' => ['nullable','string','max:255'], // link ke employee
+            'roles'       => ['array'],
+            'roles.*'     => ['integer','exists:roles,id'],
+        ]);
 
-        return back()->with('ok','User updated');
+        $user = new User();
+        $user->name       = $data['name'];
+        $user->email      = $data['email'];
+        $user->password   = \Illuminate\Support\Facades\Hash::make($data['password'] ?? 'password'); // default
+        $user->unit_id    = auth()->user()?->unit_id; // scope team default
+        if (!empty($data['employee_id'])) {
+            $user->employee_id = $data['employee_id'];
+        }
+        $user->save();
+
+        $this->withTeamContext(function() use ($user, $data){
+            if (!empty($data['roles'])) {
+                $roleModels = Role::query()->whereIn('id',$data['roles'])->get();
+                $user->syncRoles($roleModels->pluck('name')->all());
+            } else {
+                $user->syncRoles([]);
+            }
+        }, $user->unit_id);
+
+        return back()->with('ok','Account created (default password: "password").');
+    }
+
+    /** Update password (optional) + sync roles (teams=true) */
+    public function update(Request $req, User $user)
+    {
+        $data = $req->validate([
+            'name'     => ['required','string','max:255'],
+            'email'    => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
+            'password' => ['nullable','string','min:8'],
+            'roles'    => ['array'],
+            'roles.*'  => ['integer','exists:roles,id'],
+        ]);
+
+        $user->name  = $data['name'];
+        $user->email = $data['email'];
+        if (!empty($data['password'])) {
+            $user->password = Hash::make($data['password']);
+        }
+        $user->save();
+
+        $this->withTeamContext(function() use ($user, $data){
+            if (array_key_exists('roles', $data)) {
+                $roleModels = Role::query()->whereIn('id', $data['roles'] ?? [])->get();
+                $user->syncRoles($roleModels->pluck('name')->all());
+            }
+        }, $user->unit_id);
+
+        return back()->with('ok','Account updated.');
     }
 
     public function destroy(User $user)
     {
-        $meId = Auth::id();
-        abort_if($meId === $user->id, 403, 'Tidak boleh menghapus diri sendiri.');
+        if (auth()->id() === $user->id) {
+            return back()->withErrors('Tidak dapat menghapus akun sendiri.');
+        }
         $user->delete();
-        return back()->with('ok','User deleted');
+        return back()->with('ok','User deleted.');
     }
 
-    public function roleOptions(Request $request): JsonResponse
+    public function roleOptions(Request $req)
     {
-        $guard = Guard::getDefaultName(User::class);
-
-        $roles = Role::where('guard_name', $guard)
-            // ->where(function($q){
-            //     /** @var \App\Models\User|null $me */
-            //     $me = Auth::user();
-            //     $q->whereNull('unit_id')->orWhere('unit_id', $me?->unit_id);
-            // })
-            ->orderBy('name')
+        $unitId = auth()->user()?->unit_id;
+        $roles = Role::query()
+            ->where('guard_name','web')
+            ->where(function($q) use ($unitId){
+                $q->whereNull('unit_id')->orWhere('unit_id', $unitId);
+            })
+            ->orderBy('name','asc')
             ->get(['id','name']);
 
-        $assigned = collect();
+        return response()->json($roles->map(fn($r)=>['id'=>$r->id,'name'=>$r->name]));
+    }
 
-        if ($request->filled('user_id')) {
-            $u = User::with('roles:id')->find($request->integer('user_id'));
-            if ($u) {
-                $assigned = $u->roles->pluck('id')->values();
-            }
+    /** Helper: run callback within Spatie teams context */
+    protected function withTeamContext(\Closure $cb, $teamId)
+    {
+        /** @var PermissionRegistrar $reg */
+        $reg = app(PermissionRegistrar::class);
+        $prev = $reg->getPermissionsTeamId();
+        try {
+            $reg->setPermissionsTeamId($teamId);
+            return $cb();
+        } finally {
+            $reg->setPermissionsTeamId($prev);
         }
-
-        return response()->json([
-            'roles'    => $roles,
-            'assigned' => $assigned,
-        ]);
     }
 }
