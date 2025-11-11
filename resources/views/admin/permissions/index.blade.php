@@ -42,6 +42,16 @@
         </thead>
         <tbody>
           @foreach($permissions as $p)
+          @php
+            $permPayload = json_encode(
+              [
+                'id'    => $p->id,
+                'name'  => $p->name,
+                'roles' => $p->roles()->pluck('name')->all(),
+              ],
+              JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
+            );
+          @endphp
           <tr>
             <td>
               <div class="u-flex u-items-center u-gap-sm">
@@ -49,12 +59,12 @@
                 <span class="font-medium">{{ $p->name }}</span>
               </div>
             </td>
-            <td class="u-hide-mobile u-text-sm u-muted">{{ $p->created_at->format('M j, Y') }}</td>
+            <td class="u-hide-mobile u-text-sm u-muted">{{ $p->created_at?->format('M j, Y') }}</td>
             <td class="cell-actions">
               <div class="cell-actions__group">
                 <button class="u-btn u-btn--outline u-btn--sm u-hover-lift"
                         data-modal-open="editPermModal"
-                        data-perm='@json(["id"=>$p->id,"name"=>$p->name,"roles"=>$p->roles()->pluck("name")->all()])'>
+                        data-perm="{{ $permPayload }}">
                   <i class='fas fa-edit u-mr-xs'></i> Edit
                 </button>
               </div>
@@ -93,7 +103,6 @@
           <div class="u-tabs">
             <button class="u-tab is-active" type="button" data-target="#perm-edit">Edit Permission</button>
             <button class="u-tab" type="button" data-target="#perm-roles">Assigned Roles</button>
-            <button class="u-tab u-hide-mobile" type="button" data-target="#perm-users">Users with Access</button>
           </div>
         </div>
 
@@ -127,7 +136,16 @@
                 </div>
               </div>
 
-              @php($allRoles = \Spatie\Permission\Models\Role::orderBy('name')->get())
+              @php
+                $unitId = auth()->user()?->unit_id;
+                $allRoles = \App\Models\Role::query()
+                  ->where('guard_name','web')
+                  ->where(function($q) use ($unitId){
+                    $q->whereNull('unit_id')->orWhere('unit_id',$unitId);
+                  })
+                  ->orderBy('name')->get();
+              @endphp
+
               @if($allRoles->isEmpty())
                 <div class="u-empty"><p class="u-muted">No roles available.</p></div>
               @else
@@ -135,20 +153,11 @@
                 @foreach($allRoles as $r)
                   <label class="u-flex u-items-center u-gap-sm u-p-sm u-rounded-lg u-border u-border-transparent u-hover:border-gray-200">
                     <input type="checkbox" name="roles[]" value="{{ $r->name }}" class="u-rounded">
-                    <span class="u-text-sm">{{ $r->name }}</span>
+                    <span class="u-text-sm">{{ $r->name }} @if(!is_null($r->unit_id))<span class="u-badge u-badge--glass">unit: {{ $r->unit_id }}</span>@endif</span>
                   </label>
                 @endforeach
               </div>
               @endif
-            </div>
-          </div>
-
-          <div class="u-panel" id="perm-users">
-            <div class="u-p-md">
-              <div class="u-empty">
-                <i class='bx bx-user u-empty__icon'></i>
-                <p class="u-text-sm u-muted">Users inherit via roles.</p>
-              </div>
             </div>
           </div>
         </div>
@@ -192,13 +201,16 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('click', (e) => {
     const opener = e.target.closest('[data-modal-open="editPermModal"]');
     if (opener) {
-      const data = JSON.parse(opener.dataset.perm);
+      const payload = opener.getAttribute('data-perm') || '{}';
+      let data = {};
+      try { data = JSON.parse(payload); } catch(_) {}
+
       const modal = $('#editPermModal');
       const form  = $('#editPermForm');
-      form.action = "{{ url('admin/settings/access/permissions') }}/" + data.id;
-      form.querySelector('input[name=name]').value = data.name;
-      $('#permName').textContent = data.name;
-      $('#permId').textContent   = 'ID: ' + data.id;
+      form.action = "{{ url('admin/settings/access/permissions') }}/" + (data.id || '');
+      form.querySelector('input[name=name]').value = data.name || '';
+      $('#permName').textContent = data.name || 'Permission';
+      $('#permId').textContent   = 'ID: ' + (data.id || '-');
 
       const current = new Set((data.roles||[]));
       $$('#permRolesWrap input[type=checkbox][name="roles[]"]').forEach(cb=>cb.checked = current.has(cb.value));

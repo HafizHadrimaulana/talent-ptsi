@@ -3,14 +3,67 @@
 
 @section('content')
 @php
+  use Illuminate\Support\Facades\DB;
+
   /** @var \App\Models\User $me */
   $me     = auth()->user();
   $meUnit = $me?->unit_id;
+
+  // ===== Fallback canSeeAll & units jika controller belum provide =====
+  $canSeeAll      = $canSeeAll      ?? false;
+  $selectedUnitId = $selectedUnitId ?? null;
+  $units          = $units          ?? collect();
+
+  if ($canSeeAll === false) {
+      $hasRoleAll = $me?->hasRole('Superadmin') || $me?->hasRole('DHC');
+
+      $hoUnitId = $hoUnitId ?? DB::table('units')->select('id')
+          ->where(function ($q) {
+              $q->where('code', 'HO')
+                ->orWhere('code', 'HEADOFFICE')
+                ->orWhere('name', 'SI Head Office')
+                ->orWhere('name', 'Head Office')
+                ->orWhere('name', 'LIKE', '%Head Office%');
+          })
+          ->value('id');
+
+      $isHeadOfficeUser = $hoUnitId && $me?->unit_id == $hoUnitId;
+      $canSeeAll = $hasRoleAll || $isHeadOfficeUser;
+  }
+
+  if ($units->isEmpty()) {
+      $units = $canSeeAll
+          ? DB::table('units')->select('id','name')->orderBy('name')->get()
+          : DB::table('units')->select('id','name')->where('id',$meUnit)->get();
+  }
+
+  if (!$canSeeAll) {
+      $selectedUnitId = (int) $meUnit;
+  }
 @endphp
 
 <div class="u-card u-card--glass u-hover-lift">
   <div class="u-flex u-items-center u-justify-between u-mb-md">
     <h2 class="u-title">Penerbitan Kontrak</h2>
+
+    {{-- Toolbar filter unit --}}
+    <form method="get" class="u-flex u-gap-sm u-items-center">
+      @if($canSeeAll)
+        <label class="u-text-sm u-font-medium">Unit</label>
+        <select name="unit_id" class="u-input" onchange="this.form.submit()">
+          <option value="">All units</option>
+          @foreach($units as $u)
+            <option value="{{ $u->id }}" @selected((string)$u->id === (string)($selectedUnitId ?? ''))>
+              {{ $u->name }}
+            </option>
+          @endforeach
+        </select>
+      @else
+        @php $unitName = ($units[0]->name ?? 'Unit Saya'); @endphp
+        <span class="u-badge u-badge--glass">Scoped to: {{ $unitName }}</span>
+      @endif
+    </form>
+
     @can('contract.create')
     <button class="u-btn u-btn--brand u-hover-lift" data-modal-open="createContractModal">
       <i class="fas fa-plus u-mr-xs"></i> Draft Kontrak
@@ -18,7 +71,7 @@
     @endcan
   </div>
 
-  {{-- Jika masih pakai session("ok"), tampilkan sebagai toast --}}
+  {{-- toast OK --}}
   @if(session('ok'))
     @push('swal')
       <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script>
@@ -28,7 +81,7 @@
   @if($errors->any())
     <div class="u-card u-mb-md u-error">
       <div class="u-flex u-items-center u-gap-sm u-mb-sm">
-        <i class="fas fa-exclamation-circle u-error-icon"></i>
+        <i class="u-error-icon fas fa-exclamation-circle"></i>
         <span class="u-font-semibold">Please fix the following errors:</span>
       </div>
       <ul class="u-list">
@@ -40,6 +93,12 @@
   @endif
 
   <div class="dt-wrapper">
+    <div class="u-flex u-items-center u-justify-between u-mb-sm">
+      <div class="u-font-semibold">Daftar Kontrak</div>
+      <span class="u-badge u-badge--glass">
+        {{ $canSeeAll && !$selectedUnitId ? 'All units' : 'Unit ID: '.($selectedUnitId ?? $meUnit) }}
+      </span>
+    </div>
     <div class="u-scroll-x">
       <table id="contracts-table" class="u-table u-table-mobile">
         <thead>
@@ -284,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     },
     initDT() {
-      // jQuery DataTables (jika ada) atau simple-DataTable
       if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
         jQuery('#contracts-table').DataTable({
           responsive: true, paging: false, info: false,
@@ -296,7 +354,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       if (typeof window.DataTable !== 'undefined') {
-        // simple-datatables
         new window.DataTable('#contracts-table', {
           responsive: true,
           perPageSelect: false
@@ -304,30 +361,29 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     },
     bindExternalSearch() {
-      // optional: input[name="q"] dari topbar layout; aman jika tidak ada
       const ext = document.querySelector('input[name="q"]');
       if (!ext) return;
+      const tableEl = document.querySelector('#contracts-table');
+      if (!tableEl) return;
 
-      ext.addEventListener('input', function(){
-        const tableEl = document.querySelector('#contracts-table');
-        if (!tableEl) return;
-
-        // jQuery DataTables
-        if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
-          const dt = jQuery('#contracts-table').DataTable();
+      // jQuery DataTables
+      if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
+        const dt = jQuery('#contracts-table').DataTable();
+        ext.addEventListener('input', function(){
           dt.search(ext.value || '').draw();
-          return;
-        }
+        });
+        return;
+      }
 
-        // simple-datatables: cari input internal dan trigger input
-        const wrapper = tableEl.closest ? tableEl.closest('.dataTable-wrapper') : null;
-        const qs = wrapper ? wrapper.querySelector('.dataTable-input') : null;
-        if (qs) {
+      // simple-datatables: bridge ke input internal
+      const wrapper = tableEl.closest ? tableEl.closest('.dataTable-wrapper') : null;
+      const qs = wrapper ? wrapper.querySelector('.dataTable-input') : null;
+      if (qs) {
+        ext.addEventListener('input', function(){
           qs.value = ext.value || '';
-          const evt = new Event('input', { bubbles: true });
-          qs.dispatchEvent(evt);
-        }
-      });
+          qs.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+      }
     }
   };
   app.init();

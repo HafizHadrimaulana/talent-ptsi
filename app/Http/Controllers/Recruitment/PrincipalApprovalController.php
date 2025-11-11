@@ -7,20 +7,49 @@ use App\Models\RecruitmentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PrincipalApprovalController extends Controller
 {
-    public function index()
+    public function index(Request $r)
     {
         /** @var \App\Models\User|null $me */
         $me = Auth::user();
 
-        $list = RecruitmentRequest::query()
-            ->forViewer($me)   // biar Intelephense paham: variabel bertipe User|null
-            ->latest()
-            ->paginate(12);
+        // === Hanya Superadmin & DHC yang bisa lihat semua ===
+        $canSeeAll = $me?->hasRole('Superadmin') || $me?->hasRole('DHC');
 
-        return view('recruitment.principal-approval.index', compact('list'));
+        // unit terpilih dari GET (aktif hanya jika canSeeAll). Null = all units
+        $selectedUnitId = $canSeeAll
+            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
+            : (int) ($me?->unit_id);
+
+        // opsi unit untuk dropdown
+        $units = $canSeeAll
+            ? DB::table('units')->select('id','name')->orderBy('name')->get()
+            : DB::table('units')->select('id','name')->where('id', $me?->unit_id)->get();
+
+        $tbl = (new RecruitmentRequest())->getTable();
+
+        // ==== FIX INTI: jika canSeeAll => JANGAN pakai forViewer(), agar tidak ke-lock unit DHC/HO ====
+        $query = $canSeeAll
+            ? RecruitmentRequest::query()
+            : RecruitmentRequest::query()->forViewer($me);
+
+        // filter unit jika dipilih
+        if ($selectedUnitId && Schema::hasColumn($tbl, 'unit_id')) {
+            $query->where('unit_id', $selectedUnitId);
+        }
+        // catatan: saat canSeeAll && no unit_id => tampilkan SEMUA tanpa filter
+
+        $list = $query->latest()->paginate(12)->withQueryString();
+
+        return view('recruitment.principal-approval.index', [
+            'list'           => $list,
+            'units'          => $units,
+            'canSeeAll'      => $canSeeAll,
+            'selectedUnitId' => $selectedUnitId,
+        ]);
     }
 
     // CREATE via modal (same page)
@@ -40,24 +69,19 @@ class PrincipalApprovalController extends Controller
         $model = new RecruitmentRequest();
         $tbl   = $model->getTable();
 
-        // helper untuk ambil kolom pertama yang ada di tabel
         $pick = function(array $cands) use ($tbl) {
             foreach ($cands as $c) if (Schema::hasColumn($tbl, $c)) return $c;
             return null;
         };
 
         $insert = [];
-
-        // kolom meta yang umum
         if (Schema::hasColumn($tbl, 'unit_id'))  $insert['unit_id'] = $me?->unit_id;
         if (Schema::hasColumn($tbl, 'status'))   $insert['status']  = 'draft';
 
-        // requested_by fallback ke varian lain
         if ($col = $pick(['requested_by','requested_by_user_id','created_by','created_by_user_id'])) {
             $insert[$col] = $meId;
         }
 
-        // map field logis -> kemungkinan nama kolom di DB
         $map = [
             'title'         => ['title','job_title','name'],
             'position'      => ['position','position_name','job_title'],
@@ -70,7 +94,6 @@ class PrincipalApprovalController extends Controller
             if ($col = $pick($cands)) $insert[$col] = $data[$logical];
         }
 
-        // simpan aman dari mass-assignment
         $model->forceFill($insert)->save();
 
         return back()->with('ok', 'Principal approval draft created.');
@@ -80,18 +103,15 @@ class PrincipalApprovalController extends Controller
     {
         $this->authorizeUnit($req->unit_id);
 
-        // status guard
         if (isset($req->status) && $req->status !== 'draft') {
             return back()->withErrors('Only DRAFT can be submitted.');
         }
 
-        // update status -> submitted kalau kolomnya ada
         $tbl = $req->getTable();
         if (Schema::hasColumn($tbl, 'status')) {
             $req->update(['status' => 'submitted']);
         }
 
-        // buat approval pertama (optional: hanya jika relasi & kolomnya ada)
         if (method_exists($req, 'approvals')) {
             try {
                 $rel = $req->approvals();
@@ -100,23 +120,19 @@ class PrincipalApprovalController extends Controller
 
                 if (Schema::hasTable($apprTable)) {
                     $payload = [];
-
-                    // isi hanya kolom yang tersedia
                     if (Schema::hasColumn($apprTable, 'level'))    $payload['level'] = 1;
-                    if (Schema::hasColumn($apprTable, 'step'))     $payload['step']  = 1; // alternatif
+                    if (Schema::hasColumn($apprTable, 'step'))     $payload['step']  = 1;
                     if (Schema::hasColumn($apprTable, 'role_key')) $payload['role_key'] = 'vp_gm';
                     if (Schema::hasColumn($apprTable, 'status'))   $payload['status'] = 'pending';
                     if (Schema::hasColumn($apprTable, 'state'))    $payload['state']  = 'pending';
 
-                    if (!empty($payload)) {
+                    if ($payload) {
                         $m = $apprModel->newInstance();
                         $m->forceFill($payload);
-                        $rel->save($m); // morph keys diisi otomatis
+                        $rel->save($m);
                     }
                 }
-            } catch (\Throwable $e) {
-                // skip silently agar flow tetap lanjut
-            }
+            } catch (\Throwable $e) { /* ignore */ }
         }
 
         return back()->with('ok', 'Submitted to VP/GM.');
@@ -130,11 +146,8 @@ class PrincipalApprovalController extends Controller
             return back()->withErrors('Only SUBMITTED can be approved.');
         }
 
-        /** @var \App\Models\User|null $me */
-        $me   = Auth::user();
         $meId = Auth::id();
 
-        // update status approved (kolom-kolom opsional)
         $tbl = $req->getTable();
         $changes = [];
         if (Schema::hasColumn($tbl, 'status'))        $changes['status'] = 'approved';
@@ -142,7 +155,6 @@ class PrincipalApprovalController extends Controller
         if (Schema::hasColumn($tbl, 'approved_at'))   $changes['approved_at'] = now();
         if ($changes) $req->update($changes);
 
-        // update approval record pending -> approved
         if (method_exists($req, 'approvals')) {
             try {
                 $rel = $req->approvals();
@@ -162,9 +174,7 @@ class PrincipalApprovalController extends Controller
 
                     if ($apprChanges) $q->latest()->first()?->update($apprChanges);
                 }
-            } catch (\Throwable $e) {
-                // skip
-            }
+            } catch (\Throwable $e) { /* ignore */ }
         }
 
         return back()->with('ok', 'Request approved.');
@@ -178,8 +188,6 @@ class PrincipalApprovalController extends Controller
             return back()->withErrors('Only SUBMITTED can be rejected.');
         }
 
-        /** @var \App\Models\User|null $me */
-        $me   = Auth::user();
         $meId = Auth::id();
 
         $tbl = $req->getTable();
@@ -206,9 +214,7 @@ class PrincipalApprovalController extends Controller
 
                     if ($apprChanges) $q->latest()->first()?->update($apprChanges);
                 }
-            } catch (\Throwable $e) {
-                // skip
-            }
+            } catch (\Throwable $e) { /* ignore */ }
         }
 
         return back()->with('ok', 'Request rejected.');
@@ -218,13 +224,14 @@ class PrincipalApprovalController extends Controller
     {
         /** @var \App\Models\User|null $me */
         $me = Auth::user();
-        $meUnit = $me?->unit_id;
 
-        // Superadmin selalu lolos; jika bukan, unit harus sama
-        if ($me && $me->hasRole('Superadmin')) {
+        // Bypass hanya untuk Superadmin & DHC
+        if ($me && ($me->hasRole('Superadmin') || $me->hasRole('DHC'))) {
             return;
         }
 
+        // Selain itu, wajib unit sama
+        $meUnit = $me?->unit_id;
         if ($meUnit && $unitId && (string)$meUnit !== (string)$unitId) {
             abort(403);
         }

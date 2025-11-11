@@ -28,25 +28,25 @@
   $user = auth()->user();
   $emp  = $user?->employee;
 
-  // --- Ambil person dari employees.person_id (relasi atau fallback direct) ---
+  // --- Ambil persons.full_name via relasi atau fallback query ---
   try {
-      $person = $emp?->person ?: null;               // pakai relasi kalau ada
+      $person = $emp?->person ?: null;
       if (!$person && $emp?->person_id) {
-          // fallback direct DB kalau relasi belum dideklarasikan
-          $person = \Illuminate\Support\Facades\DB::table('persons')
-              ->select(['id','full_name','email'])
-              ->where('id', $emp->person_id)->first();
+          $person = \Illuminate\Support\Facades\DB::table('persons')->select(['id','full_name','email','profile_photo_url'])->where('id',$emp->person_id)->first();
       }
   } catch (\Throwable $e) { $person = null; }
 
-  // STRICT: displayName hanya dari persons.full_name → employees.full_name
-  $displayName = ($person->full_name ?? null) ?: ($emp?->full_name ?: 'User');
+  // Display name: persons.full_name -> employees.full_name -> user.name -> 'User'
+  $displayName = ($person->full_name ?? null) ?: ($emp->full_name ?? ($user?->name ?: 'User'));
 
-  $displayEmail = $user?->email ?: ($emp?->email ?: '-');
+  $displayEmail = $user?->email ?: ($emp?->email ?: ($person->email ?? '-'));
   $employeeCode = $user?->employee_id ?: ($emp?->employee_id ?? '-');
   $jobTitle     = $emp?->latest_jobs_title ?: ($emp?->job_title ?: ($user?->job_title ?? '-'));
   $unitName     = $emp?->latest_jobs_unit  ?: ($emp?->unit_name ?? optional($user?->unit)->name ?? '-');
-  $roleBadge    = $user?->getRoleNames()->first() ?? '-';
+
+  // Roles: gabungkan, lalu format badge teks sederhana
+  $roleNames   = collect($user?->getRoleNames() ?? [])->values();
+  $roleBadge   = $roleNames->isEmpty() ? '-' : e($roleNames->implode(', '));
 
   // Inisial avatar (2 huruf)
   $initials = function(string $name) {
@@ -79,7 +79,6 @@
   }
 @endphp
 
-
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
   <!-- UNIVERSAL iOS LIQUID GLASS LOADER -->
   <div id="appLoader" aria-live="polite" aria-busy="true">
@@ -100,8 +99,7 @@
     </div>
 
     @php
-      $roleNames = collect($user?->getRoleNames() ?? [])->map(fn($r)=> strtolower(trim($r)));
-      $isSuper = $roleNames->contains(fn($r)=> in_array($r, ['superadmin','super-admin','admin','administrator']));
+      $isSuper = $roleNames->contains(fn($r)=> in_array(strtolower($r), ['superadmin','super-admin','admin','administrator']));
       $showMain = true;
       $showRecruitment = $isSuper || $user?->hasAnyPermission(['recruitment.view','contract.view']);
       $showTraining = $isSuper || $user?->hasAnyPermission(['training.view']);
@@ -235,7 +233,7 @@
           <span class="user-meta">
             <span class="user-name text-ellipsis">{{ $displayName }}</span>
             <span class="user-role muted text-ellipsis">
-              {!! $roleBadge !!}
+              {{ $roleBadge }}
               @if($jobTitle && $jobTitle !== '-') • {{ $jobTitle }} @endif
               @if($unitName && $unitName !== '-') • {{ $unitName }} @endif
             </span>
@@ -256,7 +254,7 @@
               <strong>{{ $displayName }}</strong>
               @if($employeeCode && $employeeCode !== '-') <span class="muted text-sm"><strong>Employee ID:</strong> {{ $employeeCode }}</span> @endif
               <div class="muted text-sm" style="margin-top:.25rem">
-                <div><strong>Role:</strong> {!! $roleBadge !!}</div>
+                <div><strong>Role:</strong> {{ $roleBadge }}</div>
                 <div><strong>Jabatan:</strong> {{ $jobTitle }}</div>
                 <div><strong>Unit Kerja:</strong> {{ $unitName }}</div>
                 @if($displayEmail && $displayEmail !== '-') <div><strong>Email:</strong> {{ $displayEmail }}</div> @endif

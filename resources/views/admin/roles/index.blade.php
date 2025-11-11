@@ -54,6 +54,11 @@
                   <i class='fas fa-user-shield u-text-xs u-mr-xs'></i> Role
                 </div>
                 <span class="u-font-medium">{{ $r->name }}</span>
+                @if(!is_null($r->unit_id))
+                  <span class="u-badge u-badge--glass">unit: {{ $r->unit_id }}</span>
+                @else
+                  <span class="u-badge u-badge--glass">global</span>
+                @endif
               </div>
             </td>
             <td><span class="u-badge u-badge--glass">{{ $r->users_count }} users</span></td>
@@ -61,7 +66,11 @@
               <div class="cell-actions__group">
                 <button class="u-btn u-btn--outline u-btn--sm u-hover-lift"
                         data-modal-open="editRoleModal"
-                        data-role='@json(["id"=>$r->id,"name"=>$r->name,"perms"=>$r->permissions()->pluck("name")->all()])'>
+                        data-role='@json([
+                          "id"=>$r->id,
+                          "name"=>$r->name,
+                          "perms"=>$r->permissions()->pluck("name")->all()
+                        ])'>
                   <i class="fas fa-edit u-mr-xs"></i> Edit
                 </button>
                 @can('rbac.delete')
@@ -118,7 +127,7 @@
               <div class="u-grid-col-span-2">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Role Name</label>
                 <input name="name" required class="u-input" placeholder="Enter role name">
-                <p class="u-text-xs u-muted u-mt-xs">Use lowercase with dots (e.g., admin.users)</p>
+                <p class="u-text-xs u-muted u-mt-xs">Use lowercase with dots (e.g., access.manager)</p>
               </div>
             </div>
           </div>
@@ -149,6 +158,7 @@
                   <div class="u-grid u-grid-cols-1 md:u-grid-cols-2 u-gap-sm">
                     @foreach($items as $perm)
                     <label class="u-flex u-items-center u-gap-sm u-p-sm u-rounded-lg u-border u-border-transparent u-hover:border-gray-200">
+                      {{-- kirim name agar controller bisa resolve by name --}}
                       <input type="checkbox" name="permissions[]" value="{{ $perm->name }}" class="u-rounded" data-group="{{ $group }}">
                       <span class="u-text-sm">{{ $perm->name }}</span>
                     </label>
@@ -231,6 +241,7 @@
                   <div class="u-grid u-grid-cols-1 md:u-grid-cols-2 u-gap-sm">
                     @foreach($items as $perm)
                     <label class="u-flex u-items-center u-gap-sm u-p-sm u-rounded-lg u-border u-border-transparent u-hover:border-gray-200">
+                      {{-- konsisten: kirim name --}}
                       <input type="checkbox" name="permissions[]" value="{{ $perm->name }}" class="u-rounded" data-group="{{ $group }}">
                       <span class="u-text-sm">{{ $perm->name }}</span>
                     </label>
@@ -320,8 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
     modal.hidden = false; document.body.classList.add('modal-open');
   }
 
-  function bindPermSelectHelpers() {
-    document.addEventListener('click', (e) => {
+  function bindPermSelectHelpers(root=document) {
+    root.addEventListener('click', (e) => {
       const allBtn  = e.target.closest('[data-check="all"]');
       const noneBtn = e.target.closest('[data-check="none"]');
       if (allBtn || noneBtn) {
@@ -342,11 +353,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // init
   wireTabs(document.getElementById('createRoleModal'));
   wireTabs(document.getElementById('editRoleModal'));
   bindModalOpenClose();
-  bindPermSelectHelpers();
+  bindPermSelectHelpers(document);
 });
 </script>
 @endsection
