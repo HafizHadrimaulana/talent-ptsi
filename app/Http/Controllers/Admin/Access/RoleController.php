@@ -37,20 +37,21 @@ class RoleController extends Controller
                 WHERE mhr.role_id = roles.id
                   AND mhr.model_type = ?
                   AND (mhr.unit_id = ? OR (mhr.unit_id IS NULL AND roles.unit_id IS NULL))
-            ) AS users_count', [\App\Models\User::class, $teamId]); // <-- single backslash
+            ) AS users_count', [\App\Models\User::class, $teamId]);
 
         $roles = $rolesQuery->orderBy('name', 'asc')->paginate($perPage)->withQueryString();
 
         $allPerms = Permission::query()
             ->where('guard_name', 'web')
             ->orderBy('name', 'asc')
-            ->get(['id', 'name']);
+            ->get(['id', 'name']); // untuk tampilan cukup id+name
 
         $groupedPerms = $allPerms->groupBy(function ($p) {
             $parts = explode('.', $p->name, 2);
             return $parts[0];
         });
 
+        // permission-by-role (pakai name) -> untuk checked state
         $permByRole = [];
         foreach ($roles as $r) {
             $names = DB::table('permissions')
@@ -70,7 +71,7 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
-        // Terima 'permissions' atau 'perms', boleh id (int) atau name (string)
+        // Terima 'permissions' atau 'perms', nilai boleh id (int) atau name (string)
         $data = $request->validate([
             'name'          => ['required', 'string', 'max:150'],
             'unit_id'       => ['nullable', 'integer', 'exists:units,id'],
@@ -82,21 +83,24 @@ class RoleController extends Controller
         ]);
 
         /** @var PermissionRegistrar $reg */
-        $reg = app(PermissionRegistrar::class);
+        $reg   = app(PermissionRegistrar::class);
+        $guard = $data['guard'] ?? 'web';
         $teamId = $data['unit_id'] ?? ($reg->getPermissionsTeamId() ?: auth()->user()?->unit_id);
 
-        $role = Role::firstOrCreate([
-            'name'       => $data['name'],
-            'guard_name' => $data['guard'] ?? 'web',
-            'unit_id'    => $teamId,
-        ]);
+        return DB::transaction(function () use ($request, $data, $guard, $teamId) {
+            $role = Role::firstOrCreate([
+                'name'       => $data['name'],
+                'guard_name' => $guard,
+                'unit_id'    => $teamId,
+            ]);
 
-        $permModels = $this->resolvePermissions($request);
-        $role->syncPermissions($permModels);
+            $permModels = $this->resolvePermissions($request, $guard);
+            $role->syncPermissions($permModels);
 
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        return back()->with('ok', 'Role saved.');
+            return back()->with('ok', 'Role saved.');
+        });
     }
 
     public function update(Request $request, Role $role)
@@ -114,29 +118,32 @@ class RoleController extends Controller
             'perms.*'       => ['sometimes'],
         ]);
 
-        $role->name = $data['name'];
-        $role->save();
+        return DB::transaction(function () use ($request, $role, $data) {
+            $role->name = $data['name'];
+            $role->save();
 
-        $permModels = $this->resolvePermissions($request);
-        $role->syncPermissions($permModels);
+            // Pakai guard milik role agar konsisten
+            $permModels = $this->resolvePermissions($request, $role->guard_name ?? 'web');
+            $role->syncPermissions($permModels);
 
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        return back()->with('ok', 'Role updated.');
+            return back()->with('ok', 'Role updated.');
+        });
     }
 
     /**
-     * Resolve permission input (id atau name) ke koleksi Permission
+     * Resolve permission input (id atau name) -> koleksi Permission TERPILIH saja.
+     * - Pastikan guard_name terisi (select guard_name).
+     * - Group orWhereIn DI DALAM where(...) agar tidak "nyapu" semua permission.
      */
-    protected function resolvePermissions(Request $request)
+    protected function resolvePermissions(Request $request, string $guard = 'web')
     {
         $keys = $request->input('permissions', $request->input('perms', []));
-
         if (empty($keys)) {
             return collect();
         }
 
-        // Pisahkan mana numeric (id) dan mana string (name)
         $ids   = [];
         $names = [];
         foreach ($keys as $k) {
@@ -147,10 +154,23 @@ class RoleController extends Controller
             }
         }
 
+        // Ambil guard yang benar + hanya yang dipilih; SELECT guard_name agar tidak null di Spatie
         return Permission::query()
-            ->where('guard_name', 'web')
-            ->when(!empty($ids), fn($q) => $q->orWhereIn('id', $ids))
-            ->when(!empty($names), fn($q) => $q->orWhereIn('name', $names))
-            ->get();
+            ->where('guard_name', $guard)
+            ->where(function ($q) use ($ids, $names) {
+                $hasAny = false;
+                if (!empty($ids)) {
+                    $q->orWhereIn('id', $ids);
+                    $hasAny = true;
+                }
+                if (!empty($names)) {
+                    $q->orWhereIn('name', $names);
+                    $hasAny = true;
+                }
+                if (!$hasAny) {
+                    $q->whereRaw('1=0'); // defensif
+                }
+            })
+            ->get(['id', 'name', 'guard_name']); // <— PENTING: guard_name ikut diambil
     }
 }
