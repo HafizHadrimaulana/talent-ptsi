@@ -16,7 +16,6 @@
 
   if ($canSeeAll === false) {
       $hasRoleAll = $me?->hasRole('Superadmin') || $me?->hasRole('DHC');
-
       $hoUnitId = $hoUnitId ?? DB::table('units')->select('id')
           ->where(function ($q) {
               $q->where('code', 'HO')
@@ -26,7 +25,6 @@
                 ->orWhere('name', 'LIKE', '%Head Office%');
           })
           ->value('id');
-
       $isHeadOfficeUser = $hoUnitId && $me?->unit_id == $hoUnitId;
       $canSeeAll = $hasRoleAll || $isHeadOfficeUser;
   }
@@ -139,7 +137,7 @@
               <td><span class="u-badge {{ $badge }}">{{ ucfirst($st) }}</span></td>
               <td class="cell-actions">
                 <div class="cell-actions__group">
-                  {{-- SDM: submit draft -> review --}}
+                  {{-- SDM: submit draft -> review (hanya pembuatnya yg akan melihat draft, sisa sudah difilter di controller) --}}
                   @if($c->status === 'draft' && $sameUnit)
                     @can('contract.update')
                     <form method="POST"
@@ -156,7 +154,7 @@
                     @endcan
                   @endif
 
-                  {{-- GM/VP: approve review --}}
+                  {{-- Kepala Unit approve review --}}
                   @if($c->status === 'review' && $sameUnit)
                     @can('contract.approve')
                     <form method="POST"

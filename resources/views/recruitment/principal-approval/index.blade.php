@@ -4,33 +4,15 @@
 @section('content')
 @php
   use Illuminate\Support\Facades\DB;
+  use Illuminate\Support\Facades\Gate;
 
   /** @var \App\Models\User $me */
   $me     = auth()->user();
   $meUnit = $me?->unit_id;
 
-  // ===== Fallback canSeeAll & units bila controller belum provide =====
   $canSeeAll      = $canSeeAll      ?? false;
   $selectedUnitId = $selectedUnitId ?? null;
   $units          = $units          ?? collect();
-
-  if ($canSeeAll === false) {
-      $hasRoleAll = $me?->hasRole('Superadmin') || $me?->hasRole('DHC');
-
-      // Optional: Head Office dianggap bisa lihat semua (meniru blade Kontrak yang kamu kirim)
-      $hoUnitId = $hoUnitId ?? DB::table('units')->select('id')
-          ->where(function ($q) {
-              $q->where('code', 'HO')
-                ->orWhere('code', 'HEADOFFICE')
-                ->orWhere('name', 'SI Head Office')
-                ->orWhere('name', 'Head Office')
-                ->orWhere('name', 'LIKE', '%Head Office%');
-          })
-          ->value('id');
-
-      $isHeadOfficeUser = $hoUnitId && $me?->unit_id == $hoUnitId;
-      $canSeeAll = $hasRoleAll || $isHeadOfficeUser;
-  }
 
   if ($units->isEmpty()) {
       $units = $canSeeAll
@@ -38,16 +20,25 @@
           : DB::table('units')->select('id','name')->where('id',$meUnit)->get();
   }
 
-  if (!$canSeeAll) {
-      $selectedUnitId = (int) $meUnit;
-  }
+  // ambil id unit DHC (Divisi Human Capital)
+  $dhcUnitId = DB::table('units')
+      ->where(function($q){
+          $q->where('code','DHC')
+            ->orWhere('name','Divisi Human Capital')
+            ->orWhere('name','like','Divisi Human Capital%');
+      })->value('id');
+
+  // ===== FIX: izinkan SDM Unit melihat tombol create =====
+  $canCreate = Gate::check('recruitment.create')
+                || Gate::check('recruitment.update')
+                || ($me?->hasRole('SDM Unit') ?? false);
 @endphp
 
 <div class="u-card u-card--glass u-hover-lift">
   <div class="u-flex u-items-center u-justify-between u-mb-md">
     <h2 class="u-title">Izin Prinsip</h2>
 
-    {{-- Toolbar filter unit --}}
+    {{-- Filter Unit --}}
     <form method="get" class="u-flex u-gap-sm u-items-center">
       @if($canSeeAll)
         <label class="u-text-sm u-font-medium">Unit</label>
@@ -65,14 +56,14 @@
       @endif
     </form>
 
-    @can('recruitment.update')
+    @if($canCreate)
     <button class="u-btn u-btn--brand u-hover-lift" data-modal-open="createApprovalModal">
       <i class="fas fa-plus u-mr-xs"></i> Buat Permintaan
     </button>
-    @endcan
+    @endif
   </div>
 
-  {{-- Toast OK --}}
+  {{-- Notifikasi --}}
   @if(session('ok'))
     @push('swal')
       <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script>
@@ -100,6 +91,7 @@
         {{ $canSeeAll && !$selectedUnitId ? 'All units' : 'Unit ID: '.($selectedUnitId ?? $meUnit) }}
       </span>
     </div>
+
     <div class="u-scroll-x">
       <table id="ip-table" class="u-table" data-dt>
         <thead>
@@ -113,63 +105,89 @@
         </thead>
         <tbody>
           @foreach($list as $r)
-          @php $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id; @endphp
+          @php
+            $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
+
+            $stageIndex = null;
+            if ($r->relationLoaded('approvals')) {
+              foreach ($r->approvals as $i => $ap) {
+                if (($ap->status ?? 'pending') === 'pending') { $stageIndex = $i; break; }
+              }
+            }
+
+            $meRoles = [
+              'Kepala Unit' => $me?->hasRole('Kepala Unit'),
+              'DHC'         => $me?->hasRole('DHC'),
+              'Dir SDM'     => $me?->hasRole('Dir SDM'),
+            ];
+
+            $status = $r->status;
+            $badge  = $status === 'rejected' ? 'u-badge--danger'
+                    : ($status === 'draft' ? 'u-badge--warn'
+                    : ($status === 'approved' ? 'u-badge--primary' : 'u-badge--soft'));
+          @endphp
           <tr>
             <td><span class="u-font-medium">{{ $r->title }}</span></td>
             <td>{{ $r->position }}</td>
             <td><span class="u-badge u-badge--glass">{{ $r->headcount }} orang</span></td>
-            <td>
-              @php
-                $st = $r->status;
-                $badge = $st === 'rejected' ? 'u-badge--danger'
-                       : ($st === 'draft' ? 'u-badge--warn'
-                       : ($st === 'approved' ? 'u-badge--primary' : 'u-badge--soft'));
-              @endphp
-              <span class="u-badge {{ $badge }}">{{ ucfirst($st) }}</span>
-            </td>
+            <td><span class="u-badge {{ $badge }}">{{ ucfirst($status) }}</span></td>
+
             <td class="cell-actions">
               <div class="cell-actions__group">
-                {{-- SDM: submit DRAFT --}}
-                @if($r->status === 'draft' && $sameUnit)
-                  @can('recruitment.submit')
+                {{-- SDM Unit submit DRAFT --}}
+                @if(($r->status === 'draft') && $sameUnit)
+                  @if($canCreate)
                   <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}"
                         class="u-inline js-confirm"
                         data-confirm-title="Submit permintaan?"
-                        data-confirm-text="Permintaan akan dikirim ke VP/GM untuk persetujuan."
+                        data-confirm-text="Permintaan akan dikirim untuk berjenjang."
                         data-confirm-icon="question">
                     @csrf
-                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Submit for approval">
+                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift">
                       <i class="fas fa-paper-plane u-mr-xs"></i> Submit
                     </button>
                   </form>
-                  @endcan
+                  @endif
                 @endif
 
-                {{-- GM/VP: approve/reject SUBMITTED --}}
-                @if($r->status === 'submitted' && $sameUnit)
-                  @can('recruitment.approve')
-                  <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}"
-                        class="u-inline js-confirm"
-                        data-confirm-title="Setujui permintaan?"
-                        data-confirm-text="Status akan berubah menjadi Approved."
-                        data-confirm-icon="success">
-                    @csrf
-                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success" title="Approve">
-                      <i class="fas fa-check u-mr-xs"></i> Approve
-                    </button>
-                  </form>
+                {{-- Approval berjenjang --}}
+                @if(in_array($r->status, ['in_review','submitted']) && $stageIndex !== null)
+                  @php
+                    $canStage = false;
 
-                  <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}"
-                        class="u-inline js-confirm"
-                        data-confirm-title="Tolak permintaan?"
-                        data-confirm-text="Status akan berubah menjadi Rejected."
-                        data-confirm-icon="error">
-                    @csrf
-                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-danger" title="Reject">
-                      <i class="fas fa-times u-mr-xs"></i> Reject
-                    </button>
-                  </form>
-                  @endcan
+                    if ($stageIndex === 0) {
+                      $canStage = $meRoles['Kepala Unit'] && ((string)$meUnit === (string)$r->unit_id);
+                    } elseif ($stageIndex === 1) {
+                      $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
+                      $canStage = $meRoles['DHC'] || $isKepalaUnitDHC;
+                    } elseif ($stageIndex === 2) {
+                      $canStage = $meRoles['Dir SDM'];
+                    }
+                  @endphp
+
+                  @if($canStage)
+                    <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}"
+                          class="u-inline js-confirm"
+                          data-confirm-title="Setujui permintaan?"
+                          data-confirm-text="Akan diteruskan ke tahap berikutnya."
+                          data-confirm-icon="success">
+                      @csrf
+                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success">
+                        <i class="fas fa-check u-mr-xs"></i> Approve
+                      </button>
+                    </form>
+
+                    <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}"
+                          class="u-inline js-confirm"
+                          data-confirm-title="Tolak permintaan?"
+                          data-confirm-text="Proses akan dihentikan."
+                          data-confirm-icon="error">
+                      @csrf
+                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-danger">
+                        <i class="fas fa-times u-mr-xs"></i> Reject
+                      </button>
+                    </form>
+                  @endif
                 @endif
               </div>
             </td>
@@ -266,7 +284,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     },
     initDT() {
-      // jQuery DataTables (prioritas) atau simple-datatables
       if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
         this.dt = jQuery('#ip-table').DataTable({
           responsive: true, paging: false, info: false,
@@ -289,9 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const self = this; let t = null;
       function run(v){
         if (!self.dt) return;
-        // jQuery DT
         if (self.dt.search && self.dt.draw) { self.dt.search(v).draw(); return; }
-        // simple-datatables
         if (typeof self.dt.search === 'function') self.dt.search(v);
       }
       ext.addEventListener('input', function(e){

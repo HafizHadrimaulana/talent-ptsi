@@ -27,9 +27,45 @@ class ContractController extends Controller
 
         $tbl   = (new Contract())->getTable();
         $listQ = Contract::query();
+
+        // Scope unit (jika dipilih/harusnya unit sendiri)
         if ($selectedUnitId && Schema::hasColumn($tbl, 'unit_id')) {
             $listQ->where('unit_id', $selectedUnitId);
         }
+
+        // ====== VISIBILITY RULE (samakan dgn Izin Prinsip): ======
+        // Non canSeeAll: sembunyikan DRAFT, kecuali DRAFT yg dibuat oleh dirinya sendiri
+        if (!$canSeeAll) {
+            // deteksi kolom "pembuat"
+            $creatorCols = array_values(array_filter([
+                Schema::hasColumn($tbl, 'created_by_user_id') ? 'created_by_user_id' : null,
+                Schema::hasColumn($tbl, 'created_by')         ? 'created_by'         : null,
+            ]));
+
+            $listQ->where(function($q) use ($creatorCols, $me, $tbl) {
+                // tampilkan selain draft
+                if (Schema::hasColumn($tbl, 'status')) {
+                    $q->where('status', '!=', 'draft');
+                } else {
+                    // kalau tak ada kolom status, ya biarkan semua
+                    return;
+                }
+
+                // ATAU, jika draft tapi dibuat oleh saya sendiri -> tetap tampil
+                if (!empty($creatorCols)) {
+                    $q->orWhere(function($w) use ($creatorCols, $me, $tbl) {
+                        $w->where('status', 'draft');
+                        $w->where(function($c) use ($creatorCols, $me) {
+                            foreach ($creatorCols as $col) {
+                                $c->orWhere($col, $me?->id);
+                            }
+                        });
+                    });
+                }
+            });
+        }
+        // ====== END VISIBILITY RULE ======
+
         $list = $listQ->latest()->paginate(12)->withQueryString();
 
         // Applicants opsional
@@ -75,13 +111,16 @@ class ContractController extends Controller
         ]);
 
         $tbl = (new Contract)->getTable();
-        $pick = function(array $cands) use ($tbl) { foreach ($cands as $c) if (Schema::hasColumn($tbl,$c)) return $c; return null; };
+        $pick = function(array $cands) use ($tbl) {
+            foreach ($cands as $c) if (Schema::hasColumn($tbl,$c)) return $c;
+            return null;
+        };
 
         $insert = [];
-        if (Schema::hasColumn($tbl, 'unit_id'))      $insert['unit_id']       = auth()->user()->unit_id;
-        if (Schema::hasColumn($tbl, 'status'))       $insert['status']        = 'draft';
-        if (Schema::hasColumn($tbl, 'created_by'))   $insert['created_by']    = auth()->id();
-        if (Schema::hasColumn($tbl, 'created_by_user_id')) $insert['created_by_user_id'] = auth()->id();
+        if (Schema::hasColumn($tbl, 'unit_id'))              $insert['unit_id']       = auth()->user()->unit_id;
+        if (Schema::hasColumn($tbl, 'status'))               $insert['status']        = 'draft';
+        if (Schema::hasColumn($tbl, 'created_by'))           $insert['created_by']    = auth()->id();
+        if (Schema::hasColumn($tbl, 'created_by_user_id'))   $insert['created_by_user_id'] = auth()->id();
 
         $map = [
             'type'        => ['type','contract_type'],
@@ -135,7 +174,7 @@ class ContractController extends Controller
                 if (Schema::hasTable($t)) {
                     $payload = [];
                     if (Schema::hasColumn($t,'level'))    $payload['level'] = 1;
-                    if (Schema::hasColumn($t,'role_key')) $payload['role_key'] = 'vp_gm';
+                    if (Schema::hasColumn($t,'role_key')) $payload['role_key'] = 'kepala_unit';
                     if (Schema::hasColumn($t,'status'))   $payload['status'] = 'pending';
                     if (Schema::hasColumn($t,'step'))     $payload['step'] = 1;
                     if (Schema::hasColumn($t,'state'))    $payload['state'] = 'pending';
@@ -178,9 +217,9 @@ class ContractController extends Controller
                     elseif (Schema::hasColumn($t,'state')) $q->where('state','pending');
 
                     $changes = [];
-                    if (Schema::hasColumn($t,'status'))   $changes['status'] = 'approved';
-                    if (Schema::hasColumn($t,'state'))    $changes['state']  = 'approved';
-                    if (Schema::hasColumn($t,'user_id'))  $changes['user_id'] = auth()->id();
+                    if (Schema::hasColumn($t,'status'))     $changes['status'] = 'approved';
+                    if (Schema::hasColumn($t,'state'))      $changes['state']  = 'approved';
+                    if (Schema::hasColumn($t,'user_id'))    $changes['user_id'] = auth()->id();
                     if (Schema::hasColumn($t,'decided_at')) $changes['decided_at'] = now();
                     if (Schema::hasColumn($t,'note') && $r->filled('note')) $changes['note'] = $r->note;
 
