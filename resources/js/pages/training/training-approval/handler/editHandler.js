@@ -6,11 +6,10 @@ import { getJSON, postJSON } from "@/utils/fetch";
  * @param {Function} reloadCallback - fungsi untuk reload data setelah update
  */
 
-export function initEditHandler(tableBody, reloadCallback) {
+export function initEditHandler(tableBody) {
     const modal = document.querySelector("#edit-modal");
     const form = document.querySelector("#edit-form");
     const cancelBtn = document.querySelector("#btn-cancel");
-    const saveBtn = document.querySelector("#btn-save");
     
     tableBody.addEventListener("click", async (e) => {
         const button = e.target.closest("button[data-action='edit']");
@@ -25,12 +24,21 @@ export function initEditHandler(tableBody, reloadCallback) {
                 fillEditForm(res.data);
                 modal.classList.remove("hidden");
             } else {
-                alert("Gagal mengambil data untuk edit");
+                Swal.fire({
+                    icon: "error",
+                    title: "Gagal",
+                    text: "Gagal mengambil data untuk edit.",
+                });
             }
 
         } catch (error) {
+            Swal.close();
             console.error(error);
-            alert("Gagal memuat data");
+            Swal.fire({
+                icon: "error",
+                title: "Terjadi Kesalahan",
+                text: "Tidak dapat memuat data dari server.",
+            });
         }
 
         cancelBtn.addEventListener("click", () => {
@@ -41,21 +49,60 @@ export function initEditHandler(tableBody, reloadCallback) {
             e.preventDefault();
 
             const formData = new FormData(form);
-            console.log(id)
+            modal.classList.add("hidden");
+
+            const confirm = await Swal.fire({
+                title: "Simpan Perubahan?",
+                text: "Pastikan semua data sudah benar.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Simpan",
+                cancelButtonText: "Batal",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            Swal.fire({
+                title: "Menyimpan Data...",
+                text: "Sedang memperbarui data.",
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading(),
+            });
 
             try {
                 const res = await postJSON(`/training/edit/${id}`, formData);
+                Swal.close();
+
                 console.log('res edit', res)
                 if (res.status === "success") {
-                    alert(res.message);
-                    modal.classList.add("hidden");
+                    
+
+                    await Swal.fire({
+                        icon: "success",
+                        title: "Berhasil",
+                        text: res.message,
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+
                     window.location.reload();
-                    reloadCallback();
                 } else {
-                    alert("Gagal memperbarui data");
+                    Swal.fire({
+                        icon: "error",
+                        title: "Gagal",
+                        text: res.message || "Gagal memperbarui data.",
+                    });
                 }
             } catch (error) {
-                alert("Gagal memperbarui data");
+                Swal.close();
+                console.error(error);
+                Swal.fire({
+                    icon: "error",
+                    title: "Kesalahan Server",
+                    text: "Terjadi kesalahan saat memperbarui data.",
+                });
             }
         });
     });

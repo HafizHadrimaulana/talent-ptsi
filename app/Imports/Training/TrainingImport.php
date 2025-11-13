@@ -45,8 +45,6 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
 
             $row = $this->normalizeRowKeys($row);
 
-            $namaProyekHeader = 'Nama Proyek /n (Keterkaitan dengan Proyek)';
-
             $data[] = [
                 'file_training_id' => $this->fileTrainingId,
                 'status_approval_training_id' => 1,
@@ -64,7 +62,7 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'uhpd' => $this->parseRupiah($row['uhpd'] ?? null),
                 'biaya_akomodasi' => $this->parseRupiah($row['biaya_akomodasi'] ?? null),
                 'estimasi_total_biaya' => $this->parseRupiah($row['estimasi_total_biaya'] ?? null),
-                'nama_proyek' => $row[$namaProyekHeader] ?? null,
+                'nama_proyek' => $row['nama_proyek_(keterkaitan_dengan_proyek)'] ?? null,
                 'jenis_portofolio' => $row['jenis_portofolio'] ?? null,
                 'alasan' => null,
                 'created_at' => Carbon::now(),

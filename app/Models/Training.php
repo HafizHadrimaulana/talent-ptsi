@@ -9,7 +9,7 @@ class Training extends Model
 {
     use HasFactory;
     protected $table = 'training';
-    
+
     protected $fillable = [
         'status_approval_training_id',
         'training_temp_id',
@@ -17,6 +17,7 @@ class Training extends Model
         'nama_peserta',
         'realisasi_date',
         'dokumen_sertifikasi',
+        'evaluasi',
     ];
 
     // relation to StatusApprovalTraining

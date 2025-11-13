@@ -3,10 +3,9 @@ import { initDeleteHandler } from "./deleteHandler";
 import { initEditHandler } from "./editHandler";
 import { initApproveHandler } from "./approveHandler";
 import { initRejectHandler } from "./rejectHandler";
+import { bindExternalSearch } from "@/utils/tableHelper";
 
-export function initGetDataTable() {
-    
-    const tableBody = document.querySelector("#training-table tbody");
+export function initGetDataTable(tableBody) {
     const userRole = window.currentUserRole;
 
     function renderTable(data) {
@@ -36,9 +35,7 @@ export function initGetDataTable() {
                         </select>
                     `;
                 } else {
-                    jenisPelatihanCell = `
-                        <td>${item.jenis_pelatihan ?? "-"}</td>
-                    `;
+                    jenisPelatihanCell = `${item.jenis_pelatihan ?? "-"}`;
                 }
 
                 if (userRole === "SDM Unit") {
@@ -67,7 +64,7 @@ export function initGetDataTable() {
                         Details
                     </button>`;
                 }
-                
+
                 return `
                 <tr>
                     <td>
@@ -92,16 +89,16 @@ export function initGetDataTable() {
                     <td>${item.penyelenggara ?? "-"}</td>
                     <td>${item.jumlah_jam ?? "-"}</td>
                     <td>${item.waktu_pelaksanaan ?? "-"}</td>
-                    <td>${item.biaya_pelatihan ?? "-"}</td>
-                    <td>${item.uhpd ?? "-"}</td>
-                    <td>${item.biaya_akomodasi ?? "-"}</td>
-                    <td>${item.estimasi_total_biaya ?? "-"}</td>
+                    <td>${formatRupiah(item.biaya_pelatihan)}</td>
+                    <td>${formatRupiah(item.uhpd)}</td>
+                    <td>${formatRupiah(item.biaya_akomodasi)}</td>
+                    <td>${formatRupiah(item.estimasi_total_biaya)}</td>
                     <td>${item.nama_proyek ?? "-"}</td>
                     <td>${item.jenis_portofolio ?? "-"}</td>
                     <td>${item.fungsi ?? "-"}</td>
                     <td>${item.alasan ?? "-"}</td>
-                    <td>${item.start_date ?? "-"}</td>
-                    <td>${item.end_date ?? "-"}</td>
+                    <td>${formatDate(item.start_date)}</td>
+                    <td>${formatDate(item.end_date)}</td>
                     <td>${item.status_approval.status_approval ?? "-"}</td>
                     <td class="cell-actions text-center">
                         ${actionButtons}
@@ -122,12 +119,39 @@ export function initGetDataTable() {
         }
     }
 
+    function formatRupiah(value) {
+        if (value == null || value === "" || value === "-") return "-";
+
+        const number = parseFloat(value);
+
+        if (isNaN(number)) return value;
+
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(number);
+    }
+
+    function formatDate(dateValue, options = { day: "2-digit", month: "long", year: "numeric" }) {
+        if (!dateValue) return "-";
+        
+        try {
+            const date = new Date(dateValue);
+            if (isNaN(date)) return "-";
+    
+            return date.toLocaleDateString("id-ID", options);
+        } catch (error) {
+            console.error("Gagal memformat tanggal:", error);
+            return "-";
+        }
+    }
+
     loadTrainings();
 
     initEditHandler(tableBody, loadTrainings);
     initDeleteHandler(tableBody, loadTrainings);
     initApproveHandler(tableBody);
     initRejectHandler(tableBody);
-
-    document.addEventListener("training:imported", loadTrainings);
 }

@@ -1,5 +1,5 @@
 <table id="training-table"
-    class="u-table">
+    class="u-table u-table-mobile training-table" data-dt>
     <thead>
         <tr>
             <th>
@@ -38,6 +38,8 @@
         </tr>
     </tbody>
 </table>
+
+<div class="u-dt-pagination" id="pagination"></div>
 
 <script>
     window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";

@@ -23,6 +23,7 @@ return new class extends Migration
             $table->date('realisasi_date')->nullable();
 
             $table->string('certificate_document')->nullable();
+            $table->string('evaluation')->nullable();
 
             $table->foreign('status_approval_training_id')
                 ->references('id')

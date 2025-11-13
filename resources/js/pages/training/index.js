@@ -1,31 +1,32 @@
-import { initAllApprovalHandler } from "./handler/allApproveHandler";
-import { initBulkApprovalHandler } from "./handler/bulkApprovalHandler";
-import { initDownloadTemplateHandler } from "./handler/downloadTemplateHandler";
-import { initGetDataTable } from "./handler/getData";
-import { initImportHandler } from "./handler/importHandler";
-import { initInputHandler } from "./handler/inputHandler";
-import { initUpdateJenisPelatihanHandler } from "./handler/updateJenisPelatihanHandler";
+import { initAllApprovalHandler } from "./training-approval/handler/allApproveHandler";
+import { initBulkApprovalHandler } from "./training-approval/handler/bulkApprovalHandler";
+import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
+import { initGetDataTable } from "./training-approval/handler/getData";
+import { initImportHandler } from "./training-approval/handler/importHandler";
+import { initInputHandler } from "./training-approval/handler/inputHandler";
+import { initUpdateJenisPelatihanHandler } from "./training-approval/handler/updateJenisPelatihanHandler";
 
 document.addEventListener("DOMContentLoaded", () => {
+    const tableBody = document.querySelector(".training-table tbody");
+    // const paginationContainer = document.getElementById("pagination");
+    // const pageSizeSelect = document.getElementById("pageSizeSelect");
 
-    const tableBody = document.querySelector("#training-table tbody");
-    if(tableBody) {
-        initGetDataTable();
+    // let currentPage = 1;
+    // let perPage = parseInt(pageSizeSelect.value, 10);
+
+    if (tableBody) {
+        initGetDataTable(tableBody);
         initUpdateJenisPelatihanHandler(tableBody);
     }
-    
-    if (document.querySelector(".btn-import")) 
-        initImportHandler();
 
-    if (document.querySelector(".btn-add")) 
-        initInputHandler();
+    if (document.querySelector(".btn-import")) initImportHandler();
+
+    if (document.querySelector(".btn-add")) initInputHandler();
 
     if (document.querySelector(".btn-download-template"))
         initDownloadTemplateHandler();
 
-    if (document.querySelector("#btn-bulk-approve"))
-        initBulkApprovalHandler();
+    if (document.querySelector("#btn-bulk-approve")) initBulkApprovalHandler();
 
-    if (document.querySelector("#btn-all-approve"))
-        initAllApprovalHandler();
+    if (document.querySelector("#btn-all-approve")) initAllApprovalHandler();
 });

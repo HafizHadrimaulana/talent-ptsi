@@ -73,7 +73,7 @@ class MonitoringController extends Controller
         } elseif (auth()->user()->hasRole('DHC Unit') || auth()->user()->hasRole('VP DHC')) {
             $query->where('status_approval_training_id', 3);
         } elseif (auth()->user()->hasRole('DBS Unit')) {
-            $query->where('status_approval_training_id', 4);
+            $query->where('status_approval_training_id', 6);
         }
     
         $list = $query->orderBy('id', 'asc')->paginate(12);
@@ -288,9 +288,21 @@ class MonitoringController extends Controller
 
     public function destroy($id)
     {
-        $item = Training::find($id);
-        $item->delete();
+        $item = TrainingTemp::find($id);
 
+        if (!$item) {
+            Log::warning('Data training tidak ditemukan saat delete', ['id' => $id]);
+    
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak ditemukan.',
+            ], 404);
+        }
+    
+        $item->delete();
+    
+        Log::info('Data training berhasil dihapus', ['id' => $id]);
+    
         return response()->json([
             'status' => 'success',
             'message' => 'Data berhasil dihapus!',
@@ -316,6 +328,7 @@ class MonitoringController extends Controller
             'estimasi_total_biaya' => 'nullable|numeric',
             'jenis_portofolio' => 'nullable',
             'alasan' => 'nullable',
+            'jenis_pelatihan' => 'nullable',
             'start_date' => 'nullable',
             'end_date' => 'nullable',
         ]);
@@ -402,6 +415,7 @@ class MonitoringController extends Controller
             'SDM Unit'   => 2,
             'GM/VP Unit' => 3,
             'VP DHC'     => 4,
+            'DBS Unit'     => 2,
         ];
 
         if (!isset($statusMap[$role])) {

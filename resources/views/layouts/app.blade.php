@@ -156,15 +156,22 @@
         <div id="nav-training" class="nav-children {{ $trOpen ? 'open' : '' }}" data-accordion-panel="nav-training">
           @if($isSuper || $user?->can('training.view'))
           <a class="nav-item nav-child {{ request()->routeIs('training.dashboard')?'active':'' }}"
-             href="{{ Rt::has('training.dashboard') ? route('training.dashboard') : '#' }}">
+             href="{{ Route::has('training.dashboard') ? route('training.dashboard') : '#' }}">
             <span class="icon">📈</span><span class="label">Dashboard</span>
           </a>
           @endif
 
           @if($isSuper || $user?->can('training.view'))
           <a class="nav-item nav-child {{ request()->routeIs('training.monitoring')?'active':'' }}"
-             href="{{ Rt::has('training.monitoring') ? route('training.monitoring') : '#' }}">
-            <span class="icon">📈</span><span class="label">Monitoring</span>
+             href="{{ Route::has('training.monitoring') ? route('training.monitoring') : '#' }}">
+            <span class="icon">📈</span><span class="label">Training Request</span>
+          </a>
+          @endif
+
+          @if($isSuper || $user?->can('training.view'))
+          <a class="nav-item nav-child {{ request()->routeIs('training.self-learning')?'active':'' }}"
+             href="{{ Route::has('training.self-learning') ? route('training.self-learning') : '#' }}">
+            <span class="icon">📈</span><span class="label">Self Learning</span>
           </a>
           @endif
 
