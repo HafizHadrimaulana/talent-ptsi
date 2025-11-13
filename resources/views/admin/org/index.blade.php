@@ -15,18 +15,16 @@
       <div class="u-flex u-gap-sm">
         {{-- Add Unit (icon only, kecil & compact) --}}
         <button type="button"
-                class="u-btn u-btn--brand u-btn--sm u-hover-lift"
-                style="min-height:30px;padding:.25rem .5rem;border-radius:999px;"
+                class="u-btn u-btn--brand u-btn--sm u-btn--chip u-hover-lift"
                 data-modal-open="modalCreateUnit"
-                title="Add Unit">+
+                title="Add Unit">
           <i class="fa fa-sitemap u-text-xs"></i>
         </button>
         {{-- Add Directorate (icon only, kecil & compact) --}}
         <button type="button"
-                class="u-btn u-btn--brand u-btn--sm u-hover-lift"
-                style="min-height:30px;padding:.25rem .5rem;border-radius:999px;"
+                class="u-btn u-btn--brand u-btn--sm u-btn--chip u-hover-lift"
                 data-modal-open="modalCreateDir"
-                title="Add Directorate">+
+                title="Add Directorate">
           <i class="fa fa-building u-text-xs"></i>
         </button>
       </div>
@@ -72,23 +70,20 @@
     @endphp
 
     {{-- FLEX WRAP: 3 kolom kira-kira di desktop --}}
-    <div id="treeWrap"
-         class="u-flex"
-         style="flex-wrap:wrap;gap:var(--space-md);max-height:60vh;overflow-y:auto;padding-bottom:.25rem;">
+    <div id="treeWrap" class="u-tree-wrap">
 
       {{-- Unassigned units column (jadi card pertama) --}}
       @if($unassigned->count())
-        <div class="u-item ios-glass"
-             data-drop-dir=""
-             style="flex:1 1 calc(33.333% - var(--space-md));min-width:260px;">
-          <div class="u-flex u-justify-between u-items-center u-mb-xs">
-            <div class="u-font-semibold u-text-sm md:u-text-base">
+        <div class="u-item ios-glass u-tree-col" data-drop-dir="">
+          <div class="u-tree-head">
+            <div class="u-tree-title">
               Unassigned Units
             </div>
           </div>
+
           <ul class="u-list u-mt-xs">
             @foreach($unassigned as $u)
-              <li class="u-item u-flex u-justify-between u-items-center u-py-sm u-px-sm u-hover-lift"
+              <li class="u-item u-tree-unit u-flex u-justify-between u-items-center u-hover-lift"
                   draggable="true"
                   data-unit-id="{{ $u->id }}"
                   data-unit-code="{{ $u->code }}"
@@ -102,11 +97,10 @@
                   </span>
                 </div>
                 @canany(['org.create','org.update','org.delete'])
-                  <div class="u-flex" style="gap:4px;">
+                  <div class="u-tree-actions">
                     {{-- Edit --}}
                     <button type="button"
-                            class="u-btn u-btn--sm u-btn--outline"
-                            style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                            class="u-btn u-btn--sm u-btn--outline u-btn--chip"
                             data-modal-open="modalEditUnit"
                             data-unit-id="{{ $u->id }}"
                             data-unit-code="{{ $u->code }}"
@@ -117,8 +111,7 @@
                     </button>
                     {{-- Reassign --}}
                     <button type="button"
-                            class="u-btn u-btn--sm u-btn--ghost"
-                            style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                            class="u-btn u-btn--sm u-btn--ghost u-btn--chip"
                             data-reassign-unit="{{ $u->id }}"
                             data-unit-code="{{ $u->code }}"
                             data-unit-name="{{ $u->name }}"
@@ -132,8 +125,7 @@
                           class="u-inline"
                           onsubmit="return confirm('Delete this unit?')">
                       @csrf @method('delete')
-                      <button class="u-btn u-btn--sm u-btn--ghost u-danger"
-                              style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                      <button class="u-btn u-btn--sm u-btn--ghost u-btn--chip u-danger"
                               type="submit"
                               title="Delete Unit">
                         <i class="fas fa-trash u-text-xs"></i>
@@ -149,22 +141,19 @@
 
       {{-- Direktorat sebagai card grid (akan wrap 3-per-row) --}}
       @forelse($dirs as $d)
-        <div class="u-item ios-glass"
-             data-drop-dir="{{ $d->id }}"
-             style="flex:1 1 calc(33.333% - var(--space-md));min-width:260px;">
-          <div class="u-flex u-justify-between u-items-center u-mb-xs">
-            <div class="u-font-semibold u-text-sm md:u-text-base">
+        <div class="u-item ios-glass u-tree-col" data-drop-dir="{{ $d->id }}">
+          <div class="u-tree-head">
+            <div class="u-tree-title">
               @if($d->code)
                 <span class="u-badge u-badge--glass u-mr-xs">{{ $d->code }}</span>
               @endif
               {{ $d->name }}
             </div>
             @canany(['org.create','org.update','org.delete'])
-              <div class="u-flex" style="gap:4px;">
+              <div class="u-tree-actions">
                 {{-- Edit dir (icon kecil & compact) --}}
                 <button type="button"
-                        class="u-btn u-btn--sm u-btn--outline"
-                        style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                        class="u-btn u-btn--sm u-btn--outline u-btn--chip"
                         data-modal-open="modalEditDir"
                         data-dir-id="{{ $d->id }}"
                         data-dir-code="{{ $d->code }}"
@@ -178,8 +167,7 @@
                       class="u-inline"
                       onsubmit="return confirm('Delete this directorate?')">
                   @csrf @method('delete')
-                  <button class="u-btn u-btn--sm u-btn--ghost u-danger"
-                          style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                  <button class="u-btn u-btn--sm u-btn--ghost u-btn--chip u-danger"
                           type="submit"
                           title="Delete Directorate">
                     <i class="fas fa-trash u-text-xs"></i>
@@ -196,7 +184,7 @@
           @else
             <ul class="u-list u-mt-xs">
               @foreach($rows as $u)
-                <li class="u-item u-flex u-justify-between u-items-center u-py-sm u-px-sm u-hover-lift"
+                <li class="u-item u-tree-unit u-flex u-justify-between u-items-center u-hover-lift"
                     draggable="true"
                     data-unit-id="{{ $u->id }}"
                     data-unit-code="{{ $u->code }}"
@@ -210,11 +198,10 @@
                     </span>
                   </div>
                   @canany(['org.create','org.update','org.delete'])
-                    <div class="u-flex" style="gap:4px;">
+                    <div class="u-tree-actions">
                       {{-- Edit unit --}}
                       <button type="button"
-                              class="u-btn u-btn--sm u-btn--outline"
-                              style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                              class="u-btn u-btn--sm u-btn--outline u-btn--chip"
                               data-modal-open="modalEditUnit"
                               data-unit-id="{{ $u->id }}"
                               data-unit-code="{{ $u->code }}"
@@ -223,25 +210,23 @@
                               title="Edit Unit">
                         <i class="fas fa-pen u-text-xs"></i>
                       </button>
-                      {{-- Reassign --}}
+                      <!-- {{-- Reassign --}}
                       <button type="button"
-                              class="u-btn u-btn--sm u-btn--ghost"
-                              style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                              class="u-btn u-btn--sm u-btn--ghost u-btn--chip"
                               data-reassign-unit="{{ $u->id }}"
                               data-unit-code="{{ $u->code }}"
                               data-unit-name="{{ $u->name }}"
                               data-unit-dir="{{ $d->id }}"
                               title="Reassign Unit">
                         <i class="fas fa-random u-text-xs"></i>
-                      </button>
+                      </button> -->
                       {{-- Delete --}}
                       <form method="post"
                             action="{{ route('admin.org.units.destroy',$u->id) }}"
                             class="u-inline"
                             onsubmit="return confirm('Delete this unit?')">
                         @csrf @method('delete')
-                        <button class="u-btn u-btn--sm u-btn--ghost u-danger"
-                                style="min-height:26px;padding:.15rem .45rem;border-radius:999px;"
+                        <button class="u-btn u-btn--sm u-btn--ghost u-btn--chip u-danger"
                                 type="submit"
                                 title="Delete Unit">
                           <i class="fas fa-trash u-text-xs"></i>
@@ -281,8 +266,7 @@
       <div class="u-modal__head">
         <div class="u-title">Add Directorate</div>
         <button type="button"
-                class="u-btn u-btn--sm u-btn--ghost"
-                style="min-height:30px;padding:.25rem .5rem;border-radius:999px;"
+                class="u-btn u-btn--sm u-btn--ghost u-btn--chip"
                 data-modal-close
                 aria-label="Close">
           <i class="fas fa-times u-text-xs"></i>
@@ -316,8 +300,7 @@
       <div class="u-modal__head">
         <div class="u-title">Edit Directorate</div>
         <button type="button"
-                class="u-btn u-btn--sm u-btn--ghost"
-                style="min-height:30px;padding:.25rem .5rem;border-radius:999px;"
+                class="u-btn u-btn--sm u-btn--ghost u-btn--chip"
                 data-modal-close
                 aria-label="Close">
           <i class="fas fa-times u-text-xs"></i>
@@ -352,8 +335,7 @@
       <div class="u-modal__head">
         <div class="u-title">Add Unit</div>
         <button type="button"
-                class="u-btn u-btn--sm u-btn--ghost"
-                style="min-height:30px;padding:.25rem .5rem;border-radius:999px;"
+                class="u-btn u-btn--sm u-btn--ghost u-btn--chip"
                 data-modal-close
                 aria-label="Close">
           <i class="fas fa-times u-text-xs"></i>
@@ -396,8 +378,7 @@
       <div class="u-modal__head">
         <div class="u-title">Edit Unit</div>
         <button type="button"
-                class="u-btn u-btn--sm u-btn--ghost"
-                style="min-height:30px;padding:.25rem .5rem;border-radius:999px;"
+                class="u-btn u-btn--sm u-btn--ghost u-btn--chip"
                 data-modal-close
                 aria-label="Close">
           <i class="fas fa-times u-text-xs"></i>
