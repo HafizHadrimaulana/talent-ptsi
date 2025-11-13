@@ -95,13 +95,18 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->middleware('permission:training.view')->name('dashboard');
         Route::get('dashboard/data-evaluation', [TrainingDashboardController::class,'getDataEvaluation'])
             ->name('dashboard.data-evaluation');
+
+        Route::get('dashboard/{id}/detail-evaluation', [TrainingDashboardController::class,'getDataEvaluationByID'])
+            ->name('dashboard.detail-evaluation');
+
         Route::post('dashboard/input-evaluation', [TrainingDashboardController::class,'inputEvaluation'])
         ->name('dashboard.input-evaluation');
-        Route::post('training/dashboard/{id}/update-jenis-pelatihan', [TrainingDashboardController::class,'updateJenisPelatihan'])
+        Route::post('dashboard/{id}/update-jenis-pelatihan', [TrainingDashboardController::class,'updateJenisPelatihan'])
         ->name('dashboard.update-jenis-pelatihan');
 
-        Route::get('dashboard/{id}/data-upload-certif', [TrainingDashboardController::class,'getDataUploadCertif'])
-            ->name('dashboard.data-upload-certif');
+        Route::get('dashboard/{id}/get-detail-evaluation', [TrainingDashboardController::class,'getDetailEvaluation'])
+            ->name('dashboard.get-detail-evaluation');
+
         Route::post('dashboard/upload-certif-evaluation', [TrainingDashboardController::class,'uploadCertifEvaluation'])
             ->name('dashboard.upload-certif-evaluation');
         Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
@@ -136,6 +141,10 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');
         
+        // Self Learning
+        Route::get('self-learning', fn () => view('training.self-learning.index'))
+            ->middleware('permission:training.view')->name('self-learning');
+
         // Principal Approval
         Route::get('principal-approval', fn () => view('training.principal-approval.principal-approval'))
             ->middleware('permission:training.view')->name('principal-approval');
