@@ -250,9 +250,20 @@ class SyncSitmsMasterJob implements ShouldQueue
         $personId = self::ensurePersonIdForRow($row, $existingPersonId);
 
         [$hbProv, $hbCity] = self::sitmsParseHomeBase(self::nullIfEmpty($row['home_base'] ?? null));
-        $directorateId     = self::sitmsEnsureLookupId('directorates', self::nullIfEmpty($row['directorat_name'] ?? null));
-        $unitId            = self::sitmsEnsureLookupId('units',        self::nullIfEmpty($row['working_unit_name'] ?? null));
-        $positionId        = self::sitmsEnsureLookupId('positions',    self::nullIfEmpty($row['position_name'] ?? null));
+
+        // === ensure directorate ===
+        $directorateName = self::nullIfEmpty($row['directorat_name'] ?? null);
+        $directorateId   = self::sitmsEnsureLookupId('directorates', $directorateName);
+
+        // === ensure unit (dengan normalisasi code + set directorate_id) ===
+        $unitName = self::nullIfEmpty($row['working_unit_name'] ?? null);
+        $unitId   = self::sitmsEnsureLookupId('units', $unitName, [
+            'directorate_id'       => $directorateId,
+            'normalize_unit_code'  => true,
+        ]);
+
+        // === positions & others ===
+        $positionId        = self::sitmsEnsureLookupId('positions', self::nullIfEmpty($row['position_name'] ?? null));
         $positionLevelId   = self::sitmsEnsureLookupId('position_levels', self::nullIfEmpty($row['position_level_name'] ?? null));
         $locationId        = self::sitmsEnsureLocationId(
             self::nullIfEmpty($row['location_name'] ?? null),
@@ -293,7 +304,6 @@ class SyncSitmsMasterJob implements ShouldQueue
             if (is_string($v)) $apiFlat[$k] = self::cut($v);
         }
 
-        // profile_picture_url => employees.profile_photo_url (kalau ada kolom)
         if (!empty($apiFlat['profile_picture_url']) && in_array('profile_photo_url', $colsEmp, true)) {
             $minimal['profile_photo_url'] = self::cut($apiFlat['profile_picture_url'], 500);
         }
@@ -301,17 +311,13 @@ class SyncSitmsMasterJob implements ShouldQueue
         $apiFlat = self::filterColumns('employees', $apiFlat);
         unset($apiFlat['id']);
 
-        // push email ke employees juga (kalau kolom ada)
         if (isset($row['email']) && in_array('email', $colsEmp, true)) {
             $apiFlat['email'] = self::cut($row['email'], 150);
         }
 
         $payload = array_merge($apiFlat, $minimal);
         if (in_array('updated_at', $colsEmp, true)) $payload['updated_at'] = $now;
-        if (
-            !DB::table('employees')->where('person_id', $personId)->exists()
-            && in_array('created_at', $colsEmp, true)
-        ) {
+        if (!DB::table('employees')->where('person_id', $personId)->exists() && in_array('created_at', $colsEmp, true)) {
             $payload['created_at'] = $now;
         }
         $payload = self::filterColumns('employees', $payload);
@@ -903,42 +909,171 @@ class SyncSitmsMasterJob implements ShouldQueue
         ], $row);
     }
 
-    /* ==================== LOOKUP & LOCATION (helpers yang hilang) ==================== */
+    /* ==================== LOOKUP & LOCATION ==================== */
     protected static function sitmsEnsureLookupId(string $table, ?string $name, array $extras = []): ?int
     {
         $name = self::nullIfEmpty($name);
         if (!$name || !Schema::hasTable($table)) return null;
 
         $cols = self::tableColumns($table);
+
+        // Cari existing by LOWER(name)
+        $existing = null;
         if (in_array('name', $cols, true)) {
-            $id = DB::table($table)->whereRaw('LOWER(`name`) = ?', [mb_strtolower($name)])->value('id');
-            if ($id) return (int)$id;
+            $existing = DB::table($table)->whereRaw('LOWER(`name`) = ?', [mb_strtolower($name)])->first();
         }
+
+        // === KHUSUS UNITS: normalisasi code & set directorate_id ===
+        if ($table === 'units') {
+            $codeMap = self::unitCodeMap();
+            $wantCode = $codeMap[$name] ?? null;
+            $dirId    = $extras['directorate_id'] ?? null;
+            $now      = now();
+
+            if ($existing) {
+                $upd = [];
+
+                if ($dirId && in_array('directorate_id', $cols, true)) {
+                    // isi kalau kosong atau berbeda
+                    if (empty($existing->directorate_id) || (int)$existing->directorate_id !== (int)$dirId) {
+                        $upd['directorate_id'] = $dirId;
+                    }
+                }
+
+                if (!empty($extras['normalize_unit_code']) && in_array('code', $cols, true)) {
+                    $currentCode = (string)($existing->code ?? '');
+                    $needNormalize = ($wantCode && $currentCode !== $wantCode)
+                                   || ($currentCode === '' || str_starts_with($currentCode, '__TMP__') || str_starts_with($currentCode, '__DUP__'));
+
+                    if ($needNormalize) {
+                        $finalCode = $wantCode ?: self::autoCodeFromName($name);
+                        $finalCode = self::ensureUniqueCode($table, $finalCode, (int)$existing->id);
+                        if ($finalCode !== $currentCode) {
+                            $upd['code'] = $finalCode;
+                        }
+                    }
+                }
+
+                if (!empty($upd)) {
+                    if (in_array('updated_at', $cols, true)) $upd['updated_at'] = $now;
+                    DB::table($table)->where('id', $existing->id)->update($upd);
+                }
+
+                return (int)$existing->id;
+            }
+
+            // Insert baru
+            $row = [];
+            if (in_array('name', $cols, true)) $row['name'] = self::cut($name);
+            if (in_array('code', $cols, true)) {
+                $code = $wantCode ?: self::autoCodeFromName($name);
+                $code = self::ensureUniqueCode($table, $code, null);
+                $row['code'] = $code;
+            }
+            if ($dirId && in_array('directorate_id', $cols, true)) $row['directorate_id'] = $dirId;
+            if (in_array('created_at', $cols, true)) $row['created_at'] = $now;
+            if (in_array('updated_at', $cols, true)) $row['updated_at'] = $now;
+
+            if (empty($row)) return null;
+            return DB::table($table)->insertGetId($row);
+        }
+
+        // === tabel lookup umum ===
+        if ($existing) return (int)$existing->id;
 
         $baseCode = Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]/', '', $name), 0, 10));
         $code = $baseCode;
-        $counter = 1;
+        $now  = now();
 
         if (in_array('code', $cols, true)) {
-            while (DB::table($table)->where('code', $code)->exists()) {
-                $code = $baseCode . $counter;
-                $counter++;
-                if ($counter > 100) {
-                    $code = $baseCode . '_' . Str::random(4);
-                    break;
-                }
-            }
+            $code = self::ensureUniqueCode($table, $baseCode, null);
         }
 
         $row = [];
         if (in_array('name', $cols, true)) $row['name'] = self::cut($name);
         if (in_array('code', $cols, true)) $row['code'] = $code;
-        if (in_array('created_at', $cols, true)) $row['created_at'] = now();
-        if (in_array('updated_at', $cols, true)) $row['updated_at'] = now();
+        if (in_array('created_at', $cols, true)) $row['created_at'] = $now;
+        if (in_array('updated_at', $cols, true)) $row['updated_at'] = $now;
 
         if (empty($row)) return null;
-
         return DB::table($table)->insertGetId($row);
+    }
+
+    protected static function ensureUniqueCode(string $table, string $base, ?int $ignoreId = null): string
+    {
+        $candidate = $base;
+        $i = 1;
+        while (DB::table($table)
+            ->when($ignoreId, fn($q) => $q->where('id', '<>', $ignoreId))
+            ->where('code', $candidate)->exists()) {
+            $candidate = $base . $i;
+            $i++;
+            if ($i > 100) {
+                $candidate = $base . '_' . Str::upper(Str::random(4));
+                break;
+            }
+        }
+        return $candidate;
+    }
+
+    protected static function autoCodeFromName(string $name): string
+    {
+        return Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]/', '', $name), 0, 10));
+    }
+
+    protected static function unitCodeMap(): array
+    {
+        return [
+            // Head Office
+            'SI Head Office' => 'SIHO',
+
+            // DBS
+            'Divisi Bisnis Strategis Oil, Gas and Renewable Energy' => 'DBSOGRE',
+            'Divisi Bisnis Strategis Coal and Mineral'              => 'DBSCNM',
+            'Divisi Bisnis Strategis Government and Institution'    => 'DBSGNI',
+            'Divisi Bisnis Strategis Industrial Services'           => 'DBSINS',
+            'Divisi Bisnis Strategis Infrastructure and Transportation' => 'DBSINT',
+            'Divisi Bisnis Strategis Sustainability and Environment'    => 'DBSSNE',
+
+            // Cabang
+            'Cabang Jakarta'     => 'SIJAK',
+            'Cabang Surabaya'    => 'SISUB',
+            'Cabang Makassar'    => 'SIMAK',
+            'Cabang Batam'       => 'SIBAT',
+            'Cabang Balikpapan'  => 'SIBPP',
+            'Cabang Medan'       => 'SIMED',
+            'Cabang Palembang'   => 'SIPAL',
+            'Cabang Pekanbaru'   => 'SIPKU',
+            'Cabang Semarang'    => 'SISMA',
+            'Cabang Singapura'   => 'SISG',
+            'Cabang Banjarbaru'  => 'SIBJB',
+            'Cabang Samarinda'   => 'SISMD',
+            'Cabang Tanjung Redeb' => 'SITJR',
+            'Cabang Berau'       => 'SIBER',
+            'Cabang Gresik'      => 'SIGRS',
+            'Cabang Sangatta'    => 'SISGT',
+            'Cabang Banjarmasin' => 'SIBJM',
+            'Cabang Tanjung'     => 'SITJG',
+
+            // Enabler / Pusat
+            'Sekretariat Perusahaan'                           => 'SP',
+            'Satuan Pengawasan Intern'                         => 'SPI',
+            'Divisi Riset, Pemasaran dan Pengembangan Bisnis'  => 'DRP2B',
+            'Divisi Operasi'                                   => 'DOP',
+            'Divisi Keuangan dan Akuntansi'                    => 'DKA',
+            'Divisi Perencanaan Korporat dan Manajemen Risiko' => 'DPKMR',
+            'Divisi Manajemen Aset'                            => 'DMA',
+            'Divisi Human Capital'                             => 'DHC',
+            'Divisi Teknologi Informasi'                       => 'DTI',
+            'Strategic Transformation Office'                  => 'STO',
+            'Unit Tanggung Jawab Sosial dan Lingkungan'        => 'UTJSL',
+
+            // Entitas terkait
+            'PT BKI (Persero) - Penugasan'                     => 'PENUGASKAR',
+            'PT Surveyor Indonesia Sertifikasi'                => 'PTINPSEKSI',
+            'KSO SCI-SI'                                       => 'KSOSCSI',
+            'SCCI'                                             => 'SCCI',
+        ];
     }
 
     protected static function sitmsEnsureLocationId(?string $locationName, ?string $city, ?string $province): ?int

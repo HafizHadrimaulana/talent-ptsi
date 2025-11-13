@@ -25,7 +25,7 @@ class RolesPermissionsSeeder extends Seeder
             //    Pindahkan pivots lalu hapus duplikat (idempotent)
             // ============================================================
             $permGroups = DB::table('permissions')
-                ->select('name','guard_name', DB::raw('MIN(id) keep_id'), DB::raw('COUNT(*) cnt'))
+                ->select('name','guard_name', DB::raw('MIN(id) as keep_id'), DB::raw('COUNT(*) as cnt'))
                 ->groupBy('name','guard_name')
                 ->having('cnt','>',1)
                 ->get();
@@ -72,7 +72,7 @@ class RolesPermissionsSeeder extends Seeder
                     return Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
                 }
 
-                $keepId = $rows->first()->id;
+                $keepId  = $rows->first()->id;
                 $dropIds = $rows->pluck('id')->filter(fn ($id) => $id !== $keepId)->values();
 
                 if ($dropIds->isNotEmpty()) {
@@ -81,7 +81,9 @@ class RolesPermissionsSeeder extends Seeder
                     DB::table('roles')->whereIn('id', $dropIds)->delete();
                 }
 
-                return Role::query()->findOrFail($keepId);
+                /** @var Role $role */
+                $role = Role::query()->findOrFail($keepId);
+                return $role;
             };
 
             // ============================================================
@@ -93,9 +95,9 @@ class RolesPermissionsSeeder extends Seeder
                 $role[$rn] = $keepRole($rn);
             }
 
-            // (Tambahan safety) Jika masih ada nama role yang dobel, konsolidasi ulang
+            // (Safety) Bila masih ada nama role yang dobel, konsolidasi ulang
             $roleGroups = DB::table('roles')
-                ->select('name','guard_name', DB::raw('COUNT(*) cnt'))
+                ->select('name','guard_name', DB::raw('COUNT(*) as cnt'))
                 ->groupBy('name','guard_name')
                 ->having('cnt','>',1)
                 ->get();
@@ -105,7 +107,7 @@ class RolesPermissionsSeeder extends Seeder
             }
 
             // ============================================================
-            // E) Ensure PERMISSIONS exist
+            // E) Ensure PERMISSIONS exist (tambahkan org.*)
             // ============================================================
             $perms = [
                 // Users / RBAC
@@ -114,6 +116,9 @@ class RolesPermissionsSeeder extends Seeder
 
                 // Directory / Employees
                 'employees.view',
+
+                // Organization Master (Directorates & Units)
+                'org.view','org.create','org.update','org.delete',
 
                 // Recruitment
                 'recruitment.view','recruitment.create','recruitment.update',
@@ -128,6 +133,7 @@ class RolesPermissionsSeeder extends Seeder
                 // Reports
                 'reports.export',
             ];
+
             foreach ($perms as $p) {
                 Permission::firstOrCreate(['name' => $p, 'guard_name' => 'web']);
             }
@@ -142,6 +148,7 @@ class RolesPermissionsSeeder extends Seeder
             $role['DHC']->syncPermissions([
                 'users.view','rbac.view','rbac.assign',
                 'employees.view',
+                'org.view','org.create','org.update','org.delete',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.approve','recruitment.reject',
                 'contract.view','contract.create','contract.update','contract.approve',
                 'training.view','reports.export',
@@ -150,6 +157,7 @@ class RolesPermissionsSeeder extends Seeder
             // Dir SDM — approver final
             $role['Dir SDM']->syncPermissions([
                 'employees.view',
+                'org.view','org.update',
                 'recruitment.view','recruitment.approve','recruitment.reject',
                 'contract.view','contract.approve',
                 'training.view','reports.export',
@@ -159,6 +167,7 @@ class RolesPermissionsSeeder extends Seeder
             $role['SDM Unit']->syncPermissions([
                 'users.view',
                 'employees.view',
+                'org.view','org.create','org.update',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit',
                 'contract.view','contract.create','contract.update',
                 'training.view','reports.export',
@@ -167,6 +176,7 @@ class RolesPermissionsSeeder extends Seeder
             // Kepala Unit — approver tahap 1 (unit-scoped)
             $role['Kepala Unit']->syncPermissions([
                 'employees.view',
+                'org.view',
                 'recruitment.view','recruitment.approve','recruitment.reject',
                 'contract.view','contract.approve',
                 'training.view',
