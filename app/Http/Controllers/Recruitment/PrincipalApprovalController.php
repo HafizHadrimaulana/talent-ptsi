@@ -7,23 +7,104 @@ use App\Models\RecruitmentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PrincipalApprovalController extends Controller
 {
-    public function index()
+    protected function stages(): array
     {
-        /** @var \App\Models\User|null $me */
-        $me = Auth::user();
-
-        $list = RecruitmentRequest::query()
-            ->forViewer($me)   // biar Intelephense paham: variabel bertipe User|null
-            ->latest()
-            ->paginate(12);
-
-        return view('recruitment.principal-approval.index', compact('list'));
+        return [
+            ['key' => 'kepala_unit', 'roles' => ['Kepala Unit']],
+            ['key' => 'dhc_checker', 'roles' => ['DHC']],
+            ['key' => 'dir_sdm',     'roles' => ['Dir SDM']],
+        ];
     }
 
-    // CREATE via modal (same page)
+    protected function canSeeAll($user): bool
+    {
+        return $user?->hasRole('Superadmin') || $user?->hasRole('DHC') || $user?->hasRole('Dir SDM');
+    }
+
+    protected function dhcUnitId(): ?int
+    {
+        static $cache = null;
+        if ($cache !== null) return $cache;
+
+        $cache = DB::table('units')->where(function($q){
+            $q->where('code', 'DHC')
+              ->orWhere('name', 'Divisi Human Capital')
+              ->orWhere('name', 'like', 'Divisi Human Capital%');
+        })->value('id');
+
+        return $cache ? (int)$cache : null;
+    }
+
+    protected function has(string $table, string $col): bool
+    {
+        try { return Schema::hasColumn($table, $col); } catch (\Throwable $e) { return false; }
+    }
+
+    public function index(Request $r)
+    {
+        $me = Auth::user();
+        $tbl = (new RecruitmentRequest())->getTable();
+
+        $canSeeAll = $this->canSeeAll($me);
+
+        $selectedUnitId = $canSeeAll
+            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
+            : (int) ($me?->unit_id);
+
+        $units = $canSeeAll
+            ? DB::table('units')->select('id','name')->orderBy('name')->get()
+            : DB::table('units')->select('id','name')->where('id', $me?->unit_id)->get();
+
+        $query = RecruitmentRequest::query();
+
+        if (!$canSeeAll) {
+            $isKepalaUnit = $me?->hasRole('Kepala Unit');
+
+            $query->where(function($q) use ($me, $tbl, $isKepalaUnit) {
+                $q->where('unit_id', $me->unit_id);
+
+                $q->where(function($qq) use ($tbl, $me, $isKepalaUnit) {
+                    $qq->whereNull('status')->orWhere('status', '!=', 'draft');
+
+                    $creatorCols = ['requested_by','requested_by_user_id','created_by','created_by_user_id'];
+                    $qq->orWhere(function($qDraft) use ($tbl, $creatorCols, $me, $isKepalaUnit) {
+                        $qDraft->where('status', 'draft');
+
+                        if ($isKepalaUnit) {
+                            $qDraft->whereRaw('1 = 0');
+                        } else {
+                            $qDraft->where(function($qOwner) use ($tbl, $creatorCols) {
+                                foreach ($creatorCols as $c) {
+                                    if (Schema::hasColumn($tbl, $c)) {
+                                        $qOwner->orWhere($c, Auth::id());
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+        }
+
+        if ($selectedUnitId && $this->has($tbl, 'unit_id')) {
+            $query->where('unit_id', $selectedUnitId);
+        }
+
+        $list = $query->with(['approvals' => fn($q) => $q->orderBy('id','asc')])
+                      ->latest()->paginate(12)->withQueryString();
+
+        return view('recruitment.principal-approval.index', [
+            'list'           => $list,
+            'units'          => $units,
+            'canSeeAll'      => $canSeeAll,
+            'selectedUnitId' => $selectedUnitId,
+        ]);
+    }
+
     public function store(Request $r)
     {
         $data = $r->validate([
@@ -33,44 +114,36 @@ class PrincipalApprovalController extends Controller
             'justification' => 'nullable|string',
         ]);
 
-        /** @var \App\Models\User|null $me */
         $me   = Auth::user();
         $meId = Auth::id();
 
         $model = new RecruitmentRequest();
         $tbl   = $model->getTable();
 
-        // helper untuk ambil kolom pertama yang ada di tabel
         $pick = function(array $cands) use ($tbl) {
             foreach ($cands as $c) if (Schema::hasColumn($tbl, $c)) return $c;
             return null;
         };
 
         $insert = [];
+        if ($this->has($tbl, 'unit_id')) $insert['unit_id'] = $me?->unit_id;
+        if ($this->has($tbl, 'status'))  $insert['status']  = 'draft';
 
-        // kolom meta yang umum
-        if (Schema::hasColumn($tbl, 'unit_id'))  $insert['unit_id'] = $me?->unit_id;
-        if (Schema::hasColumn($tbl, 'status'))   $insert['status']  = 'draft';
-
-        // requested_by fallback ke varian lain
         if ($col = $pick(['requested_by','requested_by_user_id','created_by','created_by_user_id'])) {
             $insert[$col] = $meId;
         }
 
-        // map field logis -> kemungkinan nama kolom di DB
         $map = [
             'title'         => ['title','job_title','name'],
             'position'      => ['position','position_name','job_title'],
             'headcount'     => ['headcount','requested_headcount','qty'],
             'justification' => ['justification','reason','notes','note','description'],
         ];
-        foreach ($map as $logical => $cands) {
-            if (!array_key_exists($logical, $data)) continue;
-            if ($data[$logical] === null || $data[$logical] === '') continue;
-            if ($col = $pick($cands)) $insert[$col] = $data[$logical];
+        foreach ($map as $key => $cands) {
+            if (!array_key_exists($key, $data) || $data[$key] === null || $data[$key] === '') continue;
+            if ($col = $pick($cands)) $insert[$col] = $data[$key];
         }
 
-        // simpan aman dari mass-assignment
         $model->forceFill($insert)->save();
 
         return back()->with('ok', 'Principal approval draft created.');
@@ -80,153 +153,111 @@ class PrincipalApprovalController extends Controller
     {
         $this->authorizeUnit($req->unit_id);
 
-        // status guard
-        if (isset($req->status) && $req->status !== 'draft') {
+        if (($req->status ?? null) !== 'draft') {
             return back()->withErrors('Only DRAFT can be submitted.');
         }
 
-        // update status -> submitted kalau kolomnya ada
-        $tbl = $req->getTable();
-        if (Schema::hasColumn($tbl, 'status')) {
+        if (Schema::hasColumn($req->getTable(), 'status')) {
             $req->update(['status' => 'submitted']);
         }
 
-        // buat approval pertama (optional: hanya jika relasi & kolomnya ada)
-        if (method_exists($req, 'approvals')) {
-            try {
-                $rel = $req->approvals();
-                $apprModel = $rel->getRelated();
-                $apprTable = $apprModel->getTable();
-
-                if (Schema::hasTable($apprTable)) {
-                    $payload = [];
-
-                    // isi hanya kolom yang tersedia
-                    if (Schema::hasColumn($apprTable, 'level'))    $payload['level'] = 1;
-                    if (Schema::hasColumn($apprTable, 'step'))     $payload['step']  = 1; // alternatif
-                    if (Schema::hasColumn($apprTable, 'role_key')) $payload['role_key'] = 'vp_gm';
-                    if (Schema::hasColumn($apprTable, 'status'))   $payload['status'] = 'pending';
-                    if (Schema::hasColumn($apprTable, 'state'))    $payload['state']  = 'pending';
-
-                    if (!empty($payload)) {
-                        $m = $apprModel->newInstance();
-                        $m->forceFill($payload);
-                        $rel->save($m); // morph keys diisi otomatis
-                    }
-                }
-            } catch (\Throwable $e) {
-                // skip silently agar flow tetap lanjut
-            }
+        $this->createPendingApproval($req, 0);
+        if (Schema::hasColumn($req->getTable(), 'status')) {
+            $req->update(['status' => 'in_review']);
         }
 
-        return back()->with('ok', 'Submitted to VP/GM.');
+        return back()->with('ok', 'Submitted to Kepala Unit.');
     }
 
     public function approve(RecruitmentRequest $req, Request $r)
     {
-        $this->authorizeUnit($req->unit_id);
+        $stageIdx = $this->currentStageIndex($req);
+        if ($stageIdx === null) return back()->withErrors('No pending approval.');
+        if (!$this->canActOnStage(Auth::user(), $stageIdx, $req->unit_id)) abort(403);
 
-        if (isset($req->status) && $req->status !== 'submitted') {
-            return back()->withErrors('Only SUBMITTED can be approved.');
+        $this->closePending($req, 'approved', $r->input('note'));
+
+        $isLast = $stageIdx >= (count($this->stages()) - 1);
+        if ($isLast) {
+            if (Schema::hasColumn($req->getTable(), 'status')) $req->update(['status' => 'approved']);
+            return back()->with('ok', 'Request fully approved.');
         }
 
-        /** @var \App\Models\User|null $me */
-        $me   = Auth::user();
-        $meId = Auth::id();
-
-        // update status approved (kolom-kolom opsional)
-        $tbl = $req->getTable();
-        $changes = [];
-        if (Schema::hasColumn($tbl, 'status'))        $changes['status'] = 'approved';
-        if (Schema::hasColumn($tbl, 'approved_by'))   $changes['approved_by'] = $meId;
-        if (Schema::hasColumn($tbl, 'approved_at'))   $changes['approved_at'] = now();
-        if ($changes) $req->update($changes);
-
-        // update approval record pending -> approved
-        if (method_exists($req, 'approvals')) {
-            try {
-                $rel = $req->approvals();
-                $apprModel = $rel->getRelated();
-                $apprTable = $apprModel->getTable();
-                if (Schema::hasTable($apprTable)) {
-                    $q = $rel->getQuery();
-                    if (Schema::hasColumn($apprTable, 'status')) $q->where('status','pending');
-                    elseif (Schema::hasColumn($apprTable, 'state')) $q->where('state','pending');
-
-                    $apprChanges = [];
-                    if (Schema::hasColumn($apprTable, 'status'))    $apprChanges['status'] = 'approved';
-                    if (Schema::hasColumn($apprTable, 'state'))     $apprChanges['state']  = 'approved';
-                    if (Schema::hasColumn($apprTable, 'user_id'))   $apprChanges['user_id'] = $meId;
-                    if (Schema::hasColumn($apprTable, 'decided_at'))$apprChanges['decided_at'] = now();
-                    if (Schema::hasColumn($apprTable, 'note') && $r->filled('note')) $apprChanges['note'] = $r->note;
-
-                    if ($apprChanges) $q->latest()->first()?->update($apprChanges);
-                }
-            } catch (\Throwable $e) {
-                // skip
-            }
-        }
-
-        return back()->with('ok', 'Request approved.');
+        $this->createPendingApproval($req, $stageIdx + 1);
+        return back()->with('ok', 'Approved. Sent to next approver.');
     }
 
     public function reject(RecruitmentRequest $req, Request $r)
     {
-        $this->authorizeUnit($req->unit_id);
+        $stageIdx = $this->currentStageIndex($req);
+        if ($stageIdx === null) return back()->withErrors('No pending approval.');
+        if (!$this->canActOnStage(Auth::user(), $stageIdx, $req->unit_id)) abort(403);
 
-        if (isset($req->status) && $req->status !== 'submitted') {
-            return back()->withErrors('Only SUBMITTED can be rejected.');
-        }
-
-        /** @var \App\Models\User|null $me */
-        $me   = Auth::user();
-        $meId = Auth::id();
-
-        $tbl = $req->getTable();
-        if (Schema::hasColumn($tbl, 'status')) {
-            $req->update(['status' => 'rejected']);
-        }
-
-        if (method_exists($req, 'approvals')) {
-            try {
-                $rel = $req->approvals();
-                $apprModel = $rel->getRelated();
-                $apprTable = $apprModel->getTable();
-                if (Schema::hasTable($apprTable)) {
-                    $q = $rel->getQuery();
-                    if (Schema::hasColumn($apprTable, 'status')) $q->where('status','pending');
-                    elseif (Schema::hasColumn($apprTable, 'state')) $q->where('state','pending');
-
-                    $apprChanges = [];
-                    if (Schema::hasColumn($apprTable, 'status'))    $apprChanges['status'] = 'rejected';
-                    if (Schema::hasColumn($apprTable, 'state'))     $apprChanges['state']  = 'rejected';
-                    if (Schema::hasColumn($apprTable, 'user_id'))   $apprChanges['user_id'] = $meId;
-                    if (Schema::hasColumn($apprTable, 'decided_at'))$apprChanges['decided_at'] = now();
-                    if (Schema::hasColumn($apprTable, 'note') && $r->filled('note')) $apprChanges['note'] = $r->note;
-
-                    if ($apprChanges) $q->latest()->first()?->update($apprChanges);
-                }
-            } catch (\Throwable $e) {
-                // skip
-            }
-        }
+        $this->closePending($req, 'rejected', $r->input('note'));
+        if (Schema::hasColumn($req->getTable(), 'status')) $req->update(['status' => 'rejected']);
 
         return back()->with('ok', 'Request rejected.');
     }
 
+    protected function currentStageIndex(RecruitmentRequest $req): ?int
+    {
+        foreach ($req->approvals()->orderBy('id','asc')->get() as $i => $ap) {
+            if (($ap->status ?? 'pending') === 'pending') return $i;
+        }
+        return null;
+    }
+
+    protected function createPendingApproval(RecruitmentRequest $req, int $stageIdx): void
+    {
+        $rel = $req->approvals();
+        $m = $rel->getRelated()->newInstance();
+        $stageKey = $this->stages()[$stageIdx]['key'] ?? ('stage_'.$stageIdx);
+        $m->forceFill(['status' => 'pending', 'note' => "[stage={$stageKey}]"]);
+        $rel->save($m);
+    }
+
+    protected function closePending(RecruitmentRequest $req, string $status, ?string $note = null): void
+    {
+        $appr = $req->approvals()->where('status','pending')->latest('id')->first();
+        if ($appr) {
+            $payload = ['status' => $status, 'decided_at' => now(), 'approver_user_id' => Auth::id()];
+            if ($note) $payload['note'] = trim(($appr->note ? $appr->note.' ' : '').$note);
+            $appr->update($payload);
+        }
+    }
+
+    protected function canActOnStage($user, int $stageIdx, $reqUnitId): bool
+    {
+        if (!$user) return false;
+        if ($user->hasRole('Superadmin')) return true;
+
+        $stage = $this->stages()[$stageIdx] ?? null;
+        if (!$stage) return false;
+
+        $allowed = false;
+        foreach ($stage['roles'] as $r) {
+            if ($user->hasRole($r)) { $allowed = true; break; }
+        }
+
+        if ($stage['key'] === 'kepala_unit') {
+            return $allowed && ((string)$user->unit_id === (string)$reqUnitId);
+        }
+
+        if ($stage['key'] === 'dhc_checker') {
+            if ($allowed) return true;
+            $isKepalaUnit = $user->hasRole('Kepala Unit');
+            $isKepalaUnitDhc = $isKepalaUnit && $this->dhcUnitId() && ((string)$user->unit_id === (string)$this->dhcUnitId());
+            return $isKepalaUnitDhc;
+        }
+
+        return $allowed;
+    }
+
     protected function authorizeUnit($unitId): void
     {
-        /** @var \App\Models\User|null $me */
         $me = Auth::user();
-        $meUnit = $me?->unit_id;
-
-        // Superadmin selalu lolos; jika bukan, unit harus sama
-        if ($me && $me->hasRole('Superadmin')) {
-            return;
-        }
-
-        if ($meUnit && $unitId && (string)$meUnit !== (string)$unitId) {
-            abort(403);
-        }
+        if (!$me) abort(401);
+        if ($me->hasRole('Superadmin') || $me->hasRole('DHC') || $me->hasRole('Dir SDM')) return;
+        if ($me->unit_id && $unitId && (string)$me->unit_id !== (string)$unitId) abort(403);
     }
 }

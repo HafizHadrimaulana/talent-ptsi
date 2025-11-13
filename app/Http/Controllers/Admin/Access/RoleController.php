@@ -4,55 +4,173 @@ namespace App\Http\Controllers\Admin\Access;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class RoleController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $roles = Role::withCount('users')->orderBy('name')->paginate(20);
-        $permissions = Permission::orderBy('name')->get();
-        $grouped = $permissions->groupBy(fn($p)=>explode('.',$p->name)[0]);
+        /** @var PermissionRegistrar $reg */
+        $reg = app(PermissionRegistrar::class);
+        $teamId = $reg->getPermissionsTeamId() ?: (auth()->user()?->unit_id);
+
+        $q       = trim((string) $request->get('q', ''));
+        $perPage = (int) $request->integer('per_page', 10) ?: 10;
+
+        $rolesQuery = Role::query()
+            ->where('guard_name', 'web')
+            ->where(function ($w) use ($teamId) {
+                $w->whereNull('unit_id')->orWhere('unit_id', $teamId);
+            })
+            ->when($q !== '', function ($qq) use ($q) {
+                $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%';
+                $qq->where('name', 'like', $like);
+            })
+            ->select('*')
+            ->selectRaw('(
+                SELECT COUNT(DISTINCT mhr.model_id)
+                FROM model_has_roles AS mhr
+                WHERE mhr.role_id = roles.id
+                  AND mhr.model_type = ?
+                  AND (mhr.unit_id = ? OR (mhr.unit_id IS NULL AND roles.unit_id IS NULL))
+            ) AS users_count', [\App\Models\User::class, $teamId]);
+
+        $roles = $rolesQuery->orderBy('name', 'asc')->paginate($perPage)->withQueryString();
+
+        $allPerms = Permission::query()
+            ->where('guard_name', 'web')
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name']); // untuk tampilan cukup id+name
+
+        $groupedPerms = $allPerms->groupBy(function ($p) {
+            $parts = explode('.', $p->name, 2);
+            return $parts[0];
+        });
+
+        // permission-by-role (pakai name) -> untuk checked state
+        $permByRole = [];
+        foreach ($roles as $r) {
+            $names = DB::table('permissions')
+                ->join('role_has_permissions as rhp', 'permissions.id', '=', 'rhp.permission_id')
+                ->where('rhp.role_id', $r->id)
+                ->pluck('permissions.name');
+            $permByRole[$r->id] = $names->values()->all();
+        }
 
         return view('admin.roles.index', [
             'roles'        => $roles,
-            'groupedPerms' => $grouped,
-            'allPerms'     => $permissions->pluck('name')->all(),
+            'q'            => $q,
+            'groupedPerms' => $groupedPerms,
+            'permByRole'   => $permByRole,
         ]);
     }
 
     public function store(Request $request)
     {
+        // Terima 'permissions' atau 'perms', nilai boleh id (int) atau name (string)
         $data = $request->validate([
-            'name'          => 'required|string|unique:roles,name',
-            'permissions'   => 'array',
-            'permissions.*' => 'string'
+            'name'          => ['required', 'string', 'max:150'],
+            'unit_id'       => ['nullable', 'integer', 'exists:units,id'],
+            'guard'         => ['nullable', 'string', 'in:web'],
+            'permissions'   => ['sometimes', 'array'],
+            'permissions.*' => ['sometimes'],
+            'perms'         => ['sometimes', 'array'],
+            'perms.*'       => ['sometimes'],
         ]);
 
-        $role = Role::create(['name' => $data['name']]);
-        $role->syncPermissions($data['permissions'] ?? []);
+        /** @var PermissionRegistrar $reg */
+        $reg   = app(PermissionRegistrar::class);
+        $guard = $data['guard'] ?? 'web';
+        $teamId = $data['unit_id'] ?? ($reg->getPermissionsTeamId() ?: auth()->user()?->unit_id);
 
-        return back()->with('ok','Role created');
+        return DB::transaction(function () use ($request, $data, $guard, $teamId) {
+            $role = Role::firstOrCreate([
+                'name'       => $data['name'],
+                'guard_name' => $guard,
+                'unit_id'    => $teamId,
+            ]);
+
+            $permModels = $this->resolvePermissions($request, $guard);
+            $role->syncPermissions($permModels);
+
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            return back()->with('ok', 'Role saved.');
+        });
     }
 
     public function update(Request $request, Role $role)
     {
         $data = $request->validate([
-            'name'          => "required|string|unique:roles,name,{$role->id}",
-            'permissions'   => 'array',
-            'permissions.*' => 'string'
+            'name' => [
+                'required', 'string', 'max:150',
+                Rule::unique('roles', 'name')
+                    ->ignore($role->id)
+                    ->where(fn($q) => $q->where('guard_name', $role->guard_name)->where('unit_id', $role->unit_id)),
+            ],
+            'permissions'   => ['sometimes', 'array'],
+            'permissions.*' => ['sometimes'],
+            'perms'         => ['sometimes', 'array'],
+            'perms.*'       => ['sometimes'],
         ]);
 
-        $role->update(['name' => $data['name']]);
-        $role->syncPermissions($data['permissions'] ?? []);
+        return DB::transaction(function () use ($request, $role, $data) {
+            $role->name = $data['name'];
+            $role->save();
 
-        return back()->with('ok','Role updated');
+            // Pakai guard milik role agar konsisten
+            $permModels = $this->resolvePermissions($request, $role->guard_name ?? 'web');
+            $role->syncPermissions($permModels);
+
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            return back()->with('ok', 'Role updated.');
+        });
     }
 
-    public function destroy(Role $role)
+    /**
+     * Resolve permission input (id atau name) -> koleksi Permission TERPILIH saja.
+     * - Pastikan guard_name terisi (select guard_name).
+     * - Group orWhereIn DI DALAM where(...) agar tidak "nyapu" semua permission.
+     */
+    protected function resolvePermissions(Request $request, string $guard = 'web')
     {
-        $role->delete();
-        return back()->with('ok','Role deleted');
+        $keys = $request->input('permissions', $request->input('perms', []));
+        if (empty($keys)) {
+            return collect();
+        }
+
+        $ids   = [];
+        $names = [];
+        foreach ($keys as $k) {
+            if (is_numeric($k)) {
+                $ids[] = (int) $k;
+            } else {
+                $names[] = (string) $k;
+            }
+        }
+
+        // Ambil guard yang benar + hanya yang dipilih; SELECT guard_name agar tidak null di Spatie
+        return Permission::query()
+            ->where('guard_name', $guard)
+            ->where(function ($q) use ($ids, $names) {
+                $hasAny = false;
+                if (!empty($ids)) {
+                    $q->orWhereIn('id', $ids);
+                    $hasAny = true;
+                }
+                if (!empty($names)) {
+                    $q->orWhereIn('name', $names);
+                    $hasAny = true;
+                }
+                if (!$hasAny) {
+                    $q->whereRaw('1=0'); // defensif
+                }
+            })
+            ->get(['id', 'name', 'guard_name']); // <— PENTING: guard_name ikut diambil
     }
 }

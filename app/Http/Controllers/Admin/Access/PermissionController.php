@@ -3,33 +3,41 @@
 namespace App\Http\Controllers\Admin\Access;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Models\Role; // unit-scoped role model
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use Illuminate\Http\Request;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionController extends Controller
 {
     public function index()
     {
-        $permissions = Permission::orderBy('name')->paginate(50);
+        $permissions = Permission::query()
+            ->where('guard_name','web')
+            ->orderBy('name')
+            ->paginate(20);
+
         return view('admin.permissions.index', compact('permissions'));
     }
 
-    public function update(Request $request, Permission $permission)
+    public function update(Request $req, Permission $permission)
     {
-        $data = $request->validate([
-            'name'   => "required|string|unique:permissions,name,{$permission->id}",
-            'roles'  => 'array',
-            'roles.*'=> 'string'
+        $data = $req->validate([
+            'name'  => ['required','string','max:150'],
+            'roles' => ['array'],
+            'roles.*' => ['string'],
         ]);
 
-        $permission->update(['name' => $data['name']]);
+        $permission->name = $data['name'];
+        $permission->save();
 
-        if ($request->has('roles')) {
-            // roles[] berisi NAMA role
-            $permission->syncRoles($data['roles']);
-        }
+        // assign permission ke roles yang dicentang (unit-scoped list)
+        // Ambil Role berdasarkan nama (di semua unit) lalu sync
+        $permission->syncRoles($data['roles'] ?? []);
 
-        return back()->with('ok','Permission updated');
+        // flush cache spatie
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        return back()->with('ok','Permission updated.');
     }
 }
