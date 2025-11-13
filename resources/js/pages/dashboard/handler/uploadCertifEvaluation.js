@@ -8,19 +8,12 @@ import { getJSON, postFormData } from "@/utils/fetch";
 
 export function initUploadCertifHandler(tableBody) {
     const modal = document.querySelector("#modal-upload-certif");
-    const form = document.querySelector("#upload-certif-form");
+    const form = document.querySelector("#form-upload-certif");
     const cancelBtn = document.querySelector("#close-upload-certif");
 
-    const trainingIdInput = document.querySelector("#training_id");
-    const namaPelatihanInput = document.querySelector("#nama_pelatihan");
-    const namaPesertaInput = document.querySelector("#nama_peserta");
-
     // Tampilkan modal & isi data
-    function showModal(data) {
-        trainingIdInput.value = data.id;
-        namaPelatihanInput.value = data.nama_pelatihan ?? "-";
-        namaPesertaInput.value = data.nama_peserta ?? "-";
-        modal.classList.remove("hidden");
+    function fillEvaluationForm(data) {
+        document.querySelector("#training_id_upload").value = data.training_id;
     }
 
     function getMonthDifference(endDate, realisasiDate) {
@@ -54,10 +47,8 @@ export function initUploadCertifHandler(tableBody) {
 
         try {
             const res = await getJSON(
-                `/training/dashboard/${id}/data-upload-certif`
+                `/training/dashboard/${id}/get-detail-evaluation`
             );
-
-            console.log("pp", res);
 
             const monthDiff = getMonthDifference(
                 res.data.end_date,
@@ -66,20 +57,35 @@ export function initUploadCertifHandler(tableBody) {
             console.log("monthDiff", monthDiff);
 
             if (monthDiff > 3) {
-                alert(
-                    "Pengunggahan sertifikat sudah melewati batas waktu 3 bulan setelah tanggal realisasi."
-                );
+                modal.classList.add("hidden");
+                Swal.fire({
+                    icon: "warning",
+                    title: "Waktu Unggah Terlambat",
+                    text: "Pengunggahan sertifikat sudah melewati batas waktu 3 bulan setelah tanggal realisasi.",
+                });
                 return;
             }
 
             if (res.status === "success") {
-                showModal(res.data);
+                console.log('response data', res.data);
+                fillEvaluationForm(res.data);
+                modal.classList.remove("hidden");
             } else {
-                alert("Gagal mengambil data sertifikat.");
+                modal.classList.remove("hidden");
+                Swal.fire({
+                    icon: "error",
+                    title: "Gagal",
+                    text: "Gagal mengambil data evaluasi.",
+                });
             }
         } catch (error) {
+            modal.classList.add("hidden");
             console.error(error);
-            alert("Gagal memuat data");
+            Swal.fire({
+                icon: "error",
+                title: "Terjadi Kesalahan",
+                text: "Tidak dapat memuat data dari server.",
+            });
         }
 
         cancelBtn.addEventListener("click", () => {
@@ -94,20 +100,53 @@ export function initUploadCertifHandler(tableBody) {
             const formData = new FormData(form);
 
             try {
+                console.log("form data", formData);
                 const res = await postFormData(
                     `/training/dashboard/upload-certif-evaluation`,
                     formData
                 );
+
+                console.log("response post form certif", res);
+
+                modal.classList.add("hidden");
+                Swal.fire({
+                    title: "Menyimpan Data...",
+                    text: "Sedang menyimpan evaluasi.",
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                });
+
                 console.log("response post form", res);
                 if (res.status === "success") {
-                    alert(res.message);
-                    // modal.classList.add("hidden");
+                    modal.classList.add("hidden");
+                    await Swal.fire({
+                        icon: "success",
+                        title: "Berhasil",
+                        text: res.message || "Evaluasi berhasil disimpan!",
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+    
+                    form.reset();
                     location.reload();
                 } else {
-                    alert("Gagal memperbarui data");
+                    modal.classList.add("hidden");
+                    Swal.fire({
+                        icon: "error",
+                        title: "Gagal",
+                        text: res.message || "Gagal menyimpan evaluasi.",
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
                 }
             } catch (error) {
-                alert("Gagal memperbarui data");
+                console.error("Error submit evaluasi:", error);
+                Swal.close();
+                Swal.fire({
+                    icon: "error",
+                    title: "Kesalahan Server",
+                    text: "Terjadi kesalahan saat menyimpan evaluasi.",
+                });
             }
         });
     });

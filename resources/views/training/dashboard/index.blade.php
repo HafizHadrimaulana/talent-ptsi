@@ -22,7 +22,7 @@
 
   {{-- ===== DataTable Wrapper ===== --}}
   <div class="dt-wrapper mb-10">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
       @foreach ($statuses as $status)
         @php
           $count = $counts[$status->id] ?? 0;
@@ -39,7 +39,7 @@
           $color = $colors[$status->status_approval] ?? ['bg' => 'bg-gray-100', 'border' => 'border-gray-500', 'text' => 'text-gray-700'];
         @endphp
 
-        <div class="{{ $color['bg'] }} border-l-4 {{ $color['border'] }} p-4 rounded-lg shadow-sm">
+        <div class="{{ $color['bg'] }} border-l-4 {{ $color['border'] }} p-4 rounded-lg shadow-sm u-p-lg">
           <h3 class="{{ $color['text'] }} font-bold">{{ $status->status_approval }}</h3>
           <p class="text-3xl font-semibold text-gray-900">{{ $count }}</p>
         </div>
@@ -52,7 +52,7 @@
   </div>
 </div>
 
-@include('training.dashboard.modals.input-modal')
+@include('training.dashboard.modals.input-evaluation')
 @include('training.dashboard.modals.upload-certif-modal')
 
 @endsection

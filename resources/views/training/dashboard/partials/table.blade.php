@@ -6,6 +6,7 @@
             <th>Nama Pelatihan</th>
             <th>Nama Peserta</th>
             <th>Tanggal Realisasi</th>
+            <th>Evaluasi</th>
             <th>Status Dokumen</th>
             <th class="cell-actions">Aksi</th>
         </tr>

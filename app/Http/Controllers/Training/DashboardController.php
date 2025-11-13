@@ -9,6 +9,7 @@ use App\Models\TrainingTemp;
 use App\Models\StatusApprovalTraining;
 use App\Models\Evaluation;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 use Illuminate\Database\QueryException;
 
@@ -50,50 +51,63 @@ class DashboardController extends Controller
     public function inputEvaluation(Request $request)
     {
         $validated = $request->validate([
-            'nama_pelatihan' => 'required',
-            'nama_peserta' => 'required',
-            'tanggal_realisasi' => 'nullable',
-            'certificate_document' => 'nullable',
+            'training_id' => 'required|exists:training,id',
+            'evaluasi'    => 'required|string|max:1000',
         ]);
 
-        if ($request->hasFile('certificate_document')) {
-            $validated['certificate_document'] = $request->file('certificate_document')->store('certificate_document', 'public');
-        }
-
-        Log::info('Validated data:', $validated);
-
         try {
-            Evaluation::create($validated);
-    
-            return redirect()->back()->with('success', 'Data evaluasi berhasil ditambahkan!');
+            $training = Training::where('id', $validated['training_id'])->first();
+
+            if (!$training) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Data pelatihan tidak ditemukan.',
+                ], 404);
+            }
+            
+            $training->evaluation = $validated['evaluasi'];
+            $training->save();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Data evaluasi berhasil disimpan!',
+            ]);
+
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan data.');
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan saat menyimpan data evaluasi.',
+            ], 500);
         }
     }
 
-    public function getDataUploadCertif($id)
+    public function getDetailEvaluation($id)
     {
         try {
-            $training = Training::with('trainingTemp')
-                ->findOrFail($id);
-
+            $training = Training::with('trainingTemp')->find($id);
+            
             $data = [
-                'id' => $training->id,
+                'training_id' => $training->id,
                 'nama_pelatihan' => $training->nama_pelatihan,
                 'nama_peserta' => $training->nama_peserta,
                 'end_date' => $training->trainingTemp?->end_date,
                 'realisasi_date' => $training->realisasi_date,
                 'certificate_document' => $training->certificate_document,
+                'evaluasi' => $training->evaluasi,
             ];
 
-            Log::info("message", $data);
+            Log::info('Data yang dikirim:', ['data' => $data]);
 
             return response()->json([
                 'status' => 'success',
                 'data' => $data
             ]);
         } catch (\Exception $e) {
-            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat menyimpan data',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -103,22 +117,42 @@ class DashboardController extends Controller
             Log::info('Request data:', $request->all());
 
             $validated = $request->validate([
-                'training_id' => 'required|integer|exists:trainings,id',
-                'certificate_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+                'training_id_upload' => 'required|exists:training,id',
+                'certificate_document' => 'required',
             ]);
+            Log::info('Validated data:', $validated);
     
-            $dataTraining = Training::findOrFail($validated['training_id']);
-            $trainingTemp = TrainingTemp::find($validated['training_id']);
+            $dataTraining = Training::findOrFail($validated['training_id_upload']);
+
+            $trainingTemp = $dataTraining->trainingTemp ?? null;
+
+            Log::info('Data training');
+            Log::info('Cek data TrainingTemp (setelah perbaikan)', [
+                'training_id_upload' => $validated['training_id_upload'],
+                'found' => $trainingTemp ? true : false,
+                'data' => $dataTraining->training_temp_id ?? null,
+            ]);
             
             if (!$trainingTemp) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Data training temp tidak ditemukan'
+                    'message' => 'Data training temp tidak ditemukan',
+                    'id' => $validated['training_id_upload']
                 ], 400);
+            } else {
+                Log::warning('Data TrainingTemp tidak ditemukan', [
+                    'id' => $validated['training_id_upload']
+                ]);
             }
+            Log::info('abcd');
 
             $realisasiDate = $dataTraining->realisasi_date;
             $endDate = $trainingTemp->end_date;
+
+            Log::info('Tanggal realisasi dan tanggal selesai pelatihan', [
+                'realisasiDate' => $realisasiDate,
+                'endDate' => $endDate
+            ]);
     
             if (!$realisasiDate || !$endDate) {
                 return response()->json([
