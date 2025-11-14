@@ -104,10 +104,17 @@
       $showRecruitment = $isSuper || $user?->hasAnyPermission(['recruitment.view','contract.view']);
       $showTraining = $isSuper || $user?->hasAnyPermission(['training.view']);
       $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view'));
+
+      // NEW: Master Data visibility (org.*)
+      $showMaster = $isSuper || ($user && $user->can('org.view'));
+
       $printedAnySection = false;
       $recOpen = str_starts_with(request()->route()->getName() ?? '', 'recruitment.');
       $trOpen  = str_starts_with(request()->route()->getName() ?? '', 'training.');
       $acOpen  = request()->routeIs('admin.users.*') || request()->routeIs('admin.roles.*') || request()->routeIs('admin.permissions.*') || request()->routeIs('admin.employees.*');
+
+      // NEW: open state for Master Data
+      $mdOpen = request()->routeIs('admin.org.*');
     @endphp
 
     @if($showMain)
@@ -194,6 +201,27 @@
           @endcanany
         </div>
       </nav>
+      @php $printedAnySection = true; @endphp
+    @endif
+
+    {{-- ========== MASTER DATA GROUP ========== --}}
+    @if($printedAnySection && $showMaster)<div class="nav-divider" aria-hidden="true"></div>@endif
+
+    @if($showMaster)
+      <nav class="nav-section">
+        <div class="nav-title">Master Data</div>
+        <div class="nav">
+          <button type="button" class="nav-item js-accordion {{ $mdOpen ? 'open' : '' }}" data-accordion="nav-masterdata" aria-expanded="{{ $mdOpen ? 'true' : 'false' }}">
+            <span class="icon">🗂️</span><span class="label">Master Data</span><span class="chev">▾</span>
+          </button>
+          <div id="nav-masterdata" class="nav-children {{ $mdOpen ? 'open' : '' }}" data-accordion-panel="nav-masterdata">
+            <a class="nav-item nav-child {{ request()->routeIs('admin.org.index') ? 'active' : '' }}" href="{{ route('admin.org.index') }}">
+              <span class="icon">🏷️</span><span class="label">Directorates & Units</span>
+            </a>
+          </div>
+        </div>
+      </nav>
+      @php $printedAnySection = true; @endphp
     @endif
   </aside>
 
