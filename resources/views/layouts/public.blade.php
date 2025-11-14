@@ -130,8 +130,8 @@
     </nav>
     </div>
     <div class = "nav-links">
-    <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 hover:bg-gray-100">Login</a>
-   <a href="#" class="btn btn-sm bg-transparent text-white border border-white px-5 rounded-full hover:bg-gray-100 hover:text-[#00A29A]-900">Register</a>
+    <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100">Login</a>
+   <a href="#" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100 ml-2">Register</a>
   </div>
   </div>
 </header>

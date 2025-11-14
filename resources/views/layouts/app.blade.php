@@ -391,7 +391,14 @@
     document.addEventListener('click',function(e){const op=e.target.closest('[data-open]');if(op){e.preventDefault();window.__openModal(op.getAttribute('data-open'));return;}const cl=e.target.closest('[data-close]');if(cl){e.preventDefault();window.__closeModal(cl.getAttribute('data-close'));return;}});
     document.getElementById('pwModal')?.addEventListener('click',function(e){if(e.target===this)window.__closeModal(this);});
     document.addEventListener('keydown',function(e){if(e.key==='Escape')window.__closeModal('pwModal');});
+    document.addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-close]");
+    if (!btn) return;
 
+    const modalSelector = btn.getAttribute("data-close");
+    const modal = document.querySelector(modalSelector);
+    if (modal) modal.setAttribute("hidden", "");
+    });
     const SHOULD_OPEN_PW = @json(session('modal')==='changePassword' || $errors->has('current_password') || $errors->has('password'));
     if (SHOULD_OPEN_PW) { document.addEventListener('DOMContentLoaded',()=>window.__openModal('pwModal')); }
 
