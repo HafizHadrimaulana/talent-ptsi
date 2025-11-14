@@ -149,12 +149,74 @@ const helpers = window.__DT_HELPERS__ || (() => {
       .u-dt-actions{text-align:right;white-space:nowrap}
 
       /* length/info/pagination */
-      .u-dt-length{display:flex;align-items:center;gap:var(--space-sm)}
-      .u-dt-length-label{margin:0;font-size:.875rem;color:var(--muted);font-weight:600}
-      .u-dt-pagination{display:flex;gap:var(--space-xs)}
-      .u-dt-pagination .u-btn{min-height:32px;min-width:32px;padding:0;display:flex;align-items:center;justify-content:center}
-      .u-dt-pagination .current{background:var(--accent);color:#fff;border-color:var(--accent)}
-      .u-dt-pagination .u-btn.disabled{opacity:.5;cursor:not-allowed}
+    .u-dt-length {
+      display: flex !important;
+      align-items: center !important;
+      gap: var(--space-sm) !important;
+    }
+
+    .u-dt-length-label {
+      margin: 0 !important;
+      font-size: 0.875rem !important;
+      color: var(--muted) !important;
+      font-weight: 600 !important;
+    }
+
+    /* Pagination container */
+    .u-dt-pagination {
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.4rem !important;
+      justify-content: center !important;
+      padding: 0.5rem 0 !important;
+    }
+
+    /* Pagination button base */
+    .u-dt-pagination .u-btn {
+      min-height: 36px !important;
+      min-width: 36px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 0.875rem !important;
+      font-weight: 600 !important;
+      background: #fff !important;
+      border: none !important;
+      border-radius: 12px !important; /* rounded pill-like edges */
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1) !important;
+      color: #333 !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+    }
+
+    /* Hover animation */
+    .u-dt-pagination .u-btn:hover:not(.current):not(.disabled) {
+      background-color: #f5f5f5 !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Current (active) page */
+    .u-dt-pagination .current {
+      background: #009688 !important; /* teal accent */
+      color: #fff !important;
+      border: none !important;
+      box-shadow: 0 4px 8px rgba(0, 150, 136, 0.4) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Disabled state (prev/next when unavailable) */
+    .u-dt-pagination .u-btn.disabled {
+      opacity: 0.5 !important;
+      cursor: not-allowed !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    /* Optional: subtle hover for arrows */
+    .u-dt-pagination .u-btn:not(.current):not(.disabled):hover svg {
+      opacity: 0.8 !important;
+    }
+
 
       /* processing */
       .dataTables_processing{
@@ -241,7 +303,7 @@ const helpers = window.__DT_HELPERS__ || (() => {
     if (!$table.parent().hasClass('u-dt-scroll')) {
       $table.wrap('<div class="u-dt-scroll u-scroll-x"></div>');
     }
-
+    
     addCustomStyles();
   }
 
