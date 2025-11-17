@@ -91,10 +91,7 @@
     </div>
   </div>
 
-  <div class="u-flex u-items-center u-justify-between u-mt-lg">
-    <div class="u-text-sm u-muted">Showing {{ $roles->count() }} of {{ $roles->total() }} roles</div>
-    <div class="u-hidden">{{ $roles->links() }}</div>
-  </div>
+
 </div>
 
 <!-- Create Role Modal -->

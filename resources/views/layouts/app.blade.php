@@ -13,15 +13,7 @@
   @vite('resources/css/app-ui.css')
   @vite('resources/js/app-layout.js')
   @vite('resources/js/app.js')
-  <style>
-    .u-modal{z-index:2000}
-    .avatar-img{width:32px;height:32px;border-radius:9999px;object-fit:cover;display:inline-block}
-    .user-chip .avatar-img{margin-right:.5rem}
-    .avatar.lg{width:56px;height:56px;border-radius:9999px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
-    .avatar-lg-img{width:56px;height:56px;border-radius:9999px;object-fit:cover;display:inline-block}
-    .text-ellipsis{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .muted{opacity:.7}
-  </style>
+  
 </head>
 @php
   /** @var \App\Models\User|null $user */

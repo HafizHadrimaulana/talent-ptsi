@@ -198,12 +198,7 @@
     </div>
   </div>
 
-  <div class="u-flex u-items-center u-justify-between u-mt-lg">
-    <div class="u-text-sm u-muted">
-      Showing {{ $list->count() }} of {{ $list->total() }} requests
-    </div>
-    <div>{{ $list->links() }}</div>
-  </div>
+
 </div>
 
 <!-- Create Approval Modal -->

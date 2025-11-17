@@ -6,41 +6,60 @@ window.$ = window.jQuery = $;
 
 document.addEventListener('DOMContentLoaded', () => {
   // ================================
-  // DataTables: Generic tables
+  // DataTables: Users (User Management)
   // ================================
-  initDataTables('#users-table', {
-    columnDefs: [
-      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
-      { targets: 0, responsivePriority: 2 },
-      { targets: 2, responsivePriority: 3 },
-      { targets: 1, responsivePriority: 4 },
-    ],
-  });
-  bindExternalSearch({ searchSelector: 'input[name="q"]', buttonSelector: 'form [type="submit"]', tableSelector: '#users-table', delay: 250 });
+  const usersTable = document.querySelector('#users-table');
+  if (usersTable) {
+    initDataTables('#users-table', {
+      columnDefs: [
+        { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+        { targets: 0, responsivePriority: 2 },
+        { targets: 2, responsivePriority: 3 },
+        { targets: 1, responsivePriority: 4 },
+      ],
+    });
 
-  initDataTables('#roles-table', {
-    columnDefs: [
-      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
-      { targets: 0, responsivePriority: 2 },
-      { targets: 1, responsivePriority: 3 },
-    ],
-  });
+    // external search hanya di halaman User Management
+    bindExternalSearch({
+      searchSelector: 'input[name="q"]',
+      buttonSelector: 'form [type="submit"]',
+      tableSelector: '#users-table',
+      delay: 250,
+    });
+  }
 
-  initDataTables('#ip-table', {
-    columnDefs: [
-      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
-      { targets: 0, responsivePriority: 2 },
-      { targets: 1, responsivePriority: 3 },
-    ],
-  });
+  // ================================
+  // DataTables: Roles / IP / Permissions
+  // ================================
+  if (document.querySelector('#roles-table')) {
+    initDataTables('#roles-table', {
+      columnDefs: [
+        { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+        { targets: 0, responsivePriority: 2 },
+        { targets: 1, responsivePriority: 3 },
+      ],
+    });
+  }
 
-  initDataTables('#perms-table', {
-    columnDefs: [
-      { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
-      { targets: 0, responsivePriority: 2 },
-      { targets: 1, responsivePriority: 3 },
-    ],
-  });
+  if (document.querySelector('#ip-table')) {
+    initDataTables('#ip-table', {
+      columnDefs: [
+        { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+        { targets: 0, responsivePriority: 2 },
+        { targets: 1, responsivePriority: 3 },
+      ],
+    });
+  }
+
+  if (document.querySelector('#perms-table')) {
+    initDataTables('#perms-table', {
+      columnDefs: [
+        { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+        { targets: 0, responsivePriority: 2 },
+        { targets: 1, responsivePriority: 3 },
+      ],
+    });
+  }
 
   if (document.querySelector('#contracts-table')) {
     initDataTables('#contracts-table', {
@@ -116,20 +135,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModal  = () => { if (modal) modal.hidden = true;  };
   const showLoading = (on = true) => { if (loading) loading.style.display = on ? 'block' : 'none'; };
 
-  // jangan tutup modal kalau klik di dalam kartu
   modal?.querySelector('.u-modal__card')?.addEventListener('click', (e) => e.stopPropagation());
 
   btnCloseTop?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
   btnCloseBottom?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
 
-  // klik overlay saja yang menutup
   modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   document.addEventListener('keydown', (e) => { if (!modal?.hidden && e.key === 'Escape') closeModal(); });
 
   // ================================
   // Tabs (click + wheel + drag-scroll)
   // ================================
-  const tabsWrap = document.getElementById('iosTabs'); // container yang berisi .u-tab
+  const tabsWrap = document.getElementById('iosTabs');
   const tabBtns  = tabsWrap ? Array.from(tabsWrap.querySelectorAll('.u-tab')) : [];
   const panels   = {
     ov:     document.getElementById('tab-ov'),
@@ -247,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal();
     showLoading(true);
 
-    // reset panel isi
     if (el.ovLeft)  el.ovLeft.innerHTML = '';
     if (el.ovRight) el.ovRight.innerHTML = '';
     ['brevet','jobs','tasks','asg','edu','train','docs'].forEach(k => { if (el[k]) el[k].innerHTML = ''; });
@@ -371,7 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Trigger detail via data-show-emp
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-show-emp]');
     if (!btn) return;
@@ -394,7 +409,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (first) setTimeout(() => first.focus(), 50);
   };
 
-  // Close via [data-modal-close], backdrop & ESC
   document.addEventListener('click', (e) => {
     const closer = e.target.closest('[data-modal-close]');
     if (!closer) return;
@@ -404,12 +418,14 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.classList.remove('modal-open');
     }
   });
+
   document.getElementById('changePasswordModal')?.addEventListener('click', function (e) {
     if (e.target === this) {
       this.hidden = true;
       document.body.classList.remove('modal-open');
     }
   });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const m = document.getElementById('changePasswordModal');

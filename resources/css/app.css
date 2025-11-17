@@ -16,7 +16,9 @@
   --shadow-soft: 0 12px 28px rgba(2,8,23,.12);
   --glass-blur: 14px;
 
-  --fast: .18s; --norm: .28s; --easing: cubic-bezier(.22,1,.36,1);
+  --fast: .18s;
+  --norm: .28s;
+  --easing: cubic-bezier(.22,1,.36,1);
 }
 :root{color-scheme:light dark}
 
@@ -48,7 +50,10 @@ body{
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
 }
-a{text-decoration:none;transition:color var(--fast) var(--easing), opacity var(--fast) var(--easing)}
+a{
+  text-decoration:none;
+  transition:color var(--fast) var(--easing), opacity var(--fast) var(--easing)
+}
 a:hover{color:var(--color-brand)}
 
 :where(a,button,[tabindex]):focus-visible{
@@ -95,7 +100,10 @@ a:hover{color:var(--color-brand)}
 
 /* Fallback jika browser tak support backdrop-filter */
 @supports not ((backdrop-filter: blur(10px))){
-  .glass,.card-glass,.navbar-glass,.modal-glass .modal-content{
+  .glass,
+  .card-glass,
+  .navbar-glass,
+  .modal-glass .modal-content{
     background:var(--surface-1);
     border:1px solid color-mix(in oklch, var(--surface-2) 55%, transparent);
     box-shadow:var(--shadow-soft);
@@ -107,13 +115,20 @@ a:hover{color:var(--color-brand)}
   transition:transform var(--norm) var(--easing), box-shadow var(--norm) var(--easing), filter var(--norm) var(--easing);
   will-change:transform;
 }
-.hover-lift:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,.12);filter:saturate(1.03)}
+.hover-lift:hover{
+  transform:translateY(-4px);
+  box-shadow:0 14px 30px rgba(0,0,0,.12);
+  filter:saturate(1.03);
+}
 .hover-bright{transition:filter var(--fast) var(--easing)}
 .hover-bright:hover{filter:brightness(1.06) saturate(1.05)}
 .tap-press:active{transform:translateY(1px) scale(.998)}
 
 /* ===== MICRO-MOTIONS ===== */
-@keyframes float-in{from{transform:translateY(8px);opacity:0;filter:blur(4px)} to{transform:translateY(0);opacity:1;filter:blur(0)}}
+@keyframes float-in{
+  from{transform:translateY(8px);opacity:0;filter:blur(4px)}
+  to{transform:translateY(0);opacity:1;filter:blur(0)}
+}
 .float-in{animation:float-in .38s var(--easing) both}
 
 @media (prefers-reduced-motion:reduce){
@@ -134,7 +149,10 @@ a:hover{color:var(--color-brand)}
   box-shadow:0 8px 18px rgba(30,85,250,.18);
   transition:transform var(--fast) var(--easing), box-shadow var(--fast) var(--easing);
 }
-.btn-brand:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(30,85,250,.22)}
+.btn-brand:hover{
+  transform:translateY(-1px);
+  box-shadow:0 12px 26px rgba(30,85,250,.22);
+}
 
 .btn-outline-brand{
   --bs-btn-color:var(--color-brand);
@@ -151,7 +169,8 @@ a:hover{color:var(--color-brand)}
 .badge-glass{
   background:linear-gradient(0deg,var(--tint,transparent),var(--tint,transparent)), var(--glass-bg, color-mix(in oklch, var(--surface-1) 92%, transparent));
   border:1px solid var(--glass-stroke, color-mix(in oklch, var(--surface-2) 55%, transparent));
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
   color:var(--color-text);
   border-radius:999px;
   padding:.35rem .7rem;
@@ -160,12 +179,14 @@ a:hover{color:var(--color-brand)}
 }
 
 /* ===== FORMS ===== */
-.form-control,.form-select{
+.form-control,
+.form-select{
   border-radius:calc(8px + .1rem);
   border-color:color-mix(in oklch, var(--surface-2) 60%, transparent);
   background:color-mix(in oklch, var(--surface-0) 92%, transparent);
 }
-.form-control:focus,.form-select:focus{
+.form-control:focus,
+.form-select:focus{
   border-color:var(--color-brand);
   box-shadow:0 0 0 .25rem color-mix(in oklch, var(--color-brand) 28%, transparent);
 }

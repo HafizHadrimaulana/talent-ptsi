@@ -1,4 +1,3 @@
-// resources/js/plugins/datatables.js
 import $ from 'jquery';
 window.$ = window.jQuery = $;
 
@@ -117,106 +116,93 @@ const helpers = window.__DT_HELPERS__ || (() => {
       /* table look (uses your tokens) */
       .u-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface-0);font-size:.875rem;border-radius:var(--radius-lg);overflow:hidden}
       .u-table thead tr {
-      background: linear-gradient(135deg, #1F337E 0%, #49D4A9 100%) !important;
-      border-radius: 1rem;
-      overflow: hidden;
-    }
+        background: linear-gradient(135deg, #1F337E 0%, #49D4A9 100%) !important;
+        border-radius: 1rem;
+        overflow: hidden;
+      }
 
-    /* Make each cell transparent to let the row gradient show through */
-    .u-table thead th {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      padding: 1rem .8rem;
-      font-weight: 700;
-      letter-spacing: .05em;
-      color: #fff;
-      background: transparent !important; /* ← key fix */
-      border: none;
-      text-transform: uppercase;
-      font-size: .8rem;
-    }
+      .u-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        padding: 1rem .8rem;
+        font-weight: 700;
+        letter-spacing: .05em;
+        color: #fff;
+        background: transparent !important;
+        border: none;
+        text-transform: uppercase;
+        font-size: .8rem;
+      }
 
-    /* Optional: round outer corners */
-    .u-table thead th:first-child {
-      border-top-left-radius: 1rem;
-    }
-    .u-table thead th:last-child {
-      border-top-right-radius: 1rem;
-    }
+      .u-table thead th:first-child { border-top-left-radius: 1rem; }
+      .u-table thead th:last-child  { border-top-right-radius: 1rem; }
+
       .u-table tbody td{padding:.875rem .8rem;border-bottom:1px solid color-mix(in srgb,var(--border) 30%, transparent);background:var(--surface-0);transition:all .2s ease}
       .u-table tbody tr:hover td{background:var(--surface-1)}
       .u-dt-actions{text-align:right;white-space:nowrap}
 
       /* length/info/pagination */
-    .u-dt-length {
-      display: flex !important;
-      align-items: center !important;
-      gap: var(--space-sm) !important;
-    }
+      .u-dt-length {
+        display: flex !important;
+        align-items: center !important;
+        gap: var(--space-sm) !important;
+      }
+      .u-dt-length-label {
+        margin: 0 !important;
+        font-size: 0.875rem !important;
+        color: var(--muted) !important;
+        font-weight: 600 !important;
+      }
 
-    .u-dt-length-label {
-      margin: 0 !important;
-      font-size: 0.875rem !important;
-      color: var(--muted) !important;
-      font-weight: 600 !important;
-    }
+      .u-dt-pagination {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.4rem !important;
+        justify-content: center !important;
+        padding: 0.5rem 0 !important;
+      }
 
-    /* Pagination container */
-    .u-dt-pagination {
-      display: flex !important;
-      align-items: center !important;
-      gap: 0.4rem !important;
-      justify-content: center !important;
-      padding: 0.5rem 0 !important;
-    }
+      .u-dt-pagination .u-btn {
+        min-height: 36px !important;
+        min-width: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0.875rem !important;
+        font-weight: 600 !important;
+        background: #fff !important;
+        border: none !important;
+        border-radius: 12px !important;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1) !important;
+        color: #333 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+      }
 
-    /* Pagination button base */
-    .u-dt-pagination .u-btn {
-      min-height: 36px !important;
-      min-width: 36px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      font-size: 0.875rem !important;
-      font-weight: 600 !important;
-      background: #fff !important;
-      border: none !important;
-      border-radius: 12px !important; /* rounded pill-like edges */
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1) !important;
-      color: #333 !important;
-      cursor: pointer !important;
-      transition: all 0.2s ease !important;
-    }
+      .u-dt-pagination .u-btn:hover:not(.current):not(.disabled) {
+        background-color: #f5f5f5 !important;
+        transform: translateY(-1px) !important;
+      }
 
-    /* Hover animation */
-    .u-dt-pagination .u-btn:hover:not(.current):not(.disabled) {
-      background-color: #f5f5f5 !important;
-      transform: translateY(-1px) !important;
-    }
+      .u-dt-pagination .current {
+        background: #009688 !important;
+        color: #fff !important;
+        border: none !important;
+        box-shadow: 0 4px 8px rgba(0, 150, 136, 0.4) !important;
+        transform: translateY(-1px) !important;
+      }
 
-    /* Current (active) page */
-    .u-dt-pagination .current {
-      background: #009688 !important; /* teal accent */
-      color: #fff !important;
-      border: none !important;
-      box-shadow: 0 4px 8px rgba(0, 150, 136, 0.4) !important;
-      transform: translateY(-1px) !important;
-    }
+      .u-dt-pagination .u-btn.disabled {
+        opacity: 0.5 !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
 
-    /* Disabled state (prev/next when unavailable) */
-    .u-dt-pagination .u-btn.disabled {
-      opacity: 0.5 !important;
-      cursor: not-allowed !important;
-      box-shadow: none !important;
-      transform: none !important;
-    }
-
-    /* Optional: subtle hover for arrows */
-    .u-dt-pagination .u-btn:not(.current):not(.disabled):hover svg {
-      opacity: 0.8 !important;
-    }
-
+      .u-dt-pagination .u-btn:not(.current):not(.disabled):hover svg {
+        opacity: 0.8 !important;
+      }
 
       /* processing */
       .dataTables_processing{
@@ -233,7 +219,6 @@ const helpers = window.__DT_HELPERS__ || (() => {
       .u-dt-detail-label{font-weight:600;font-size:.875rem;color:var(--muted)}
       .u-dt-detail-value{font-size:.875rem;overflow-wrap:anywhere}
 
-      /* mobile */
       @media (max-width:768px){
         .u-dt-header{flex-direction:column;align-items:stretch;gap:var(--space-md);padding:var(--space-md)}
         .u-dt-scroll{margin:0 var(--space-md)}
@@ -256,14 +241,12 @@ const helpers = window.__DT_HELPERS__ || (() => {
     $wrap.addClass('u-dt-wrapper');
     $wrap.closest('.dt-wrapper, .u-card, .card-glass').addClass('u-dt-container');
 
-    // replace default filter with custom form
     const $filterWrap = $wrap.find('.dataTables_filter');
     if ($filterWrap.length) {
       $filterWrap.hide();
       if (!$wrap.find('.u-dt-search').length) $filterWrap.before(createCustomSearch());
     }
 
-    // wire custom search
     const $customSearch = $wrap.find('.u-dt-search');
     const $searchInput  = $customSearch.find('input[type="search"]');
     const $searchBtn    = $customSearch.find('.u-btn--brand');
@@ -275,13 +258,11 @@ const helpers = window.__DT_HELPERS__ || (() => {
     $searchInput.on('input', debounce(performSearch, 400));
     $clearBtn.on('click', (e) => { e.preventDefault(); $searchInput.val('').focus(); performSearch(); });
 
-    // length
     const $length = $wrap.find('.dataTables_length');
     $length.addClass('u-dt-length');
     $length.find('select').addClass('u-input u-input--sm').attr({ 'aria-label': 'Rows per page' });
     $length.find('label').addClass('u-dt-length-label');
 
-    // pagination
     const $paginate = $wrap.find('.dataTables_paginate');
     $paginate.addClass('u-dt-pagination');
     $paginate.find('a').each(function () {
@@ -290,16 +271,11 @@ const helpers = window.__DT_HELPERS__ || (() => {
       if (!$btn.hasClass('current')) $btn.addClass('u-btn--outline');
     });
 
-    // info
     $wrap.find('.dataTables_info').addClass('u-dt-info u-text-sm u-muted');
 
-    // table base classes
     $table.addClass('u-table u-table-mobile');
-
-    // actions column helper
     $table.find('th.cell-actions, td.cell-actions').addClass('u-dt-actions');
 
-    // glass scroll container
     if (!$table.parent().hasClass('u-dt-scroll')) {
       $table.wrap('<div class="u-dt-scroll u-scroll-x"></div>');
     }
@@ -327,7 +303,6 @@ const helpers = window.__DT_HELPERS__ || (() => {
           targets: '_all',
           defaultContent: '—',
           createdCell: function (td, cellData, rowData, row, col) {
-            // add data-label for mobile stacked view
             const api = new DataTable.Api(this);
             const header = api.column(col).header();
             if (header) {
@@ -351,7 +326,6 @@ const helpers = window.__DT_HELPERS__ || (() => {
             const api = this.api();
             applyCustomChrome(api);
 
-            // normalize paginate buttons after draw
             $table.closest('.dataTables_wrapper')
               .find('.dataTables_paginate a')
               .each(function () {
@@ -381,10 +355,15 @@ const helpers = window.__DT_HELPERS__ || (() => {
   // ---------- external search binder ----------
   function bindExternalSearch({ searchSelector, buttonSelector = null, tableSelector = '[data-dt]', delay = 400 }) {
     const input = document.querySelector(searchSelector);
-    if (!input) { console.warn('Search input not found:', searchSelector); return; }
+    if (!input) {
+      return; // silent kalau input search tidak ada
+    }
 
     const dt = getDTFromElOrJq(tableSelector);
-    if (!dt) { console.warn('DataTable not found for:', tableSelector); return; }
+    if (!dt) {
+      // silent kalau tabel memang tidak ada di halaman ini
+      return;
+    }
 
     const performSearch = () => {
       const term = input.value.trim();
