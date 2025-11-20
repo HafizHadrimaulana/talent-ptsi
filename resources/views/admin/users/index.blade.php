@@ -191,7 +191,7 @@
               <div class="u-space-y-sm">
                 <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Employment Status:</span><span id="ovStatus" class="u-badge u-badge--primary">—</span></div>
                 <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Talent Level:</span><span id="ovTalent" class="u-badge u-badge--glass">—</span></div>
-                <div class="u-flex u-justify-between"><span class="u-text-sm u-muted">Start Date:</span><span class="u-font-medium" id="ovStartDate">—</span></div>
+                <div class="u-flex u-justify-between"><span class="u-text-sm u-muted">Latest Start Date:</span><span class="u-font-medium" id="ovStartDate">—</span></div>
                 <div class="u-flex u-justify-between"><span class="u-text-sm u-muted">Company:</span><span class="u-font-medium" id="ovCompany">—</span></div>
               </div>
             </div>
@@ -479,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     set('#empName', d.full_name || '—');
     set('#empId', 'ID: ' + (d.employee_id || '—'));
-    set('#empHire','Start: ' + (fmt(d.start_date) || '—'));
+    set('#empHire','Latest Start: ' + (fmt(d.start_date) || '—'));
     set('#empCompany','Company: ' + (d.company || '—'));
 
     const avatar=$('#empPhoto'), init=$('#empInitial');
@@ -707,5 +707,22 @@ document.addEventListener('DOMContentLoaded', function () {
   $('#i_name')?.addEventListener('input', ()=> $('#autofillName').textContent = 'Name: ' + ($('#i_name').value||'—'));
   $('#i_email')?.addEventListener('input',()=> $('#autofillEmail').textContent = 'Email: ' + ($('#i_email').value||'—'));
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    // Select all close buttons
+    const closeButtons = document.querySelectorAll("[data-modal-close]");
+
+    closeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const modal = btn.closest(".u-modal"); // find the parent modal
+            if (modal) {
+                modal.classList.add("hidden"); // or modal.style.display = "none";
+            }
+        });
+    });
+
+});
+</script>
 </script>
 @endsection

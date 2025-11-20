@@ -130,8 +130,8 @@
     </nav>
     </div>
     <div class = "nav-links">
-    <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 hover:bg-gray-100">Login</a>
-   <a href="#" class="btn btn-sm bg-transparent text-white border border-white px-5 rounded-full hover:bg-gray-100 hover:text-[#00A29A]-900">Register</a>
+    <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100">Login</a>
+   <a href="#" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100 ml-2">Register</a>
   </div>
   </div>
 </header>
@@ -139,13 +139,13 @@
 <!-- ===== HERO SECTION (SLIDESHOW) ===== -->
 <section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center text-white px-6 overflow-hidden">
   <!-- Background slides -->
-  <div class="absolute inset-0">
-    <div class="hero-slideshow absolute inset-0">
-      <div class="slide" style="background-image:url('/images/1.jpg');"></div>
-      <div class="slide" style="background-image:url('/images/2.jpg');"></div>
-      <div class="slide" style="background-image:url('/images/3.jpg');"></div>
-    </div>
+<div class="absolute inset-0">
+  <div class="hero-slideshow absolute inset-0">
+    <div class="slide" style="background-image:linear-gradient(rgba(0,128,0,0.3), rgba(0,128,0,0.3)), url('/images/1.jpg');"></div>
+    <div class="slide" style="background-image:linear-gradient(rgba(0,128,0,0.3), rgba(0,128,0,0.3)), url('/images/2.jpg');"></div>
+    <div class="slide" style="background-image:linear-gradient(rgba(0,128,0,0.3), rgba(0,128,0,0.3)), url('/images/3.jpg');"></div>
   </div>
+</div>
 
   <!-- Text content (changes per slide) -->
   <div id="heroTextContainer" class="relative z-10 max-w-3xl space-y-6 transition-all duration-700">
@@ -280,7 +280,7 @@
   <div class="relative container mx-auto px-6 grid md:grid-cols-3 gap-10 text-sm">
     <!-- Left: Logo + Mission -->
     <div>
-      <h3 class="text-xl font-semibold text-[#49D4A9] mb-3">Test Company</h3>
+      <h3 class="text-xl font-semibold text-[#49D4A9] mb-3">ID Survey</h3>
       <p class="leading-relaxed mb-4">
         Meningkatkan masa depan dengan solusi cerdas dan inovatif, memberdayakan bisnis serta individu untuk tumbuh bersama.
       </p>
@@ -352,7 +352,7 @@
 
   <!-- Bottom bar -->
   <div class="relative mt-10 border-t border-gray-700 pt-6 text-center text-xs text-gray-400">
-    <p>© {{ date('Y') }} Test Company — All Rights Reserved.</p>
+    <p>© {{ date('Y') }} ID Survey — All Rights Reserved.</p>
   </div>
 </footer>
 
@@ -428,7 +428,7 @@
 
     const slideTexts = [
       {
-        title: `Bangun Karier Masa Depan Bersama <span class="text-[#A4F5DD]">Test Company</span>`,
+        title: `Bangun Karier Masa Depan Bersama <span class="text-[#A4F5DD]">ID Survey</span>`,
         desc: `Kami membuka peluang bagi talenta terbaik untuk berkembang dan berkontribusi dalam lingkungan kerja yang dinamis dan kolaboratif.`,
       },
       {

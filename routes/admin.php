@@ -23,6 +23,9 @@ use App\Http\Controllers\Training\{
     TrainingRequestController
 };
 
+// NEW: Back Office Org (Directorates & Units)
+use App\Http\Controllers\Admin\Org\OrgController;
+
 Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
     // =========================
@@ -44,7 +47,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::put('roles/{role}',    [RoleController::class, 'update'])->middleware('permission:rbac.assign')->name('roles.update');
         Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:rbac.assign')->name('roles.destroy');
 
-        // Permissions (RBAC) — PENTING: samakan nama route dengan app.blade
+        // Permissions (RBAC)
         Route::get('permissions',              [PermissionController::class, 'index'])->middleware('permission:rbac.view')->name('permissions.index');
         Route::put('permissions/{permission}', [PermissionController::class, 'update'])->middleware('permission:rbac.assign')->name('permissions.update');
     });
@@ -55,6 +58,31 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('employees',      [EmployeeController::class, 'index'])->middleware('permission:employees.view')->name('employees.index');
         Route::get('employees/{id}', [EmployeeController::class, 'show'])->middleware('permission:employees.view')->name('employees.show');
+    });
+
+    // =========================
+    // BACK OFFICE · MASTER DATA GROUP (Directorates & Units)
+    // =========================
+    Route::prefix('admin/org')->name('admin.org.')->middleware('permission:org.view')->group(function () {
+        // Single page
+        Route::get('/', [OrgController::class, 'index'])->name('index');
+
+        // Tree JSON
+        Route::get('tree', [OrgController::class, 'tree'])->name('tree');
+
+        // Directorates CRUD (AJAX)
+        Route::get('directorates',            [OrgController::class, 'directorates'])->name('directorates.list');
+        Route::get('directorates/options',    [OrgController::class, 'directorateOptions'])->name('directorates.options');
+        Route::post('directorates',           [OrgController::class, 'directorateStore'])->middleware('permission:org.create')->name('directorates.store');
+        Route::put('directorates/{id}',       [OrgController::class, 'directorateUpdate'])->middleware('permission:org.update')->name('directorates.update');
+        Route::delete('directorates/{id}',    [OrgController::class, 'directorateDestroy'])->middleware('permission:org.delete')->name('directorates.destroy');
+
+        // Units CRUD (AJAX)
+        Route::get('units',                   [OrgController::class, 'units'])->name('units.list');
+        Route::post('units',                  [OrgController::class, 'unitStore'])->middleware('permission:org.create')->name('units.store');
+        Route::put('units/{id}',              [OrgController::class, 'unitUpdate'])->middleware('permission:org.update')->name('units.update');
+        Route::put('units/{id}/reassign',     [OrgController::class, 'unitReassign'])->middleware('permission:org.update')->name('units.reassign');
+        Route::delete('units/{id}',           [OrgController::class, 'unitDestroy'])->middleware('permission:org.delete')->name('units.destroy');
     });
 
     // =========================
