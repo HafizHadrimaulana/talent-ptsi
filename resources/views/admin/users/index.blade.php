@@ -707,5 +707,22 @@ document.addEventListener('DOMContentLoaded', function () {
   $('#i_name')?.addEventListener('input', ()=> $('#autofillName').textContent = 'Name: ' + ($('#i_name').value||'—'));
   $('#i_email')?.addEventListener('input',()=> $('#autofillEmail').textContent = 'Email: ' + ($('#i_email').value||'—'));
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    // Select all close buttons
+    const closeButtons = document.querySelectorAll("[data-modal-close]");
+
+    closeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const modal = btn.closest(".u-modal"); // find the parent modal
+            if (modal) {
+                modal.classList.add("hidden"); // or modal.style.display = "none";
+            }
+        });
+    });
+
+});
+</script>
 </script>
 @endsection
