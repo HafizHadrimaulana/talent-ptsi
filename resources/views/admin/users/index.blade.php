@@ -726,5 +726,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 </script>
-</script>
+
 @endsection

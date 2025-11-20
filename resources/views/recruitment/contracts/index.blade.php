@@ -575,8 +575,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const app = {
         init() {
             this.bindModal();
-            this.bindExternalSearch();
-            this.initDataTable();
         },
 
         bindModal() {
@@ -916,46 +914,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             @endif
         },
-
-        bindExternalSearch() {
-            const ext = document.querySelector('#contractsSearch');
-            const tableEl = document.querySelector('#contracts-table');
-            if (!ext || !tableEl) return;
-
-            if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
-                const dt = jQuery('#contracts-table').DataTable();
-                ext.addEventListener('input', function () {
-                    dt.search(ext.value || '').draw();
-                });
-                return;
-            }
-
-            const wrapper = tableEl.closest('.dataTable-wrapper');
-            const qs = wrapper ? wrapper.querySelector('.dataTable-input') : null;
-            if (qs) {
-                ext.addEventListener('input', function () {
-                    qs.value = ext.value || '';
-                    qs.dispatchEvent(new Event('input', { bubbles: true }));
-                });
-            }
-        },
-
-        initDataTable() {
-            if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
-                jQuery('#contracts-table').DataTable({
-                    responsive: true,
-                    paging: true,
-                    info: true,
-                });
-                return;
-            }
-            if (typeof window.DataTable !== 'undefined') {
-                new window.DataTable('#contracts-table', {
-                    responsive: true,
-                    perPageSelect: [10, 25, 50],
-                });
-            }
-        }
     };
 
     app.init();
