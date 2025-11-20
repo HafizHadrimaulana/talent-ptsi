@@ -151,45 +151,45 @@
 
         @if($showTraining)
         <nav class="nav-section">
-            <div class="nav-title">Training</div>
-            <div class="nav">
-                <button type="button" class="nav-item js-accordion {{ $trOpen ? 'open' : '' }}"
-                        data-accordion="nav-training" aria-expanded="{{ $trOpen ? 'true' : 'false' }}">
-                    <span class="icon">🎓</span>
-                    <span class="label">Training</span>
-                    <span class="chev">▾</span>
-                </button>
+          <div class="nav-title">Training</div>
+          <div class="nav">
+            <button type="button" class="nav-item js-accordion {{ $trOpen ? 'open' : '' }}"
+                    data-accordion="nav-training" aria-expanded="{{ $trOpen ? 'true' : 'false' }}">
+                <span class="icon">🎓</span>
+                <span class="label">Training</span>
+                <span class="chev">▾</span>
+            </button>
 
-        <div id="nav-training" class="nav-children {{ $trOpen ? 'open' : '' }}" data-accordion-panel="nav-training">
-          @if($isSuper || $user?->can('training.view'))
-          <a class="nav-item nav-child {{ request()->routeIs('training.dashboard')?'active':'' }}"
-             href="{{ Route::has('training.dashboard') ? route('training.dashboard') : '#' }}">
-            <span class="icon">📈</span><span class="label">Dashboard</span>
-          </a>
-          @endif
+            <div id="nav-training" class="nav-children {{ $trOpen ? 'open' : '' }}" data-accordion-panel="nav-training">
+              @if($isSuper || $user?->can('training.view'))
+              <a class="nav-item nav-child {{ request()->routeIs('training.dashboard')?'active':'' }}"
+                href="{{ Route::has('training.dashboard') ? route('training.dashboard') : '#' }}">
+                <span class="icon">📈</span><span class="label">Dashboard</span>
+              </a>
+              @endif
 
-          @if($isSuper || $user?->can('training.view'))
-          <a class="nav-item nav-child {{ request()->routeIs('training.monitoring')?'active':'' }}"
-             href="{{ Route::has('training.monitoring') ? route('training.monitoring') : '#' }}">
-            <span class="icon">📈</span><span class="label">Training Request</span>
-          </a>
-          @endif
+              @if($isSuper || $user?->can('training.view'))
+              <a class="nav-item nav-child {{ request()->routeIs('training.training-request')?'active':'' }}"
+                href="{{ Route::has('training.training-request') ? route('training.training-request') : '#' }}">
+                <span class="icon">📈</span><span class="label">Training Request</span>
+              </a>
+              @endif
 
-          @if($isSuper || $user?->can('training.view'))
-          <a class="nav-item nav-child {{ request()->routeIs('training.self-learning')?'active':'' }}"
-             href="{{ Route::has('training.self-learning') ? route('training.self-learning') : '#' }}">
-            <span class="icon">📈</span><span class="label">Self Learning</span>
-          </a>
-          @endif
+              @if($isSuper || $user?->can('training.view'))
+              <a class="nav-item nav-child {{ request()->routeIs('training.self-learning')?'active':'' }}"
+                href="{{ Route::has('training.self-learning') ? route('training.self-learning') : '#' }}">
+                <span class="icon">📈</span><span class="label">Self Learning</span>
+              </a>
+              @endif
 
-                    @if($isSuper || $user?->can('training.view'))
-                    <a class="nav-item nav-child {{ request()->routeIs('training.principal-approval')?'active':'' }}"
-                       href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
-                        <span class="icon">🗂️</span><span class="label">Principal Approval</span>
-                    </a>
-                    @endif
-                </div>
+              @if($isSuper || $user?->can('training.view'))
+              <a class="nav-item nav-child {{ request()->routeIs('training.principal-approval')?'active':'' }}"
+                  href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
+                  <span class="icon">🗂️</span><span class="label">Principal Approval</span>
+              </a>
+              @endif
             </div>
+          </div>
         </nav>
         @php $printedAnySection = true; @endphp
         @endif

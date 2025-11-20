@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Imports\Training;
+namespace App\Imports;
 
 use App\Models\TrainingTemp;
 use Illuminate\Support\Collection;
@@ -17,6 +17,7 @@ HeadingRowFormatter::default('none');
 class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
     protected $fileTrainingId;
+    protected $parsedRows = [];
 
     public function __construct($fileTrainingId)
     {
@@ -39,13 +40,12 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
 
     public function collection(Collection $rows)
     {
-        $data = [];
 
         foreach ($rows as $row) {
 
             $row = $this->normalizeRowKeys($row);
 
-            $data[] = [
+            TrainingTemp::create([
                 'file_training_id' => $this->fileTrainingId,
                 'status_approval_training_id' => 1,
                 'jenis_pelatihan' => $row['kompetensi_porto/non_porto/resertifikasi'] ?? null,
@@ -67,11 +67,9 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
                 'alasan' => null,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
-            ];
-        }
+            ]);
 
-        if (!empty($data)) {
-            TrainingTemp::insert($data);
+            $this->parsedRows[] = $row;
         }
     }
 
@@ -97,6 +95,11 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
         $clean = str_replace(',', '.', $clean);
 
         return is_numeric($clean) ? (float) $clean : null;
+    }
+
+    public function getParsedRows()
+    {
+        return $this->parsedRows;
     }
 
     public function chunkSize(): int

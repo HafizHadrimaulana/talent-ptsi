@@ -1,0 +1,80 @@
+@extends('layouts.app')
+@section('title', 'Pelatihan · Training Request')
+
+@section('content')
+<div class="u-card u-card--glass u-hover-lift">
+    <div class="u-flex u-items-center u-justify-between u-mb-md">
+        <h2 class="u-title">Training Request</h2>
+        <div class="flex gap-4">
+            @role('DHC')
+            <button type="button" class="u-btn u-btn--brand u-hover-lift btn-import">Import Data</button>
+            @endrole
+            <button type="button" class="u-btn u-btn--brand u-hover-lift btn-add">Input Data</button>
+            <button type="button" id="close-input-modal" class="u-btn u-btn--brand u-hover-lift hidden">Close Input Data</button>
+        </div>
+    </div>
+
+    {{-- ===== Alerts (Optional) ===== --}}
+    @if(session('success'))
+        <div class="u-card u-mb-md u-success">
+        <div class="u-flex u-items-center u-gap-sm">
+            <i class='fas fa-check-circle u-success-icon'></i>
+            <span>{{ session('success') }}</span>
+        </div>
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="alert danger">{{ $errors->first() }}</div>
+    @endif
+
+    @role('DHC')
+    <div class="bg-blue-50 border border-blue-300 rounded-sm u-p-md u-mb-md shadow-sm">
+        <p class="text-blue-800 text-md leading-relaxed mb-4">
+            Please download the Excel file template in the appropriate format and fill in the required data. Make sure <span class="font-medium">not to change the headers and columns </span>in the template to avoid import errors.
+            <button type="button" class="btn-download-template inline-block text-blue-600 px-4 py-2 font-medium transition underline underline-offset-2 cursor-pointer">
+                Download Template Excel</button >
+        </p>
+    </div>
+    @endrole
+
+    {{-- ===== DataTable Wrapper ===== --}}
+    @role('SDM Unit')
+        @include('training.training-request.modals.input-modal')
+        <div class="u-mb-lg" id="createContractTabs">
+            <button class="u-tab is-active" data-tab="basic">Table data</button>
+            <button class="u-tab" data-tab="details">Input data</button>
+        </div>
+    @endrole
+    <div class="dt-wrapper">
+        <div class="flex gap-5 p-10">
+            @hasanyrole('SDM Unit|GM/VP Unit|VP DHC')
+            <div class="flex justify-between w-full mb-10 u-mb-xl">
+                <div class="flex gap-5">
+                    <button id="btn-all-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Semua Data</button>
+                    <button id="btn-bulk-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Data yang Dipilih</button>
+                </div>
+                <button id="btn-export" class="u-btn u-btn--brand u-hover-lift">Export Data</button>
+            </div>
+            @endhasanyrole
+        </div>
+        @role('DHC')
+        <div class="u-scroll-x">
+            @include('training.training-request.partials.dhc-unit-table')
+        </div>
+        @endrole
+        @role('SDM Unit')
+        <div class="u-scroll-x">
+            @include('training.training-request.partials.sdm-unit-table')
+        </div>
+        @endrole
+    </div>
+</div>
+
+@include('training.training-request.modals.import-modal')
+@include('training.training-request.modals.edit-modal')
+
+@endsection
+
+@push('scripts')
+  @vite('resources/js/pages/training/index.js')
+@endpush

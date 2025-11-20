@@ -1,9 +1,9 @@
 import { getJSON } from "@/utils/fetch";
-import { initDeleteHandler } from "./deleteHandler";
-import { initEditHandler } from "./editHandler";
-import { initApproveHandler } from "./approveHandler";
-import { initRejectHandler } from "./rejectHandler";
-import { bindExternalSearch } from "@/utils/tableHelper";
+import { initDeleteHandler } from "./handler/deleteHandler";
+import { initEditHandler } from "./handler/editHandler";
+import { initApproveHandler } from "./handler/approveHandler";
+import { initRejectHandler } from "./handler/rejectHandler";
+import { initDragDropUpload } from "./handler/dragDropImport";
 
 export function initGetDataTable(tableBody) {
     const userRole = window.currentUserRole;
@@ -22,14 +22,28 @@ export function initGetDataTable(tableBody) {
                 let actionButtons = "";
                 let jenisPelatihanCell = "";
 
-                if (userRole === "SDM Unit") {
+                if (userRole === "DHC") {
                     jenisPelatihanCell = `
-                        <select class="jenis-pelatihan-select border border-gray-300 rounded p-1 w-full" data-id="${item.id}">
-                            <option value="" ${!item.jenis_pelatihan ? "selected" : ""}>-- Pilih Jenis Pelatihan --</option>
-                            <option value="EDP - Sertifikat Profesi" ${item.jenis_pelatihan === "EDP - Sertifikat Profesi" ? "selected" : ""}>
+                        <select class="jenis-pelatihan-select border border-gray-300 rounded p-1 w-full" data-id="${
+                            item.id
+                        }">
+                            <option value="" ${
+                                !item.jenis_pelatihan ? "selected" : ""
+                            }>-- Pilih Jenis Pelatihan --</option>
+                            <option value="EDP - Sertifikat Profesi" ${
+                                item.jenis_pelatihan ===
+                                "EDP - Sertifikat Profesi"
+                                    ? "selected"
+                                    : ""
+                            }>
                                 EDP - Sertifikat Profesi
                             </option>
-                            <option value="EDP - Sertifikat Industri" ${item.jenis_pelatihan === "EDP - Sertifikat Industri" ? "selected" : ""}>
+                            <option value="EDP - Sertifikat Industri" ${
+                                item.jenis_pelatihan ===
+                                "EDP - Sertifikat Industri"
+                                    ? "selected"
+                                    : ""
+                            }>
                                 EDP - Sertifikat Industri
                             </option>
                         </select>
@@ -38,7 +52,7 @@ export function initGetDataTable(tableBody) {
                     jenisPelatihanCell = `${item.jenis_pelatihan ?? "-"}`;
                 }
 
-                if (userRole === "SDM Unit") {
+                if (userRole === "DHC") {
                     actionButtons = `
                     <button class="u-btn u-btn--brand u-hover-lift" data-action="edit" data-id="${item.id}">
                         Edit
@@ -96,9 +110,6 @@ export function initGetDataTable(tableBody) {
                     <td>${item.nama_proyek ?? "-"}</td>
                     <td>${item.jenis_portofolio ?? "-"}</td>
                     <td>${item.fungsi ?? "-"}</td>
-                    <td>${item.alasan ?? "-"}</td>
-                    <td>${formatDate(item.start_date)}</td>
-                    <td>${formatDate(item.end_date)}</td>
                     <td>${item.status_approval.status_approval ?? "-"}</td>
                     <td class="cell-actions text-center">
                         ${actionButtons}
@@ -134,13 +145,16 @@ export function initGetDataTable(tableBody) {
         }).format(number);
     }
 
-    function formatDate(dateValue, options = { day: "2-digit", month: "long", year: "numeric" }) {
+    function formatDate(
+        dateValue,
+        options = { day: "2-digit", month: "long", year: "numeric" }
+    ) {
         if (!dateValue) return "-";
-        
+
         try {
             const date = new Date(dateValue);
             if (isNaN(date)) return "-";
-    
+
             return date.toLocaleDateString("id-ID", options);
         } catch (error) {
             console.error("Gagal memformat tanggal:", error);
@@ -154,4 +168,5 @@ export function initGetDataTable(tableBody) {
     initDeleteHandler(tableBody, loadTrainings);
     initApproveHandler(tableBody);
     initRejectHandler(tableBody);
+    initDragDropUpload();
 }

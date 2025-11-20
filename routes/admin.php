@@ -10,18 +10,17 @@ use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Self\ProfileController;
 
 // Recruitment (internal)
-use App\Http\Controllers\Recruitment\{
-    MonitoringController,
-    PrincipalApprovalController,
-    ContractController,
-    PublishingController
-};
+use App\Http\Controllers\Recruitment\MonitoringController as RecruitmentMonitoringController;
+use App\Http\Controllers\Recruitment\PrincipalApprovalController as RecruitmentApprovalController;
+use App\Http\Controllers\Recruitment\ContractController;
+use App\Http\Controllers\Recruitment\PublishingController;
 
 // Training (internal, optional)
 use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
     PrincipalApprovalController as TrainingApprovalController,
-    DashboardController as TrainingDashboardController
+    DashboardController as TrainingDashboardController,
+    TrainingRequestController
 };
 
 Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
@@ -129,6 +128,25 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
             ->name('dashboard.update-realisasi-date');
 
+        // Training Request
+        //// dhc unit
+        Route::get('training-request', [TrainingRequestController::class, 'getDataLna'])
+            ->name('training-request');
+        Route::post('training-request/import-lna', [TrainingRequestController::class, 'importLna'])
+            ->name('training-request.import-lna');
+        Route::post('training-request/{id}/edit-lna', [TrainingRequestController::class, 'edit-lna'])
+            ->name('training-request.edit-lna');
+        Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'delete-lna'])
+            ->name('training-request.delete-lna');
+
+        //// sdm unit
+        Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
+            ->name('training-request');
+        // Route::post('training-request/import-lna', [TrainingRequestController::class, 'import-lna'])
+        //     ->name('training-request.import-lna');
+
+        // END
+            
         // Monitoring
         Route::get('monitoring', fn () => view('training.monitoring.monitoring'))
             ->middleware('permission:training.view')->name('monitoring');
@@ -157,6 +175,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');
+        // END 
         
         // Self Learning
         Route::get('self-learning', fn () => view('training.self-learning.index'))

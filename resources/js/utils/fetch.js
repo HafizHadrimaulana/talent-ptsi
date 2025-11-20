@@ -32,6 +32,7 @@ export async function postJSON(url, formData = null) {
 }
 
 export async function postFormData(url, formData) {
+    console.log('url in post form data', url);
     const res = await fetch(url, {
         method: "POST",
         body: formData,
@@ -39,6 +40,7 @@ export async function postFormData(url, formData) {
             "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
         },
     });
+    console.log('res in post form data', res);
     return res.json();
 }
 

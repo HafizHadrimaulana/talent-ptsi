@@ -1,72 +1,42 @@
 import { postFormData } from "@/utils/fetch";
 
-export function initImportHandler() {
-    const importButton = document.querySelector(".btn-import");
-    const modal = document.querySelector("#import-modal");
-    const closeModal = document.querySelector("#close-modal");
-    const importForm = document.querySelector("#import-form");
+export async function initImportHandler(file) {
+    console.log("file in chunk", file);
 
-    if (importButton && modal && closeModal) {
-        importButton.addEventListener("click", () => {
-            modal.classList.remove("hidden");
-        });
+    const chunkSize = 500 * 1024; // 500KB
+    const totalChunks = Math.ceil(file.size / chunkSize);
 
-        closeModal.addEventListener("click", () => {
-            modal.classList.add("hidden");
-        });
-    }
+    try {
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * chunkSize;
+            const end = start + chunkSize;
 
-    importForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+            const chunk = file.slice(start, end);
 
-        const formData = new FormData(importForm);
-        const url = "/training/import";
+            const formData = new FormData();
+            formData.append("chunk", chunk);
+            formData.append("index", i);
+            formData.append("total", totalChunks);
+            formData.append("filename", file.name);
 
-        try {
-            modal.classList.add("hidden");
-            Swal.fire({
-                title: "Mengunggah Data...",
-                text: "Harap tunggu, sedang memproses file import.",
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                },
-            });
+            console.log("chunk", chunk);
+            console.log("index", i);
+            const res = await postFormData("/training/training-request/import-lna", formData);
 
-            const res = await postFormData(url, formData);
-            console.log("res import", res);
+            console.log("res", res);
 
-            if (res.status === "success") {
-                modal.classList.add("hidden");
-                Swal.fire({
-                    icon: "success",
-                    title: "Berhasil!",
-                    text: res.message || "Data pelatihan berhasil diimport.",
-                    confirmButtonText: "OK",
-                    timer: 2000,
-                    timerProgressBar: true,
-                }).then(() => {
-                    window.location.reload();
-                });
-            } else {
-                modal.classList.add("hidden");
-                Swal.fire({
-                    icon: "error",
-                    title: "Gagal!",
-                    text: res.message || "Gagal mengimpor data pelatihan.",
-                    confirmButtonText: "Coba Lagi",
-                });
+            if (!res || res.status !== "success") {
+                console.error("Chunk gagal:", res);
+                throw new Error(`Upload gagal pada chunk ${i}`);
             }
 
-            document.dispatchEvent(new CustomEvent("training:imported"));
-        } catch (error) {
-            console.error("error import", error);
-            Swal.fire({
-                icon: "error",
-                title: "Terjadi Kesalahan!",
-                text: "Gagal import data. Silakan coba lagi.",
-                confirmButtonText: "OK",
-            });
+            console.log(`Chunk ${i + 1}/${totalChunks} berhasil`);
         }
-    });
+
+        return { status: "success" };
+
+    } catch (err) {
+        console.error("Error upload:", err);
+        return { status: "error", message: err.message };
+    }
 }

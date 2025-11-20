@@ -8,9 +8,9 @@ use App\Models\FileTraining;
 use App\Models\Training;
 use App\Models\TrainingTemp;
 use App\Models\StatusApprovalTraining;
-use App\Imports\Training\TrainingImport;
+use App\Imports\TrainingImport;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\Training\TrainingImportServices;
+use App\Imports\TrainingImportServices;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 

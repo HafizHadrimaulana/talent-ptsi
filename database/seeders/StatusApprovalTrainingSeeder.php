@@ -14,11 +14,11 @@ class StatusApprovalTrainingSeeder extends Seeder
     public function run(): void
     {
         DB::table('status_approval_training')->insert([
-            ['id' => 1, 'status_approval' => 'Pending'],
-            ['id' => 2, 'status_approval' => 'Menunggu Persetujuan'],
+            ['id' => 1, 'status_approval' => 'Created'],
+            ['id' => 2, 'status_approval' => 'In Review GM/VP Unit'],
             ['id' => 3, 'status_approval' => 'Menunggu Persetujuan Akhir'],
-            ['id' => 4, 'status_approval' => 'Diterima'],
-            ['id' => 5, 'status_approval' => 'Ditolak'],
+            ['id' => 4, 'status_approval' => 'Approved'],
+            ['id' => 5, 'status_approval' => 'Rejected'],
             ['id' => 6, 'status_approval' => 'Menunggu Persetujuan DBS'],
         ]);
     }

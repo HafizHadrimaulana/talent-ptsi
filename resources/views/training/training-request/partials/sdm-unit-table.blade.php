@@ -1,0 +1,31 @@
+<table id="training-table"
+    class="u-table u-table-mobile sdm-training-table" data-dt>
+    <thead>
+        <tr>
+            <th>
+                <input type="checkbox" id="select-all">
+            </th>
+            <th>No</th>
+            <th>Jenis Pelatihan</th>
+            <th>NIK</th>
+            <th>Nama</th>
+            <th>Status Pegawai</th>
+            <th>Jabatan</th>
+            <th>Unit Kerja</th>
+            <th>Judul Sertifikasi</th>
+            <th>Penyelenggara</th>
+            <th>Waktu Pelaksanaan</th>
+            <th>Jenis Portofolio</th>
+            <th>Status Approval</th>
+            <th class="cell-actions">Aksi</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<div class="u-dt-pagination" id="pagination"></div>
+
+<script>
+    window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
+</script>
