@@ -300,7 +300,9 @@
                 <input type="password" class="u-input" name="password" id="f_password" placeholder="Min 8 characters">
                 <p class="u-text-xs u-muted u-mt-xs" id="passHint">Kosongkan untuk memakai default "password".</p>
               </div>
-              <div class="u-grid-col-span-2 u-card">
+              <div class="u-grid-col-span-2 u-card" style="background:color-mix(in srgb,#f59e0b 6%,transparent);
+                          border-color:color-mix(in srgb,#f59e0b 18%,transparent);
+                          color:#92400e;">
                 <div class="u-flex u-items-start u-gap-sm">
                   <i class='bx bx-info-circle'></i>
                   <div>
