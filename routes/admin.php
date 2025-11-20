@@ -89,14 +89,20 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     // RECRUITMENT
     // =========================
     Route::prefix('recruitment')->name('recruitment.')->group(function () {
+        // Monitoring Rekrutmen (Flow dari Izin Prinsip s/d Kontrak)
         Route::get('monitoring', [RecruitmentMonitoringController::class, 'index'])
             ->middleware('permission:recruitment.view')->name('monitoring');
 
+        // Izin Prinsip (principal approval)
         Route::get('principal-approval', [RecruitmentApprovalController::class, 'index'])
             ->middleware('permission:recruitment.view')->name('principal-approval.index');
 
         Route::post('principal-approval', [RecruitmentApprovalController::class, 'store'])
             ->middleware('permission:recruitment.update')->name('principal-approval.store');
+
+        // NEW: update draft Izin Prinsip (edit)
+        Route::put('principal-approval/{req}', [RecruitmentApprovalController::class, 'update'])
+            ->middleware('permission:recruitment.update')->name('principal-approval.update');
 
         Route::post('principal-approval/{req}/submit',  [RecruitmentApprovalController::class, 'submit'])
             ->middleware('permission:recruitment.submit')->name('principal-approval.submit');
@@ -107,25 +113,34 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('principal-approval/{req}/reject',  [RecruitmentApprovalController::class, 'reject'])
             ->middleware('permission:recruitment.reject')->name('principal-approval.reject');
 
+        // Penerbitan Kontrak (SPK / PKWT) + e-sign
         Route::get('contracts', [ContractController::class, 'index'])
             ->middleware('permission:contract.view')->name('contracts.index');
+
+        // detail kontrak (JSON untuk modal / inline)
+        Route::get('contracts/{contract}', [ContractController::class, 'show'])
+            ->middleware('permission:contract.view')->name('contracts.show');
 
         Route::post('contracts', [ContractController::class, 'store'])
             ->middleware('permission:contract.create')->name('contracts.store');
 
+        // submit draft (SDM Unit → kepala unit / approver)
         Route::post('contracts/{contract}/submit',  [ContractController::class, 'submit'])
             ->middleware('permission:contract.update')->name('contracts.submit');
 
+        // approve kontrak (kepala unit / DHC / Dir SDM sesuai flowmap)
         Route::post('contracts/{contract}/approve', [ContractController::class, 'approve'])
             ->middleware('permission:contract.approve')->name('contracts.approve');
 
+        // e-sign (draw + cam + geo loc)
         Route::post('contracts/{contract}/sign',    [ContractController::class, 'sign'])
             ->middleware('permission:contract.sign')->name('contracts.sign');
 
+        // Publishing lowongan dari Izin Prinsip
         Route::middleware('permission:recruitment.update')->group(function () {
-            Route::get('requests/{req}/publish', [PublishingController::class, 'edit'])->name('publish.edit');
-            Route::put('requests/{req}/publish', [PublishingController::class, 'update'])->name('publish.update');
-            Route::post('requests/{req}/toggle', [PublishingController::class, 'toggle'])->name('publish.toggle');
+            Route::get('requests/{req}/publish',  [PublishingController::class, 'edit'])->name('publish.edit');
+            Route::put('requests/{req}/publish',  [PublishingController::class, 'update'])->name('publish.update');
+            Route::post('requests/{req}/toggle',  [PublishingController::class, 'toggle'])->name('publish.toggle');
         });
     });
 

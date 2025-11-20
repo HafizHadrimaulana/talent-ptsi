@@ -13,7 +13,7 @@
   @vite('resources/css/app-ui.css')
   @vite('resources/js/app-layout.js')
   @vite('resources/js/app.js')
-  
+
 </head>
 @php
   /** @var \App\Models\User|null $user */
@@ -308,14 +308,14 @@
           </div>
 
           <div class="menu-list">
-            <button id="changePwBtn" type="button" class="menu-item cursor-pointer" data-open="pwModal" onclick="window.__openModal && window.__openModal('pwModal')">
+            <button id="changePwBtn" type="button" class="menu-item" data-open="pwModal" onclick="window.__openModal && window.__openModal('pwModal')">
               <span>Change Password</span>
             </button>
           </div>
 
           <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
             @csrf
-            <div id="poweroff" class="poweroff cursor-pointer" data-threshold="0.6" role="slider" aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+            <div id="poweroff" class="poweroff" data-threshold="0.6" role="slider" aria-label="Swipe To Signout" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
               <span class="power-icon">⏻</span>
               <span class="power-text">Swipe To Sign out</span>
               <div class="power-knob" id="powerKnob"></div>

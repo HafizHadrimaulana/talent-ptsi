@@ -8,14 +8,17 @@ use Illuminate\Support\Facades\Gate;
 class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
-        // Model::class => Policy::class,
+        // 'App\Models\Model' => 'App\Policies\ModelPolicy',
     ];
 
     public function boot(): void
     {
-        
+        // Kalau suatu saat kamu pakai Policy, ini yang ngedaftarin
+        $this->registerPolicies();
+
+        // SUPERADMIN: auto boleh semua ability / permission
         Gate::before(function ($user, $ability) {
-            return $user->hasRole('Superadmin') ? true : null;
+            return $user && $user->hasRole('Superadmin') ? true : null;
         });
     }
 }

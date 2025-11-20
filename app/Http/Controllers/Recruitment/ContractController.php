@@ -3,331 +3,689 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Contract, Applicant};
+use App\Models\Contract;
+use App\Models\Applicant;
+use App\Models\Unit;
+use App\Models\Document;
+use App\Models\Signature;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ContractController extends Controller
 {
-    public function index(Request $r)
+    /**
+     * LIST + FILTER KONTRAK
+     */
+    public function index(Request $request)
     {
-        $me = auth()->user();
+        $me = $request->user();
 
-        // === Hanya Superadmin & DHC yang bisa lihat semua ===
+        // Hanya Superadmin & DHC bisa lihat semua unit
         $canSeeAll = $me?->hasRole('Superadmin') || $me?->hasRole('DHC');
+        $meUnit = (int) ($me->unit_id ?? 0);
+
 
         $selectedUnitId = $canSeeAll
-            ? ($r->filled('unit_id') ? (int)$r->integer('unit_id') : null)
-            : (int)($me?->unit_id);
+            ? ($request->filled('unit_id') ? (int) $request->integer('unit_id') : null)
+            : (int) ($me?->unit_id);
 
         $units = $canSeeAll
-            ? DB::table('units')->select('id','name')->orderBy('name')->get()
-            : DB::table('units')->select('id','name')->where('id', $me?->unit_id)->get();
+            ? Unit::orderBy('name')->get(['id', 'name', 'code'])
+            : Unit::where('id', $selectedUnitId)->get(['id', 'name', 'code']);
 
-        $tbl   = (new Contract())->getTable();
-        $listQ = Contract::query();
+        $statusFilter = $request->input('status');
+        $searchFilter = $request->input('q');
 
-        // Scope unit (jika dipilih/harusnya unit sendiri)
-        if ($selectedUnitId && Schema::hasColumn($tbl, 'unit_id')) {
-            $listQ->where('unit_id', $selectedUnitId);
-        }
-
-        // ====== VISIBILITY RULE (samakan dgn Izin Prinsip): ======
-        // Non canSeeAll: sembunyikan DRAFT, kecuali DRAFT yg dibuat oleh dirinya sendiri
-        if (!$canSeeAll) {
-            // deteksi kolom "pembuat"
-            $creatorCols = array_values(array_filter([
-                Schema::hasColumn($tbl, 'created_by_user_id') ? 'created_by_user_id' : null,
-                Schema::hasColumn($tbl, 'created_by')         ? 'created_by'         : null,
-            ]));
-
-            $listQ->where(function($q) use ($creatorCols, $me, $tbl) {
-                // tampilkan selain draft
-                if (Schema::hasColumn($tbl, 'status')) {
-                    $q->where('status', '!=', 'draft');
-                } else {
-                    // kalau tak ada kolom status, ya biarkan semua
-                    return;
+        // ===========================
+        // LIST KONTRAK (monitoring)
+        // ===========================
+        $contractsQuery = Contract::query()
+            ->with(['unit'])
+            ->when($selectedUnitId, function ($q) use ($selectedUnitId) {
+                if ($selectedUnitId) {
+                    $q->where('unit_id', $selectedUnitId);
                 }
+            })
+            ->when($statusFilter, function ($q) use ($statusFilter) {
+                $q->where('status', $statusFilter);
+            })
+            ->when($searchFilter, function ($q) use ($searchFilter) {
+                $q->where(function ($qq) use ($searchFilter) {
+                    $qq->where('contract_no', 'like', '%'.$searchFilter.'%')
+                       ->orWhere('employment_type', 'like', '%'.$searchFilter.'%');
+                });
+            })
+            ->orderByDesc('created_at');
 
-                // ATAU, jika draft tapi dibuat oleh saya sendiri -> tetap tampil
-                if (!empty($creatorCols)) {
-                    $q->orWhere(function($w) use ($creatorCols, $me, $tbl) {
-                        $w->where('status', 'draft');
-                        $w->where(function($c) use ($creatorCols, $me) {
-                            foreach ($creatorCols as $col) {
-                                $c->orWhere($col, $me?->id);
-                            }
-                        });
-                    });
+        $contracts = $contractsQuery->paginate(25)->withQueryString();
+
+        // ===========================
+        // Master data dari config
+        // ===========================
+        $contractTypeConfigs = config('recruitment.contract_types', []);
+        $contractTypes = collect($contractTypeConfigs)
+            ->mapWithKeys(function (array $row) {
+                $code  = $row['code']  ?? '';
+                $label = $row['label'] ?? $code;
+                return $code ? [$code => $label] : [];
+            })
+            ->all();
+
+        $employmentTypeConfigs = config('recruitment.employment_types', []);
+        $employmentTypes = collect($employmentTypeConfigs)
+            ->mapWithKeys(function (array $row) {
+                $code  = $row['code']  ?? '';
+                $label = $row['label'] ?? $code;
+                return $code ? [$code => $label] : [];
+            })
+            ->all();
+
+        $budgetSourceTypeConfigs = config('recruitment.budget_source_types', []);
+        $budgetSourceTypes = collect($budgetSourceTypeConfigs)
+            ->mapWithKeys(function (array $row) {
+                $code  = $row['code']  ?? '';
+                $label = $row['label'] ?? $code;
+                return $code ? [$code => $label] : [];
+            })
+            ->all();
+
+        $requestTypeConfigs = config('recruitment.request_types', []);
+        $statusOptions      = config('recruitment.contract_statuses', []);
+
+        // ===========================
+        // Pelamar untuk SPK / PKWT Baru
+        // ===========================
+        $eligibleStatuses = config('recruitment.contract_applicant_statuses', ['APPROVED']);
+
+        $applicants = Applicant::query()
+            ->with(['unit'])
+            ->when($selectedUnitId, function ($q) use ($selectedUnitId) {
+                if ($selectedUnitId) {
+                    $q->where('unit_id', $selectedUnitId);
                 }
-            });
-        }
-        // ====== END VISIBILITY RULE ======
+            })
+            ->whereIn('status', $eligibleStatuses)
+            ->orderBy('full_name')
+            ->get();
 
-        $list = $listQ->latest()->paginate(12)->withQueryString();
+        // ===========================
+        // KONTRAK PKWT YANG AKAN BERAKHIR
+        // basis: tabel contracts sendiri (PKWT aktif)
+        // ===========================
+// ===========================
+// KONTRAK PKWT YANG AKAN BERAKHIR (via portfolio_histories)
+// ===========================
+$today  = now()->toDateString();
+$meUnit = (int) ($me->unit_id ?? 0);
 
-        // Applicants opsional
-        $applicants = collect();
-        if (class_exists(Applicant::class) && Schema::hasTable((new Applicant)->getTable())) {
-            $atbl = (new Applicant)->getTable();
-            $cols = ['id'];
-            foreach (['full_name','position_applied','unit_id','status','created_at'] as $c) {
-                if (Schema::hasColumn($atbl, $c)) $cols[] = $c;
-            }
+$expiringContracts = DB::table('portfolio_histories AS ph')
+    ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
+    ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
+    ->select(
+        'ph.id',
+        'ph.person_id',
+        'ph.employee_id',
+        'ph.title AS position_name',
+        'ph.organization AS unit_name_raw',
+        'ph.start_date',
+        'ph.end_date',
+        'e.employee_status',
+        'e.unit_id',
+        'u.name AS unit_name',
+        DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name")
+    )
+    ->where('ph.category', 'job')
+    ->whereNotNull('ph.end_date')
+    ->whereDate('ph.end_date', '>=', $today)
+    ->when(!$canSeeAll, function ($q) use ($meUnit) {
+        $q->where('e.unit_id', $meUnit);
+    })
+    ->orderBy('ph.end_date')
+    ->limit(300)
+    ->get();
 
-            $aq = Applicant::query()->select($cols);
-            if ($selectedUnitId && Schema::hasColumn($atbl, 'unit_id')) {
-                $aq->where('unit_id', $selectedUnitId);
-            }
-            if (Schema::hasColumn($atbl, 'status')) {
-                $aq->whereIn('status', ['shortlisted','selected']);
-            }
-
-            $applicants = $aq->latest()->limit(50)->get();
-        }
 
         return view('recruitment.contracts.index', [
-            'list'           => $list,
-            'applicants'     => $applicants,
-            'units'          => $units,
-            'canSeeAll'      => $canSeeAll,
-            'selectedUnitId' => $selectedUnitId,
+            'contracts'         => $contracts,
+            'list'              => $contracts,
+            'units'             => $units,
+            'selectedUnitId'    => $selectedUnitId,
+            'statusFilter'      => $statusFilter,
+            'statusOptions'     => $statusOptions,
+
+            'contractTypes'           => $contractTypes,
+            'employmentTypes'         => $employmentTypes,
+            'budgetSourceTypes'       => $budgetSourceTypes,
+            'contractTypeConfigs'     => $contractTypeConfigs,
+            'employmentTypeConfigs'   => $employmentTypeConfigs,
+            'budgetSourceTypeConfigs' => $budgetSourceTypeConfigs,
+            'requestTypes'            => $requestTypeConfigs,
+
+            'applicants'        => $applicants,
+            'expiringContracts' => $expiringContracts,
+            'canSeeAll'         => $canSeeAll,
         ]);
     }
 
-    public function store(Request $r)
+    /**
+     * SIMPAN DRAFT KONTRAK
+     */
+    public function store(Request $request)
     {
-        $data = $r->validate([
-            'type'         => 'required|in:SPK,PKWT',
-            'person_name'  => 'required',
-            'position'     => 'required',
-            'start_date'   => 'nullable|date',
-            'end_date'     => 'nullable|date|after_or_equal:start_date',
-            'salary'       => 'nullable|numeric',
-            'applicant_id' => 'nullable|integer',
-            'employee_id'  => 'nullable|integer',
+        $me = $request->user();
+
+        $validated = $request->validate([
+            'contract_type'      => 'required|string|max:40',
+            'unit_id'            => 'required|integer|exists:units,id',
+            'applicant_id'       => 'nullable|string|exists:applicants,id',
+            'position_name'      => 'nullable|string|max:191',
+            'employment_type'    => 'nullable|string|max:40',
+            'budget_source_type' => 'nullable|string|max:40',
+            'start_date'         => 'nullable|date',
+            'end_date'           => 'nullable|date|after_or_equal:start_date',
+            'remarks'            => 'nullable|string|max:2000',
+            'source_contract_id' => 'nullable|integer|exists:contracts,id',
         ]);
 
-        $tbl = (new Contract)->getTable();
-        $pick = function(array $cands) use ($tbl) {
-            foreach ($cands as $c) if (Schema::hasColumn($tbl,$c)) return $c;
-            return null;
-        };
+        // Scope unit
+        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+            if ((int) $validated['unit_id'] !== (int) $me->unit_id) {
+                abort(403, 'Tidak boleh membuat kontrak di luar unit Anda.');
+            }
+        }
 
-        $insert = [];
-        if (Schema::hasColumn($tbl, 'unit_id'))              $insert['unit_id']       = auth()->user()->unit_id;
-        if (Schema::hasColumn($tbl, 'status'))               $insert['status']        = 'draft';
-        if (Schema::hasColumn($tbl, 'created_by'))           $insert['created_by']    = auth()->id();
-        if (Schema::hasColumn($tbl, 'created_by_user_id'))   $insert['created_by_user_id'] = auth()->id();
+        // Konfigurasi jenis kontrak
+        $ctCode     = $validated['contract_type'];
+        $typeConfig = collect(config('recruitment.contract_types', []))
+            ->firstWhere('code', $ctCode);
 
-        $map = [
-            'type'        => ['type','contract_type'],
-            'person_name' => ['person_name','candidate_name','name'],
-            'position'    => ['position','position_name','job_title'],
-            'start_date'  => ['start_date','date_start','from_date'],
-            'end_date'    => ['end_date','date_end','to_date'],
-            'salary'      => ['salary','amount','gross_salary'],
-            'applicant_id'=> ['applicant_id'],
-            'employee_id' => ['employee_id','person_id'],
+        if (! $typeConfig) {
+            return back()
+                ->withErrors(['contract_type' => 'Jenis kontrak tidak dikenali.'])
+                ->withInput();
+        }
+
+        $mode              = (string) ($typeConfig['mode'] ?? 'new'); // new / extend
+        $requiresApplicant = (bool) ($typeConfig['requires_applicant'] ?? false);
+        $requiresExisting  = (bool) ($typeConfig['requires_existing_contract'] ?? false);
+
+        if ($requiresApplicant && empty($validated['applicant_id'])) {
+            return back()
+                ->withErrors(['applicant_id' => 'Pelamar / kandidat wajib dipilih untuk jenis kontrak ini.'])
+                ->withInput();
+        }
+
+        if ($requiresExisting && empty($validated['source_contract_id'])) {
+            return back()
+                ->withErrors(['source_contract_id' => 'Pilih kontrak yang menjadi dasar perpanjangan / pengakhiran.'])
+                ->withInput();
+        }
+
+        if ($mode === 'new' && empty($validated['position_name'])) {
+            return back()
+                ->withErrors(['position_name' => 'Nama jabatan wajib diisi untuk kontrak baru.'])
+                ->withInput();
+        }
+
+        // Ambil data pelamar (jika perlu)
+        $applicant = null;
+        if (! empty($validated['applicant_id']) && $requiresApplicant) {
+            $applicant = Applicant::query()
+                ->where('id', $validated['applicant_id'])
+                ->firstOrFail();
+        }
+
+        // Ambil kontrak existing (untuk extend / PB)
+        $baseContract = null;
+        if ($requiresExisting && ! empty($validated['source_contract_id'])) {
+            $baseContract = Contract::query()
+                ->where('id', $validated['source_contract_id'])
+                ->firstOrFail();
+        }
+
+        $requiresDraw = (bool) ($typeConfig['requires_draw_signature'] ?? true);
+        $requiresCam  = (bool) ($typeConfig['requires_camera'] ?? false);
+        $requiresGeo  = (bool) ($typeConfig['requires_geolocation'] ?? false);
+
+        $contract = new Contract();
+        $contract->contract_no   = null;        // diisi saat approve
+        $contract->contract_type = $ctCode;
+
+        // === RULE DATA SOURCE ===
+        // 1) Jika extend → dari kontrak existing
+        if ($baseContract) {
+            $contract->person_id         = $baseContract->person_id;
+            $contract->employee_id       = $baseContract->employee_id;
+            $contract->unit_id           = $baseContract->unit_id;
+            $contract->position_id       = $baseContract->position_id;
+            $contract->position_level_id = $baseContract->position_level_id;
+            $contract->employment_type   = $baseContract->employment_type;
+            $contract->start_date        = $validated['start_date'] ?? null;
+            $contract->end_date          = $validated['end_date'] ?? null;
+        }
+        // 2) Jika kontrak baru (SPK / PKWT Baru) → dari Applicant
+        elseif ($applicant) {
+            $contract->person_id       = $applicant->person_id ?? null;
+            $contract->employee_id     = null;
+            $contract->unit_id         = $validated['unit_id'];
+            $contract->employment_type = $validated['employment_type'] ?? null;
+            $contract->start_date      = $validated['start_date'] ?? null;
+            $contract->end_date        = $validated['end_date'] ?? null;
+        }
+        // 3) Fallback
+        else {
+            $contract->unit_id         = $validated['unit_id'];
+            $contract->employment_type = $validated['employment_type'] ?? null;
+            $contract->start_date      = $validated['start_date'] ?? null;
+            $contract->end_date        = $validated['end_date'] ?? null;
+        }
+
+        $contract->budget_source_type      = $validated['budget_source_type'] ?? null;
+        $contract->status                  = 'draft';
+        $contract->requires_draw_signature = $requiresDraw;
+        $contract->requires_camera         = $requiresCam;
+        $contract->requires_geolocation    = $requiresGeo;
+        $contract->document_id             = null;
+        $contract->created_by_person_id    = $me->person_id ?? null;
+        $contract->created_by_user_id      = $me->id;
+
+        // Simpan catatan/remarks ke meta.remark
+        $meta = [
+            'remarks'       => $validated['remarks'] ?? null,
+            'position_name' => $validated['position_name'] ?? null,
         ];
-        foreach ($map as $logical => $cands) {
-            if (!array_key_exists($logical,$data)) continue;
-            if ($col = $pick($cands)) $insert[$col] = $data[$logical];
-        }
-        if (!isset($insert['type']) && !isset($insert['contract_type'])) {
-            if ($col = $pick(['type','contract_type'])) $insert[$col] = $data['type'];
-        }
+        $contract->remuneration_json = $meta;
 
-        $c = new Contract();
-        $c->forceFill($insert)->save();
+        $contract->save();
 
-        if (!empty($c->applicant_id)
-            && class_exists(Applicant::class)
-            && Schema::hasTable((new Applicant)->getTable())
-            && Schema::hasColumn((new Applicant)->getTable(), 'status')) {
-            Applicant::whereKey($c->applicant_id)->update(['status' => 'selected']);
-        }
-
-        return back()->with('ok', 'Contract draft created.');
+        return redirect()
+            ->route('recruitment.contracts.index', ['unit_id' => $contract->unit_id])
+            ->with('ok', 'Draft kontrak berhasil dibuat.');
     }
 
-    public function submit(Contract $contract)
+    /**
+     * UPDATE KONTRAK DRAFT
+     */
+    public function update(Request $request, Contract $contract)
     {
-        $this->authorizeUnit($contract->unit_id);
+        $me = $request->user();
 
-        if ($contract->status !== 'draft' && $contract->status !== 'review') {
-            return back()->withErrors('Only drafts can be submitted.');
+        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+            if ((int) $contract->unit_id !== (int) $me->unit_id) {
+                abort(403, 'Akses ditolak.');
+            }
         }
 
-        if (Schema::hasColumn($contract->getTable(), 'status')) {
-            $contract->update(['status' => 'review']);
+        if ($contract->status !== 'draft') {
+            return back()->withErrors('Kontrak yang bukan draft tidak dapat diedit.');
         }
 
-        if (method_exists($contract, 'approvals')) {
-            try {
-                $rel = $contract->approvals();
-                $m   = $rel->getRelated();
-                $t   = $m->getTable();
+        $validated = $request->validate([
+            'type'               => 'required|string|max:40',
+            'unit_id'            => 'required|integer|exists:units,id',
+            'applicant_id'       => 'nullable|string|exists:applicants,id',
+            'position'           => 'required|string|max:191',
+            'employment_type'    => 'nullable|string|max:40',
+            'start_date'         => 'nullable|date',
+            'end_date'           => 'nullable|date|after_or_equal:start_date',
+            'note'               => 'nullable|string|max:2000',
+        ]);
 
-                if (Schema::hasTable($t)) {
-                    $payload = [];
-                    if (Schema::hasColumn($t,'level'))    $payload['level'] = 1;
-                    if (Schema::hasColumn($t,'role_key')) $payload['role_key'] = 'kepala_unit';
-                    if (Schema::hasColumn($t,'status'))   $payload['status'] = 'pending';
-                    if (Schema::hasColumn($t,'step'))     $payload['step'] = 1;
-                    if (Schema::hasColumn($t,'state'))    $payload['state'] = 'pending';
-
-                    if ($payload) {
-                        $rec = $m->newInstance();
-                        $rec->forceFill($payload);
-                        $rel->save($rec);
-                    }
-                }
-            } catch (\Throwable $e) { /* ignore */ }
+        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+            if ((int) $validated['unit_id'] !== (int) $me->unit_id) {
+                abort(403, 'Tidak boleh memindahkan kontrak ke unit lain.');
+            }
         }
 
-        return back()->with('ok', 'Contract submitted for review.');
+        $applicant = null;
+        if (! empty($validated['applicant_id'])) {
+            $applicant = Applicant::query()
+                ->where('id', $validated['applicant_id'])
+                ->firstOrFail();
+        }
+
+        $contract->contract_type   = $validated['type'];
+        $contract->unit_id         = $validated['unit_id'];
+        $contract->person_id       = $applicant?->person_id ?? $contract->person_id;
+        $contract->employment_type = $validated['employment_type'] ?? null;
+        $contract->start_date      = $validated['start_date'] ?? null;
+        $contract->end_date        = $validated['end_date'] ?? null;
+
+        $meta = $contract->remuneration_json ?? [];
+        $meta['remarks']       = $validated['note'] ?? null;
+        $meta['position_name'] = $validated['position'] ?? ($meta['position_name'] ?? null);
+        $contract->remuneration_json = $meta;
+
+        $contract->save();
+
+        return redirect()
+            ->route('recruitment.contracts.index', ['unit_id' => $contract->unit_id])
+            ->with('ok', 'Draft kontrak berhasil diperbarui.');
     }
 
-    public function approve(Contract $contract, Request $r)
+    /**
+     * SUBMIT DRAFT → REVIEW
+     */
+    public function submit(Request $request, Contract $contract)
     {
-        $this->authorizeUnit($contract->unit_id);
+        $me = $request->user();
 
-        if ($contract->status !== 'review') {
-            return back()->withErrors('Contract must be in review status.');
+        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+            if ((int) $contract->unit_id !== (int) $me->unit_id) {
+                abort(403, 'Akses ditolak.');
+            }
         }
 
-        $update = [];
-        if (Schema::hasColumn($contract->getTable(), 'status'))      $update['status']      = 'approved';
-        if (Schema::hasColumn($contract->getTable(), 'approved_by')) $update['approved_by'] = auth()->id();
-        if (Schema::hasColumn($contract->getTable(), 'approved_at')) $update['approved_at'] = now();
-        if ($update) $contract->update($update);
-
-        if (method_exists($contract, 'approvals')) {
-            try {
-                $rel = $contract->approvals();
-                $m   = $rel->getRelated();
-                $t   = $m->getTable();
-
-                if (Schema::hasTable($t)) {
-                    $q = $rel->getQuery();
-                    if (Schema::hasColumn($t,'status')) $q->where('status','pending');
-                    elseif (Schema::hasColumn($t,'state')) $q->where('state','pending');
-
-                    $changes = [];
-                    if (Schema::hasColumn($t,'status'))     $changes['status'] = 'approved';
-                    if (Schema::hasColumn($t,'state'))      $changes['state']  = 'approved';
-                    if (Schema::hasColumn($t,'user_id'))    $changes['user_id'] = auth()->id();
-                    if (Schema::hasColumn($t,'decided_at')) $changes['decided_at'] = now();
-                    if (Schema::hasColumn($t,'note') && $r->filled('note')) $changes['note'] = $r->note;
-
-                    if ($changes) $q->update($changes);
-                }
-            } catch (\Throwable $e) { /* ignore */ }
+        if ($contract->status !== 'draft') {
+            return back()->withErrors('Hanya kontrak berstatus draft yang bisa di-submit.');
         }
 
-        // Generate nomor kontrak (TYPE-SEQTYPE/UNIT-SEQUNIT/INISIAL/YEAR)
-        $tbl = $contract->getTable();
-        $typeCol   = Schema::hasColumn($tbl,'type') ? 'type' : (Schema::hasColumn($tbl,'contract_type') ? 'contract_type' : null);
-        $numberCol = Schema::hasColumn($tbl,'number') ? 'number' : (Schema::hasColumn($tbl,'contract_no') ? 'contract_no' : null);
+        $contract->status = 'review';
+        $contract->save();
 
-        if ($numberCol && $typeCol && empty($contract->$numberCol)) {
-            $typeVal = strtoupper($contract->$typeCol);
+        return back()->with('ok', 'Kontrak dikirim untuk review.');
+    }
 
-            $dateCol = collect(['approved_at','created_at','updated_at'])->first(fn($c)=>Schema::hasColumn($tbl,$c));
-            $refDate = $dateCol ? \Illuminate\Support\Carbon::parse($contract->$dateCol) : now();
-            $year  = (int)$refDate->format('Y');
-            $month = (int)$refDate->format('m');
+    /**
+     * APPROVE KONTRAK → nomor + dokumen
+     */
+    public function approve(Request $request, Contract $contract)
+    {
+        $me = $request->user();
 
-            $initials = function (?string $name): string {
-                if (!$name) return 'XX';
-                $parts = preg_split('/\s+/', trim($name));
-                $first = mb_substr($parts[0] ?? '', 0, 1);
-                $last  = mb_substr(end($parts) ?: '', 0, 1);
-                return mb_strtoupper(($first ?: '') . ($last ?: ''));
-            };
-            $inisial = $initials(optional(auth()->user())->name);
+        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+            abort(403, 'Akses ditolak.');
+        }
 
-            $unitCode = 'U'.$contract->unit_id;
-            if (Schema::hasTable('units')) {
-                $u = DB::table('units')->where('id', $contract->unit_id)->first();
-                if ($u) {
-                    $unitCode = strtoupper(
-                        $u->code ?? $u->abbr ?? $u->short_name
-                        ?? (isset($u->name) ? (preg_replace('/[^A-Z]/','', mb_strtoupper($u->name)) ?: 'U'.$contract->unit_id) : 'U'.$contract->unit_id)
-                    );
-                }
+        if (! in_array($contract->status, ['review', 'draft'], true)) {
+            return back()->withErrors('Hanya kontrak draft/review yang bisa di-approve.');
+        }
+
+        DB::transaction(function () use ($contract, $me) {
+            if (! $contract->contract_no) {
+                $contract->contract_no = $this->generateContractNumber($contract);
             }
 
-            $seqType = DB::table($tbl)
-                ->when($dateCol, fn($q)=>$q->whereYear($dateCol,$year)->whereMonth($dateCol,$month))
-                ->where($typeCol,$typeVal)->count() + 1;
+            if (! $contract->document_id) {
+                $document = $this->ensureContractDocumentExists($contract, $me->id, $me->person_id ?? null);
+                $contract->document_id = $document->id;
+            }
 
-            $seqUnit = DB::table($tbl)
-                ->when($dateCol, fn($q)=>$q->whereYear($dateCol,$year)->whereMonth($dateCol,$month))
-                ->where('unit_id',$contract->unit_id)->count() + 1;
+            $contract->status = 'approved';
+            $contract->save();
+        });
 
-            $formatted = sprintf('%s-%03d/%s-%03d/%s/%d', $typeVal, $seqType, $unitCode, $seqUnit, $inisial, $year);
-            $contract->update([$numberCol => $formatted]);
-        }
-
-        return back()->with('ok', 'Contract approved.');
+        return back()->with('ok', 'Kontrak disetujui dan siap untuk e-sign.');
     }
 
-    public function sign(Contract $contract, Request $r)
-    {
-        $this->authorizeUnit($contract->unit_id);
-
-        if ($contract->status !== 'approved') {
-            return back()->withErrors('Contract must be approved first.');
-        }
-
-        if (method_exists($contract, 'signatures')) {
-            try {
-                $rel = $contract->signatures();
-                $m   = $rel->getRelated();
-                $t   = $m->getTable();
-
-                if (Schema::hasTable($t)) {
-                    $payload = [];
-                    if (Schema::hasColumn($t,'signer_role'))  $payload['signer_role']  = 'candidate';
-                    if (Schema::hasColumn($t,'signer_name'))  $payload['signer_name']  = $contract->person_name ?? 'Candidate';
-                    if (Schema::hasColumn($t,'signer_email')) $payload['signer_email'] = null;
-                    if (Schema::hasColumn($t,'signed_at'))    $payload['signed_at']    = now();
-                    if (Schema::hasColumn($t,'ip_address'))   $payload['ip_address']   = $r->ip();
-                    if (Schema::hasColumn($t,'payload'))      $payload['payload']      = ['method'=>'manual-confirm'];
-
-                    if ($payload) {
-                        $rec = $m->newInstance();
-                        $rec->forceFill($payload);
-                        $rel->save($rec);
-                    }
-                }
-            } catch (\Throwable $e) { /* ignore */ }
-        }
-
-        if (Schema::hasColumn($contract->getTable(), 'status')) {
-            $contract->update(['status' => 'signed']);
-        }
-
-        return back()->with('ok', 'Contract signed (manual dummy).');
-    }
-
-    protected function authorizeUnit($unitId): void
+    /**
+     * DETAIL KONTRAK (JSON)
+     */
+    public function show(Contract $contract)
     {
         $me = auth()->user();
 
-        // Bypass hanya untuk Superadmin & DHC
-        if ($me && ($me->hasRole('Superadmin') || $me->hasRole('DHC'))) {
-            return;
+        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+            if ((int) $contract->unit_id !== (int) $me->unit_id) {
+                abort(403, 'Akses ditolak.');
+            }
         }
 
-        // Selain itu, wajib sama unit
-        $my = $me?->unit_id;
-        if ($my && $unitId && (string)$my !== (string)$unitId) {
-            abort(403);
+        $contract->load('unit');
+
+        $signatures = [];
+        if ($contract->document_id) {
+            $signatures = Signature::query()
+                ->where('document_id', $contract->document_id)
+                ->orderBy('signed_at')
+                ->get()
+                ->map(function (Signature $sig) {
+                    return [
+                        'id'           => $sig->id,
+                        'signer_role'  => $sig->signer_role,
+                        'signed_at'    => optional($sig->signed_at)->toDateTimeString(),
+                        'geo_lat'      => $sig->geo_lat,
+                        'geo_lng'      => $sig->geo_lng,
+                        'geo_accuracy' => $sig->geo_accuracy_m,
+                    ];
+                });
         }
+
+        $meta = $contract->remuneration_json ?? [];
+
+        return response()->json([
+            'data' => [
+                'id'                => $contract->id,
+                'contract_no'       => $contract->contract_no,
+                'contract_type'     => $contract->contract_type,
+                'status'            => $contract->status,
+                'position_name'     => $meta['position_name'] ?? null,
+                'remarks'           => $meta['remarks'] ?? null,
+                'employment_type'   => $contract->employment_type,
+                'start_date'        => optional($contract->start_date)->format('Y-m-d'),
+                'end_date'          => optional($contract->end_date)->format('Y-m-d'),
+                'unit'              => $contract->unit?->only(['id', 'name', 'code']),
+                'requires_draw'     => (bool) $contract->requires_draw_signature,
+                'requires_camera'   => (bool) $contract->requires_camera,
+                'requires_geo'      => (bool) $contract->requires_geolocation,
+                'has_document'      => (bool) $contract->document_id,
+                'document_id'       => $contract->document_id,
+                'signatures'        => $signatures,
+            ],
+        ]);
+    }
+
+    /**
+     * E-SIGN KONTRAK
+     */
+    public function sign(Request $request, Contract $contract)
+    {
+        $me = $request->user();
+
+        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+            if ((int) $contract->unit_id !== (int) $me->unit_id) {
+                abort(403, 'Akses ditolak.');
+            }
+        }
+
+        if (! $contract->document_id) {
+            return back()->withErrors('Dokumen kontrak belum tersedia untuk ditandatangani.');
+        }
+
+        if (! in_array($contract->status, ['approved', 'signed'], true)) {
+            return back()->withErrors('Kontrak belum dalam status yang dapat ditandatangani.');
+        }
+
+        $validated = $request->validate([
+            'signature_image'      => 'nullable|string',
+            'signature_draw_data'  => 'nullable|string',
+            'camera_photo'         => 'nullable|image|max:4096',
+            'selfie_image'         => 'nullable|string',
+            'geo_lat'              => 'nullable|numeric',
+            'geo_lng'              => 'nullable|numeric',
+            'geo_acc'              => 'nullable|numeric|min:0',
+            'geo_accuracy_m'       => 'nullable|numeric|min:0',
+            'signer_role'          => 'nullable|string|max:40',
+        ]);
+
+        $signerRole = $validated['signer_role'] ?? 'candidate';
+
+        $drawData = $validated['signature_image']
+            ?? $validated['signature_draw_data']
+            ?? null;
+
+        if (! $drawData) {
+            return back()->withErrors('Tanda tangan (canvas) belum diisi.');
+        }
+
+        $drawHash = hash('sha256', $drawData);
+
+        $photoPath = null;
+        $photoHash = null;
+
+        if ($request->hasFile('camera_photo')) {
+            $file = $request->file('camera_photo');
+            $photoPath = $file->store('contract-signatures', 'public');
+            $photoHash = hash_file('sha256', $file->getRealPath());
+        } elseif (! empty($validated['selfie_image'])) {
+            [$photoPath, $photoHash] = $this->storeBase64Image(
+                $validated['selfie_image'],
+                'public',
+                'contract-signatures'
+            );
+        }
+
+        $geoAcc = $validated['geo_acc'] ?? $validated['geo_accuracy_m'] ?? null;
+
+        Signature::updateOrCreate(
+            [
+                'document_id'      => $contract->document_id,
+                'signer_role'      => $signerRole,
+                'signer_person_id' => $me->person_id ?? $contract->person_id,
+            ],
+            [
+                'signer_user_id'        => $me->id,
+                'signature_draw_data'   => $drawData,
+                'signature_draw_hash'   => $drawHash,
+                'camera_photo_path'     => $photoPath,
+                'camera_photo_hash'     => $photoHash,
+                'geo_lat'               => $validated['geo_lat'] ?? null,
+                'geo_lng'               => $validated['geo_lng'] ?? null,
+                'geo_accuracy_m'        => $geoAcc,
+                'signed_at'             => now(),
+            ]
+        );
+
+        $contract->status = 'signed';
+        $contract->save();
+
+        return redirect()
+            ->route('recruitment.contracts.index', ['unit_id' => $contract->unit_id])
+            ->with('ok', 'Kontrak berhasil ditandatangani.');
+    }
+
+    /* =======================================================================
+     *  HELPER: NOMOR KONTRAK & DOKUMEN
+     * ======================================================================= */
+
+    protected function generateContractNumber(Contract $contract): string
+    {
+        $contract->loadMissing('unit');
+
+        $type = strtoupper((string) $contract->contract_type);
+        if (str_contains($type, 'SPK')) {
+            $prefix = 'SPK';
+        } elseif (str_contains($type, 'PKWT')) {
+            $prefix = 'PKWT';
+        } elseif (str_contains($type, 'PB')) {
+            $prefix = 'PB';
+        } else {
+            $prefix = 'CTR';
+        }
+
+        $unitCode  = $contract->unit?->code ?: 'UNIT';
+        $now       = now();
+        $year      = $now->format('Y');
+        $yearMonth = $now->format('Ym');
+
+        $base = "{$prefix}/{$unitCode}/{$yearMonth}";
+
+        $lastNo = Contract::query()
+            ->where('contract_type', $contract->contract_type)
+            ->where('unit_id', $contract->unit_id)
+            ->whereYear('created_at', $year)
+            ->whereNotNull('contract_no')
+            ->where('contract_no', 'like', $base.'/%')
+            ->orderByDesc('contract_no')
+            ->value('contract_no');
+
+        $seq = 1;
+        if ($lastNo) {
+            $parts   = explode('/', $lastNo);
+            $lastSeq = (int) end($parts);
+            $seq     = $lastSeq + 1;
+        }
+
+        return $base.'/'.str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+    }
+
+    protected function ensureContractDocumentExists(Contract $contract, int $userId, ?string $personId = null): Document
+    {
+        if ($contract->document_id) {
+            $existing = Document::find($contract->document_id);
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        $contract->loadMissing('unit');
+
+        $typeConfig = collect(config('recruitment.contract_types', []))
+            ->firstWhere('code', $contract->contract_type) ?: [];
+
+        $templates = config('recruitment.templates', []);
+
+        $templateKey = $typeConfig['template_key'] ?? null;
+        $tpl         = ($templateKey && isset($templates[$templateKey]))
+            ? $templates[$templateKey]
+            : (reset($templates) ?: []);
+
+        $disk         = $tpl['disk'] ?? 'public';
+        $templatePath = $tpl['path'] ?? 'templates/contract-default.docx';
+        $docType      = $typeConfig['document_type']
+            ?? ($tpl['doc_type'] ?? 'CONTRACT');
+
+        $path = "contracts/{$docType}/{$contract->id}-{$contract->contract_no}.pdf";
+
+        return Document::create([
+            'person_id'    => $contract->person_id,
+            'employee_id'  => $contract->employee_id,
+            'doc_type'     => $docType,
+            'storage_disk' => $disk,
+            'path'         => $path,
+            'mime'         => 'application/pdf',
+            'meta'         => [
+                'source'        => 'rekrutmen.contract',
+                'contract_id'   => $contract->id,
+                'contract_no'   => $contract->contract_no,
+                'unit_id'       => $contract->unit_id,
+                'unit_name'     => $contract->unit?->name,
+                'template_key'  => $templateKey,
+                'template_path' => $templatePath,
+                'generated_by'  => $userId,
+                'generated_at'  => now()->toDateTimeString(),
+            ],
+        ]);
+    }
+
+    protected function storeBase64Image(?string $dataUrl, string $disk, string $dir): array
+    {
+        if (empty($dataUrl)) {
+            return [null, null];
+        }
+
+        $data = $dataUrl;
+        $ext  = 'png';
+
+        if (preg_match('/^data:image\/(\w+);base64,/', $dataUrl, $m)) {
+            $ext  = strtolower($m[1]);
+            $data = substr($dataUrl, strpos($dataUrl, ',') + 1);
+        }
+
+        $binary = base64_decode($data);
+        if ($binary === false) {
+            return [null, null];
+        }
+
+        $filename = $dir.'/'.uniqid('img_', true).'.'.$ext;
+        Storage::disk($disk)->put($filename, $binary);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'img');
+        file_put_contents($tmp, $binary);
+        $hash = hash_file('sha256', $tmp);
+        @unlink($tmp);
+
+        return [$filename, $hash];
     }
 }
