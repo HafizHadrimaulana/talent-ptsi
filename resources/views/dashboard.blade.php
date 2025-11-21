@@ -102,6 +102,40 @@
         </div>
 
     </div>
+<!-- KPI Filter -->
+<div class="flex flex-wrap items-center gap-4 mb-6 !mt-4 !p-4 bg-white shadow-md rounded-xl !border !border-gray-200">
+
+    <!-- Filter Label -->
+    <span class="text-gray-700 font-semibold text-sm !mr-2">Filter by:</span>
+
+    <!-- Filter Dropdown -->
+    <select id="kpiFilter"
+        class="border !border-gray-300 rounded-lg px-4 py-2 text-sm font-medium
+               bg-gray-50 hover:bg-gray-100 transition-all cursor-pointer
+               shadow-sm !important">
+        <option value="monthly">📅 Monthly</option>
+        <option value="yearly">📆 Yearly</option>
+        <option value="custom">🔍 Custom Range</option>
+    </select>
+
+    <!-- Custom Range Container -->
+    <div id="customRange" class="flex items-center gap-3 hidden">
+
+        <input type="date" id="startDate"
+            class="border !border-gray-300 rounded-lg px-3 py-2 text-sm bg-white shadow-sm !important cursor-pointer">
+
+        <span class="text-gray-500">to</span>
+
+        <input type="date" id="endDate"
+            class="border !border-gray-300 rounded-lg px-3 py-2 text-sm bg-white shadow-sm !important cursor-pointer">
+
+        <button id="applyRange"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium shadow-md
+                   hover:bg-blue-700 active:scale-95 transition-all !important cursor-pointer">
+            Apply
+        </button>
+    </div>
+</div>
 
     <!-- KPI TABLE -->
     <div class="!overflow-x-auto !mt-5">
@@ -120,7 +154,7 @@
                 <!-- Row 1 -->
                 <tr class="border-b">
                     <td class="p-3 font-semibold">Total Active Employees</td>
-                    <td class="p-3">This Month vs Last Month</td>
+                    <td class="p-3" data-period>This Month vs Last Month</td>
                     <td class="p-3">1210</td>
                     <td class="p-3">1109</td>
                     <td class="p-3 text-green-600 font-semibold flex items-center gap-1">
@@ -131,7 +165,7 @@
                 <!-- Row 2 -->
                 <tr class="border-b">
                     <td class="p-3 font-semibold">Total Active Female Employees</td>
-                    <td class="p-3">This Month vs Last Month</td>
+                    <td class="p-3" data-period>This Month vs Last Month</td>
                     <td class="p-3">470</td>
                     <td class="p-3">490</td>
                     <td class="p-3 text-green-600 font-semibold flex items-center gap-1">
@@ -142,7 +176,7 @@
                 <!-- Row 3 -->
                 <tr class="border-b">
                     <td class="p-3 font-semibold">Total Active Male Employees</td>
-                    <td class="p-3">This Month vs Last Month</td>
+                    <td class="p-3" data-period>This Month vs Last Month</td>
                     <td class="p-3">700</td>
                     <td class="p-3">710</td>
                     <td class="p-3 text-green-600 font-semibold flex items-center gap-1">
@@ -153,7 +187,7 @@
                 <!-- Row 4 -->
                 <tr class="border-b">
                     <td class="p-3 font-semibold">New Hires</td>
-                    <td class="p-3">This Month vs Last Month</td>
+                    <td class="p-3" data-period >This Month vs Last Month</td>
                     <td class="p-3">172</td>
                     <td class="p-3">160</td>
                     <td class="p-3 text-green-600 font-semibold flex items-center gap-1">
@@ -164,7 +198,7 @@
                 <!-- Row 5 -->
                 <tr>
                     <td class="p-3 font-semibold">Terminations</td>
-                    <td class="p-3">This Month vs Last Month</td>
+                    <td class="p-3" data-period>This Month vs Last Month</td>
                     <td class="p-3">-29</td>
                     <td class="p-3">-27</td>
                     <td class="p-3 text-red-600 font-semibold flex items-center gap-1">
@@ -177,14 +211,25 @@
 
 </div>
 
-<!----Headcount + Recent Activity--->
-<div class="!mt-10 !flex !flex-wrap !gap-6">
+<!----Headcount + Recent Activity (Both Inside Same Container) --->
+<div class="!mt-10 !flex !gap-6 !flex-nowrap">
 
-    <!-- HEADCOUNT CHART (Larger, Left) -->
+    <!-- HEADCOUNT CHART (Left) -->
     <div class="bg-white !rounded-xl !shadow-lg !p-6 
                 !w-[900px] !h-[350px] flex-grow">
 
-        <h2 class="text-xl font-semibold !mb-4 !ml-3">Headcount Overview</h2>
+        <!-- Title + Dropdown (aligned horizontally) -->
+        <div class="!flex !items-center !justify-between !mb-4">
+            <h2 class="text-xl font-semibold !ml-3">Headcount Overview</h2>
+
+            <!-- Dropdown -->
+            <select id="hcFilter" 
+                    class="!border !border-gray-300 !rounded-md !p-2 !text-sm !cursor-pointer">
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="custom">Custom Range</option>
+            </select>
+        </div>
 
         <div class="w-full !h-[260px]">
             <canvas id="headcountChart"></canvas>
@@ -193,11 +238,11 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </div>
 
-    <!-- LATEST ACTIVITY (Smaller, Right, More Elegant) -->
+    <!-- LATEST ACTIVITY -->
     <div class="bg-white !rounded-xl !shadow-lg !p-6 
                 !w-[350px] !h-[350px] flex-none overflow-y-auto">
 
-        <h2 class="text-xl font-semibold !mb-4 !ml-2">Latest Activity</h2>
+        <h2 class="text-xl font-semibold !mb-4 !ml-2">Recent Activity</h2>
 
         <ul class="space-y-4 text-gray-700">
 
@@ -249,15 +294,30 @@
                     <p class="text-sm opacity-60">Just Now</p>
                 </div>
             </li>
+
         </ul>
     </div>
 
 </div>
+
+
+</div>
 <!-- L&D Chart Container -->
 <div class="bg-white !rounded-xl !shadow-lg !p-6 
-                !w-auto !h-[350px] flex-grow !mt-10">
-    <h2 class="text-lg font-semibold mb-2 !ml-5">Learning & Development Progress</h2>
-    <canvas id="trainingChart" class=" !w-full !h-auto"></canvas>
+                !w-auto !h-[400px] flex-grow !mt-10">
+             <!-- Title + Dropdown (aligned horizontally) -->
+        <div class="!flex !items-center !justify-between !mb-4">
+            <h2 class="text-xl font-semibold !ml-3">Employee Learning Progress</h2>
+
+            <!-- Dropdown -->
+            <select id="hcFilter" 
+                    class="!border !border-gray-300 !rounded-md !p-2 !text-sm !cursor-pointer">
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="custom">Custom Range</option>
+            </select>
+        </div>
+    <canvas id="trainingChart" class=" !w-full !h-[320px]"></canvas>
 </div>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -327,6 +387,122 @@
             }
         }
     });
+    document.addEventListener("DOMContentLoaded", () => {
+    const filter = document.getElementById("kpiFilter");
+    const customRange = document.getElementById("customRange");
+    const applyBtn = document.getElementById("applyRange");
+
+    filter.addEventListener("change", () => {
+        if (filter.value === "custom") {
+            customRange.classList.remove("hidden");
+        } else {
+            customRange.classList.add("hidden");
+            updateKPITable(filter.value);
+        }
+    });
+
+    applyBtn.addEventListener("click", () => {
+        const start = document.getElementById("startDate").value;
+        const end = document.getElementById("endDate").value;
+
+        if (!start || !end) {
+            alert("Please select both dates.");
+            return;
+        }
+
+        updateKPITable("custom", { start, end });
+    });
+});
+
+function updateKPITable(type, range = null) {
+    console.log("Updating KPI Table with:", type, range);
+
+    // TODO: replace with real data fetch if needed
+
+    // Dummy example:
+    const rows = document.querySelectorAll("tbody tr");
+
+    rows.forEach(row => {
+        const current = row.children[2];
+        const previous = row.children[3];
+        const change = row.children[4];
+
+        if (type === "monthly") {
+            current.textContent = random(950, 1250);
+            previous.textContent = random(900, 1150);
+        }
+
+        if (type === "yearly") {
+            current.textContent = random(10000, 16000);
+            previous.textContent = random(9000, 15000);
+        }
+
+        if (type === "custom") {
+            current.textContent = random(500, 2000);
+            previous.textContent = random(300, 1800);
+        }
+
+        // update change %
+        const c = parseFloat(current.textContent);
+        const p = parseFloat(previous.textContent);
+        const diff = (((c - p) / p) * 100).toFixed(1);
+
+        change.textContent = (diff >= 0 ? "▲ " : "▼ ") + Math.abs(diff) + "%";
+        change.className =
+            "p-3 font-semibold flex items-center gap-1 " +
+            (diff >= 0 ? "text-green-600" : "text-red-600");
+    });
+}
+
+function random(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+document.addEventListener("DOMContentLoaded", () => {
+
+    const filter = document.getElementById("kpiFilter");
+    const customRangeBox = document.getElementById("customRange");
+    const startDate = document.getElementById("startDate");
+    const endDate = document.getElementById("endDate");
+    const applyRange = document.getElementById("applyRange");
+
+    // All KPI table period <td> cells
+    const periodCells = document.querySelectorAll('td[data-period]');
+
+    function updatePeriod(text) {
+        periodCells.forEach(cell => {
+            cell.textContent = text;
+        });
+    }
+
+    // === HANDLE FILTER CHANGE ===
+    filter.addEventListener("change", () => {
+        if (filter.value === "monthly") {
+            customRangeBox.classList.add("hidden");
+
+            updatePeriod("This Month vs Last Month");
+
+        } else if (filter.value === "yearly") {
+            customRangeBox.classList.add("hidden");
+
+            updatePeriod("This Year vs Last Year");
+
+        } else if (filter.value === "custom") {
+            customRangeBox.classList.remove("hidden");
+        }
+    });
+
+    // === CUSTOM RANGE APPLY ===
+    applyRange.addEventListener("click", () => {
+        const s = startDate.value;
+        const e = endDate.value;
+
+        if (!s || !e) return alert("Please select both start and end dates");
+
+        const formatted = `${s} to ${e}`;
+        updatePeriod(formatted);
+    });
+
+});
 </script>
 
 

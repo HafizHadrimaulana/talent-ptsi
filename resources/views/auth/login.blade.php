@@ -98,25 +98,35 @@
               @enderror
             </div>
 
-            <div class="flex items-center justify-between text-xs">
-              <label class="flex items-center gap-2 text-[#445167]">
-                <input type="checkbox" name="remember" class="rounded border-[#cdd6e3] text-brand focus:ring-brand">
-                <span>Remember me</span>
-              </label>
+           <div class="text-xs space-y-3 text-[#445167]">
 
-              <label class="flex items-start gap-2 text-[#445167]">
-                <input
-                  type="checkbox"
-                  id="termsCheckbox"
-                  class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
-                <span>
-                  Saya memahami ketentuan yang berlaku,
-                  <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
-                    Baca Ketentuan Privasi Pegawai
-                  </a>
-                </span>
-              </label>
-            </div>
+        <!-- Remember Me -->
+        <label class="flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            name="remember"
+            class="rounded border-[#cdd6e3] text-brand focus:ring-brand"
+          >
+          <span>Remember me</span>
+        </label>
+
+        <!-- Privacy Policy -->
+        <label class="flex items-start gap-2">
+          <input
+            type="checkbox"
+            id="termsCheckbox"
+            class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand"
+          >
+          <span>
+            Saya memahami ketentuan yang berlaku,
+            <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+              Baca Ketentuan Privasi Pegawai
+            </a>
+          </span>
+        </label>
+
+      </div>
+
 
             <div class="flex flex-col gap-2.5 mt-2">
               <button
@@ -151,8 +161,21 @@
   const checkbox = document.getElementById('termsCheckbox');
   const signInBtn = document.getElementById('signInBtn');
 
+  // Disable button by default
+  signInBtn.disabled = true;
+  signInBtn.style.backgroundColor = '#98A4B8';
+  signInBtn.style.cursor = 'not-allowed';
+
   checkbox.addEventListener('change', () => {
-    signInBtn.style.backgroundColor = checkbox.checked ? '#00A29A' : '#98A4B8';
+    if (checkbox.checked) {
+      signInBtn.disabled = false;
+      signInBtn.style.backgroundColor = '#00A29A';
+      signInBtn.style.cursor = 'pointer';
+    } else {
+      signInBtn.disabled = true;
+      signInBtn.style.backgroundColor = '#98A4B8';
+      signInBtn.style.cursor = 'not-allowed';
+    }
   });
 </script>
 @endsection
