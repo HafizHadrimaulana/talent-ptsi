@@ -11,6 +11,7 @@ use App\Models\Signature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class ContractController extends Controller
 {
@@ -21,18 +22,37 @@ class ContractController extends Controller
     {
         $me = $request->user();
 
-        // Hanya Superadmin & DHC bisa lihat semua unit
-        $canSeeAll = $me?->hasRole('Superadmin') || $me?->hasRole('DHC');
-        $meUnit = (int) ($me->unit_id ?? 0);
+        $isSuperadmin = $me?->hasRole('Superadmin');
+        $isDhc        = $me?->hasRole('DHC');
 
+        // Superadmin & DHC boleh lihat banyak unit
+        $canSeeAll = $isSuperadmin || $isDhc;
+        $meUnit    = (int) ($me->unit_id ?? 0);
 
-        $selectedUnitId = $canSeeAll
-            ? ($request->filled('unit_id') ? (int) $request->integer('unit_id') : null)
-            : (int) ($me?->unit_id);
+        // unit_id dari filter bar (hanya untuk LIST, bukan untuk modal)
+        if ($canSeeAll) {
+            $selectedUnitId = $request->filled('unit_id')
+                ? (int) $request->integer('unit_id')
+                : null; // null = semua unit yg dia boleh lihat
+        } else {
+            $selectedUnitId = $meUnit;
+        }
+
+        // list unit untuk dropdown
+        $unitsQuery = Unit::query();
+
+        // Superadmin: hanya ENABLER, CABANG, OPERASI (exclude UNCATEGORIZED)
+        if ($isSuperadmin) {
+            $unitsQuery->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
+        }
+        // DHC (non Superadmin): hanya ENABLER
+        elseif ($isDhc) {
+            $unitsQuery->where('category', 'ENABLER');
+        }
 
         $units = $canSeeAll
-            ? Unit::orderBy('name')->get(['id', 'name', 'code'])
-            : Unit::where('id', $selectedUnitId)->get(['id', 'name', 'code']);
+            ? $unitsQuery->orderBy('name')->get(['id', 'name', 'code', 'category'])
+            : Unit::where('id', $selectedUnitId)->get(['id', 'name', 'code', 'category']);
 
         $statusFilter = $request->input('status');
         $searchFilter = $request->input('q');
@@ -43,9 +63,19 @@ class ContractController extends Controller
         $contractsQuery = Contract::query()
             ->with(['unit'])
             ->when($selectedUnitId, function ($q) use ($selectedUnitId) {
-                if ($selectedUnitId) {
-                    $q->where('unit_id', $selectedUnitId);
-                }
+                $q->where('unit_id', $selectedUnitId);
+            })
+            // DHC: hanya unit kategori ENABLER
+            ->when($isDhc && ! $isSuperadmin, function ($q) {
+                $q->whereHas('unit', function ($uq) {
+                    $uq->where('category', 'ENABLER');
+                });
+            })
+            // Superadmin: hanya ENABLER, CABANG, OPERASI
+            ->when($isSuperadmin, function ($q) {
+                $q->whereHas('unit', function ($uq) {
+                    $uq->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
+                });
             })
             ->when($statusFilter, function ($q) use ($statusFilter) {
                 $q->where('status', $statusFilter);
@@ -98,53 +128,78 @@ class ContractController extends Controller
         // ===========================
         $eligibleStatuses = config('recruitment.contract_applicant_statuses', ['APPROVED']);
 
-        $applicants = Applicant::query()
-            ->with(['unit'])
-            ->when($selectedUnitId, function ($q) use ($selectedUnitId) {
-                if ($selectedUnitId) {
-                    $q->where('unit_id', $selectedUnitId);
-                }
-            })
-            ->whereIn('status', $eligibleStatuses)
+        $applicantsQuery = Applicant::query()
+            ->leftJoin('units as u', 'u.id', '=', 'applicants.unit_id')
+            ->select('applicants.*', 'u.name as unit_name')
+            ->whereIn('status', $eligibleStatuses);
+
+        // scope unit utk pelamar
+        if ($selectedUnitId) {
+            $applicantsQuery->where('applicants.unit_id', $selectedUnitId);
+        } elseif (! $canSeeAll && $meUnit) {
+            $applicantsQuery->where('applicants.unit_id', $meUnit);
+        }
+
+        if ($isDhc && ! $isSuperadmin) {
+            $applicantsQuery->where('u.category', 'ENABLER');
+        }
+
+        if ($isSuperadmin) {
+            $applicantsQuery->whereIn('u.category', ['ENABLER', 'CABANG', 'OPERASI']);
+        }
+
+        $applicants = $applicantsQuery
             ->orderBy('full_name')
             ->get();
 
         // ===========================
-        // KONTRAK PKWT YANG AKAN BERAKHIR
-        // basis: tabel contracts sendiri (PKWT aktif)
+        // KONTRAK PKWT YANG AKAN BERAKHIR (portfolio_histories)
         // ===========================
-// ===========================
-// KONTRAK PKWT YANG AKAN BERAKHIR (via portfolio_histories)
-// ===========================
-$today  = now()->toDateString();
-$meUnit = (int) ($me->unit_id ?? 0);
+        // Rolling 30 hari ke depan bener-bener dari hari ini
+        $today = Carbon::now()->startOfDay();
+        $until = (clone $today)->addDays(30);
 
-$expiringContracts = DB::table('portfolio_histories AS ph')
-    ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
-    ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
-    ->select(
-        'ph.id',
-        'ph.person_id',
-        'ph.employee_id',
-        'ph.title AS position_name',
-        'ph.organization AS unit_name_raw',
-        'ph.start_date',
-        'ph.end_date',
-        'e.employee_status',
-        'e.unit_id',
-        'u.name AS unit_name',
-        DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name")
-    )
-    ->where('ph.category', 'job')
-    ->whereNotNull('ph.end_date')
-    ->whereDate('ph.end_date', '>=', $today)
-    ->when(!$canSeeAll, function ($q) use ($meUnit) {
-        $q->where('e.unit_id', $meUnit);
-    })
-    ->orderBy('ph.end_date')
-    ->limit(300)
-    ->get();
+        $expiringQuery = DB::table('portfolio_histories AS ph')
+            ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
+            ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
+            ->select(
+                'ph.id',
+                'ph.person_id',
+                'ph.employee_id',
+                'ph.title AS position_name',
+                'ph.organization AS unit_name_raw',
+                'ph.start_date',
+                'ph.end_date',
+                'e.employee_status',
+                'e.unit_id',
+                'u.name AS unit_name',
+                DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name")
+            )
+            ->where('ph.category', 'job')
+            ->whereNotNull('ph.end_date')
+            // kontrak yg end_date-nya di antara hari ini s/d 30 hari ke depan
+            ->whereDate('ph.end_date', '>=', $today->toDateString())
+            ->whereDate('ph.end_date', '<=', $until->toDateString());
 
+        // SDM Unit (non-Superadmin, non-DHC): team scoped by unit
+        if (! $canSeeAll && $meUnit) {
+            $expiringQuery->where('e.unit_id', $meUnit);
+        }
+
+        // DHC: hanya ENABLER
+        if ($isDhc && ! $isSuperadmin) {
+            $expiringQuery->where('u.category', 'ENABLER');
+        }
+
+        // Superadmin: handle ENABLER, CABANG, OPERASI (exclude UNCATEGORIZED)
+        if ($isSuperadmin) {
+            $expiringQuery->whereIn('u.category', ['ENABLER', 'CABANG', 'OPERASI']);
+        }
+
+        $expiringContracts = $expiringQuery
+            ->orderBy('ph.end_date')
+            // JANGAN dibatasi 500 lagi supaya kontrak Desember tetap kebawa
+            ->get();
 
         return view('recruitment.contracts.index', [
             'contracts'         => $contracts,
@@ -185,17 +240,15 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
             'start_date'         => 'nullable|date',
             'end_date'           => 'nullable|date|after_or_equal:start_date',
             'remarks'            => 'nullable|string|max:2000',
-            'source_contract_id' => 'nullable|integer|exists:contracts,id',
+            'source_contract_id' => 'nullable|integer',
         ]);
 
-        // Scope unit
         if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
             if ((int) $validated['unit_id'] !== (int) $me->unit_id) {
                 abort(403, 'Tidak boleh membuat kontrak di luar unit Anda.');
             }
         }
 
-        // Konfigurasi jenis kontrak
         $ctCode     = $validated['contract_type'];
         $typeConfig = collect(config('recruitment.contract_types', []))
             ->firstWhere('code', $ctCode);
@@ -206,7 +259,7 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
                 ->withInput();
         }
 
-        $mode              = (string) ($typeConfig['mode'] ?? 'new'); // new / extend
+        $mode              = (string) ($typeConfig['mode'] ?? 'new');
         $requiresApplicant = (bool) ($typeConfig['requires_applicant'] ?? false);
         $requiresExisting  = (bool) ($typeConfig['requires_existing_contract'] ?? false);
 
@@ -228,19 +281,12 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
                 ->withInput();
         }
 
-        // Ambil data pelamar (jika perlu)
-        $applicant = null;
+        $applicant    = null;
+        $baseContract = null;
+
         if (! empty($validated['applicant_id']) && $requiresApplicant) {
             $applicant = Applicant::query()
                 ->where('id', $validated['applicant_id'])
-                ->firstOrFail();
-        }
-
-        // Ambil kontrak existing (untuk extend / PB)
-        $baseContract = null;
-        if ($requiresExisting && ! empty($validated['source_contract_id'])) {
-            $baseContract = Contract::query()
-                ->where('id', $validated['source_contract_id'])
                 ->firstOrFail();
         }
 
@@ -249,11 +295,9 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
         $requiresGeo  = (bool) ($typeConfig['requires_geolocation'] ?? false);
 
         $contract = new Contract();
-        $contract->contract_no   = null;        // diisi saat approve
+        $contract->contract_no   = null;
         $contract->contract_type = $ctCode;
 
-        // === RULE DATA SOURCE ===
-        // 1) Jika extend → dari kontrak existing
         if ($baseContract) {
             $contract->person_id         = $baseContract->person_id;
             $contract->employee_id       = $baseContract->employee_id;
@@ -263,18 +307,14 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
             $contract->employment_type   = $baseContract->employment_type;
             $contract->start_date        = $validated['start_date'] ?? null;
             $contract->end_date          = $validated['end_date'] ?? null;
-        }
-        // 2) Jika kontrak baru (SPK / PKWT Baru) → dari Applicant
-        elseif ($applicant) {
+        } elseif ($applicant) {
             $contract->person_id       = $applicant->person_id ?? null;
             $contract->employee_id     = null;
             $contract->unit_id         = $validated['unit_id'];
             $contract->employment_type = $validated['employment_type'] ?? null;
             $contract->start_date      = $validated['start_date'] ?? null;
             $contract->end_date        = $validated['end_date'] ?? null;
-        }
-        // 3) Fallback
-        else {
+        } else {
             $contract->unit_id         = $validated['unit_id'];
             $contract->employment_type = $validated['employment_type'] ?? null;
             $contract->start_date      = $validated['start_date'] ?? null;
@@ -290,7 +330,6 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
         $contract->created_by_person_id    = $me->person_id ?? null;
         $contract->created_by_user_id      = $me->id;
 
-        // Simpan catatan/remarks ke meta.remark
         $meta = [
             'remarks'       => $validated['remarks'] ?? null,
             'position_name' => $validated['position_name'] ?? null,
@@ -305,7 +344,7 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
     }
 
     /**
-     * UPDATE KONTRAK DRAFT
+     * UPDATE DRAFT
      */
     public function update(Request $request, Contract $contract)
     {
@@ -388,7 +427,7 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
     }
 
     /**
-     * APPROVE KONTRAK → nomor + dokumen
+     * APPROVE KONTRAK
      */
     public function approve(Request $request, Contract $contract)
     {
@@ -477,7 +516,7 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
     }
 
     /**
-     * E-SIGN KONTRAK
+     * E-SIGN
      */
     public function sign(Request $request, Contract $contract)
     {
@@ -565,9 +604,7 @@ $expiringContracts = DB::table('portfolio_histories AS ph')
             ->with('ok', 'Kontrak berhasil ditandatangani.');
     }
 
-    /* =======================================================================
-     *  HELPER: NOMOR KONTRAK & DOKUMEN
-     * ======================================================================= */
+    /* ======================= HELPER ======================= */
 
     protected function generateContractNumber(Contract $contract): string
     {

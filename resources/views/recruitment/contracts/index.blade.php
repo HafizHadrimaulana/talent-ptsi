@@ -60,14 +60,12 @@
         @endcan
     </div>
 
-    {{-- Toast sukses --}}
     @if(session('ok'))
         @push('swal')
             <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script>
         @endpush
     @endif
 
-    {{-- Error box --}}
     @if($errors->any())
         <div class="u-card u-mb-md u-error">
             <div class="u-flex u-items-center u-gap-sm u-mb-sm">
@@ -82,10 +80,9 @@
         </div>
     @endif
 
-    {{-- FILTER BAR --}}
+    {{-- FILTER BAR LIST KONTRAK --}}
     <div class="u-flex u-items-center u-gap-md u-mb-md u-stack-mobile">
         <form method="get" class="u-flex u-items-center u-gap-md u-stack-mobile u-w-full u-flex-wrap">
-            {{-- Unit filter --}}
             @if($canSeeAll)
                 <div class="u-flex-1-min">
                     <label class="u-text-xs u-font-medium u-mb-xs d-block">Unit Kerja</label>
@@ -108,7 +105,6 @@
                 </div>
             @endif
 
-            {{-- Status --}}
             <div class="u-flex-1-min">
                 <label class="u-text-xs u-font-medium u-mb-xs d-block">Status Kontrak</label>
                 <select name="status" class="u-input u-input--sm" onchange="this.form.submit()">
@@ -125,7 +121,6 @@
                 </select>
             </div>
 
-            {{-- Search eksternal --}}
             <div class="u-flex-1-min u-w-full u-max-w-xs u-ml-auto">
                 <label class="u-text-xs u-font-medium u-mb-xs d-block">Cari</label>
                 <input type="search"
@@ -218,7 +213,7 @@
                             </td>
                             <td class="cell-actions">
                                 <div class="cell-actions__group">
-                                    {{-- TODO: tombol Submit / Approve / E-Sign --}}
+                                    {{-- tombol aksi nanti --}}
                                 </div>
                             </td>
                         </tr>
@@ -271,7 +266,6 @@
 
                 <div class="u-grid-2 u-stack-mobile u-gap-md">
                     <div>
-                        {{-- LEVEL 1: FAMILY (SPK vs PKWT) --}}
                         <select id="contractFamilySelect" class="u-input" required>
                             <option value="">Pilih jenis kontrak...</option>
                             @if($spkCfg)
@@ -290,7 +284,6 @@
                                 </option>
                             @endif
 
-                            {{-- Semua varian PKWT disatukan --}}
                             <option value="PKWT"
                                     data-hint="Pilih detail PKWT: baru, perpanjangan, atau pengakhiran (PB)."
                                     @selected(in_array(old('contract_type'), ['PKWT_BARU','PKWT_PERPANJANGAN','PB_PENGAKHIRAN']))>
@@ -309,7 +302,6 @@
                     </div>
                 </div>
 
-                {{-- LEVEL 2: DETAIL PKWT (muncul hanya jika family = PKWT) --}}
                 <div id="contractSubtypeWrapper" class="u-mt-sm" hidden>
                     <label class="u-text-xs u-font-medium u-mb-xxs d-block">
                         Detail PKWT
@@ -345,15 +337,16 @@
                 </div>
             </div>
 
-            {{-- STEP 2: UNIT & DETAIL FORM (muncul setelah jenis kontrak final) --}}
+            {{-- STEP 2: UNIT & DETAIL FORM --}}
             <div id="contractFormSections" class="u-space-y-lg" hidden>
 
-                {{-- UNIT KERJA --}}
+                {{-- UNIT KERJA (ini yang dipakai buat filter Kontrak Dasar) --}}
                 <div id="unitFieldWrapper" class="u-mt-md" hidden>
                     <label class="u-text-sm u-font-medium u-mb-sm d-block">Unit Kerja</label>
+
                     @if($canSeeAll)
-                        <select name="unit_id" class="u-input">
-                            <option value="">Pilih Unit</option>
+                        <select name="unit_id" id="contractUnitSelect" class="u-input">
+                            <option value="">Semua Unit</option>
                             @foreach($units as $u)
                                 <option value="{{ $u->id }}"
                                         @selected(old('unit_id', $selectedUnitId ?? $meUnit) == $u->id)>
@@ -368,7 +361,7 @@
                     @endif
                 </div>
 
-                {{-- MODE: NEW (SPK / PKWT Baru) --}}
+                {{-- MODE NEW --}}
                 <div data-mode-section="new" hidden>
                     <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
@@ -377,7 +370,7 @@
                                 <option value="">Pilih Pelamar</option>
                                 @foreach($applicants as $a)
                                     @php
-                                        $appUnitName  = optional($a->unit)->name ?? 'Unit ?';
+                                        $appUnitName  = $a->unit_name ?? 'Unit ?';
                                         $appPosition  = $a->position_applied ?? ($a->position_name ?? 'Posisi belum diisi');
                                     @endphp
                                     <option value="{{ $a->id }}"
@@ -393,7 +386,6 @@
                                 Data kandidat dari Monitoring Rekrutmen (status <strong>APPROVED / READY FOR CONTRACT</strong>).
                             </p>
 
-                            {{-- Preview Dinamis Pelamar --}}
                             <div id="applicantPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
                                 <div class="u-text-xs u-muted">
                                     <span class="u-font-semibold">Ringkasan Kandidat:</span>
@@ -456,7 +448,7 @@
                     </div>
                 </div>
 
-                {{-- MODE: EXTEND (Perpanjangan PKWT / PB Pengakhiran) --}}
+                {{-- MODE EXTEND --}}
                 <div data-mode-section="extend" hidden>
                     <div class="u-mt-md">
                         <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak Dasar</label>
@@ -482,18 +474,17 @@
             data-unit="{{ $unit }}"
             data-start="{{ $start }}"
             data-end="{{ $end }}"
+            data-unit-id="{{ $c->unit_id ?? '' }}"
             @selected(old('source_contract_id') == $c->id)
     >
         {{ $personName }} — {{ $position }} • {{ $unit }} ({{ $start }} s/d {{ $end }})
     </option>
 @endforeach
-
                         </select>
                         <p class="u-text-xs u-muted u-mt-xxs">
-                            Diambil dari kontrak PKWT (baru / perpanjangan) dengan status masih aktif dan akan berakhir ≤ 60 hari ke depan.
+                            Diambil dari posisi PKWT (baru / perpanjangan) yang masih aktif dan akan berakhir ≤ 30 hari ke depan.
                         </p>
 
-                        {{-- Preview Dinamis Kontrak Dasar --}}
                         <div id="sourceContractPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
                             <div class="u-text-xs u-muted">
                                 <span class="u-font-semibold">Ringkasan Kontrak Dasar:</span>
@@ -523,8 +514,6 @@
                         </div>
                     </div>
 
-
-                    {{-- FIELD PERIODE BARU: HANYA UNTUK PERPANJANGAN PKWT --}}
                     <div id="extendPeriodFields" class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
                             <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Mulai (Kontrak Baru)</label>
@@ -588,18 +577,23 @@ document.addEventListener('DOMContentLoaded', function () {
             const typeInput          = document.getElementById('contractTypeInput');
             const modeInput          = document.getElementById('contractModeInput');
             const sectionsWrapper    = document.getElementById('contractFormSections');
+            const unitWrapper        = document.getElementById('unitFieldWrapper');
+            const unitSelect         = document.getElementById('contractUnitSelect');
             const sourceSelect       = document.getElementById('sourceContractSelect');
             const sourceInput        = document.getElementById('sourceContractInput');
             const extendPeriodFields = document.getElementById('extendPeriodFields');
-            const unitWrapper        = document.getElementById('unitFieldWrapper');
             const applicantSelect    = document.getElementById('applicantSelect');
 
-            // Preview elements
+            // Cache semua option Kontrak Dasar
+            const allSourceOptions = sourceSelect ? Array.from(sourceSelect.options) : [];
+
+            // Preview elements (pelamar)
             const appPreviewBox   = document.getElementById('applicantPreview');
             const appPrevName     = document.getElementById('applicantPreviewName');
             const appPrevPos      = document.getElementById('applicantPreviewPosition');
             const appPrevUnit     = document.getElementById('applicantPreviewUnit');
 
+            // Preview elements (kontrak dasar)
             const srcPreviewBox   = document.getElementById('sourceContractPreview');
             const srcPrevNo       = document.getElementById('sourcePreviewNo');
             const srcPrevPerson   = document.getElementById('sourcePreviewPerson');
@@ -675,6 +669,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 resetPreviews();
             }
 
+            // FILTER KONTRAK DASAR BERDASARKAN UNIT DI MODAL
+            function filterSourceByUnit(unitId) {
+                if (!sourceSelect) return;
+
+                const val = unitId ? String(unitId) : '';
+                allSourceOptions.forEach((opt, idx) => {
+                    if (idx === 0) {
+                        opt.hidden = false;
+                        opt.disabled = false;
+                        return;
+                    }
+
+                    const optUnit = opt.dataset.unitId || '';
+                    const match = !val || optUnit === val;
+
+                    opt.hidden  = !match;
+                    opt.disabled = !match;
+                });
+
+                if (sourceSelect.value) {
+                    const current = sourceSelect.options[sourceSelect.selectedIndex];
+                    if (current && current.disabled) {
+                        sourceSelect.value = '';
+                        if (sourceInput) sourceInput.value = '';
+                        updateSourcePreview();
+                    }
+                }
+            }
+
             function handleFamilyChange() {
                 if (!familySelect) return;
 
@@ -708,6 +731,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     showUnit();
                     showSectionByMode(mode);
                     updateExtendPeriodVisibility('SPK');
+
+                    if (unitSelect) filterSourceByUnit(unitSelect.value || '');
+
                     return;
                 }
 
@@ -757,6 +783,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 showUnit();
                 showSectionByMode(mode);
                 updateExtendPeriodVisibility(code);
+
+                if (unitSelect) filterSourceByUnit(unitSelect.value || '');
             }
 
             function updateApplicantPreview() {
@@ -812,6 +840,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.body.classList.add('modal-open');
 
                         const initialType = typeInput ? (typeInput.value || '') : '';
+
                         if (initialType === 'SPK') {
                             if (familySelect) {
                                 familySelect.value = 'SPK';
@@ -837,6 +866,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             updateSourcePreview();
                         }
 
+                        if (unitSelect) filterSourceByUnit(unitSelect.value || '');
                         updateApplicantPreview();
                     }
                 }
@@ -867,6 +897,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (familySelect)  familySelect.addEventListener('change', handleFamilyChange);
             if (subtypeSelect) subtypeSelect.addEventListener('change', handleSubtypeChange);
 
+            if (unitSelect) {
+                unitSelect.addEventListener('change', function () {
+                    filterSourceByUnit(this.value || '');
+                });
+            }
+
             if (sourceSelect && sourceInput) {
                 sourceSelect.addEventListener('change', function () {
                     sourceInput.value = this.value || '';
@@ -878,7 +914,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 applicantSelect.addEventListener('change', updateApplicantPreview);
             }
 
-            // Auto-open modal jika ada validation error dari store
             @if($errors->any())
             if (modal) {
                 modal.hidden = false;
@@ -910,6 +945,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateSourcePreview();
                 }
 
+                if (unitSelect) filterSourceByUnit(unitSelect.value || '');
                 updateApplicantPreview();
             }
             @endif
