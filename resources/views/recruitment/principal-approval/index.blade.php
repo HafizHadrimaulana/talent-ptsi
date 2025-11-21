@@ -6,19 +6,23 @@
   use Illuminate\Support\Facades\DB;
   use Illuminate\Support\Facades\Gate;
 
-  /** @var \App\Models\User $me */
+  /** @var \App\Models\User|null $me */
   $me     = auth()->user();
-  $meUnit = $me?->unit_id;
+  $meUnit = $me ? $me->unit_id : null;
 
-  $canSeeAll      = $canSeeAll      ?? false;
-  $selectedUnitId = $selectedUnitId ?? null;
-  $units          = $units          ?? collect();
+  // fallback dari controller
+  $canSeeAll      = isset($canSeeAll)      ? $canSeeAll      : false;
+  $selectedUnitId = isset($selectedUnitId) ? $selectedUnitId : null;
+  $units          = isset($units)          ? $units          : collect();
 
   if ($units->isEmpty()) {
       $units = $canSeeAll
           ? DB::table('units')->select('id','name')->orderBy('name')->get()
           : DB::table('units')->select('id','name')->where('id',$meUnit)->get();
   }
+
+  // map unit id -> name (buat tampilan tabel)
+  $unitMap = $units->pluck('name','id');
 
   // ambil id unit DHC (Divisi Human Capital)
   $dhcUnitId = DB::table('units')
@@ -28,10 +32,11 @@
             ->orWhere('name','like','Divisi Human Capital%');
       })->value('id');
 
-  // ===== FIX: izinkan SDM Unit melihat tombol create =====
+  // izinkan SDM Unit + Superadmin + permission tertentu melihat tombol create
   $canCreate = Gate::check('recruitment.create')
                 || Gate::check('recruitment.update')
-                || ($me?->hasRole('SDM Unit') ?? false);
+                || ($me && $me->hasRole('SDM Unit'))
+                || ($me && $me->hasRole('Superadmin'));
 @endphp
 
 <div class="u-card u-card--glass u-hover-lift">
@@ -57,7 +62,9 @@
     </form>
 
     @if($canCreate)
-    <button class="u-btn u-btn--brand u-hover-lift" data-modal-open="createApprovalModal">
+    <button class="u-btn u-btn--brand u-hover-lift"
+            data-modal-open="createApprovalModal"
+            data-mode="create">
       <i class="fas fa-plus u-mr-xs"></i> Buat Permintaan
     </button>
     @endif
@@ -74,7 +81,7 @@
     <div class="u-card u-mb-md u-error">
       <div class="u-flex u-items-center u-gap-sm u-mb-sm">
         <i class="u-error-icon fas fa-exclamation-circle"></i>
-        <span class="u-font-semibold">Please fix the following errors:</span>
+        <span class="u-font-semibold">Periksa kembali data berikut:</span>
       </div>
       <ul class="u-list">
         @foreach($errors->all() as $e)
@@ -96,9 +103,16 @@
       <table id="ip-table" class="u-table" data-dt>
         <thead>
           <tr>
+            <th>No Ticket</th>
             <th>Judul</th>
+            <th>Unit</th>
+            <th>Jenis Permintaan</th>
             <th>Posisi</th>
             <th>HC</th>
+            <th>Jenis Kontrak</th>
+            <th>Target Mulai</th>
+            <th>Progress</th>
+            <th>Sumber Anggaran</th>
             <th>Status</th>
             <th class="cell-actions">Aksi</th>
           </tr>
@@ -116,52 +130,165 @@
             }
 
             $meRoles = [
-              'Kepala Unit' => $me?->hasRole('Kepala Unit'),
-              'DHC'         => $me?->hasRole('DHC'),
-              'Dir SDM'     => $me?->hasRole('Dir SDM'),
+              'Superadmin'  => $me && $me->hasRole('Superadmin'),
+              'Kepala Unit' => $me && $me->hasRole('Kepala Unit'),
+              'DHC'         => $me && $me->hasRole('DHC'),
+              'Dir SDM'     => $me && $me->hasRole('Dir SDM'),
             ];
 
-            $status = $r->status;
+            $status = $r->status ?? 'draft';
             $badge  = $status === 'rejected' ? 'u-badge--danger'
                     : ($status === 'draft' ? 'u-badge--warn'
                     : ($status === 'approved' ? 'u-badge--primary' : 'u-badge--soft'));
+
+            $employmentType  = $r->employment_type ?? $r->contract_type ?? null;
+            $targetStart     = $r->target_start_date ?? $r->start_date ?? null;
+            $budgetSource    = $r->budget_source_type ?? $r->budget_source ?? null;
+            $requestType     = $r->request_type ?? $r->type ?? 'Rekrutmen';
+
+            $publishPref = $r->publish_vacancy_pref ?? $r->publish_pref ?? $r->publish_vacancy ?? '';
+            $budgetRef   = $r->budget_ref ?? $r->rkap_ref ?? $r->rab_ref ?? $r->budget_reference ?? '';
+            $justif      = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
+
+            $unitNameRow = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
+
+            // progress label: Izin Prinsip → flow sampai approved Dir SDM
+            $totalStages   = 3;
+            $progressStep  = null;
+            if ($status === 'draft') {
+                $progressText = 'Draft di SDM Unit';
+                $progressStep = 0;
+            } elseif ($status === 'rejected') {
+                $progressText = 'Ditolak';
+            } elseif ($status === 'approved') {
+                $progressText = 'Selesai (Approved Dir SDM)';
+                $progressStep = $totalStages;
+            } elseif ($stageIndex === 0) {
+                $progressText = 'Menunggu Kepala Unit';
+                $progressStep = 1;
+            } elseif ($stageIndex === 1) {
+                $progressText = 'Menunggu DHC';
+                $progressStep = 2;
+            } elseif ($stageIndex === 2) {
+                $progressText = 'Menunggu Dir SDM';
+                $progressStep = 3;
+            } else {
+                $progressText = 'In Review';
+            }
           @endphp
           <tr>
-            <td><span class="u-font-medium">{{ $r->title }}</span></td>
+            <td>
+              @if(!empty($r->request_no))
+                <span class="u-badge u-badge--glass u-text-2xs">{{ $r->request_no }}</span>
+              @else
+                <span class="u-text-2xs u-muted">-</span>
+              @endif
+            </td>
+            <td>
+              <span class="u-font-medium">{{ $r->title }}</span>
+              <div class="u-text-2xs u-muted">
+                Dibuat {{ optional($r->created_at)->format('d M Y') ?? '-' }}
+              </div>
+            </td>
+            <td>{{ $unitNameRow }}</td>
+            <td>
+              <span class="u-badge u-badge--glass u-text-2xs">
+                {{-- align dg 2 jalur flow: Rekrutmen & Perpanjang Kontrak --}}
+                @if($requestType === 'Perpanjang Kontrak')
+                  Perpanjang Kontrak
+                @elseif($requestType === 'Rekrutmen')
+                  Rekrutmen
+                @else
+                  {{ $requestType }}
+                @endif
+              </span>
+            </td>
             <td>{{ $r->position }}</td>
             <td><span class="u-badge u-badge--glass">{{ $r->headcount }} orang</span></td>
+            <td>
+              @if($employmentType)
+                <span class="u-badge u-badge--glass">{{ $employmentType }}</span>
+              @else
+                <span class="u-text-2xs u-muted">-</span>
+              @endif
+            </td>
+            <td>
+              @if($targetStart)
+                <span class="u-text-sm">{{ \Illuminate\Support\Carbon::parse($targetStart)->format('d M Y') }}</span>
+              @else
+                <span class="u-text-2xs u-muted">-</span>
+              @endif
+            </td>
+            <td>
+              <div class="u-text-2xs">
+                <span class="u-badge u-badge--glass">{{ $progressText }}</span>
+                @if($progressStep !== null)
+                  <div class="u-muted u-mt-xxs">Stage {{ $progressStep }} / {{ $totalStages }}</div>
+                @endif
+              </div>
+            </td>
+            <td>
+              @if($budgetSource)
+                <span class="u-badge u-badge--glass u-text-2xs">{{ $budgetSource }}</span>
+              @else
+                <span class="u-text-2xs u-muted">-</span>
+              @endif
+            </td>
             <td><span class="u-badge {{ $badge }}">{{ ucfirst($status) }}</span></td>
 
             <td class="cell-actions">
               <div class="cell-actions__group">
-                {{-- SDM Unit submit DRAFT --}}
-                @if(($r->status === 'draft') && $sameUnit)
+                {{-- Draft: Edit + Submit (SDM unit & Superadmin) --}}
+                @if($status === 'draft' && ($sameUnit || $meRoles['Superadmin']))
                   @if($canCreate)
-                  <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}"
-                        class="u-inline js-confirm"
-                        data-confirm-title="Submit permintaan?"
-                        data-confirm-text="Permintaan akan dikirim untuk berjenjang."
-                        data-confirm-icon="question">
-                    @csrf
-                    <button class="u-btn u-btn--outline u-btn--sm u-hover-lift">
-                      <i class="fas fa-paper-plane u-mr-xs"></i> Submit
+                    <button type="button"
+                            class="u-btn u-btn--outline u-btn--sm u-hover-lift"
+                            title="Edit draft"
+                            data-modal-open="createApprovalModal"
+                            data-mode="edit"
+                            data-update-url="{{ route('recruitment.principal-approval.update',$r) }}"
+                            data-request-type="{{ e($requestType) }}"
+                            data-title="{{ e($r->title) }}"
+                            data-position="{{ e($r->position) }}"
+                            data-headcount="{{ (int) $r->headcount }}"
+                            data-employment-type="{{ e($employmentType ?? '') }}"
+                            data-target-start="{{ $targetStart }}"
+                            data-budget-source-type="{{ e($budgetSource ?? '') }}"
+                            data-budget-ref="{{ e($budgetRef) }}"
+                            data-publish-pref="{{ e($publishPref) }}"
+                            data-justification="{{ e($justif) }}">
+                      <i class="fas fa-edit u-mr-xs"></i> Edit
                     </button>
-                  </form>
+
+                    <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}"
+                          class="u-inline js-confirm"
+                          data-confirm-title="Submit permintaan?"
+                          data-confirm-text="Permintaan akan dikirim untuk persetujuan berjenjang."
+                          data-confirm-icon="question">
+                      @csrf
+                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift">
+                        <i class="fas fa-paper-plane u-mr-xs"></i> Submit
+                      </button>
+                    </form>
                   @endif
                 @endif
 
                 {{-- Approval berjenjang --}}
-                @if(in_array($r->status, ['in_review','submitted']) && $stageIndex !== null)
+                @if(in_array($status, ['in_review','submitted']) && $stageIndex !== null)
                   @php
                     $canStage = false;
 
-                    if ($stageIndex === 0) {
-                      $canStage = $meRoles['Kepala Unit'] && ((string)$meUnit === (string)$r->unit_id);
-                    } elseif ($stageIndex === 1) {
-                      $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
-                      $canStage = $meRoles['DHC'] || $isKepalaUnitDHC;
-                    } elseif ($stageIndex === 2) {
-                      $canStage = $meRoles['Dir SDM'];
+                    if ($meRoles['Superadmin']) {
+                        $canStage = true;
+                    } else {
+                        if ($stageIndex === 0) {
+                          $canStage = $meRoles['Kepala Unit'] && ((string)$meUnit === (string)$r->unit_id);
+                        } elseif ($stageIndex === 1) {
+                          $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
+                          $canStage = $meRoles['DHC'] || $isKepalaUnitDHC;
+                        } elseif ($stageIndex === 2) {
+                          $canStage = $meRoles['Dir SDM'];
+                        }
                     }
                   @endphp
 
@@ -169,7 +296,7 @@
                     <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}"
                           class="u-inline js-confirm"
                           data-confirm-title="Setujui permintaan?"
-                          data-confirm-text="Akan diteruskan ke tahap berikutnya."
+                          data-confirm-text="Permintaan akan diteruskan ke approver berikutnya."
                           data-confirm-icon="success">
                       @csrf
                       <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success">
@@ -197,37 +324,49 @@
       </table>
     </div>
   </div>
-
-
 </div>
 
-<!-- Create Approval Modal -->
+<!-- Create / Edit Approval Modal -->
 <div id="createApprovalModal" class="u-modal" hidden>
   <div class="u-modal__card">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
         <div>
-          <div class="u-title">Buat Izin Prinsip Baru</div>
-          <div class="u-muted u-text-sm">Ajukan permintaan rekrutmen baru</div>
+          <div class="u-title" id="ip-modal-title">Buat Izin Prinsip Baru</div>
+          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Ajukan permintaan rekrutmen atau perpanjangan kontrak</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
 
     <div class="u-modal__body">
-      <form method="POST" action="{{ route('recruitment.principal-approval.store') }}"
-            class="u-space-y-md u-p-md" id="createApprovalForm">
+      <form method="POST"
+            action="{{ route('recruitment.principal-approval.store') }}"
+            class="u-space-y-md u-p-md"
+            id="createApprovalForm"
+            data-default-action="{{ route('recruitment.principal-approval.store') }}">
         @csrf
+
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan</label>
+          <select class="u-input" name="request_type">
+            <option value="Rekrutmen">Rekrutmen</option>
+            <option value="Perpanjang Kontrak">Perpanjang Kontrak</option>
+          </select>
+        </div>
+
         <div class="u-space-y-sm">
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
-          <input class="u-input" name="title" placeholder="Masukkan judul permintaan" required>
+          <input class="u-input" name="title" placeholder="Mis. Rekrutmen Analis TKDN Proyek X" required>
         </div>
 
         <div class="u-grid-2 u-stack-mobile u-gap-md">
           <div class="u-space-y-sm">
             <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi</label>
-            <input class="u-input" name="position" placeholder="Masukkan posisi" required>
+            <input class="u-input" name="position" placeholder="Masukkan posisi (mis. Analis TKDN)" required>
           </div>
           <div class="u-space-y-sm">
             <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
@@ -235,15 +374,57 @@
           </div>
         </div>
 
+        <div class="u-grid-2 u-stack-mobile u-gap-md">
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak</label>
+            <select class="u-input" name="employment_type">
+              <option value="">Pilih jenis kontrak</option>
+              <option value="Organik">Organik</option>
+              <option value="Project Based">Project Based</option>
+              <option value="Alih Daya">Alih Daya</option>
+            </select>
+          </div>
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Target Mulai Kerja</label>
+            <input class="u-input" type="date" name="target_start_date">
+          </div>
+        </div>
+
+        <div class="u-grid-2 u-stack-mobile u-gap-md">
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Sumber Anggaran</label>
+            <select class="u-input" name="budget_source_type">
+              <option value="">Pilih sumber anggaran</option>
+              <option value="RKAP">RKAP</option>
+              <option value="RAB Proyek">RAB Proyek</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Referensi Anggaran</label>
+            <input class="u-input" name="budget_ref" placeholder="No. RKAP / No. RAB / keterangan singkat">
+          </div>
+        </div>
+
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Publikasikan Lowongan?</label>
+          <select class="u-input" name="publish_vacancy_pref">
+            <option value="">Belum ditentukan</option>
+            <option value="yes">Ya, akan dipublikasikan</option>
+            <option value="no">Tidak perlu dipublikasikan</option>
+          </select>
+        </div>
+
         <div class="u-space-y-sm">
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Justifikasi</label>
-          <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan alasan dan kebutuhan rekrutmen ini..."></textarea>
+          <textarea class="u-input" name="justification" rows="4"
+            placeholder="Jelaskan kebutuhan rekrutmen, keterkaitan dengan RKAP/RAB, dan urgensi kebutuhan..."></textarea>
         </div>
       </form>
     </div>
 
     <div class="u-modal__foot">
-      <div class="u-muted u-text-sm">Press <kbd>Esc</kbd> to close</div>
+      <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
       <div class="u-flex u-gap-sm">
         <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
         <button form="createApprovalForm" class="u-btn u-btn--brand u-hover-lift">
@@ -260,28 +441,94 @@ document.addEventListener('DOMContentLoaded', function() {
     dt: null,
     init() { this.bindModal(); this.initDT(); this.bindExternalSearch(); },
     bindModal() {
+      const modal   = document.getElementById('createApprovalModal');
+      const form    = document.getElementById('createApprovalForm');
+      const titleEl = document.getElementById('ip-modal-title');
+      const subEl   = document.getElementById('ip-modal-subtitle');
+
       document.addEventListener('click', function(e) {
-        if (e.target.matches('[data-modal-open]')) {
-          const id = e.target.getAttribute('data-modal-open');
-          const el = document.getElementById(id);
-          if (el) { el.hidden = false; document.body.classList.add('modal-open'); }
+        const btn = e.target.closest('[data-modal-open]');
+        if (btn) {
+          const id   = btn.getAttribute('data-modal-open');
+          const mode = btn.getAttribute('data-mode') || 'create';
+          const el   = document.getElementById(id);
+          if (!el || !form) return;
+
+          // reset ke default action
+          const defaultAction = form.dataset.defaultAction || form.getAttribute('action');
+          form.setAttribute('action', defaultAction);
+
+          // reset _method
+          let methodInput = form.querySelector('input[name="_method"]');
+          if (methodInput) methodInput.remove();
+
+          if (mode === 'edit') {
+            // ubah ke PUT
+            const updateUrl = btn.getAttribute('data-update-url') || defaultAction;
+            form.setAttribute('action', updateUrl);
+            methodInput = document.createElement('input');
+            methodInput.type  = 'hidden';
+            methodInput.name  = '_method';
+            methodInput.value = 'PUT';
+            form.appendChild(methodInput);
+
+            // isi field dari data-*
+            const setVal = (name, val) => {
+              const field = form.querySelector('[name="'+name+'"]');
+              if (field) field.value = val ?? '';
+            };
+
+            setVal('request_type',        btn.getAttribute('data-request-type') || 'Rekrutmen');
+            setVal('title',               btn.getAttribute('data-title') || '');
+            setVal('position',            btn.getAttribute('data-position') || '');
+            setVal('headcount',           btn.getAttribute('data-headcount') || '1');
+            setVal('employment_type',     btn.getAttribute('data-employment-type') || '');
+            setVal('target_start_date',   btn.getAttribute('data-target-start') || '');
+            setVal('budget_source_type',  btn.getAttribute('data-budget-source-type') || '');
+            setVal('budget_ref',          btn.getAttribute('data-budget-ref') || '');
+            setVal('publish_vacancy_pref',btn.getAttribute('data-publish-pref') || '');
+            const justif = btn.getAttribute('data-justification') || '';
+            const ta = form.querySelector('textarea[name="justification"]');
+            if (ta) ta.value = justif;
+
+            if (titleEl)   titleEl.textContent   = 'Edit Izin Prinsip';
+            if (subEl)     subEl.textContent     = 'Perbarui draft permintaan sebelum dikirim approval';
+          } else {
+            // mode create
+            form.reset();
+            if (titleEl)   titleEl.textContent   = 'Buat Izin Prinsip Baru';
+            if (subEl)     subEl.textContent     = 'Ajukan permintaan rekrutmen atau perpanjangan kontrak';
+          }
+
+          el.hidden = false;
+          document.body.classList.add('modal-open');
         }
+
         if (e.target.matches('[data-modal-close]') || (e.target.closest && e.target.closest('[data-modal-close]'))) {
           const el = e.target.closest ? e.target.closest('.u-modal') : null;
-          if (el) { el.hidden = true; document.body.classList.remove('modal-open'); }
+          if (el) {
+            el.hidden = true;
+            document.body.classList.remove('modal-open');
+          }
         }
       });
+
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
           const open = document.querySelector('.u-modal:not([hidden])');
-          if (open) { open.hidden = true; document.body.classList.remove('modal-open'); }
+          if (open) {
+            open.hidden = true;
+            document.body.classList.remove('modal-open');
+          }
         }
       });
     },
     initDT() {
       if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
         this.dt = jQuery('#ip-table').DataTable({
-          responsive: true, paging: false, info: false,
+          responsive: true,
+          paging: false,
+          info: false,
           language: {
             search: "Cari:",
             zeroRecords: "Tidak ada data",
