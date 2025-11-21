@@ -126,8 +126,6 @@
         </label>
 
       </div>
-
-
             <div class="flex flex-col gap-2.5 mt-2">
               <button
                 id="signInBtn"
@@ -137,13 +135,14 @@
               </button>
 
               <button
+                id="forgotPwBtn"
                 type="button"
                 class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110 cursor-pointer">
                 Forgot Password
               </button>
             </div>
           </form>
-
+          
         </div>
       </div>
     </section>
@@ -157,9 +156,40 @@
   </div>
 </div>
 
+<!-- Forgot Password Modal -->
+<div id="forgotPwModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden justify-center items-center p-4 z-999">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md relative">
+    
+    <h2 class="text-xl font-semibold mb-4">Reset Password</h2>
+
+    <label class="block text-sm font-medium mb-1">Email Address</label>
+    <p class="mb-1">Please enter your email address so that we can send a password reset link</p>
+    <input
+      id="resetEmail"
+      type="email"
+      placeholder="Enter your email"
+      class="w-full border rounded px-3 py-2 mb-4"
+    />
+
+    <div class="flex justify-end gap-2 mt-2">
+      <button
+        id="closeModalBtn"
+        class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 cursor-pointer"
+      >Cancel</button>
+
+      <button
+        class="px-4 py-2 rounded bg-[#00A29A] text-white hover:bg-green-700 cursor-pointer"
+      >Submit</button>
+    </div>
+
+  </div>
+</div>
+
+
 <script>
-  const checkbox = document.getElementById('termsCheckbox');
-  const signInBtn = document.getElementById('signInBtn');
+  // Open modal
+ const checkbox = document.getElementById('termsCheckbox');
+ const signInBtn = document.getElementById('signInBtn');
 
   // Disable button by default
   signInBtn.disabled = true;
@@ -175,6 +205,27 @@
       signInBtn.disabled = true;
       signInBtn.style.backgroundColor = '#98A4B8';
       signInBtn.style.cursor = 'not-allowed';
+    }
+  });
+    const forgotPwBtn = document.getElementById("forgotPwBtn");
+  const forgotPwModal = document.getElementById("forgotPwModal");
+  const closeModalBtn = document.getElementById("closeModalBtn");
+
+  forgotPwBtn.addEventListener("click", () => {
+    forgotPwModal.classList.remove("hidden");
+    forgotPwModal.classList.add("flex");
+  });
+
+  closeModalBtn.addEventListener("click", () => {
+    forgotPwModal.classList.add("hidden");
+    forgotPwModal.classList.remove("flex");
+  });
+
+  // Close modal when clicking outside the content
+  forgotPwModal.addEventListener("click", (e) => {
+    if (e.target === forgotPwModal) {
+      forgotPwModal.classList.add("hidden");
+      forgotPwModal.classList.remove("flex");
     }
   });
 </script>
