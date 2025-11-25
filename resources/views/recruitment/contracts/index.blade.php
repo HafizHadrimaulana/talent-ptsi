@@ -32,14 +32,16 @@
     $contractTypes        = $contractTypes        ?? [];
     $contractTypeConfigs  = $contractTypeConfigs  ?? [];
     $employmentTypes      = $employmentTypes      ?? [];
+    $budgetSourceTypes    = $budgetSourceTypes    ?? [];
     $applicants           = $applicants           ?? collect();
     $expiringContracts    = $expiringContracts    ?? collect();
 
-    $contractTypeMap = collect($contractTypeConfigs)->keyBy('code');
-    $spkCfg          = $contractTypeMap->get('SPK');
-    $pkwtNewCfg      = $contractTypeMap->get('PKWT_BARU');
-    $pkwtExtCfg      = $contractTypeMap->get('PKWT_PERPANJANGAN');
-    $pbCfg           = $contractTypeMap->get('PB_PENGAKHIRAN');
+    $contractTypeMap  = collect($contractTypeConfigs)->keyBy('code');
+    $spkCfg           = $contractTypeMap->get('SPK');
+    $pkwtNewCfg       = $contractTypeMap->get('PKWT_BARU');
+    $pkwtExtCfg       = $contractTypeMap->get('PKWT_PERPANJANGAN');
+    $pkwtRenewCfg     = $contractTypeMap->get('PKWT_PEMBAHARUAN');
+    $pbCfg            = $contractTypeMap->get('PB_PENGAKHIRAN');
 @endphp
 
 <div class="u-card u-card--glass u-hover-lift">
@@ -109,13 +111,13 @@
                 <label class="u-text-xs u-font-medium u-mb-xs d-block">Status Kontrak</label>
                 <select name="status" class="u-input u-input--sm" onchange="this.form.submit()">
                     <option value="">Semua Status</option>
-                    @foreach($statusOptions as $st)
+                    @foreach($statusOptions as $code => $label)
                         @php
-                            $code  = $st['code']  ?? ($st->code  ?? null);
-                            $label = $st['label'] ?? ($st->label ?? $code);
+                            $statusCode  = is_array($label) ? ($label['code'] ?? null) : $code;
+                            $statusLabel = is_array($label) ? ($label['label'] ?? $statusCode) : $label;
                         @endphp
-                        @if($code)
-                            <option value="{{ $code }}" @selected($statusFilter === $code)>{{ $label }}</option>
+                        @if($statusCode)
+                            <option value="{{ $statusCode }}" @selected($statusFilter === $statusCode)>{{ $statusLabel }}</option>
                         @endif
                     @endforeach
                 </select>
@@ -149,8 +151,7 @@
                    data-datatable-search="#contractsSearch">
                 <thead>
                     <tr>
-                        <th>No</th>
-                        <th>No. Kontrak</th>
+                        <th>Nomor</th>
                         <th>Jenis</th>
                         <th>Unit</th>
                         <th>Periode</th>
@@ -192,9 +193,8 @@
                                 in_array($st, ['signed','signed_candidate']) ? 'u-badge--success' : 'u-badge--glass';
                         @endphp
                         <tr>
-                            <td>{{ $contracts->firstItem() + $idx }}</td>
                             <td>
-                                <span class="u-badge u-badge--glass u-text-xs">
+                                <span class="u-badge u-badge--glass u-text-xs font-mono text-xs">
                                     {{ $c->contract_no ?? '—' }}
                                 </span>
                             </td>
@@ -213,7 +213,7 @@
                             </td>
                             <td class="cell-actions">
                                 <div class="cell-actions__group">
-                                    {{-- tombol aksi nanti --}}
+                                    {{-- tombol aksi (detail / approve / sign) nanti diisi --}}
                                 </div>
                             </td>
                         </tr>
@@ -242,7 +242,7 @@
                 <div>
                     <div class="u-title">Draft Kontrak Baru</div>
                     <div class="u-muted u-text-sm">
-                        Susun draft kontrak (SPK / PKWT Baru / Perpanjangan / Pengakhiran) sesuai flow Rekrutmen SI.
+                        Susun draft kontrak (SPK / PKWT Baru / Perpanjangan / Pembaruan / PB) sesuai flow Rekrutmen SI.
                     </div>
                 </div>
             </div>
@@ -268,10 +268,12 @@
                     <div>
                         <select id="contractFamilySelect" class="u-input" required>
                             <option value="">Pilih jenis kontrak...</option>
+
+                            {{-- SPK --}}
                             @if($spkCfg)
                                 <option value="SPK"
-                                        data-mode="{{ $spkCfg['mode'] ?? 'new' }}"
-                                        data-hint="{{ $spkCfg['description'] ?? 'Surat Penawaran Kerja (SPK).' }}"
+                                        data-mode="new"
+                                        data-hint="{{ $spkCfg['description'] ?? 'Surat Penawaran Kerja (SPK) untuk kandidat baru.' }}"
                                         @selected(old('contract_type') === 'SPK')>
                                     {{ $spkCfg['label'] ?? 'Surat Penawaran Kerja (SPK)' }}
                                 </option>
@@ -284,11 +286,30 @@
                                 </option>
                             @endif
 
+                            {{-- PKWT FAMILY --}}
                             <option value="PKWT"
-                                    data-hint="Pilih detail PKWT: baru, perpanjangan, atau pengakhiran (PB)."
-                                    @selected(in_array(old('contract_type'), ['PKWT_BARU','PKWT_PERPANJANGAN','PB_PENGAKHIRAN']))>
-                                PKWT (Baru / Perpanjangan / Pengakhiran)
+                                    data-mode=""
+                                    data-hint="Pilih detail PKWT: baru, perpanjangan, atau pembaruan."
+                                    @selected(in_array(old('contract_type'), ['PKWT_BARU','PKWT_PERPANJANGAN','PKWT_PEMBAHARUAN']))>
+                                PKWT (Baru / Perpanjangan)
                             </option>
+
+                            {{-- PB (Perjanjian Bersama Pengakhiran) --}}
+                            @if($pbCfg)
+                                <option value="PB"
+                                        data-mode="terminate"
+                                        data-hint="{{ $pbCfg['description'] ?? 'Perjanjian Bersama pengakhiran PKWT.' }}"
+                                        @selected(old('contract_type') === 'PB_PENGAKHIRAN')>
+                                    {{ $pbCfg['label'] ?? 'Perjanjian Bersama (PB)' }}
+                                </option>
+                            @else
+                                <option value="PB"
+                                        data-mode="terminate"
+                                        data-hint="Perjanjian Bersama pengakhiran PKWT."
+                                        @selected(old('contract_type') === 'PB_PENGAKHIRAN')>
+                                    Perjanjian Bersama (PB)
+                                </option>
+                            @endif
                         </select>
                         <p id="contractFamilyHint" class="u-text-xs u-muted u-mt-xs"></p>
                     </div>
@@ -297,11 +318,13 @@
                         <div class="u-text-xs u-muted">
                             <span class="u-font-semibold">Catatan:</span><br>
                             • SPK untuk offering kandidat baru.<br>
-                            • PKWT digunakan untuk kontrak kerja PKWT baru, perpanjangan, maupun PB pengakhiran.
+                            • PKWT digunakan untuk kontrak kerja baru, perpanjangan, maupun pembaruan.<br>
+                            • PB untuk pengakhiran PKWT dengan Perjanjian Bersama.
                         </div>
                     </div>
                 </div>
 
+                {{-- SUBTYPE PKWT --}}
                 <div id="contractSubtypeWrapper" class="u-mt-sm" hidden>
                     <label class="u-text-xs u-font-medium u-mb-xxs d-block">
                         Detail PKWT
@@ -310,26 +333,26 @@
                         <option value="">Pilih detail PKWT...</option>
                         @if($pkwtNewCfg)
                             <option value="PKWT_BARU"
-                                    data-mode="{{ $pkwtNewCfg['mode'] ?? 'new' }}"
-                                    data-hint="{{ $pkwtNewCfg['description'] ?? 'PKWT pertama untuk kandidat baru.' }}"
+                                    data-mode="new"
+                                    data-hint="{{ $pkwtNewCfg['description'] ?? 'PKWT pertama kali.' }}"
                                     @selected(old('contract_type') === 'PKWT_BARU')>
                                 {{ $pkwtNewCfg['label'] ?? 'PKWT Baru' }}
                             </option>
                         @endif
                         @if($pkwtExtCfg)
                             <option value="PKWT_PERPANJANGAN"
-                                    data-mode="{{ $pkwtExtCfg['mode'] ?? 'extend' }}"
+                                    data-mode="extend"
                                     data-hint="{{ $pkwtExtCfg['description'] ?? 'Perpanjangan PKWT dari kontrak aktif yang akan berakhir.' }}"
                                     @selected(old('contract_type') === 'PKWT_PERPANJANGAN')>
-                                {{ $pkwtExtCfg['label'] ?? 'Perpanjangan PKWT' }}
+                                {{ $pkwtExtCfg['label'] ?? 'PKWT Perpanjangan' }}
                             </option>
                         @endif
-                        @if($pbCfg)
-                            <option value="PB_PENGAKHIRAN"
-                                    data-mode="{{ $pbCfg['mode'] ?? 'extend' }}"
-                                    data-hint="{{ $pbCfg['description'] ?? 'Perjanjian Bersama pengakhiran PKWT.' }}"
-                                    @selected(old('contract_type') === 'PB_PENGAKHIRAN')>
-                                {{ $pbCfg['label'] ?? 'PB Pengakhiran PKWT' }}
+                        @if($pkwtRenewCfg)
+                            <option value="PKWT_PEMBAHARUAN"
+                                    data-mode="new"
+                                    data-hint="{{ $pkwtRenewCfg['description'] ?? 'Pembaruan PKWT (kontrak baru lagi) setelah kontrak sebelumnya berakhir.' }}"
+                                    @selected(old('contract_type') === 'PKWT_PEMBAHARUAN')>
+                                {{ $pkwtRenewCfg['label'] ?? 'PKWT Pembaruan' }}
                             </option>
                         @endif
                     </select>
@@ -340,13 +363,13 @@
             {{-- STEP 2: UNIT & DETAIL FORM --}}
             <div id="contractFormSections" class="u-space-y-lg" hidden>
 
-                {{-- UNIT KERJA (ini yang dipakai buat filter Kontrak Dasar) --}}
+                {{-- UNIT KERJA --}}
                 <div id="unitFieldWrapper" class="u-mt-md" hidden>
                     <label class="u-text-sm u-font-medium u-mb-sm d-block">Unit Kerja</label>
 
                     @if($canSeeAll)
                         <select name="unit_id" id="contractUnitSelect" class="u-input">
-                            <option value="">Semua Unit</option>
+                            <option value="">Pilih Unit</option>
                             @foreach($units as $u)
                                 <option value="{{ $u->id }}"
                                         @selected(old('unit_id', $selectedUnitId ?? $meUnit) == $u->id)>
@@ -361,7 +384,7 @@
                     @endif
                 </div>
 
-                {{-- MODE NEW --}}
+                {{-- MODE NEW (SPK + PKWT BARU + PKWT PEMBAHARUAN) --}}
                 <div data-mode-section="new" hidden>
                     <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
@@ -383,7 +406,7 @@
                                 @endforeach
                             </select>
                             <p class="u-text-xs u-muted u-mt-xxs">
-                                Data kandidat dari Monitoring Rekrutmen (status <strong>APPROVED / READY FOR CONTRACT</strong>).
+                                Data kandidat dari Monitoring Rekrutmen (status <strong>APPROVED</strong>).
                             </p>
 
                             <div id="applicantPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
@@ -405,9 +428,27 @@
                             <select name="employment_type" id="employmentTypeSelect" class="u-input">
                                 <option value="">Pilih Jenis Hubungan Kerja</option>
                                 @foreach($employmentTypes as $val => $label)
-                                    <option value="{{ $val }}" @selected(old('employment_type') == $val)>{{ $label }}</option>
+                                    @php
+                                        $code  = is_array($label) ? ($label['code'] ?? $val) : $val;
+                                        $text  = is_array($label) ? ($label['label'] ?? $code) : $label;
+                                    @endphp
+                                    <option value="{{ $code }}" @selected(old('employment_type') == $code)>{{ $text }}</option>
                                 @endforeach
                             </select>
+
+                            <div class="u-mt-md">
+                                <label class="u-text-sm u-font-medium u-mb-sm d-block">Sumber Anggaran</label>
+                                <select name="budget_source_type" class="u-input">
+                                    <option value="">Pilih Sumber Anggaran</option>
+                                    @foreach($budgetSourceTypes as $val => $label)
+                                        @php
+                                            $code  = is_array($label) ? ($label['code'] ?? $val) : $val;
+                                            $text  = is_array($label) ? ($label['label'] ?? $code) : $label;
+                                        @endphp
+                                        <option value="{{ $code }}" @selected(old('budget_source_type') == $code)>{{ $text }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -422,14 +463,14 @@
 
                     <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Mulai</label>
+                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Mulai Kontrak</label>
                             <input type="date"
                                    name="start_date"
                                    class="u-input"
                                    value="{{ old('start_date') }}">
                         </div>
                         <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Selesai</label>
+                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Berakhir Kontrak</label>
                             <input type="date"
                                    name="end_date"
                                    class="u-input"
@@ -446,43 +487,102 @@
                                   rows="3"
                                   placeholder="Catatan khusus benefit / lokasi / klausul lain">{{ old('remarks') }}</textarea>
                     </div>
+
+                    {{-- RINCIAN UPAH & FASILITAS --}}
+                    <div class="u-mt-lg">
+                        <div class="u-flex u-items-center u-justify-between u-mb-xs">
+                            <label class="u-text-sm u-font-semibold">Rincian Upah &amp; Fasilitas</label>
+                            <span class="u-text-xs u-muted">Mengisi gaji pokok, uang makan, dan fasilitas sesuai Draft/Template PKWT.</span>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Rp)</label>
+                                <input type="text"
+                                       name="salary_amount"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       placeholder="Mis. 7.500.000"
+                                       value="{{ old('salary_amount') }}">
+                                <p class="u-text-xxs u-muted u-mt-xxs">Isi angka, sistem akan memformat ke ribuan.</p>
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Terbilang)</label>
+                                <input type="text"
+                                       name="salary_amount_words"
+                                       class="u-input"
+                                       placeholder="Mis. TUJUH JUTA LIMA RATUS RIBU RUPIAH"
+                                       value="{{ old('salary_amount_words') }}">
+                            </div>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Uang Makan per Hari (Rp)</label>
+                                <input type="text"
+                                       name="lunch_allowance_daily"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       placeholder="Mis. 40.000"
+                                       value="{{ old('lunch_allowance_daily') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Uang Makan (Terbilang)</label>
+                                <input type="text"
+                                       name="lunch_allowance_words"
+                                       class="u-input"
+                                       placeholder="Mis. EMPAT PULUH RIBU RUPIAH"
+                                       value="{{ old('lunch_allowance_words') }}">
+                            </div>
+                        </div>
+
+                        <div class="u-mt-md">
+                            <label class="u-text-xs u-font-medium u-mb-xxs d-block">
+                                Fasilitas / Benefit Lain <span class="u-muted">(opsional)</span>
+                            </label>
+                            <textarea name="other_benefits_desc"
+                                      class="u-input"
+                                      rows="2"
+                                      placeholder="Mis. BPJS Kesehatan &amp; Ketenagakerjaan, tunjangan transport, dll.">{{ old('other_benefits_desc') }}</textarea>
+                        </div>
+                    </div>
                 </div>
 
-                {{-- MODE EXTEND --}}
+                {{-- MODE EXTEND (PKWT PERPANJANGAN) --}}
                 <div data-mode-section="extend" hidden>
                     <div class="u-mt-md">
-                        <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak Dasar</label>
+                        <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak Dasar untuk Perpanjangan</label>
                         <select id="sourceContractSelect" class="u-input">
                             <option value="">Pilih kontrak aktif yang akan berakhir</option>
-@foreach($expiringContracts as $c)
-    @php
-        $startRaw = $c->start_date;
-        $endRaw   = $c->end_date;
+                            @foreach($expiringContracts as $c)
+                                @php
+                                    $startRaw = $c->start_date;
+                                    $endRaw   = $c->end_date;
 
-        $start = $startRaw ? \Carbon\Carbon::parse($startRaw)->format('d M Y') : '-';
-        $end   = $endRaw   ? \Carbon\Carbon::parse($endRaw)->format('d M Y')   : '-';
+                                    $start = $startRaw ? \Carbon\Carbon::parse($startRaw)->format('d M Y') : '-';
+                                    $end   = $endRaw   ? \Carbon\Carbon::parse($endRaw)->format('d M Y')   : '-';
 
-        $unit       = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
-        $personName = $c->person_name ?? '-';
-        $position   = $c->position_name ?? '-';
-    @endphp
+                                    $unit       = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
+                                    $personName = $c->person_name ?? '-';
+                                    $position   = $c->position_name ?? '-';
+                                @endphp
 
-    <option value="{{ $c->id }}"
-            data-contract-no="{{ $c->id }}"
-            data-person="{{ $personName }}"
-            data-position="{{ $position }}"
-            data-unit="{{ $unit }}"
-            data-start="{{ $start }}"
-            data-end="{{ $end }}"
-            data-unit-id="{{ $c->unit_id ?? '' }}"
-            @selected(old('source_contract_id') == $c->id)
-    >
-        {{ $personName }} — {{ $position }} • {{ $unit }} ({{ $start }} s/d {{ $end }})
-    </option>
-@endforeach
+                                <option value="{{ $c->id }}"
+                                        data-contract-no="{{ $c->contract_no ?? $c->id }}"
+                                        data-person="{{ $personName }}"
+                                        data-position="{{ $position }}"
+                                        data-unit="{{ $unit }}"
+                                        data-start="{{ $start }}"
+                                        data-end="{{ $end }}"
+                                        data-unit-id="{{ $c->unit_id ?? '' }}"
+                                        @selected(old('source_contract_id') == $c->id)
+                                >
+                                    {{ $personName }} — {{ $position }} • {{ $unit }} ({{ $start }} s/d {{ $end }})
+                                </option>
+                            @endforeach
                         </select>
                         <p class="u-text-xs u-muted u-mt-xxs">
-                            Diambil dari posisi PKWT (baru / perpanjangan) yang masih aktif dan akan berakhir ≤ 30 hari ke depan.
+                            Diambil dari posisi PKWT (kontrak aktif) yang akan berakhir ≤ 30 hari ke depan.
                         </p>
 
                         <div id="sourceContractPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
@@ -514,16 +614,16 @@
                         </div>
                     </div>
 
-                    <div id="extendPeriodFields" class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
+                    <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Mulai (Kontrak Baru)</label>
+                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Mulai Kontrak Baru</label>
                             <input type="date"
                                    name="start_date"
                                    class="u-input"
                                    value="{{ old('start_date') }}">
                         </div>
                         <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Selesai (Kontrak Baru)</label>
+                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Berakhir Kontrak Baru</label>
                             <input type="date"
                                    name="end_date"
                                    class="u-input"
@@ -538,7 +638,238 @@
                         <textarea name="remarks"
                                   class="u-input"
                                   rows="3"
-                                  placeholder="Ringkasan hasil evaluasi kinerja, etika, dan kesepakatan perpanjangan / pengakhiran">{{ old('remarks') }}</textarea>
+                                  placeholder="Ringkasan hasil evaluasi kinerja, etika, dan kesepakatan perpanjangan">{{ old('remarks') }}</textarea>
+                    </div>
+
+                    <div class="u-mt-lg">
+                        <div class="u-flex u-items-center u-justify-between u-mb-xs">
+                            <label class="u-text-sm u-font-semibold">Rincian Upah &amp; Fasilitas (Kontrak Baru)</label>
+                            <span class="u-text-xs u-muted">Isi jika ada perubahan gaji pokok / uang makan / fasilitas pada perpanjangan.</span>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Rp)</label>
+                                <input type="text"
+                                       name="salary_amount"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       placeholder="Mis. 8.000.000"
+                                       value="{{ old('salary_amount') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Terbilang)</label>
+                                <input type="text"
+                                       name="salary_amount_words"
+                                       class="u-input"
+                                       placeholder="Mis. DELAPAN JUTA RUPIAH"
+                                       value="{{ old('salary_amount_words') }}">
+                            </div>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Uang Makan per Hari (Rp)</label>
+                                <input type="text"
+                                       name="lunch_allowance_daily"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       placeholder="Mis. 40.000"
+                                       value="{{ old('lunch_allowance_daily') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Uang Makan (Terbilang)</label>
+                                <input type="text"
+                                       name="lunch_allowance_words"
+                                       class="u-input"
+                                       placeholder="Mis. EMPAT PULUH RIBU RUPIAH"
+                                       value="{{ old('lunch_allowance_words') }}">
+                            </div>
+                        </div>
+
+                        <div class="u-mt-md">
+                            <label class="u-text-xs u-font-medium u-mb-xxs d-block">Fasilitas / Benefit Lain (Kontrak Baru)</label>
+                            <textarea name="other_benefits_desc"
+                                      class="u-input"
+                                      rows="2"
+                                      placeholder="Isi jika ada perubahan fasilitas lain dibanding kontrak sebelumnya.">{{ old('other_benefits_desc') }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="u-mt-lg">
+                        <div class="u-flex u-items-center u-justify-between u-mb-xs">
+                            <label class="u-text-sm u-font-semibold">Informasi Kontrak Dasar</label>
+                            <span class="u-text-xs u-muted">Opsional, untuk melengkapi data di template bila diperlukan.</span>
+                        </div>
+
+                        <div class="u-grid-3 u-stack-mobile u-gap-md u-mt-sm">
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">No. Kontrak Dasar</label>
+                                <input type="text"
+                                       name="base_contract_no"
+                                       class="u-input"
+                                       placeholder="Mis. PKWT/DBS-OG/2024/001"
+                                       value="{{ old('base_contract_no') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Mulai Kontrak Dasar</label>
+                                <input type="date"
+                                       name="base_contract_start"
+                                       class="u-input"
+                                       value="{{ old('base_contract_start') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Selesai Kontrak Dasar</label>
+                                <input type="date"
+                                       name="base_contract_end"
+                                       class="u-input"
+                                       value="{{ old('base_contract_end') }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- MODE TERMINATE (PB PENGAKHIRAN) --}}
+                <div data-mode-section="terminate" hidden>
+                    <div class="u-mt-md">
+                        <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak PKWT yang Diakhiri</label>
+                        <select id="sourceContractSelectTerminate" class="u-input">
+                            <option value="">Pilih kontrak PKWT yang diakhiri</option>
+                            @foreach($expiringContracts as $c)
+                                @php
+                                    $startRaw = $c->start_date;
+                                    $endRaw   = $c->end_date;
+
+                                    $start = $startRaw ? \Carbon\Carbon::parse($startRaw)->format('d M Y') : '-';
+                                    $end   = $endRaw   ? \Carbon\Carbon::parse($endRaw)->format('d M Y')   : '-';
+
+                                    $unit       = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
+                                    $personName = $c->person_name ?? '-';
+                                    $position   = $c->position_name ?? '-';
+                                @endphp
+
+                                <option value="{{ $c->id }}"
+                                        data-contract-no="{{ $c->contract_no ?? $c->id }}"
+                                        data-person="{{ $personName }}"
+                                        data-position="{{ $position }}"
+                                        data-unit="{{ $unit }}"
+                                        data-start="{{ $start }}"
+                                        data-end="{{ $end }}"
+                                        data-unit-id="{{ $c->unit_id ?? '' }}"
+                                        @selected(old('source_contract_id') == $c->id)
+                                >
+                                    {{ $personName }} — {{ $position }} • {{ $unit }} ({{ $start }} s/d {{ $end }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="u-text-xs u-muted u-mt-xxs">
+                            Pilih kontrak PKWT yang menjadi dasar Perjanjian Bersama (PB) pengakhiran.
+                        </p>
+
+                        <div id="sourceContractPreviewTerminate" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
+                            <div class="u-text-xs u-muted">
+                                <span class="u-font-semibold">Ringkasan Kontrak Dasar:</span>
+                                <div class="u-mt-xxs u-space-y-xxs">
+                                    <div>
+                                        <span class="u-muted">No. Kontrak:</span>
+                                        <span id="sourcePreviewNoTerminate">-</span>
+                                    </div>
+                                    <div>
+                                        <span class="u-muted">Pekerja:</span>
+                                        <span id="sourcePreviewPersonTerminate">-</span>
+                                    </div>
+                                    <div>
+                                        <span class="u-muted">Posisi:</span>
+                                        <span id="sourcePreviewPositionTerminate">-</span>
+                                    </div>
+                                    <div>
+                                        <span class="u-muted">Unit:</span>
+                                        <span id="sourcePreviewUnitTerminate">-</span>
+                                    </div>
+                                    <div>
+                                        <span class="u-muted">Periode:</span>
+                                        <span id="sourcePreviewPeriodTerminate">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="u-mt-lg">
+                        <div class="u-flex u-items-center u-justify-between u-mb-xs">
+                            <label class="u-text-sm u-font-semibold">Informasi Kontrak Dasar</label>
+                            <span class="u-text-xs u-muted">Digunakan untuk isi template PB.</span>
+                        </div>
+
+                        <div class="u-grid-3 u-stack-mobile u-gap-md u-mt-sm">
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">No. Kontrak Dasar</label>
+                                <input type="text"
+                                       name="base_contract_no"
+                                       class="u-input"
+                                       placeholder="Mis. PKWT/DBS-OG/2024/001"
+                                       value="{{ old('base_contract_no') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Mulai Kontrak Dasar</label>
+                                <input type="date"
+                                       name="base_contract_start"
+                                       class="u-input"
+                                       value="{{ old('base_contract_start') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Selesai Kontrak Dasar</label>
+                                <input type="date"
+                                       name="base_contract_end"
+                                       class="u-input"
+                                       value="{{ old('base_contract_end') }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="u-mt-lg">
+                        <div class="u-flex u-items-center u-justify-between u-mb-xs">
+                            <label class="u-text-sm u-font-semibold">Detail Perjanjian Bersama (PB)</label>
+                            <span class="u-text-xs u-muted">Tanggal efektif pengakhiran & kompensasi (jika ada).</span>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Tanggal Efektif Pengakhiran</label>
+                                <input type="date"
+                                       name="pb_effective_end"
+                                       class="u-input"
+                                       value="{{ old('pb_effective_end') }}">
+                            </div>
+                            <div>
+                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Kompensasi PB (Rp)</label>
+                                <input type="text"
+                                       name="pb_compensation_amount"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       placeholder="Mis. 10.000.000"
+                                       value="{{ old('pb_compensation_amount') }}">
+                            </div>
+                        </div>
+
+                        <div class="u-mt-md">
+                            <label class="u-text-xs u-font-medium u-mb-xxs d-block">Kompensasi PB (Terbilang)</label>
+                            <input type="text"
+                                   name="pb_compensation_amount_words"
+                                   class="u-input"
+                                   placeholder="Mis. SEPULUH JUTA RUPIAH"
+                                   value="{{ old('pb_compensation_amount_words') }}">
+                        </div>
+
+                        <div class="u-mt-md">
+                            <label class="u-text-sm u-font-medium u-mb-sm d-block">
+                                Catatan / Kesepakatan Lain <span class="u-muted">(opsional)</span>
+                            </label>
+                            <textarea name="remarks"
+                                      class="u-input"
+                                      rows="3"
+                                      placeholder="Ringkasan kesepakatan PB, klausul khusus, dsb.">{{ old('remarks') }}</textarea>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -564,6 +895,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const app = {
         init() {
             this.bindModal();
+            this.bindRupiahFormatter();
         },
 
         bindModal() {
@@ -581,25 +913,31 @@ document.addEventListener('DOMContentLoaded', function () {
             const unitSelect         = document.getElementById('contractUnitSelect');
             const sourceSelect       = document.getElementById('sourceContractSelect');
             const sourceInput        = document.getElementById('sourceContractInput');
-            const extendPeriodFields = document.getElementById('extendPeriodFields');
+            const sourceSelectTerm   = document.getElementById('sourceContractSelectTerminate');
+
             const applicantSelect    = document.getElementById('applicantSelect');
 
-            // Cache semua option Kontrak Dasar
-            const allSourceOptions = sourceSelect ? Array.from(sourceSelect.options) : [];
+            const allSourceOptions      = sourceSelect ? Array.from(sourceSelect.options) : [];
+            const allSourceTermOptions  = sourceSelectTerm ? Array.from(sourceSelectTerm.options) : [];
 
-            // Preview elements (pelamar)
             const appPreviewBox   = document.getElementById('applicantPreview');
             const appPrevName     = document.getElementById('applicantPreviewName');
             const appPrevPos      = document.getElementById('applicantPreviewPosition');
             const appPrevUnit     = document.getElementById('applicantPreviewUnit');
 
-            // Preview elements (kontrak dasar)
             const srcPreviewBox   = document.getElementById('sourceContractPreview');
             const srcPrevNo       = document.getElementById('sourcePreviewNo');
             const srcPrevPerson   = document.getElementById('sourcePreviewPerson');
             const srcPrevPosition = document.getElementById('sourcePreviewPosition');
             const srcPrevUnit     = document.getElementById('sourcePreviewUnit');
             const srcPrevPeriod   = document.getElementById('sourcePreviewPeriod');
+
+            const srcPrevBoxTerm   = document.getElementById('sourceContractPreviewTerminate');
+            const srcPrevNoTerm    = document.getElementById('sourcePreviewNoTerminate');
+            const srcPrevPersonTerm= document.getElementById('sourcePreviewPersonTerminate');
+            const srcPrevPosTerm   = document.getElementById('sourcePreviewPositionTerminate');
+            const srcPrevUnitTerm  = document.getElementById('sourcePreviewUnitTerminate');
+            const srcPrevPeriodTerm= document.getElementById('sourcePreviewPeriodTerminate');
 
             function hideAllSections() {
                 if (sectionsWrapper) sectionsWrapper.hidden = true;
@@ -616,15 +954,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.querySelectorAll('[data-mode-section]').forEach(el => {
                     const elMode = el.getAttribute('data-mode-section');
                     el.hidden = (elMode !== mode);
-                });
-            }
-
-            function updateExtendPeriodVisibility(contractTypeCode) {
-                if (!extendPeriodFields) return;
-                const isPerpanjangan = contractTypeCode === 'PKWT_PERPANJANGAN';
-                extendPeriodFields.hidden = !isPerpanjangan;
-                extendPeriodFields.querySelectorAll('input').forEach(input => {
-                    input.required = isPerpanjangan;
                 });
             }
 
@@ -648,6 +977,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (srcPrevPosition) srcPrevPosition.textContent = '-';
                 if (srcPrevUnit)     srcPrevUnit.textContent     = '-';
                 if (srcPrevPeriod)   srcPrevPeriod.textContent   = '-';
+
+                if (srcPrevBoxTerm) srcPrevBoxTerm.hidden        = true;
+                if (srcPrevNoTerm)       srcPrevNoTerm.textContent       = '-';
+                if (srcPrevPersonTerm)   srcPrevPersonTerm.textContent   = '-';
+                if (srcPrevPosTerm)      srcPrevPosTerm.textContent      = '-';
+                if (srcPrevUnitTerm)     srcPrevUnitTerm.textContent     = '-';
+                if (srcPrevPeriodTerm)   srcPrevPeriodTerm.textContent   = '-';
             }
 
             function resetFormLayout() {
@@ -659,17 +995,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (subtypeHint) subtypeHint.textContent = '';
                 if (subtypeWrapper) subtypeWrapper.hidden = true;
 
-                if (extendPeriodFields) {
-                    extendPeriodFields.hidden = false;
-                    extendPeriodFields.querySelectorAll('input').forEach(i => { i.required = false; });
-                }
-
                 hideAllSections();
                 hideUnit();
                 resetPreviews();
             }
 
-            // FILTER KONTRAK DASAR BERDASARKAN UNIT DI MODAL
             function filterSourceByUnit(unitId) {
                 if (!sourceSelect) return;
 
@@ -698,6 +1028,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
+            function filterSourceTermByUnit(unitId) {
+                if (!sourceSelectTerm) return;
+
+                const val = unitId ? String(unitId) : '';
+                allSourceTermOptions.forEach((opt, idx) => {
+                    if (idx === 0) {
+                        opt.hidden = false;
+                        opt.disabled = false;
+                        return;
+                    }
+
+                    const optUnit = opt.dataset.unitId || '';
+                    const match = !val || optUnit === val;
+
+                    opt.hidden  = !match;
+                    opt.disabled = !match;
+                });
+
+                if (sourceSelectTerm.value) {
+                    const current = sourceSelectTerm.options[sourceSelectTerm.selectedIndex];
+                    if (current && current.disabled) {
+                        sourceSelectTerm.value = '';
+                        if (sourceInput) sourceInput.value = '';
+                        updateSourcePreviewTerminate();
+                    }
+                }
+            }
+
             function handleFamilyChange() {
                 if (!familySelect) return;
 
@@ -713,7 +1071,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (subtypeWrapper) subtypeWrapper.hidden = true;
                     hideAllSections();
                     hideUnit();
-                    updateExtendPeriodVisibility('');
                     return;
                 }
 
@@ -730,9 +1087,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     showUnit();
                     showSectionByMode(mode);
-                    updateExtendPeriodVisibility('SPK');
 
-                    if (unitSelect) filterSourceByUnit(unitSelect.value || '');
+                    if (unitSelect) {
+                        filterSourceByUnit(unitSelect.value || '');
+                        filterSourceTermByUnit(unitSelect.value || '');
+                    }
 
                     return;
                 }
@@ -743,11 +1102,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (subtypeWrapper) subtypeWrapper.hidden = false;
                     if (familyHint) {
                         const opt = familySelect.options[familySelect.selectedIndex];
-                        familyHint.textContent = opt?.dataset.hint || 'Pilih detail PKWT (baru / perpanjangan / pengakhiran).';
+                        familyHint.textContent = opt?.dataset.hint || 'Pilih detail PKWT (baru / perpanjangan).';
                     }
                     hideAllSections();
-                    hideUnit();
-                    updateExtendPeriodVisibility('');
+                    showUnit();
+                    return;
+                }
+
+                if (familyVal === 'PB') {
+                    if (subtypeWrapper) subtypeWrapper.hidden = true;
+
+                    const opt  = familySelect.options[familySelect.selectedIndex];
+                    const mode = opt ? (opt.dataset.mode || 'terminate') : 'terminate';
+                    const hint = opt ? (opt.dataset.hint || '') : '';
+
+                    if (typeInput)  typeInput.value  = 'PB_PENGAKHIRAN';
+                    if (modeInput)  modeInput.value  = mode;
+                    if (familyHint) familyHint.textContent = hint;
+
+                    showUnit();
+                    showSectionByMode(mode);
+
+                    if (unitSelect) {
+                        filterSourceByUnit(unitSelect.value || '');
+                        filterSourceTermByUnit(unitSelect.value || '');
+                    }
+
                     return;
                 }
 
@@ -755,7 +1135,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (modeInput)  modeInput.value  = '';
                 hideAllSections();
                 hideUnit();
-                updateExtendPeriodVisibility('');
             }
 
             function handleSubtypeChange() {
@@ -767,8 +1146,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (modeInput)   modeInput.value   = '';
                     if (subtypeHint) subtypeHint.textContent = '';
                     hideAllSections();
-                    hideUnit();
-                    updateExtendPeriodVisibility('');
                     return;
                 }
 
@@ -782,9 +1159,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 showUnit();
                 showSectionByMode(mode);
-                updateExtendPeriodVisibility(code);
 
-                if (unitSelect) filterSourceByUnit(unitSelect.value || '');
+                if (unitSelect) {
+                    filterSourceByUnit(unitSelect.value || '');
+                    filterSourceTermByUnit(unitSelect.value || '');
+                }
             }
 
             function updateApplicantPreview() {
@@ -831,6 +1210,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 srcPreviewBox.hidden = false;
             }
 
+            function updateSourcePreviewTerminate() {
+                if (!sourceSelectTerm || !srcPrevBoxTerm) return;
+
+                const val = sourceSelectTerm.value || '';
+                const opt = val ? sourceSelectTerm.options[sourceSelectTerm.selectedIndex] : null;
+                if (!opt || !opt.dataset.contractNo) {
+                    srcPrevBoxTerm.hidden = true;
+                    if (srcPrevNoTerm)       srcPrevNoTerm.textContent       = '-';
+                    if (srcPrevPersonTerm)   srcPrevPersonTerm.textContent   = '-';
+                    if (srcPrevPosTerm)      srcPrevPosTerm.textContent      = '-';
+                    if (srcPrevUnitTerm)     srcPrevUnitTerm.textContent     = '-';
+                    if (srcPrevPeriodTerm)   srcPrevPeriodTerm.textContent   = '-';
+                    return;
+                }
+
+                if (srcPrevNoTerm)       srcPrevNoTerm.textContent       = opt.dataset.contractNo || '-';
+                if (srcPrevPersonTerm)   srcPrevPersonTerm.textContent   = opt.dataset.person     || '-';
+                if (srcPrevPosTerm)      srcPrevPosTerm.textContent      = opt.dataset.position   || '-';
+                if (srcPrevUnitTerm)     srcPrevUnitTerm.textContent     = opt.dataset.unit       || '-';
+                if (srcPrevPeriodTerm)   srcPrevPeriodTerm.textContent   =
+                    (opt.dataset.start || '-') + ' s/d ' + (opt.dataset.end || '-');
+
+                srcPrevBoxTerm.hidden = false;
+            }
+
             document.addEventListener('click', function (e) {
                 const openBtn = e.target.closest && e.target.closest('[data-modal-open]');
                 if (openBtn && openBtn.getAttribute('data-modal-open') === 'createContractModal') {
@@ -840,13 +1244,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.body.classList.add('modal-open');
 
                         const initialType = typeInput ? (typeInput.value || '') : '';
+                        const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN','PKWT_PEMBAHARUAN'];
 
                         if (initialType === 'SPK') {
                             if (familySelect) {
                                 familySelect.value = 'SPK';
                                 handleFamilyChange();
                             }
-                        } else if (['PKWT_BARU','PKWT_PERPANJANGAN','PB_PENGAKHIRAN'].includes(initialType)) {
+                        } else if (typesPkwt.includes(initialType)) {
                             if (familySelect) {
                                 familySelect.value = 'PKWT';
                                 handleFamilyChange();
@@ -854,6 +1259,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (subtypeSelect) {
                                 subtypeSelect.value = initialType;
                                 handleSubtypeChange();
+                            }
+                        } else if (initialType === 'PB_PENGAKHIRAN') {
+                            if (familySelect) {
+                                familySelect.value = 'PB';
+                                handleFamilyChange();
                             }
                         }
 
@@ -866,8 +1276,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             updateSourcePreview();
                         }
 
-                        if (unitSelect) filterSourceByUnit(unitSelect.value || '');
+                        if (unitSelect) {
+                            filterSourceByUnit(unitSelect.value || '');
+                            filterSourceTermByUnit(unitSelect.value || '');
+                        }
                         updateApplicantPreview();
+                        updateSourcePreviewTerminate();
                     }
                 }
 
@@ -900,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (unitSelect) {
                 unitSelect.addEventListener('change', function () {
                     filterSourceByUnit(this.value || '');
+                    filterSourceTermByUnit(this.value || '');
                 });
             }
 
@@ -907,6 +1322,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 sourceSelect.addEventListener('change', function () {
                     sourceInput.value = this.value || '';
                     updateSourcePreview();
+                });
+            }
+
+            if (sourceSelectTerm && sourceInput) {
+                sourceSelectTerm.addEventListener('change', function () {
+                    sourceInput.value = this.value || '';
+                    updateSourcePreviewTerminate();
                 });
             }
 
@@ -920,12 +1342,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.body.classList.add('modal-open');
 
                 const initialType = typeInput ? (typeInput.value || '') : '';
+                const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN','PKWT_PEMBAHARUAN'];
+
                 if (initialType === 'SPK') {
                     if (familySelect) {
                         familySelect.value = 'SPK';
                         handleFamilyChange();
                     }
-                } else if (['PKWT_BARU','PKWT_PERPANJANGAN','PB_PENGAKHIRAN'].includes(initialType)) {
+                } else if (typesPkwt.includes(initialType)) {
                     if (familySelect) {
                         familySelect.value = 'PKWT';
                         handleFamilyChange();
@@ -933,6 +1357,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (subtypeSelect) {
                         subtypeSelect.value = initialType;
                         handleSubtypeChange();
+                    }
+                } else if (initialType === 'PB_PENGAKHIRAN') {
+                    if (familySelect) {
+                        familySelect.value = 'PB';
+                        handleFamilyChange();
                     }
                 }
 
@@ -945,10 +1374,43 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateSourcePreview();
                 }
 
-                if (unitSelect) filterSourceByUnit(unitSelect.value || '');
+                if (unitSelect) {
+                    filterSourceByUnit(unitSelect.value || '');
+                    filterSourceTermByUnit(unitSelect.value || '');
+                }
                 updateApplicantPreview();
+                updateSourcePreviewTerminate();
             }
             @endif
+        },
+
+        bindRupiahFormatter() {
+            function formatRupiah(value) {
+                const digits = (value || '').replace(/[^\d]/g, '');
+                if (!digits) return '';
+                return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            document.querySelectorAll('input[data-rupiah="true"]').forEach(input => {
+                input.addEventListener('focus', function () {
+                    const digits = this.value.replace(/[^\d]/g, '');
+                    this.value = digits;
+                });
+
+                input.addEventListener('blur', function () {
+                    this.value = formatRupiah(this.value);
+                });
+
+                input.addEventListener('input', function () {
+                    const raw = this.value.replace(/[^\d]/g, '');
+                    this.value = formatRupiah(raw);
+                    this.setSelectionRange(this.value.length, this.value.length);
+                });
+
+                if (input.value) {
+                    input.value = formatRupiah(input.value);
+                }
+            });
         },
     };
 
