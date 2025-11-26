@@ -23,10 +23,18 @@ class SyncSitmsMasterJob implements ShouldQueue
     public int $perPage;
     public bool $continuePaging;
 
+    // Tracking eksternal
     protected static array $seenExternalIds      = [];
     protected static array $seenEmployeeIds      = [];
-    protected static array $seenJobHistoryIds    = [];
-    protected static array $seenPortfolioJobIds  = [];
+
+    // Tracking per-table turunan (per person_id)
+    protected static array $seenJobHistoryIds      = [];
+    protected static array $seenEducationIds       = [];
+    protected static array $seenTrainingIds        = [];
+    protected static array $seenCertificationIds   = [];
+    protected static array $seenDocumentIds        = [];
+    protected static array $seenPortfolioIds       = [];
+    protected static array $seenPortfolioJobIds    = []; // legacy tracker kategori "job" (tidak dipakai mirror lagi, tapi tetap diisi)
 
     protected static bool $dryRun      = false;
     protected static bool $uniqueCount = true;
@@ -90,9 +98,15 @@ class SyncSitmsMasterJob implements ShouldQueue
         int $maxPages = 0,
         int $stopNoGrowth = 0
     ): void {
+        // reset trackers
         self::$seenExternalIds      = [];
         self::$seenEmployeeIds      = [];
         self::$seenJobHistoryIds    = [];
+        self::$seenEducationIds     = [];
+        self::$seenTrainingIds      = [];
+        self::$seenCertificationIds = [];
+        self::$seenDocumentIds      = [];
+        self::$seenPortfolioIds     = [];
         self::$seenPortfolioJobIds  = [];
         self::$samples              = [];
         self::$errInserts           = 0;
@@ -247,12 +261,26 @@ class SyncSitmsMasterJob implements ShouldQueue
             self::mirrorEmployeesSoft(self::uniqueEmployeeIds());
         }
 
-        // Hard mirror job histories & portfolio job
-        if (!self::$dryRun && !empty(self::$seenJobHistoryIds)) {
-            self::mirrorJobHistoriesHard();
-        }
-        if (!self::$dryRun && !empty(self::$seenPortfolioJobIds)) {
-            self::mirrorPortfolioJobsHard();
+        // Hard mirror semua tabel turunan SITMS (per person_id)
+        if (!self::$dryRun) {
+            if (!empty(self::$seenJobHistoryIds)) {
+                self::mirrorJobHistoriesHard();
+            }
+            if (!empty(self::$seenEducationIds)) {
+                self::mirrorEducationsHard();
+            }
+            if (!empty(self::$seenTrainingIds)) {
+                self::mirrorTrainingsHard();
+            }
+            if (!empty(self::$seenCertificationIds)) {
+                self::mirrorCertificationsHard();
+            }
+            if (!empty(self::$seenDocumentIds)) {
+                self::mirrorDocumentsHard();
+            }
+            if (!empty(self::$seenPortfolioIds)) {
+                self::mirrorPortfolioHard();
+            }
         }
 
         self::$lastSummary = [
@@ -304,7 +332,7 @@ class SyncSitmsMasterJob implements ShouldQueue
         $hasSource = in_array('source_system', $cols, true);
 
         foreach (self::$seenJobHistoryIds as $personId => $ids) {
-            $ids = array_values(array_unique(array_filter($ids, fn ($v) => $v)));
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v)));
 
             $q = DB::table('job_histories')
                 ->where('person_id', $personId);
@@ -330,29 +358,19 @@ class SyncSitmsMasterJob implements ShouldQueue
         }
     }
 
-    /**
-     * Hard mirror portfolio_histories kategori 'job'
-     * (buat jaga-jaga kalau tab Job History pakai tabel ini).
-     */
-    protected static function mirrorPortfolioJobsHard(): void
+    protected static function mirrorEducationsHard(): void
     {
-        if (!Schema::hasTable('portfolio_histories')) {
+        if (!Schema::hasTable('educations')) {
             return;
         }
 
-        $cols       = self::tableColumns('portfolio_histories');
-        $hasSource  = in_array('source_system', $cols, true);
-        $hasCat     = in_array('category', $cols, true);
+        $cols      = self::tableColumns('educations');
+        $hasSource = in_array('source_system', $cols, true);
 
-        foreach (self::$seenPortfolioJobIds as $personId => $ids) {
-            $ids = array_values(array_unique(array_filter($ids, fn ($v) => $v)));
+        foreach (self::$seenEducationIds as $personId => $ids) {
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v)));
 
-            $q = DB::table('portfolio_histories')
-                ->where('person_id', $personId);
-
-            if ($hasCat) {
-                $q->where('category', 'job');
-            }
+            $q = DB::table('educations')->where('person_id', $personId);
 
             if ($hasSource) {
                 $q->where(function ($qq) {
@@ -367,7 +385,150 @@ class SyncSitmsMasterJob implements ShouldQueue
 
             $deleted = $q->delete();
 
-            Log::info('Mirror portfolio_histories(job) hard-delete', [
+            Log::info('Mirror educations hard-delete', [
+                'person_id' => $personId,
+                'kept_ids'  => $ids,
+                'deleted'   => $deleted,
+            ]);
+        }
+    }
+
+    protected static function mirrorTrainingsHard(): void
+    {
+        if (!Schema::hasTable('trainings')) {
+            return;
+        }
+
+        $cols      = self::tableColumns('trainings');
+        $hasSource = in_array('source_system', $cols, true);
+
+        foreach (self::$seenTrainingIds as $personId => $ids) {
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v)));
+
+            $q = DB::table('trainings')->where('person_id', $personId);
+
+            if ($hasSource) {
+                $q->where(function ($qq) {
+                    $qq->where('source_system', 'sitms')
+                       ->orWhereNull('source_system');
+                });
+            }
+
+            if (!empty($ids)) {
+                $q->whereNotIn('id', $ids);
+            }
+
+            $deleted = $q->delete();
+
+            Log::info('Mirror trainings hard-delete', [
+                'person_id' => $personId,
+                'kept_ids'  => $ids,
+                'deleted'   => $deleted,
+            ]);
+        }
+    }
+
+    protected static function mirrorCertificationsHard(): void
+    {
+        if (!Schema::hasTable('certifications')) {
+            return;
+        }
+
+        $cols      = self::tableColumns('certifications');
+        $hasSource = in_array('source_system', $cols, true);
+
+        foreach (self::$seenCertificationIds as $personId => $ids) {
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v)));
+
+            $q = DB::table('certifications')->where('person_id', $personId);
+
+            if ($hasSource) {
+                $q->where(function ($qq) {
+                    $qq->where('source_system', 'sitms')
+                       ->orWhereNull('source_system');
+                });
+            }
+
+            if (!empty($ids)) {
+                $q->whereNotIn('id', $ids);
+            }
+
+            $deleted = $q->delete();
+
+            Log::info('Mirror certifications hard-delete', [
+                'person_id' => $personId,
+                'kept_ids'  => $ids,
+                'deleted'   => $deleted,
+            ]);
+        }
+    }
+
+    protected static function mirrorDocumentsHard(): void
+    {
+        if (!Schema::hasTable('documents')) {
+            return;
+        }
+
+        $cols      = self::tableColumns('documents');
+        $hasSource = in_array('source_system', $cols, true);
+
+        // kalau tidak ada source_system kita skip hard-delete supaya dokumen lokal aman
+        if (!$hasSource) {
+            return;
+        }
+
+        foreach (self::$seenDocumentIds as $personId => $ids) {
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v)));
+
+            $q = DB::table('documents')
+                ->where('person_id', $personId)
+                ->where(function ($qq) {
+                    $qq->where('source_system', 'sitms')
+                       ->orWhereNull('source_system');
+                });
+
+            if (!empty($ids)) {
+                $q->whereNotIn('id', $ids);
+            }
+
+            $deleted = $q->delete();
+
+            Log::info('Mirror documents hard-delete', [
+                'person_id' => $personId,
+                'kept_ids'  => $ids,
+                'deleted'   => $deleted,
+            ]);
+        }
+    }
+
+    protected static function mirrorPortfolioHard(): void
+    {
+        if (!Schema::hasTable('portfolio_histories')) {
+            return;
+        }
+
+        $cols      = self::tableColumns('portfolio_histories');
+        $hasSource = in_array('source_system', $cols, true);
+
+        foreach (self::$seenPortfolioIds as $personId => $ids) {
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v)));
+
+            $q = DB::table('portfolio_histories')->where('person_id', $personId);
+
+            if ($hasSource) {
+                $q->where(function ($qq) {
+                    $qq->where('source_system', 'sitms')
+                       ->orWhereNull('source_system');
+                });
+            }
+
+            if (!empty($ids)) {
+                $q->whereNotIn('id', $ids);
+            }
+
+            $deleted = $q->delete();
+
+            Log::info('Mirror portfolio_histories hard-delete', [
                 'person_id' => $personId,
                 'kept_ids'  => $ids,
                 'deleted'   => $deleted,
@@ -1082,12 +1243,19 @@ class SyncSitmsMasterJob implements ShouldQueue
             }
         }
 
-        // Track ID untuk mirroring kategori job
-        if ($category === 'job' && $id) {
-            if (!isset(self::$seenPortfolioJobIds[$personId])) {
-                self::$seenPortfolioJobIds[$personId] = [];
+        // Track ID untuk mirroring
+        if ($id) {
+            if (!isset(self::$seenPortfolioIds[$personId])) {
+                self::$seenPortfolioIds[$personId] = [];
             }
-            self::$seenPortfolioJobIds[$personId][] = (int) $id;
+            self::$seenPortfolioIds[$personId][] = (int) $id;
+
+            if ($category === 'job') {
+                if (!isset(self::$seenPortfolioJobIds[$personId])) {
+                    self::$seenPortfolioJobIds[$personId] = [];
+                }
+                self::$seenPortfolioJobIds[$personId][] = (int) $id;
+            }
         }
     }
 
@@ -1140,6 +1308,10 @@ class SyncSitmsMasterJob implements ShouldQueue
                 unset($payload['file_path']);
             }
 
+            if (in_array('source_system', $cols, true)) {
+                $payload['source_system'] = 'sitms';
+            }
+
             $payload = array_intersect_key($payload, array_flip($cols));
 
             $existing = DB::table('documents')
@@ -1149,7 +1321,10 @@ class SyncSitmsMasterJob implements ShouldQueue
                 ->when(isset($payload['path']), fn($q) => $q->where('path', $payload['path']))
                 ->first();
 
+            $id = null;
+
             if ($existing) {
+                $id = $existing->id;
                 try {
                     DB::table('documents')->where('id', $existing->id)->update($payload);
                 } catch (\Throwable $e) {
@@ -1157,20 +1332,27 @@ class SyncSitmsMasterJob implements ShouldQueue
                         'error'          => $e->getMessage(),
                         'person_id'      => $personId,
                         'document_title' => $payload['title'] ?? 'unknown',
-                        $docTypeField    => $payload[$docTypeField] ?? 'unknown',
+                        $docTypeField    => $docTypeField ? ($payload[$docTypeField] ?? 'unknown') : null,
                     ]);
                 }
             } else {
                 try {
-                    DB::table('documents')->insert($payload);
+                    $id = DB::table('documents')->insertGetId($payload);
                 } catch (\Throwable $e) {
                     Log::warning('SITMS document insert failed', [
                         'error'          => $e->getMessage(),
                         'person_id'      => $personId,
                         'document_title' => $payload['title'] ?? 'unknown',
-                        $docTypeField    => $payload[$docTypeField] ?? 'unknown',
+                        $docTypeField    => $docTypeField ? ($payload[$docTypeField] ?? 'unknown') : null,
                     ]);
                 }
+            }
+
+            if ($id) {
+                if (!isset(self::$seenDocumentIds[$personId])) {
+                    self::$seenDocumentIds[$personId] = [];
+                }
+                self::$seenDocumentIds[$personId][] = (int) $id;
             }
         }
     }
@@ -1211,6 +1393,20 @@ class SyncSitmsMasterJob implements ShouldQueue
             ],
             $row
         );
+
+        $id = DB::table('educations')
+            ->where('person_id', $personId)
+            ->where('institution', $row['institution'])
+            ->where('major', $row['major'])
+            ->where('graduation_year', $row['graduation_year'])
+            ->value('id');
+
+        if ($id) {
+            if (!isset(self::$seenEducationIds[$personId])) {
+                self::$seenEducationIds[$personId] = [];
+            }
+            self::$seenEducationIds[$personId][] = (int) $id;
+        }
     }
 
     protected static function upsertTraining(string $personId, array $t): void
@@ -1251,6 +1447,20 @@ class SyncSitmsMasterJob implements ShouldQueue
             ],
             $row
         );
+
+        $id = DB::table('trainings')
+            ->where('person_id', $personId)
+            ->where('title', $row['title'])
+            ->where('provider', $row['provider'])
+            ->whereDate('start_date', $row['start_date'])
+            ->value('id');
+
+        if ($id) {
+            if (!isset(self::$seenTrainingIds[$personId])) {
+                self::$seenTrainingIds[$personId] = [];
+            }
+            self::$seenTrainingIds[$personId][] = (int) $id;
+        }
     }
 
     protected static function upsertCertification(string $personId, array $c): void
@@ -1289,6 +1499,20 @@ class SyncSitmsMasterJob implements ShouldQueue
             ],
             $row
         );
+
+        $id = DB::table('certifications')
+            ->where('person_id', $personId)
+            ->where('name', $row['name'])
+            ->where('issuer', $row['issuer'])
+            ->where('number', $row['number'])
+            ->value('id');
+
+        if ($id) {
+            if (!isset(self::$seenCertificationIds[$personId])) {
+                self::$seenCertificationIds[$personId] = [];
+            }
+            self::$seenCertificationIds[$personId][] = (int) $id;
+        }
     }
 
     protected static function upsertJobHistory(string $personId, array $j): void
