@@ -28,9 +28,7 @@
       color: #ffffff;
       transition: color 0.3s ease;
     }
-    .nav-links {
-      margin-left:1.5rem;
-    }
+
 
     nav a:hover,
     nav a.active {
@@ -111,27 +109,33 @@
 <body class="min-h-screen bg-white text-gray-900">
 
   <!-- ===== NAVBAR ===== -->
- <header id="navbar" class="fixed top-0 w-full z-30 bg-[#00A29A] backdrop-blur transition-all duration-300">
-  <div class="container mx-auto px-6 py-3 flex items-center justify-between">
+ <header id="navbar" class="fixed top-0 w-full h-20 z-30 bg-[#00A29A] backdrop-blur transition-all duration-300">
+  <div class="container mx-auto px-6 py-3  h-25 flex items-center justify-between">
     <a href="{{ route('careers.index') }}" class="flex items-center gap-2">
       <img 
         src="{{ Vite::asset('resources/images/sapahc.png') }}" 
         alt="Test Company Logo" 
-        class="h-12 w-auto object-contain"
+        class="h-25 w-25 object-contain"
       >
-      <span class="text-xl font-bold text-white">Logo Idsurvey</span>
+      <span>  <img src="/images/logo.png" alt="Logo" class = "w-35 h-auto  object-contain"></span>
+
     </a>
-    <div class = "nav-links">
-    <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-white">
-      <a href="#about" class="nav-link hover:text-gray-100">Tentang Kami</a>
-      <a href="#vision" class="nav-link hover:text-gray-100">Visi & Misi</a>
-      <a href="#jobs" class="nav-link hover:text-gray-100">Lowongan</a>
-      <a href="#contact" class="nav-link hover:text-gray-100">Kontak</a>
-    </nav>
+    <div class="nav-links">
+      <nav class="hidden md:flex items-center justify-center gap-6 text-sm font-medium text-white ml-0.5">
+        <a href="#about" class="nav-link hover:text-gray-100">Tentang Kami</a>
+        <a href="#vision" class="nav-link hover:text-gray-100">Visi & Misi</a>
+        <a href="#jobs" class="nav-link hover:text-gray-100">Lowongan</a>
+        <a href="#contact" class="nav-link hover:text-gray-100">Kontak</a>
+      </nav>
     </div>
     <div class = "nav-links">
     <a href="{{ route('login') }}" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100">Login</a>
-   <a href="#" class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100 ml-2">Register</a>
+<!-- Trigger Button -->
+<a href="#" 
+   onclick="openModal()" 
+   class="btn btn-sm bg-white text-[#00A29A] rounded-full px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100 ml-2">
+   Register
+</a>
   </div>
   </div>
 </header>
@@ -140,11 +144,17 @@
 <section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center text-white px-6 overflow-hidden">
   <!-- Background slides -->
 <div class="absolute inset-0">
-  <div class="hero-slideshow absolute inset-0">
-    <div class="slide" style="background-image:linear-gradient(rgba(0,128,0,0.3), rgba(0,128,0,0.3)), url('/images/1.jpg');"></div>
-    <div class="slide" style="background-image:linear-gradient(rgba(0,128,0,0.3), rgba(0,128,0,0.3)), url('/images/2.jpg');"></div>
-    <div class="slide" style="background-image:linear-gradient(rgba(0,128,0,0.3), rgba(0,128,0,0.3)), url('/images/3.jpg');"></div>
-  </div>
+ <div class="hero-slideshow absolute inset-0">
+  <div class="slide bg-[rgba(0,162,154,0.5)] bg-blend-multiply brightness-75" 
+       style="background-image: url('/images/1.jpg');"></div>
+
+  <div class="slide bg-[rgba(0,162,154,0.5)] bg-blend-multiply brightness-75" 
+       style="background-image: url('/images/2.jpg');"></div>
+
+  <div class="slide bg-[rgba(0,162,154,0.5)] bg-blend-multiply brightness-75" 
+       style="background-image: url('/images/3.jpg');"></div>
+</div>
+
 </div>
 
   <!-- Text content (changes per slide) -->
@@ -356,9 +366,66 @@
   </div>
 </footer>
 
+<!-- Modal Background -->
+<div id="registerModal" 
+     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    
+    <!-- Modal Card -->
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl">
+      <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-5">
+
+        <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">Register</h2>
+
+            <!-- Nama Lengkap -->
+    <div>
+        <label class="block font-medium text-gray-700 mb-1">Nama Lengkap</label>
+        <input type="text" placeholder="Masukkan nama lengkap..."
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+    </div>
+
+    <!-- No KTP -->
+    <div>
+        <label class="block font-medium text-gray-700 mb-1">No KTP</label>
+        <input type="text" placeholder="Masukkan nomor KTP..."
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+    </div>
+
+    <!-- Email -->
+    <div>
+        <label class="block font-medium text-gray-700 mb-1">Email</label>
+        <input type="email" placeholder="Masukkan email..."
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+    </div>
+
+    <!-- Password -->
+    <div>
+        <label class="block font-medium text-gray-700 mb-1">Password</label>
+        <input type="password" placeholder="Buat password..."
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+    </div>
+
+    <!-- Confirm Password -->
+    <div>
+        <label class="block font-medium text-gray-700 mb-1">Confirm Password</label>
+        <input type="password" placeholder="Konfirmasi password..."
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+    </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end gap-3 mt-4">
+            <button onclick="closeModal()" 
+                    class="px-5 py-2 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
+                Cancel
+            </button>
+            <button class="px-5 py-2 rounded-full bg-[#00A29A] text-white hover:bg-[#008f87] cursor-pointer">
+                Submit
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- FontAwesome Icons -->
 <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-
 
 
   <!-- ===== JS: smooth scroll + fade-in ===== -->
@@ -488,6 +555,13 @@
   prev.addEventListener('click', () => {
     carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
   });
+  function openModal() {
+    document.getElementById("registerModal").classList.remove("hidden");
+}
+
+function closeModal() {
+    document.getElementById("registerModal").classList.add("hidden");
+}
   </script>
 
 </body>
