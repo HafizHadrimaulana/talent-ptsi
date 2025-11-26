@@ -522,7 +522,7 @@ class ContractController extends Controller
 
     /**
      * APPROVE KONTRAK
-     * - Generate contract_no
+     * - Generate contract_no (penomoran otomatis bulanan)
      * - Generate Document + meta.template_payload sesuai Template PKWT / PB
      */
     public function approve(Request $request, Contract $contract)
@@ -708,9 +708,10 @@ class ContractController extends Controller
 
     /**
      * Penomoran otomatis:
-     * TYPE-xxx/unitcode-mm/headcode/YYYY
-     * contoh: SPK-001/DSDM-11/DN/2025
-     * reset per (unit + doc_code + bulan + tahun)
+     * (TYPE)-NNN/UNITCODE-mm/HEADCODE/YYYY
+     *
+     * - NNN reset per (jenis kontrak + unit + bulan + tahun)
+     * - contoh: SPK-001/DSDM-11/DN/2025
      */
     protected function generateContractNumber(Contract $contract): string
     {
@@ -721,7 +722,7 @@ class ContractController extends Controller
         $numberingCfg = config('recruitment.numbering', []);
         $docCodes     = $numberingCfg['doc_codes'] ?? [];
         $headCodes    = $numberingCfg['head_codes'] ?? [];
-        $defaultHead  = config('recruitment.default_head_code', 'GMVP');
+        $defaultHead  = $numberingCfg['default_head_code'] ?? 'DN';
 
         // mapping jenis kontrak → DOC_CODE singkat
         $docCode  = $docCodes[$type] ?? strtoupper($type);
@@ -738,10 +739,11 @@ class ContractController extends Controller
 
         // cari nomor terakhir untuk kombinasi (jenis kontrak + unit + bulan + tahun)
         $likePattern = sprintf(
-            '%s-%%/%s-%s/%%/%s',
+            '%s-%%/%s-%s/%s/%s',
             $docCode,
             $unitCode,
             $month,
+            $headCode,
             $year
         );
 
@@ -769,7 +771,7 @@ class ContractController extends Controller
 
         $seqStr = str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
-        // final format: TYPE-xxx/unitcode-mm/headcode/YYYY
+        // final format: TYPE-xxx/UNITCODE-mm/HEADCODE/YYYY
         return sprintf(
             '%s-%s/%s-%s/%s/%s',
             $docCode,
@@ -840,6 +842,7 @@ class ContractController extends Controller
 
     /**
      * Build payload dinamis untuk Template PKWT & PB.
+     * Di sini juga ada auto-terbilang backend bila field *_words kosong.
      */
     protected function buildContractTemplatePayload(Contract $contract, ?string $overrideSignPersonId = null): array
     {
@@ -984,13 +987,13 @@ class ContractController extends Controller
         $pbCompAmountRp = $this->formatMoney($pbCompAmount);
 
         // uppercase terbilang
-        $baseSalaryWordsUpper  = $baseSalaryWords ? mb_strtoupper($baseSalaryWords, 'UTF-8') : null;
-        $lunchDailyWordsUpper  = $lunchDailyWords ? mb_strtoupper($lunchDailyWords, 'UTF-8') : null;
-        $specialWordsUpper     = $specialWords ? mb_strtoupper($specialWords, 'UTF-8') : null;
-        $positionWordsUpper    = $positionWords ? mb_strtoupper($positionWords, 'UTF-8') : null;
-        $commWordsUpper        = $commWords ? mb_strtoupper($commWords, 'UTF-8') : null;
-        $otherWordsUpper       = $otherWords ? mb_strtoupper($otherWords, 'UTF-8') : null;
-        $pbCompAmountWordsUpper= $pbCompAmountW ? mb_strtoupper($pbCompAmountW, 'UTF-8') : null;
+        $baseSalaryWordsUpper   = $baseSalaryWords ? mb_strtoupper($baseSalaryWords, 'UTF-8') : null;
+        $lunchDailyWordsUpper   = $lunchDailyWords ? mb_strtoupper($lunchDailyWords, 'UTF-8') : null;
+        $specialWordsUpper      = $specialWords ? mb_strtoupper($specialWords, 'UTF-8') : null;
+        $positionWordsUpper     = $positionWords ? mb_strtoupper($positionWords, 'UTF-8') : null;
+        $commWordsUpper         = $commWords ? mb_strtoupper($commWords, 'UTF-8') : null;
+        $otherWordsUpper        = $otherWords ? mb_strtoupper($otherWords, 'UTF-8') : null;
+        $pbCompAmountWordsUpper = $pbCompAmountW ? mb_strtoupper($pbCompAmountW, 'UTF-8') : null;
 
         return [
             'contract_type'       => $contract->contract_type,
@@ -1042,16 +1045,16 @@ class ContractController extends Controller
             'lunch_daily_amount_words_upper' => $lunchDailyWordsUpper,
 
             // TUNJANGAN (ANGKA + RP + TERBILANG)
-            'allowance_special_amount'           => $special,
-            'allowance_special_amount_raw'       => $rawSpecial,
-            'allowance_special_amount_rp'        => $specialRp,
-            'allowance_special_amount_words'     => $specialWords,
+            'allowance_special_amount'            => $special,
+            'allowance_special_amount_raw'        => $rawSpecial,
+            'allowance_special_amount_rp'         => $specialRp,
+            'allowance_special_amount_words'      => $specialWords,
             'allowance_special_amount_words_upper'=> $specialWordsUpper,
 
-            'allowance_position_amount'          => $position,
-            'allowance_position_amount_raw'      => $rawPosition,
-            'allowance_position_amount_rp'       => $positionRp,
-            'allowance_position_amount_words'    => $positionWords,
+            'allowance_position_amount'           => $position,
+            'allowance_position_amount_raw'       => $rawPosition,
+            'allowance_position_amount_rp'        => $positionRp,
+            'allowance_position_amount_words'     => $positionWords,
             'allowance_position_amount_words_upper'=> $positionWordsUpper,
 
             'allowance_communication_amount'           => $comm,
@@ -1060,14 +1063,14 @@ class ContractController extends Controller
             'allowance_communication_amount_words'     => $commWords,
             'allowance_communication_amount_words_upper'=> $commWordsUpper,
 
-            'allowance_other_amount'          => $other,
-            'allowance_other_amount_raw'      => $rawOther,
-            'allowance_other_amount_rp'       => $otherRp,
-            'allowance_other_amount_words'    => $otherWords,
+            'allowance_other_amount'           => $other,
+            'allowance_other_amount_raw'       => $rawOther,
+            'allowance_other_amount_rp'        => $otherRp,
+            'allowance_other_amount_words'     => $otherWords,
             'allowance_other_amount_words_upper'=> $otherWordsUpper,
-            'allowance_other_desc'            => $otherDesc,
+            'allowance_other_desc'             => $otherDesc,
 
-            'other_benefits_desc'            => $otherBenefitDesc,
+            'other_benefits_desc'             => $otherBenefitDesc,
 
             // KONTRAK DASAR & DURASI
             'base_contract_no'        => $baseContractNo,

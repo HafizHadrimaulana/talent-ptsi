@@ -20,7 +20,6 @@ return [
     | Status Kontrak
     |--------------------------------------------------------------------------
     */
-    // dipakai di filter & badge
     'contract_statuses' => [
         'draft'    => 'Draft',
         'review'   => 'Review SDM Unit',
@@ -34,7 +33,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'contract_applicant_statuses' => [
-        'APPROVED',   // sesuaikan dengan status pelamar di tabel applicants
+        'APPROVED',
         'HIRED',
     ],
 
@@ -52,55 +51,55 @@ return [
     'contract_types' => [
 
         [
-            'code'                      => 'SPK',
-            'label'                     => 'Surat Penawaran (Offering Letter)',
-            'mode'                      => 'new',       // new | extend | terminate
-            'requires_applicant'        => true,
-            'requires_existing_contract'=> false,
-            'requires_draw_signature'   => true,
-            'requires_camera'           => true,
-            'requires_geolocation'      => true,
-            'template_key'              => 'offering_letter',
-            'document_type'             => 'SPK',
+            'code'                       => 'SPK',
+            'label'                      => 'Surat Penawaran (Offering Letter)',
+            'mode'                       => 'new',       // new | extend | terminate
+            'requires_applicant'         => true,
+            'requires_existing_contract' => false,
+            'requires_draw_signature'    => true,
+            'requires_camera'            => true,
+            'requires_geolocation'       => true,
+            'template_key'               => 'offering_letter',
+            'document_type'              => 'SPK',
         ],
 
         [
-            'code'                      => 'PKWT_BARU',
-            'label'                     => 'Baru',
-            'mode'                      => 'new',
-            'requires_applicant'        => true,
-            'requires_existing_contract'=> false,
-            'requires_draw_signature'   => true,
-            'requires_camera'           => true,
-            'requires_geolocation'      => true,
-            'template_key'              => 'pkwt',
-            'document_type'             => 'PKWT',
+            'code'                       => 'PKWT_BARU',
+            'label'                      => 'Baru',
+            'mode'                       => 'new',
+            'requires_applicant'         => true,
+            'requires_existing_contract' => false,
+            'requires_draw_signature'    => true,
+            'requires_camera'            => true,
+            'requires_geolocation'       => true,
+            'template_key'               => 'pkwt',
+            'document_type'              => 'PKWT',
         ],
 
         [
-            'code'                      => 'PKWT_PERPANJANGAN',
-            'label'                     => 'Perpanjangan',
-            'mode'                      => 'extend',
-            'requires_applicant'        => false,
-            'requires_existing_contract'=> true,   // wajib pilih kontrak/portfolio dasar
-            'requires_draw_signature'   => true,
-            'requires_camera'           => true,
-            'requires_geolocation'      => true,
-            'template_key'              => 'pkwt',
-            'document_type'             => 'PKWT',
+            'code'                       => 'PKWT_PERPANJANGAN',
+            'label'                      => 'Perpanjangan',
+            'mode'                       => 'extend',
+            'requires_applicant'         => false,
+            'requires_existing_contract' => true,
+            'requires_draw_signature'    => true,
+            'requires_camera'            => true,
+            'requires_geolocation'       => true,
+            'template_key'               => 'pkwt',
+            'document_type'              => 'PKWT',
         ],
 
         [
-            'code'                      => 'PB_PENGAKHIRAN',
-            'label'                     => 'Perjanjian Bersama Pengakhiran PKWT',
-            'mode'                      => 'terminate',
-            'requires_applicant'        => false,
-            'requires_existing_contract'=> true,   // wajib refer ke kontrak PKWT
-            'requires_draw_signature'   => true,
-            'requires_camera'           => true,
-            'requires_geolocation'      => true,
-            'template_key'              => 'pb',
-            'document_type'             => 'PB',
+            'code'                       => 'PB_PENGAKHIRAN',
+            'label'                      => 'Perjanjian Bersama Pengakhiran PKWT',
+            'mode'                       => 'terminate',
+            'requires_applicant'         => false,
+            'requires_existing_contract' => true,
+            'requires_draw_signature'    => true,
+            'requires_camera'            => true,
+            'requires_geolocation'       => true,
+            'template_key'               => 'pb',
+            'document_type'              => 'PB',
         ],
 
     ],
@@ -108,8 +107,6 @@ return [
     /*
     |--------------------------------------------------------------------------
     | Tipe Hubungan Kerja (Employment Type)
-    |--------------------------------------------------------------------------
-    | Ini untuk dropdown "Jenis hubungan kerja" (PKWT / Tetap / Outsource)
     |--------------------------------------------------------------------------
     */
     'employment_types' => [
@@ -149,7 +146,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Jenis Permohonan (Request Type) – kalau mau dipakai ke depan
+    | Jenis Permohonan (Request Type)
     |--------------------------------------------------------------------------
     */
     'request_types' => [
@@ -170,9 +167,6 @@ return [
     /*
     |--------------------------------------------------------------------------
     | Template DOCX untuk SPK / PKWT / PB
-    |--------------------------------------------------------------------------
-    | path = lokasi file template DOCX (engine merge akan baca dari sini)
-    | disk = disk tempat PDF hasil generate akan disimpan (Document::path)
     |--------------------------------------------------------------------------
     */
     'templates' => [
@@ -205,8 +199,15 @@ return [
     | Penomoran Kontrak
     |--------------------------------------------------------------------------
     | Format di ContractController:
-    |   TYPE-xxx/UNITCODE-mm/HEADECODE/YYYY
-    |   Contoh: SPK-001/DSDM-11/DN/2025
+    |   (TYPE)-NNN/UNITCODE-mm/HEADCODE/YYYY
+    |
+    | NNN reset per kombinasi:
+    |   - jenis kontrak (SPK / PKWT / PB)
+    |   - unit_id
+    |   - bulan
+    |   - tahun
+    |
+    | Contoh: SPK-001/DSDM-11/DN/2025
     |--------------------------------------------------------------------------
     */
     'numbering' => [
