@@ -36,11 +36,11 @@
     $applicants           = $applicants           ?? collect();
     $expiringContracts    = $expiringContracts    ?? collect();
 
-    $contractTypeMap  = collect($contractTypeConfigs)->keyBy('code');
-    $spkCfg           = $contractTypeMap->get('SPK');
-    $pkwtNewCfg       = $contractTypeMap->get('PKWT_BARU');
-    $pkwtExtCfg       = $contractTypeMap->get('PKWT_PERPANJANGAN');
-    $pbCfg            = $contractTypeMap->get('PB_PENGAKHIRAN');
+    $contractTypeMap = collect($contractTypeConfigs)->keyBy('code');
+    $spkCfg          = $contractTypeMap->get('SPK');
+    $pkwtNewCfg      = $contractTypeMap->get('PKWT_BARU');
+    $pkwtExtCfg      = $contractTypeMap->get('PKWT_PERPANJANGAN');
+    $pbCfg           = $contractTypeMap->get('PB_PENGAKHIRAN');
 @endphp
 
 <div class="u-card u-card--glass u-hover-lift">
@@ -48,20 +48,20 @@
         <div>
             <h2 class="u-title u-mb-sm">Penerbitan &amp; Penandatanganan Kontrak</h2>
             <p class="u-text-sm u-muted">
-                Monitoring draft–publish–e-sign kontrak kerja (SPK, PKWT, Perjanjian Bersama).
+                Monitoring draft–submit–review–e-sign kontrak kerja (SPK, PKWT, Perjanjian Bersama).
                 <br>
                 <span class="u-text-xxs">
-                    Format nomor: <code>(TYPE)-xxx/UNITCODE-mm/HEADCODE/YYYY</code> &mdash; reset nomor per <strong>jenis kontrak + unit + bulan</strong>.
+                    Format nomor: <code>(TYPE)-xxx/UNITCODE-mm/INISIAL-KEPALA-UNIT/YYYY</code> &mdash; digenerate saat status keluar dari draft.
                 </span>
             </p>
         </div>
 
         @can('contract.create')
-        <button type="button"
-                class="u-btn u-btn--brand u-btn--sm u-hover-lift"
-                data-modal-open="createContractModal">
-            <i class="fas fa-plus u-mr-xs"></i> Draft Kontrak
-        </button>
+            <button type="button"
+                    class="u-btn u-btn--brand u-btn--sm u-hover-lift"
+                    data-modal-open="createContractModal">
+                <i class="fas fa-plus u-mr-xs"></i> Draft Kontrak
+            </button>
         @endcan
     </div>
 
@@ -85,9 +85,10 @@
         </div>
     @endif
 
-    {{-- FILTER BAR LIST KONTRAK --}}
+    {{-- FILTERS --}}
     <div class="u-flex u-items-center u-gap-md u-mb-md u-stack-mobile">
         <form method="get" class="u-flex u-items-center u-gap-md u-stack-mobile u-w-full u-flex-wrap">
+            {{-- Unit --}}
             @if($canSeeAll)
                 <div class="u-flex-1-min">
                     <label class="u-text-xs u-font-medium u-mb-xs d-block">Unit Kerja</label>
@@ -110,13 +111,14 @@
                 </div>
             @endif
 
+            {{-- Status --}}
             <div class="u-flex-1-min">
                 <label class="u-text-xs u-font-medium u-mb-xs d-block">Status Kontrak</label>
                 <select name="status" class="u-input u-input--sm" onchange="this.form.submit()">
                     <option value="">Semua Status</option>
                     @foreach($statusOptions as $code => $label)
                         @php
-                            $statusCode  = is_array($label) ? ($label['code'] ?? null) : $code;
+                            $statusCode  = is_array($label) ? ($label['code']  ?? null) : $code;
                             $statusLabel = is_array($label) ? ($label['label'] ?? $statusCode) : $label;
                         @endphp
                         @if($statusCode)
@@ -126,6 +128,7 @@
                 </select>
             </div>
 
+            {{-- Search --}}
             <div class="u-flex-1-min u-w-full u-max-w-xs u-ml-auto">
                 <label class="u-text-xs u-font-medium u-mb-xs d-block">Cari</label>
                 <input type="search"
@@ -138,7 +141,7 @@
         </form>
     </div>
 
-    {{-- LIST KONTRAK --}}
+    {{-- TABLE --}}
     <div class="dt-wrapper u-mb-xl">
         <div class="u-flex u-items-center u-justify-between u-mb-sm u-stack-mobile">
             <div class="u-font-semibold">Monitoring Kontrak</div>
@@ -158,8 +161,7 @@
                         <th>Jenis</th>
                         <th>Unit</th>
                         <th>Periode</th>
-                        <th>Status</th>
-                        <th>e-Sign</th>
+                        <th>Status &amp; Flow</th>
                         <th class="cell-actions">Aksi</th>
                     </tr>
                 </thead>
@@ -168,7 +170,8 @@
                         @php
                             if (!is_object($c)) { continue; }
 
-                            $jenis    = $c->contract_type ?? '—';
+                            $rawType  = $c->contract_type ?? '—';
+                            $jenis    = $rawType;
                             $unitName = optional($c->unit)->name ?? '—';
 
                             $start = $c->start_date ? Carbon::parse($c->start_date) : null;
@@ -181,19 +184,47 @@
                             $st = $c->status ?? 'draft';
 
                             $statusBadgeClass =
-                                $st === 'signed'           ? 'u-badge--success' :
-                                ($st === 'approved'        ? 'u-badge--primary' :
-                                ($st === 'review'          ? 'u-badge--warn' :
-                                ($st === 'active'          ? 'u-badge--primary' :
-                                ($st === 'ended'           ? 'u-badge--muted' : 'u-badge--glass'))));
+                                $st === 'signed'   ? 'u-badge--success' :
+                                ($st === 'approved'? 'u-badge--primary' :
+                                ($st === 'review'  ? 'u-badge--warn'    :
+                                ($st === 'active'  ? 'u-badge--primary' :
+                                ($st === 'ended'   ? 'u-badge--muted'   : 'u-badge--glass'))));
 
-                            $eSignLabel =
-                                $st === 'signed'            ? 'signed' :
-                                ($st === 'signed_candidate' ? 'candidate' :
-                                ($st === 'approved'         ? 'ready' : 'draft'));
+                            $statusLabel = $statusOptions[$st] ?? ucfirst(str_replace('_',' ',$st));
 
-                            $eSignBadgeClass =
-                                in_array($st, ['signed','signed_candidate']) ? 'u-badge--success' : 'u-badge--glass';
+                            $flowHint = '';
+
+                            if ($rawType === 'SPK') {
+                                if ($st === 'draft') {
+                                    $flowHint = 'Draft SPK: disusun oleh SDM Unit.';
+                                } elseif ($st === 'review') {
+                                    $flowHint = 'SPK: menunggu review + e-sign Kepala Unit.';
+                                } elseif ($st === 'approved') {
+                                    $flowHint = 'SPK: menunggu approval + e-sign kandidat.';
+                                } elseif ($st === 'signed') {
+                                    $flowHint = 'SPK: sudah disetujui dan ditandatangani kandidat.';
+                                }
+                            } elseif (in_array($rawType, ['PKWT_BARU','PKWT_PERPANJANGAN'])) {
+                                if ($st === 'draft') {
+                                    $flowHint = 'Draft PKWT: disusun oleh SDM Unit.';
+                                } elseif ($st === 'review') {
+                                    $flowHint = 'PKWT: menunggu review + e-sign Kepala Unit.';
+                                } elseif ($st === 'approved') {
+                                    $flowHint = 'PKWT: menunggu e-sign kandidat.';
+                                } elseif ($st === 'signed') {
+                                    $flowHint = 'PKWT: telah ditandatangani kandidat.';
+                                }
+                            } elseif ($rawType === 'PB_PENGAKHIRAN') {
+                                if ($st === 'draft') {
+                                    $flowHint = 'Draft PB: disusun oleh SDM Unit.';
+                                } elseif ($st === 'review') {
+                                    $flowHint = 'PB: menunggu review + e-sign Kepala Unit.';
+                                } elseif ($st === 'approved') {
+                                    $flowHint = 'PB: menunggu e-sign pihak terkait.';
+                                } elseif ($st === 'signed') {
+                                    $flowHint = 'PB: Perjanjian Bersama telah ditandatangani.';
+                                }
+                            }
                         @endphp
                         <tr>
                             <td>
@@ -206,17 +237,29 @@
                             <td class="u-text-sm">{{ $periode }}</td>
                             <td>
                                 <span class="u-badge {{ $statusBadgeClass }}">
-                                    {{ ucfirst(str_replace('_',' ',$st)) }}
+                                    {{ $statusLabel }}
                                 </span>
-                            </td>
-                            <td>
-                                <span class="u-badge {{ $eSignBadgeClass }}">
-                                    {{ ucfirst($eSignLabel) }}
-                                </span>
+                                @if($flowHint)
+                                    <div class="u-text-xxs u-muted u-mt-xxs">{{ $flowHint }}</div>
+                                @endif
                             </td>
                             <td class="cell-actions">
                                 <div class="cell-actions__group">
-                                    {{-- tombol aksi (detail / approve / sign) akan diisi kemudian --}}
+                                    <button type="button"
+                                            class="u-btn u-btn--ghost u-btn--xs"
+                                            data-contract-detail
+                                            data-show-url="{{ route('recruitment.contracts.show', $c) }}">
+                                        <i class="fas fa-eye u-mr-xxs"></i> Detail
+                                    </button>
+                                    @if($c->status === 'draft')
+                                        <button type="button"
+                                                class="u-btn u-btn--primary u-btn--xs"
+                                                data-contract-edit
+                                                data-show-url="{{ route('recruitment.contracts.show', $c) }}"
+                                                data-update-url="{{ route('recruitment.contracts.update', $c) }}">
+                                            <i class="fas fa-edit u-mr-xxs"></i> Edit
+                                        </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -233,7 +276,7 @@
     </div>
 </div>
 
-{{-- MODAL DRAFT KONTRAK BARU --}}
+{{-- MODAL: CREATE --}}
 @can('contract.create')
 <div id="createContractModal" class="u-modal" hidden>
     <div class="u-modal__card u-modal__card--xl">
@@ -245,7 +288,8 @@
                 <div>
                     <div class="u-title">Draft Kontrak Baru</div>
                     <div class="u-muted u-text-sm">
-                        Susun draft kontrak (SPK / PKWT Baru / Perpanjangan / PB) sesuai flow Rekrutmen SI.
+                        SPK: SDM Unit → Kepala Unit (review + e-sign) → Kandidat (approval + e-sign).<br>
+                        PKWT: SDM Unit → Kepala Unit (review + e-sign) → Kandidat (e-sign).
                     </div>
                 </div>
             </div>
@@ -263,7 +307,7 @@
             <input type="hidden" name="source_contract_id" id="sourceContractInput" value="{{ old('source_contract_id') }}">
             <input type="hidden" name="contract_type" id="contractTypeInput" value="{{ old('contract_type') }}">
 
-            {{-- STEP 1: JENIS KONTRAK --}}
+            {{-- PILIH JENIS --}}
             <div class="u-space-y-sm">
                 <label class="u-text-sm u-font-medium d-block">Pilih Jenis Kontrak</label>
 
@@ -289,7 +333,7 @@
                                 </option>
                             @endif
 
-                            {{-- PKWT FAMILY --}}
+                            {{-- PKWT keluarga --}}
                             <option value="PKWT"
                                     data-mode=""
                                     data-hint="Pilih detail PKWT: baru atau perpanjangan."
@@ -297,7 +341,7 @@
                                 PKWT (Baru / Perpanjangan)
                             </option>
 
-                            {{-- PB (Perjanjian Bersama Pengakhiran) --}}
+                            {{-- PB --}}
                             @if($pbCfg)
                                 <option value="PB"
                                         data-mode="terminate"
@@ -320,14 +364,14 @@
                     <div class="u-hidden-mobile">
                         <div class="u-text-xs u-muted">
                             <span class="u-font-semibold">Catatan:</span><br>
-                            • SPK untuk offering kandidat baru.<br>
-                            • PKWT untuk kontrak kerja baru dan perpanjangan PKWT existing.<br>
-                            • PB untuk pengakhiran PKWT dengan Perjanjian Bersama.
+                            • SPK: setelah submit, Kepala Unit review + e-sign, lalu kandidat approve + e-sign.<br>
+                            • PKWT: setelah submit, Kepala Unit review + e-sign, lalu kandidat e-sign.<br>
+                            • PB: digunakan untuk pengakhiran PKWT dengan Perjanjian Bersama.
                         </div>
                     </div>
                 </div>
 
-                {{-- SUBTYPE PKWT --}}
+                {{-- DETAIL PKWT --}}
                 <div id="contractSubtypeWrapper" class="u-mt-sm" hidden>
                     <label class="u-text-xs u-font-medium u-mb-xxs d-block">
                         Detail PKWT
@@ -355,7 +399,7 @@
                 </div>
             </div>
 
-            {{-- STEP 2: UNIT & DETAIL FORM --}}
+            {{-- CONTENT SECTIONS --}}
             <div id="contractFormSections" class="u-space-y-lg" hidden>
 
                 {{-- UNIT KERJA --}}
@@ -379,7 +423,7 @@
                     @endif
                 </div>
 
-                {{-- MODE NEW (SPK + PKWT BARU) --}}
+                {{-- MODE: NEW (SPK + PKWT BARU) --}}
                 <div data-mode-section="new" hidden>
                     <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
@@ -388,8 +432,8 @@
                                 <option value="">Pilih Pelamar</option>
                                 @foreach($applicants as $a)
                                     @php
-                                        $appUnitName  = $a->unit_name ?? 'Unit ?';
-                                        $appPosition  = $a->position_applied ?? ($a->position_name ?? 'Posisi belum diisi');
+                                        $appUnitName = $a->unit_name ?? 'Unit ?';
+                                        $appPosition = $a->position_applied ?? ($a->position_name ?? 'Posisi belum diisi');
                                     @endphp
                                     <option value="{{ $a->id }}"
                                             data-full-name="{{ $a->full_name }}"
@@ -424,8 +468,8 @@
                                 <option value="">Pilih Jenis Hubungan Kerja</option>
                                 @foreach($employmentTypes as $val => $label)
                                     @php
-                                        $code  = is_array($label) ? ($label['code'] ?? $val) : $val;
-                                        $text  = is_array($label) ? ($label['label'] ?? $code) : $label;
+                                        $code = is_array($label) ? ($label['code'] ?? $val) : $val;
+                                        $text = is_array($label) ? ($label['label'] ?? $code) : $label;
                                     @endphp
                                     <option value="{{ $code }}" @selected(old('employment_type') == $code)>{{ $text }}</option>
                                 @endforeach
@@ -437,8 +481,8 @@
                                     <option value="">Pilih Sumber Anggaran</option>
                                     @foreach($budgetSourceTypes as $val => $label)
                                         @php
-                                            $code  = is_array($label) ? ($label['code'] ?? $val) : $val;
-                                            $text  = is_array($label) ? ($label['label'] ?? $code) : $label;
+                                            $code = is_array($label) ? ($label['code'] ?? $val) : $val;
+                                            $text = is_array($label) ? ($label['label'] ?? $code) : $label;
                                         @endphp
                                         <option value="{{ $code }}" @selected(old('budget_source_type') == $code)>{{ $text }}</option>
                                     @endforeach
@@ -483,13 +527,13 @@
                                   placeholder="Catatan khusus benefit / lokasi / klausul lain">{{ old('remarks') }}</textarea>
                     </div>
 
-                    {{-- RINCIAN UPAH & FASILITAS --}}
                     <div class="u-mt-lg">
                         <div class="u-flex u-items-center u-justify-between u-mb-xs">
                             <label class="u-text-sm u-font-semibold">Rincian Upah &amp; Fasilitas</label>
-                            <span class="u-text-xs u-muted">Isi sesuai draft remunerasi (gaji pokok, uang makan, tunjangan).</span>
+                            <span class="u-text-xs u-muted">Ketik angka, sistem memformat menjadi Rp. ... dan mengisi terbilang otomatis.</span>
                         </div>
 
+                        {{-- gaji pokok --}}
                         <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
                             <div>
                                 <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Rp)</label>
@@ -498,20 +542,20 @@
                                        class="u-input"
                                        data-rupiah="true"
                                        data-terbilang-target="salary_amount_words"
-                                       placeholder="Mis. 7.500.000"
+                                       placeholder="Mis. Rp. 7.500.000"
                                        value="{{ old('salary_amount') }}">
-                                <p class="u-text-xxs u-muted u-mt-xxs">Ketik angka, sistem akan memformat &amp; bisa mengisi terbilang otomatis.</p>
                             </div>
                             <div>
                                 <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Terbilang)</label>
                                 <input type="text"
                                        name="salary_amount_words"
                                        class="u-input"
-                                       placeholder="Mis. TUJUH JUTA LIMA RATUS RIBU RUPIAH"
+                                       readonly
                                        value="{{ old('salary_amount_words') }}">
                             </div>
                         </div>
 
+                        {{-- uang makan --}}
                         <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                             <div>
                                 <label class="u-text-xs u-font-medium u-mb-xxs d-block">Uang Makan per Hari (Rp)</label>
@@ -520,7 +564,7 @@
                                        class="u-input"
                                        data-rupiah="true"
                                        data-terbilang-target="lunch_allowance_words"
-                                       placeholder="Mis. 40.000"
+                                       placeholder="Mis. Rp. 40.000"
                                        value="{{ old('lunch_allowance_daily') }}">
                             </div>
                             <div>
@@ -528,12 +572,12 @@
                                 <input type="text"
                                        name="lunch_allowance_words"
                                        class="u-input"
-                                       placeholder="Mis. EMPAT PULUH RIBU RUPIAH"
+                                       readonly
                                        value="{{ old('lunch_allowance_words') }}">
                             </div>
                         </div>
 
-                        {{-- TUNJANGAN OPSIONAL --}}
+                        {{-- tunjangan lain --}}
                         <details class="u-mt-md">
                             <summary class="u-text-xs u-font-medium u-cursor-pointer">
                                 Tunjangan Lain (opsional)
@@ -554,6 +598,7 @@
                                         <input type="text"
                                                name="allowance_special_words"
                                                class="u-input"
+                                               readonly
                                                value="{{ old('allowance_special_words') }}">
                                     </div>
                                 </div>
@@ -573,6 +618,7 @@
                                         <input type="text"
                                                name="allowance_position_words"
                                                class="u-input"
+                                               readonly
                                                value="{{ old('allowance_position_words') }}">
                                     </div>
                                 </div>
@@ -592,6 +638,7 @@
                                         <input type="text"
                                                name="allowance_communication_words"
                                                class="u-input"
+                                               readonly
                                                value="{{ old('allowance_communication_words') }}">
                                     </div>
                                 </div>
@@ -611,6 +658,7 @@
                                         <input type="text"
                                                name="allowance_other_words"
                                                class="u-input"
+                                               readonly
                                                value="{{ old('allowance_other_words') }}">
                                     </div>
                                 </div>
@@ -628,7 +676,7 @@
                         </details>
 
                         <div class="u-mt-md">
-                            <label class="u-text-xs u-font-medium u-mb-xxs d-block">
+                            <label class="u-text-xxs u-font-medium u-mb-xxs d-block">
                                 Fasilitas / Benefit Lain <span class="u-muted">(opsional)</span>
                             </label>
                             <textarea name="other_benefits_desc"
@@ -639,7 +687,7 @@
                     </div>
                 </div>
 
-                {{-- MODE EXTEND (PKWT PERPANJANGAN) --}}
+                {{-- MODE: EXTEND (PKWT PERPANJANGAN) --}}
                 <div data-mode-section="extend" hidden>
                     <div class="u-mt-md">
                         <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak Dasar untuk Perpanjangan</label>
@@ -648,12 +696,12 @@
                             @foreach($expiringContracts as $c)
                                 @php
                                     $startRaw = $c->start_date ?? null;
-                                    $endRaw   = $c->end_date ?? null;
+                                    $endRaw   = $c->end_date   ?? null;
 
                                     $start = $startRaw ? Carbon::parse($startRaw)->format('d M Y') : '-';
                                     $end   = $endRaw   ? Carbon::parse($endRaw)->format('d M Y')   : '-';
 
-                                    $unit       = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
+                                    $unit = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
                                     $personName = $c->person_name ?? '-';
                                     $position   = $c->position_name ?? '-';
                                 @endphp
@@ -705,6 +753,7 @@
                         </div>
                     </div>
 
+                    {{-- periode baru --}}
                     <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
                             <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Mulai Kontrak Baru</label>
@@ -735,7 +784,7 @@
                     <div class="u-mt-lg">
                         <div class="u-flex u-items-center u-justify-between u-mb-xs">
                             <label class="u-text-sm u-font-semibold">Rincian Upah &amp; Fasilitas (Kontrak Baru)</label>
-                            <span class="u-text-xs u-muted">Isi jika ada perubahan gaji pokok / uang makan / fasilitas pada perpanjangan.</span>
+                            <span class="u-text-xs u-muted">Ketik angka, sistem memformat menjadi Rp. ... dan mengisi terbilang otomatis.</span>
                         </div>
 
                         <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
@@ -746,7 +795,7 @@
                                        class="u-input"
                                        data-rupiah="true"
                                        data-terbilang-target="salary_amount_words"
-                                       placeholder="Mis. 8.000.000"
+                                       placeholder="Mis. Rp. 8.000.000"
                                        value="{{ old('salary_amount') }}">
                             </div>
                             <div>
@@ -754,7 +803,7 @@
                                 <input type="text"
                                        name="salary_amount_words"
                                        class="u-input"
-                                       placeholder="Mis. DELAPAN JUTA RUPIAH"
+                                       readonly
                                        value="{{ old('salary_amount_words') }}">
                             </div>
                         </div>
@@ -767,7 +816,7 @@
                                        class="u-input"
                                        data-rupiah="true"
                                        data-terbilang-target="lunch_allowance_words"
-                                       placeholder="Mis. 40.000"
+                                       placeholder="Mis. Rp. 40.000"
                                        value="{{ old('lunch_allowance_daily') }}">
                             </div>
                             <div>
@@ -775,7 +824,7 @@
                                 <input type="text"
                                        name="lunch_allowance_words"
                                        class="u-input"
-                                       placeholder="Mis. EMPAT PULUH RIBU RUPIAH"
+                                       readonly
                                        value="{{ old('lunch_allowance_words') }}">
                             </div>
                         </div>
@@ -788,41 +837,9 @@
                                       placeholder="Isi jika ada perubahan fasilitas lain dibanding kontrak sebelumnya.">{{ old('other_benefits_desc') }}</textarea>
                         </div>
                     </div>
-
-                    <div class="u-mt-lg">
-                        <div class="u-flex u-items-center u-justify-between u-mb-xs">
-                            <label class="u-text-sm u-font-semibold">Informasi Kontrak Dasar</label>
-                            <span class="u-text-xs u-muted">Opsional, untuk melengkapi data di template bila diperlukan.</span>
-                        </div>
-
-                        <div class="u-grid-3 u-stack-mobile u-gap-md u-mt-sm">
-                            <div>
-                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">No. Kontrak Dasar</label>
-                                <input type="text"
-                                       name="base_contract_no"
-                                       class="u-input"
-                                       placeholder="Mis. PKWT/DBS-OG/2024/001"
-                                       value="{{ old('base_contract_no') }}">
-                            </div>
-                            <div>
-                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Mulai Kontrak Dasar</label>
-                                <input type="date"
-                                       name="base_contract_start"
-                                       class="u-input"
-                                       value="{{ old('base_contract_start') }}">
-                            </div>
-                            <div>
-                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Selesai Kontrak Dasar</label>
-                                <input type="date"
-                                       name="base_contract_end"
-                                       class="u-input"
-                                       value="{{ old('base_contract_end') }}">
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                {{-- MODE TERMINATE (PB PENGAKHIRAN) --}}
+                {{-- MODE: TERMINATE (PB) --}}
                 <div data-mode-section="terminate" hidden>
                     <div class="u-mt-md">
                         <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak PKWT yang Diakhiri</label>
@@ -831,12 +848,12 @@
                             @foreach($expiringContracts as $c)
                                 @php
                                     $startRaw = $c->start_date ?? null;
-                                    $endRaw   = $c->end_date ?? null;
+                                    $endRaw   = $c->end_date   ?? null;
 
                                     $start = $startRaw ? Carbon::parse($startRaw)->format('d M Y') : '-';
                                     $end   = $endRaw   ? Carbon::parse($endRaw)->format('d M Y')   : '-';
 
-                                    $unit       = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
+                                    $unit = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
                                     $personName = $c->person_name ?? '-';
                                     $position   = $c->position_name ?? '-';
                                 @endphp
@@ -890,38 +907,6 @@
 
                     <div class="u-mt-lg">
                         <div class="u-flex u-items-center u-justify-between u-mb-xs">
-                            <label class="u-text-sm u-font-semibold">Informasi Kontrak Dasar</label>
-                            <span class="u-text-xs u-muted">Digunakan untuk isi template PB.</span>
-                        </div>
-
-                        <div class="u-grid-3 u-stack-mobile u-gap-md u-mt-sm">
-                            <div>
-                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">No. Kontrak Dasar</label>
-                                <input type="text"
-                                       name="base_contract_no"
-                                       class="u-input"
-                                       placeholder="Mis. PKWT/DBS-OG/2024/001"
-                                       value="{{ old('base_contract_no') }}">
-                            </div>
-                            <div>
-                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Mulai Kontrak Dasar</label>
-                                <input type="date"
-                                       name="base_contract_start"
-                                       class="u-input"
-                                       value="{{ old('base_contract_start') }}">
-                            </div>
-                            <div>
-                                <label class="u-text-xs u-font-medium u-mb-xxs d-block">Selesai Kontrak Dasar</label>
-                                <input type="date"
-                                       name="base_contract_end"
-                                       class="u-input"
-                                       value="{{ old('base_contract_end') }}">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="u-mt-lg">
-                        <div class="u-flex u-items-center u-justify-between u-mb-xs">
                             <label class="u-text-sm u-font-semibold">Detail Perjanjian Bersama (PB)</label>
                             <span class="u-text-xs u-muted">Tanggal efektif pengakhiran &amp; kompensasi (jika ada).</span>
                         </div>
@@ -941,7 +926,7 @@
                                        class="u-input"
                                        data-rupiah="true"
                                        data-terbilang-target="pb_compensation_amount_words"
-                                       placeholder="Mis. 10.000.000"
+                                       placeholder="Mis. Rp. 10.000.000"
                                        value="{{ old('pb_compensation_amount') }}">
                             </div>
                         </div>
@@ -951,7 +936,7 @@
                             <input type="text"
                                    name="pb_compensation_amount_words"
                                    class="u-input"
-                                   placeholder="Mis. SEPULUH JUTA RUPIAH"
+                                   readonly
                                    value="{{ old('pb_compensation_amount_words') }}">
                         </div>
 
@@ -970,12 +955,22 @@
 
             <div class="u-modal__foot">
                 <div class="u-text-sm u-muted">
-                    Tekan <kbd>Esc</kbd> untuk menutup modal.
+                    Pilih <strong>Simpan Draft</strong> untuk menyimpan tanpa flow,<br>
+                    atau <strong>Submit ke Kepala Unit</strong> untuk mengirim ke tahap review dan generate nomor kontrak.
                 </div>
                 <div class="u-flex u-gap-sm">
                     <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-                    <button type="submit" class="u-btn u-btn--brand u-hover-lift">
+                    <button type="submit"
+                            class="u-btn u-btn--soft"
+                            name="submit_action"
+                            value="draft">
                         <i class="fas fa-save u-mr-xs"></i> Simpan Draft
+                    </button>
+                    <button type="submit"
+                            class="u-btn u-btn--brand u-hover-lift"
+                            name="submit_action"
+                            value="submit">
+                        <i class="fas fa-paper-plane u-mr-xs"></i> Submit ke Kepala Unit
                     </button>
                 </div>
             </div>
@@ -984,6 +979,371 @@
 </div>
 @endcan
 
+{{-- MODAL: DETAIL --}}
+<div id="contractDetailModal" class="u-modal" hidden>
+    <div class="u-modal__card u-modal__card--lg">
+        <div class="u-modal__head">
+            <div class="u-flex u-items-center u-gap-md">
+                <div class="u-avatar u-avatar--lg u-avatar--brand">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div>
+                    <div class="u-title">Detail Kontrak</div>
+                    <div class="u-muted u-text-sm">
+                        Ringkasan informasi kontrak.
+                    </div>
+                </div>
+            </div>
+            <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="u-modal__body u-p-md u-space-y-sm">
+            <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div>
+                    <div class="u-text-xxs u-muted">No. Kontrak</div>
+                    <div id="detailContractNo" class="u-text-sm u-font-semibold">-</div>
+                </div>
+                <div>
+                    <div class="u-text-xxs u-muted">Jenis Kontrak</div>
+                    <div id="detailContractType" class="u-text-sm">-</div>
+                </div>
+            </div>
+            <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div>
+                    <div class="u-text-xxs u-muted">Status</div>
+                    <div id="detailContractStatus" class="u-text-sm">-</div>
+                </div>
+                <div>
+                    <div class="u-text-xxs u-muted">Unit</div>
+                    <div id="detailContractUnit" class="u-text-sm">-</div>
+                </div>
+            </div>
+            <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div>
+                    <div class="u-text-xxs u-muted">Periode</div>
+                    <div id="detailContractPeriod" class="u-text-sm">-</div>
+                </div>
+                <div>
+                    <div class="u-text-xxs u-muted">Nama Jabatan</div>
+                    <div id="detailContractPosition" class="u-text-sm">-</div>
+                </div>
+            </div>
+            <div>
+                <div class="u-text-xxs u-muted">Catatan</div>
+                <div id="detailContractRemarks" class="u-text-sm">-</div>
+            </div>
+        </div>
+        <div class="u-modal__foot">
+            <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL: EDIT --}}
+<div id="editContractModal" class="u-modal" hidden>
+    <div class="u-modal__card u-modal__card--xl">
+        <div class="u-modal__head">
+            <div class="u-flex u-items-center u-gap-md">
+                <div class="u-avatar u-avatar--lg u-avatar--brand">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <div>
+                    <div class="u-title">Edit Draft Kontrak</div>
+                    <div class="u-muted u-text-sm">
+                        Perbarui informasi draft kontrak, lalu submit ke Kepala Unit untuk review dan e-sign.
+                    </div>
+                </div>
+            </div>
+            <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form method="POST"
+              action="#"
+              class="u-modal__body u-p-md u-space-y-lg"
+              id="editContractForm">
+            @csrf
+            <input type="hidden" name="_method" value="PUT">
+            <input type="hidden" name="contract_id" id="editContractId">
+
+            <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div>
+                    <label class="u-text-sm u-font-medium u-mb-sm d-block">Jenis Kontrak</label>
+                    <select name="contract_type" id="editContractTypeSelect" class="u-input">
+                        @foreach($contractTypes as $code => $label)
+                            <option value="{{ $code }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="u-text-sm u-font-medium u-mb-sm d-block">Unit Kerja</label>
+                    @if($canSeeAll)
+                        <select name="unit_id" id="editContractUnitSelect" class="u-input">
+                            @foreach($units as $u)
+                                <option value="{{ $u->id }}">{{ $u->name }}</option>
+                            @endforeach
+                        </select>
+                    @else
+                        @php $unitName = ($units[0]->name ?? 'Unit Saya'); @endphp
+                        <input type="hidden" name="unit_id" id="editContractUnitHidden" value="{{ $meUnit }}">
+                        <div class="u-badge u-badge--glass">{{ $unitName }}</div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
+                <div>
+                    <label class="u-text-sm u-font-medium u-mb-sm d-block">Pelamar / Kandidat</label>
+                    <select name="applicant_id" id="editApplicantSelect" class="u-input">
+                        <option value="">Tidak ada (manual / existing)</option>
+                        @foreach($applicants as $a)
+                            @php
+                                $appUnitName = $a->unit_name ?? 'Unit ?';
+                                $appPosition = $a->position_applied ?? ($a->position_name ?? 'Posisi belum diisi');
+                            @endphp
+                            <option value="{{ $a->id }}">
+                                {{ $a->full_name }} — {{ $appPosition }} ({{ $appUnitName }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="u-text-sm u-font-medium u-mb-sm d-block">Jenis Hubungan Kerja</label>
+                    <select name="employment_type" id="editEmploymentTypeSelect" class="u-input">
+                        <option value="">Pilih Jenis Hubungan Kerja</option>
+                        @foreach($employmentTypes as $val => $label)
+                            @php
+                                $code = is_array($label) ? ($label['code'] ?? $val) : $val;
+                                $text = is_array($label) ? ($label['label'] ?? $code) : $label;
+                            @endphp
+                            <option value="{{ $code }}">{{ $text }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="u-mt-md">
+                <label class="u-text-sm u-font-medium u-mb-sm d-block">Nama Jabatan</label>
+                <input type="text"
+                       name="position_name"
+                       id="editPositionInput"
+                       class="u-input"
+                       placeholder="Mis. Staff HCIS, Analis TKDN, dsb.">
+            </div>
+
+            <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
+                <div>
+                    <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Mulai Kontrak</label>
+                    <input type="date"
+                           name="start_date"
+                           id="editStartDateInput"
+                           class="u-input">
+                </div>
+                <div>
+                    <label class="u-text-sm u-font-medium u-mb-sm d-block">Tanggal Berakhir Kontrak</label>
+                    <input type="date"
+                           name="end_date"
+                           id="editEndDateInput"
+                           class="u-input">
+                </div>
+            </div>
+
+            <div class="u-mt-md">
+                <label class="u-text-sm u-font-medium u-mb-sm d-block">
+                    Catatan <span class="u-muted">(opsional)</span>
+                </label>
+                <textarea name="remarks"
+                          id="editNoteInput"
+                          class="u-input"
+                          rows="3"
+                          placeholder="Catatan khusus / hasil evaluasi / kesepakatan"></textarea>
+            </div>
+
+            <div class="u-mt-lg">
+                <div class="u-flex u-items-center u-justify-between u-mb-xs">
+                    <label class="u-text-sm u-font-semibold">Rincian Upah &amp; Fasilitas</label>
+                    <span class="u-text-xs u-muted">Ketik angka, sistem memformat menjadi Rp. ... dan mengisi terbilang otomatis.</span>
+                </div>
+
+                <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
+                    <div>
+                        <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Rp)</label>
+                        <input type="text"
+                               name="salary_amount"
+                               id="editSalaryAmountInput"
+                               class="u-input"
+                               data-rupiah="true"
+                               data-terbilang-target="edit_salary_amount_words"
+                               placeholder="Mis. Rp. 7.500.000">
+                    </div>
+                    <div>
+                        <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Terbilang)</label>
+                        <input type="text"
+                               name="salary_amount_words"
+                               id="edit_salary_amount_words"
+                               class="u-input"
+                               readonly>
+                    </div>
+                </div>
+
+                <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
+                    <div>
+                        <label class="u-text-xs u-font-medium u-mb-xxs d-block">Uang Makan per Hari (Rp)</label>
+                        <input type="text"
+                               name="lunch_allowance_daily"
+                               id="editLunchDailyInput"
+                               class="u-input"
+                               data-rupiah="true"
+                               data-terbilang-target="edit_lunch_allowance_words"
+                               placeholder="Mis. Rp. 40.000">
+                    </div>
+                    <div>
+                        <label class="u-text-xs u-font-medium u-mb-xxs d-block">Uang Makan (Terbilang)</label>
+                        <input type="text"
+                               name="lunch_allowance_words"
+                               id="edit_lunch_allowance_words"
+                               class="u-input"
+                               readonly>
+                    </div>
+                </div>
+
+                <details class="u-mt-md">
+                    <summary class="u-text-xs u-font-medium u-cursor-pointer">
+                        Tunjangan Lain (opsional)
+                    </summary>
+                    <div class="u-mt-sm u-space-y-sm">
+                        <div class="u-grid-2 u-stack-mobile u-gap-md">
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Khusus (Rp)</label>
+                                <input type="text"
+                                       name="allowance_special_amount"
+                                       id="editAllowanceSpecialInput"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       data-terbilang-target="edit_allowance_special_words">
+                            </div>
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Khusus (Terbilang)</label>
+                                <input type="text"
+                                       name="allowance_special_words"
+                                       id="edit_allowance_special_words"
+                                       class="u-input"
+                                       readonly>
+                            </div>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md">
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Jabatan (Rp)</label>
+                                <input type="text"
+                                       name="allowance_position_amount"
+                                       id="editAllowancePositionInput"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       data-terbilang-target="edit_allowance_position_words">
+                            </div>
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Jabatan (Terbilang)</label>
+                                <input type="text"
+                                       name="allowance_position_words"
+                                       id="edit_allowance_position_words"
+                                       class="u-input"
+                                       readonly>
+                            </div>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md">
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Komunikasi (Rp)</label>
+                                <input type="text"
+                                       name="allowance_communication_amount"
+                                       id="editAllowanceCommInput"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       data-terbilang-target="edit_allowance_communication_words">
+                            </div>
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Komunikasi (Terbilang)</label>
+                                <input type="text"
+                                       name="allowance_communication_words"
+                                       id="edit_allowance_communication_words"
+                                       class="u-input"
+                                       readonly>
+                            </div>
+                        </div>
+
+                        <div class="u-grid-2 u-stack-mobile u-gap-md">
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Lain (Rp)</label>
+                                <input type="text"
+                                       name="allowance_other_amount"
+                                       id="editAllowanceOtherInput"
+                                       class="u-input"
+                                       data-rupiah="true"
+                                       data-terbilang-target="edit_allowance_other_words">
+                            </div>
+                            <div>
+                                <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Lain (Terbilang)</label>
+                                <input type="text"
+                                       name="allowance_other_words"
+                                       id="edit_allowance_other_words"
+                                       class="u-input"
+                                       readonly>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="u-text-xxs u-font-medium u-mb-xxs d-block">
+                                Keterangan Tunjangan Lain
+                            </label>
+                            <textarea name="allowance_other_desc"
+                                      id="editAllowanceOtherDesc"
+                                      class="u-input"
+                                      rows="2"
+                                      placeholder="Mis. tunjangan shift, tunjangan remote area, dll."></textarea>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="u-mt-md">
+                    <label class="u-text-xs u-font-medium u-mb-xxs d-block">
+                        Fasilitas / Benefit Lain <span class="u-muted">(opsional)</span>
+                    </label>
+                    <textarea name="other_benefits_desc"
+                              id="editOtherBenefitsDesc"
+                              class="u-input"
+                              rows="2"
+                              placeholder="Mis. BPJS Kesehatan &amp; Ketenagakerjaan, tunjangan transport, dll."></textarea>
+                </div>
+            </div>
+
+            <div class="u-modal__foot">
+                <div class="u-text-sm u-muted">
+                    <strong>Simpan Draft</strong> untuk menyimpan di level SDM Unit,<br>
+                    <strong>Submit ke Kepala Unit</strong> untuk masuk ke tahap review dan generate nomor.
+                </div>
+                <div class="u-flex u-gap-sm">
+                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+                    <button type="submit"
+                            class="u-btn u-btn--soft"
+                            name="submit_action"
+                            value="draft">
+                        <i class="fas fa-save u-mr-xs"></i> Simpan Draft
+                    </button>
+                    <button type="submit"
+                            class="u-btn u-btn--brand u-hover-lift"
+                            name="submit_action"
+                            value="submit">
+                        <i class="fas fa-paper-plane u-mr-xs"></i> Submit ke Kepala Unit
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const app = {
@@ -991,41 +1351,53 @@ document.addEventListener('DOMContentLoaded', function () {
             this.bindModal();
             this.bindRupiahFormatter();
             this.bindTerbilangAutoFill();
+            this.bindDetailAndEdit();
+        },
+
+        openModal(modal) {
+            if (!modal) return;
+            modal.hidden = false;
+            document.body.classList.add('modal-open');
+        },
+
+        closeModal(modal) {
+            if (!modal) return;
+            modal.hidden = true;
+            document.body.classList.remove('modal-open');
         },
 
         bindModal() {
-            const modal              = document.getElementById('createContractModal');
-            const form               = document.getElementById('createContractForm');
-            const familySelect       = document.getElementById('contractFamilySelect');
-            const familyHint         = document.getElementById('contractFamilyHint');
-            const subtypeWrapper     = document.getElementById('contractSubtypeWrapper');
-            const subtypeSelect      = document.getElementById('contractSubtypeSelect');
-            const subtypeHint        = document.getElementById('contractSubtypeHint');
-            const typeInput          = document.getElementById('contractTypeInput');
-            const modeInput          = document.getElementById('contractModeInput');
-            const sectionsWrapper    = document.getElementById('contractFormSections');
-            const unitWrapper        = document.getElementById('unitFieldWrapper');
-            const unitSelect         = document.getElementById('contractUnitSelect');
-            const sourceSelect       = document.getElementById('sourceContractSelect');
-            const sourceInput        = document.getElementById('sourceContractInput');
-            const sourceSelectTerm   = document.getElementById('sourceContractSelectTerminate');
+            const modal          = document.getElementById('createContractModal');
+            const form           = document.getElementById('createContractForm');
+            const familySelect   = document.getElementById('contractFamilySelect');
+            const familyHint     = document.getElementById('contractFamilyHint');
+            const subtypeWrapper = document.getElementById('contractSubtypeWrapper');
+            const subtypeSelect  = document.getElementById('contractSubtypeSelect');
+            const subtypeHint    = document.getElementById('contractSubtypeHint');
+            const typeInput      = document.getElementById('contractTypeInput');
+            const modeInput      = document.getElementById('contractModeInput');
+            const sectionsWrapper= document.getElementById('contractFormSections');
+            const unitWrapper    = document.getElementById('unitFieldWrapper');
+            const unitSelect     = document.getElementById('contractUnitSelect');
+            const sourceSelect   = document.getElementById('sourceContractSelect');
+            const sourceInput    = document.getElementById('sourceContractInput');
+            const sourceSelectTerm = document.getElementById('sourceContractSelectTerminate');
+            const applicantSelect  = document.getElementById('applicantSelect');
 
-            const applicantSelect    = document.getElementById('applicantSelect');
+            const allSourceOptions    = sourceSelect     ? Array.from(sourceSelect.options)     : [];
+            const allSourceTermOptions= sourceSelectTerm ? Array.from(sourceSelectTerm.options) : [];
 
-            const allSourceOptions      = sourceSelect ? Array.from(sourceSelect.options) : [];
-            const allSourceTermOptions  = sourceSelectTerm ? Array.from(sourceSelectTerm.options) : [];
+            const appPreviewBox = document.getElementById('applicantPreview');
+            const appPrevName   = document.getElementById('applicantPreviewName');
+            const appPrevPos    = document.getElementById('applicantPreviewPosition');
+            const appPrevUnit   = document.getElementById('applicantPreviewUnit');
 
-            const appPreviewBox   = document.getElementById('applicantPreview');
-            const appPrevName     = document.getElementById('applicantPreviewName');
-            const appPrevPos      = document.getElementById('applicantPreviewPosition');
-            const appPrevUnit     = document.getElementById('applicantPreviewUnit');
-
-            const srcPreviewBox   = document.getElementById('sourceContractPreview');
-            const srcPrevNo       = document.getElementById('sourcePreviewNo');
-            const srcPrevPerson   = document.getElementById('sourcePreviewPerson');
+            const srcPreviewBox = document.getElementById('sourceContractPreview');
+            const srcPrevNo     = document.getElementById('sourcePreviewNo');
+            const srcPrevPerson = document.getElementById('sourcePreviewPerson');
             const srcPrevPosition = document.getElementById('sourcePreviewPosition');
-            const srcPrevUnit     = document.getElementById('sourcePreviewUnit');
-            const srcPrevPeriod   = document.getElementById('sourcePreviewPeriod');
+            const srcPrevUnit   = document.getElementById('sourcePreviewUnit');
+            const srcPrevPeriod = document.getElementById('sourcePreviewPeriod');
 
             const srcPrevBoxTerm   = document.getElementById('sourceContractPreviewTerminate');
             const srcPrevNoTerm    = document.getElementById('sourcePreviewNoTerminate');
@@ -1062,31 +1434,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function resetPreviews() {
                 if (appPreviewBox) appPreviewBox.hidden = true;
-                if (appPrevName)   appPrevName.textContent   = '-';
-                if (appPrevPos)    appPrevPos.textContent    = '-';
-                if (appPrevUnit)   appPrevUnit.textContent   = '-';
+                if (appPrevName) appPrevName.textContent = '-';
+                if (appPrevPos)  appPrevPos.textContent  = '-';
+                if (appPrevUnit) appPrevUnit.textContent = '-';
 
-                if (srcPreviewBox) srcPreviewBox.hidden      = true;
-                if (srcPrevNo)       srcPrevNo.textContent       = '-';
-                if (srcPrevPerson)   srcPrevPerson.textContent   = '-';
+                if (srcPreviewBox) srcPreviewBox.hidden = true;
+                if (srcPrevNo)     srcPrevNo.textContent     = '-';
+                if (srcPrevPerson) srcPrevPerson.textContent = '-';
                 if (srcPrevPosition) srcPrevPosition.textContent = '-';
-                if (srcPrevUnit)     srcPrevUnit.textContent     = '-';
-                if (srcPrevPeriod)   srcPrevPeriod.textContent   = '-';
+                if (srcPrevUnit)   srcPrevUnit.textContent   = '-';
+                if (srcPrevPeriod) srcPrevPeriod.textContent = '-';
 
-                if (srcPrevBoxTerm) srcPrevBoxTerm.hidden        = true;
-                if (srcPrevNoTerm)       srcPrevNoTerm.textContent       = '-';
-                if (srcPrevPersonTerm)   srcPrevPersonTerm.textContent   = '-';
-                if (srcPrevPosTerm)      srcPrevPosTerm.textContent      = '-';
-                if (srcPrevUnitTerm)     srcPrevUnitTerm.textContent     = '-';
-                if (srcPrevPeriodTerm)   srcPrevPeriodTerm.textContent   = '-';
+                if (srcPrevBoxTerm) srcPrevBoxTerm.hidden = true;
+                if (srcPrevNoTerm)  srcPrevNoTerm.textContent  = '-';
+                if (srcPrevPersonTerm) srcPrevPersonTerm.textContent = '-';
+                if (srcPrevPosTerm)    srcPrevPosTerm.textContent    = '-';
+                if (srcPrevUnitTerm)   srcPrevUnitTerm.textContent   = '-';
+                if (srcPrevPeriodTerm) srcPrevPeriodTerm.textContent = '-';
             }
 
             function resetFormLayout() {
                 if (!form) return;
 
-                if (modeInput)   modeInput.value   = '';
-                if (typeInput)   typeInput.value   = '';
-                if (familyHint)  familyHint.textContent  = '';
+                if (modeInput) modeInput.value = '';
+                if (typeInput) typeInput.value = '';
+                if (familyHint) familyHint.textContent = '';
                 if (subtypeHint) subtypeHint.textContent = '';
                 if (subtypeWrapper) subtypeWrapper.hidden = true;
 
@@ -1097,7 +1469,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function filterSourceByUnit(unitId) {
                 if (!sourceSelect) return;
-
                 const val = unitId ? String(unitId) : '';
                 allSourceOptions.forEach((opt, idx) => {
                     if (idx === 0) {
@@ -1105,12 +1476,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         opt.disabled = false;
                         return;
                     }
-
                     const optUnit = opt.dataset.unitId || '';
-                    const match = !val || optUnit === val;
-
-                    opt.hidden  = !match;
-                    opt.disabled = !match;
+                    const match   = !val || optUnit === val;
+                    opt.hidden    = !match;
+                    opt.disabled  = !match;
                 });
 
                 if (sourceSelect.value) {
@@ -1125,7 +1494,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function filterSourceTermByUnit(unitId) {
                 if (!sourceSelectTerm) return;
-
                 const val = unitId ? String(unitId) : '';
                 allSourceTermOptions.forEach((opt, idx) => {
                     if (idx === 0) {
@@ -1133,12 +1501,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         opt.disabled = false;
                         return;
                     }
-
                     const optUnit = opt.dataset.unitId || '';
-                    const match = !val || optUnit === val;
-
-                    opt.hidden  = !match;
-                    opt.disabled = !match;
+                    const match   = !val || optUnit === val;
+                    opt.hidden    = !match;
+                    opt.disabled  = !match;
                 });
 
                 if (sourceSelectTerm.value) {
@@ -1153,16 +1519,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function handleFamilyChange() {
                 if (!familySelect) return;
-
                 const familyVal = familySelect.value || '';
 
                 if (subtypeSelect) subtypeSelect.value = '';
-                if (subtypeHint)   subtypeHint.textContent = '';
+                if (subtypeHint)  subtypeHint.textContent = '';
 
                 if (!familyVal) {
-                    if (typeInput)   typeInput.value   = '';
-                    if (modeInput)   modeInput.value   = '';
-                    if (familyHint)  familyHint.textContent = '';
+                    if (typeInput) typeInput.value = '';
+                    if (modeInput) modeInput.value = '';
+                    if (familyHint) familyHint.textContent = '';
                     if (subtypeWrapper) subtypeWrapper.hidden = true;
                     hideAllSections();
                     hideUnit();
@@ -1176,8 +1541,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const mode = opt ? (opt.dataset.mode || 'new') : 'new';
                     const hint = opt ? (opt.dataset.hint || '') : '';
 
-                    if (typeInput)  typeInput.value  = 'SPK';
-                    if (modeInput)  modeInput.value  = mode;
+                    if (typeInput) typeInput.value = 'SPK';
+                    if (modeInput) modeInput.value = mode;
                     if (familyHint) familyHint.textContent = hint;
 
                     showUnit();
@@ -1187,17 +1552,18 @@ document.addEventListener('DOMContentLoaded', function () {
                         filterSourceByUnit(unitSelect.value || '');
                         filterSourceTermByUnit(unitSelect.value || '');
                     }
-
                     return;
                 }
 
                 if (familyVal === 'PKWT') {
-                    if (typeInput)   typeInput.value   = '';
-                    if (modeInput)   modeInput.value   = '';
+                    if (typeInput) typeInput.value = '';
+                    if (modeInput) modeInput.value = '';
                     if (subtypeWrapper) subtypeWrapper.hidden = false;
                     if (familyHint) {
                         const opt = familySelect.options[familySelect.selectedIndex];
-                        familyHint.textContent = opt?.dataset.hint || 'Pilih detail PKWT (baru / perpanjangan).';
+                        familyHint.textContent = opt && opt.dataset.hint
+                            ? opt.dataset.hint
+                            : 'Pilih detail PKWT (baru / perpanjangan).';
                     }
                     hideAllSections();
                     showUnit();
@@ -1211,8 +1577,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     const mode = opt ? (opt.dataset.mode || 'terminate') : 'terminate';
                     const hint = opt ? (opt.dataset.hint || '') : '';
 
-                    if (typeInput)  typeInput.value  = 'PB_PENGAKHIRAN';
-                    if (modeInput)  modeInput.value  = mode;
+                    if (typeInput) typeInput.value = 'PB_PENGAKHIRAN';
+                    if (modeInput) modeInput.value = mode;
                     if (familyHint) familyHint.textContent = hint;
 
                     showUnit();
@@ -1222,23 +1588,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         filterSourceByUnit(unitSelect.value || '');
                         filterSourceTermByUnit(unitSelect.value || '');
                     }
-
                     return;
                 }
 
-                if (typeInput)  typeInput.value  = '';
-                if (modeInput)  modeInput.value  = '';
+                if (typeInput) typeInput.value = '';
+                if (modeInput) modeInput.value = '';
                 hideAllSections();
                 hideUnit();
             }
 
             function handleSubtypeChange() {
                 if (!subtypeSelect) return;
-
                 const code = subtypeSelect.value || '';
                 if (!code) {
-                    if (typeInput)   typeInput.value   = '';
-                    if (modeInput)   modeInput.value   = '';
+                    if (typeInput) typeInput.value = '';
+                    if (modeInput) modeInput.value = '';
                     if (subtypeHint) subtypeHint.textContent = '';
                     hideAllSections();
                     return;
@@ -1248,8 +1612,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const mode = opt ? (opt.dataset.mode || 'new') : 'new';
                 const hint = opt ? (opt.dataset.hint || '') : '';
 
-                if (typeInput)   typeInput.value   = code;
-                if (modeInput)   modeInput.value   = mode;
+                if (typeInput) typeInput.value = code;
+                if (modeInput) modeInput.value = mode;
                 if (subtypeHint) subtypeHint.textContent = hint;
 
                 showUnit();
@@ -1263,7 +1627,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             function updateApplicantPreview() {
                 if (!applicantSelect || !appPreviewBox) return;
-
                 const val = applicantSelect.value || '';
                 const opt = val ? applicantSelect.options[applicantSelect.selectedIndex] : null;
                 if (!opt || !opt.dataset.fullName) {
@@ -1273,73 +1636,67 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (appPrevUnit) appPrevUnit.textContent = '-';
                     return;
                 }
-
                 if (appPrevName) appPrevName.textContent = opt.dataset.fullName || '-';
-                if (appPrevPos)  appPrevPos.textContent  = opt.dataset.position  || '-';
-                if (appPrevUnit) appPrevUnit.textContent = opt.dataset.unit      || '-';
+                if (appPrevPos)  appPrevPos.textContent  = opt.dataset.position || '-';
+                if (appPrevUnit) appPrevUnit.textContent = opt.dataset.unit || '-';
                 appPreviewBox.hidden = false;
             }
 
             function updateSourcePreview() {
                 if (!sourceSelect || !srcPreviewBox) return;
-
                 const val = sourceSelect.value || '';
                 const opt = val ? sourceSelect.options[sourceSelect.selectedIndex] : null;
                 if (!opt || !opt.dataset.contractNo) {
                     srcPreviewBox.hidden = true;
-                    if (srcPrevNo)       srcPrevNo.textContent       = '-';
-                    if (srcPrevPerson)   srcPrevPerson.textContent   = '-';
+                    if (srcPrevNo)     srcPrevNo.textContent     = '-';
+                    if (srcPrevPerson) srcPrevPerson.textContent = '-';
                     if (srcPrevPosition) srcPrevPosition.textContent = '-';
-                    if (srcPrevUnit)     srcPrevUnit.textContent     = '-';
-                    if (srcPrevPeriod)   srcPrevPeriod.textContent   = '-';
+                    if (srcPrevUnit)   srcPrevUnit.textContent   = '-';
+                    if (srcPrevPeriod) srcPrevPeriod.textContent = '-';
                     return;
                 }
 
-                if (srcPrevNo)       srcPrevNo.textContent       = opt.dataset.contractNo || '-';
-                if (srcPrevPerson)   srcPrevPerson.textContent   = opt.dataset.person     || '-';
-                if (srcPrevPosition) srcPrevPosition.textContent = opt.dataset.position   || '-';
-                if (srcPrevUnit)     srcPrevUnit.textContent     = opt.dataset.unit       || '-';
-                if (srcPrevPeriod)   srcPrevPeriod.textContent   =
-                    (opt.dataset.start || '-') + ' s/d ' + (opt.dataset.end || '-');
+                if (srcPrevNo)     srcPrevNo.textContent     = opt.dataset.contractNo || '-';
+                if (srcPrevPerson) srcPrevPerson.textContent = opt.dataset.person     || '-';
+                if (srcPrevPosition) srcPrevPosition.textContent = opt.dataset.position  || '-';
+                if (srcPrevUnit)   srcPrevUnit.textContent   = opt.dataset.unit       || '-';
+                if (srcPrevPeriod) srcPrevPeriod.textContent = (opt.dataset.start || '-') + ' s/d ' + (opt.dataset.end || '-');
 
                 srcPreviewBox.hidden = false;
             }
 
             function updateSourcePreviewTerminate() {
                 if (!sourceSelectTerm || !srcPrevBoxTerm) return;
-
                 const val = sourceSelectTerm.value || '';
                 const opt = val ? sourceSelectTerm.options[sourceSelectTerm.selectedIndex] : null;
                 if (!opt || !opt.dataset.contractNo) {
                     srcPrevBoxTerm.hidden = true;
-                    if (srcPrevNoTerm)       srcPrevNoTerm.textContent       = '-';
-                    if (srcPrevPersonTerm)   srcPrevPersonTerm.textContent   = '-';
-                    if (srcPrevPosTerm)      srcPrevPosTerm.textContent      = '-';
-                    if (srcPrevUnitTerm)     srcPrevUnitTerm.textContent     = '-';
-                    if (srcPrevPeriodTerm)   srcPrevPeriodTerm.textContent   = '-';
+                    if (srcPrevNoTerm)     srcPrevNoTerm.textContent     = '-';
+                    if (srcPrevPersonTerm) srcPrevPersonTerm.textContent = '-';
+                    if (srcPrevPosTerm)    srcPrevPosTerm.textContent    = '-';
+                    if (srcPrevUnitTerm)   srcPrevUnitTerm.textContent   = '-';
+                    if (srcPrevPeriodTerm) srcPrevPeriodTerm.textContent = '-';
                     return;
                 }
 
-                if (srcPrevNoTerm)       srcPrevNoTerm.textContent       = opt.dataset.contractNo || '-';
-                if (srcPrevPersonTerm)   srcPrevPersonTerm.textContent   = opt.dataset.person     || '-';
-                if (srcPrevPosTerm)      srcPrevPosTerm.textContent      = opt.dataset.position   || '-';
-                if (srcPrevUnitTerm)     srcPrevUnitTerm.textContent     = opt.dataset.unit       || '-';
-                if (srcPrevPeriodTerm)   srcPrevPeriodTerm.textContent   =
-                    (opt.dataset.start || '-') + ' s/d ' + (opt.dataset.end || '-');
+                if (srcPrevNoTerm)     srcPrevNoTerm.textContent     = opt.dataset.contractNo || '-';
+                if (srcPrevPersonTerm) srcPrevPersonTerm.textContent = opt.dataset.person     || '-';
+                if (srcPrevPosTerm)    srcPrevPosTerm.textContent    = opt.dataset.position  || '-';
+                if (srcPrevUnitTerm)   srcPrevUnitTerm.textContent   = opt.dataset.unit      || '-';
+                if (srcPrevPeriodTerm) srcPrevPeriodTerm.textContent = (opt.dataset.start || '-') + ' s/d ' + (opt.dataset.end || '-');
 
                 srcPrevBoxTerm.hidden = false;
             }
 
-            document.addEventListener('click', function (e) {
+            document.addEventListener('click', e => {
                 const openBtn = e.target.closest && e.target.closest('[data-modal-open]');
                 if (openBtn && openBtn.getAttribute('data-modal-open') === 'createContractModal') {
                     if (modal) {
                         resetFormLayout();
-                        modal.hidden = false;
-                        document.body.classList.add('modal-open');
+                        app.openModal(modal);
 
                         const initialType = typeInput ? (typeInput.value || '') : '';
-                        const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN'];
+                        const typesPkwt   = ['PKWT_BARU', 'PKWT_PERPANJANGAN'];
 
                         if (initialType === 'SPK') {
                             if (familySelect) {
@@ -1387,8 +1744,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (closeBtn) {
                     const m = closeBtn.closest('.u-modal');
                     if (m) {
-                        m.hidden = true;
-                        document.body.classList.remove('modal-open');
+                        app.closeModal(m);
                     }
                 }
             });
@@ -1397,14 +1753,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (e.key === 'Escape') {
                     const open = document.querySelector('.u-modal:not([hidden])');
                     if (open) {
-                        open.hidden = true;
-                        document.body.classList.remove('modal-open');
+                        app.closeModal(open);
                     }
                 }
             });
 
-            if (familySelect)  familySelect.addEventListener('change', handleFamilyChange);
-            if (subtypeSelect) subtypeSelect.addEventListener('change', handleSubtypeChange);
+            if (familySelect)   familySelect.addEventListener('change', handleFamilyChange);
+            if (subtypeSelect)  subtypeSelect.addEventListener('change', handleSubtypeChange);
 
             if (unitSelect) {
                 unitSelect.addEventListener('change', function () {
@@ -1433,11 +1788,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             @if($errors->any())
             if (modal) {
-                modal.hidden = false;
-                document.body.classList.add('modal-open');
+                app.openModal(modal);
 
                 const initialType = typeInput ? (typeInput.value || '') : '';
-                const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN'];
+                const typesPkwt   = ['PKWT_BARU', 'PKWT_PERPANJANGAN'];
 
                 if (initialType === 'SPK') {
                     if (familySelect) {
@@ -1483,7 +1837,8 @@ document.addEventListener('DOMContentLoaded', function () {
             function formatRupiah(value) {
                 const digits = (value || '').replace(/[^\d]/g, '');
                 if (!digits) return '';
-                return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                const withDots = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                return 'Rp. ' + withDots;
             }
 
             document.querySelectorAll('input[data-rupiah="true"]').forEach(input => {
@@ -1521,45 +1876,182 @@ document.addEventListener('DOMContentLoaded', function () {
                     'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'
                 ];
 
-                if (n < 12) {
-                    return huruf[n];
-                } else if (n < 20) {
-                    return terbilang(n - 10) + ' belas';
-                } else if (n < 100) {
-                    return terbilang(Math.floor(n / 10)) + ' puluh ' + terbilang(n % 10);
-                } else if (n < 200) {
-                    return 'seratus ' + terbilang(n - 100);
-                } else if (n < 1000) {
-                    return terbilang(Math.floor(n / 100)) + ' ratus ' + terbilang(n % 100);
-                } else if (n < 2000) {
-                    return 'seribu ' + terbilang(n - 1000);
-                } else if (n < 1000000) {
-                    return terbilang(Math.floor(n / 1000)) + ' ribu ' + terbilang(n % 1000);
-                } else if (n < 1000000000) {
-                    return terbilang(Math.floor(n / 1000000)) + ' juta ' + terbilang(n % 1000000);
-                } else if (n < 1000000000000) {
-                    return terbilang(Math.floor(n / 1000000000)) + ' miliar ' + terbilang(n % 1000000000);
-                }
+                if (n < 12)      return huruf[n];
+                if (n < 20)      return terbilang(n - 10) + ' belas';
+                if (n < 100)     return terbilang(Math.floor(n / 10)) + ' puluh ' + terbilang(n % 10);
+                if (n < 200)     return 'seratus ' + terbilang(n - 100);
+                if (n < 1000)    return terbilang(Math.floor(n / 100)) + ' ratus ' + terbilang(n % 100);
+                if (n < 2000)    return 'seribu ' + terbilang(n - 1000);
+                if (n < 1000000) return terbilang(Math.floor(n / 1000)) + ' ribu ' + terbilang(n % 1000);
+                if (n < 1000000000) return terbilang(Math.floor(n / 1000000)) + ' juta ' + terbilang(n % 1000000);
+                if (n < 1000000000000) return terbilang(Math.floor(n / 1000000000)) + ' miliar ' + terbilang(n % 1000000000);
                 return String(n);
             }
 
+            function applyTerbilang(input) {
+                const targetName = input.getAttribute('data-terbilang-target');
+                if (!targetName) return;
+
+                const form = input.closest('form');
+                if (!form) return;
+
+                const target = form.querySelector('[name="' + targetName + '"]');
+                if (!target) return;
+
+                const nilai = toInt(input.value || '');
+                if (!nilai) {
+                    target.value = '';
+                    return;
+                }
+
+                const text = terbilang(nilai).trim() + ' rupiah';
+                target.value = text.toUpperCase();
+            }
+
             document.querySelectorAll('input[data-rupiah="true"][data-terbilang-target]').forEach(input => {
-                input.addEventListener('blur', function () {
-                    const targetName = this.getAttribute('data-terbilang-target');
-                    if (!targetName) return;
-
-                    const form = this.closest('form');
-                    if (!form) return;
-
-                    const target = form.querySelector('[name="' + targetName + '"]');
-                    if (!target) return;
-
-                    const nilai = toInt(this.value || '');
-                    if (!nilai) return;
-
-                    const text = terbilang(nilai).trim() + ' rupiah';
-                    target.value = text.toUpperCase();
+                input.addEventListener('input', function () {
+                    applyTerbilang(this);
                 });
+
+                if (input.value) {
+                    applyTerbilang(input);
+                }
+            });
+        },
+
+        bindDetailAndEdit() {
+            const detailModal = document.getElementById('contractDetailModal');
+            const editModal   = document.getElementById('editContractModal');
+            const editForm    = document.getElementById('editContractForm');
+
+            document.addEventListener('click', e => {
+                const detailBtn = e.target.closest && e.target.closest('[data-contract-detail]');
+                if (detailBtn) {
+                    const url = detailBtn.getAttribute('data-show-url');
+                    if (!url) return;
+
+                    fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                        .then(r => r.json())
+                        .then(resp => {
+                            const data = resp.data || {};
+                            const unit = data.unit || {};
+
+                            const start = data.start_date || null;
+                            const end   = data.end_date   || null;
+                            let periode = '-';
+                            if (start && end) {
+                                periode = start + ' s/d ' + end;
+                            }
+
+                            const status = data.status || '-';
+                            let statusLabel = status.replace(/_/g, ' ');
+                            statusLabel = statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1);
+
+                            const dNo      = document.getElementById('detailContractNo');
+                            const dType    = document.getElementById('detailContractType');
+                            const dStatus  = document.getElementById('detailContractStatus');
+                            const dUnit    = document.getElementById('detailContractUnit');
+                            const dPeriode = document.getElementById('detailContractPeriod');
+                            const dPosition= document.getElementById('detailContractPosition');
+                            const dRemarks = document.getElementById('detailContractRemarks');
+
+                            if (dNo)      dNo.textContent      = data.contract_no   || '—';
+                            if (dType)    dType.textContent    = data.contract_type || '—';
+                            if (dStatus)  dStatus.textContent  = statusLabel;
+                            if (dUnit)    dUnit.textContent    = unit.name          || '—';
+                            if (dPeriode) dPeriode.textContent = periode;
+                            if (dPosition)dPosition.textContent= data.position_name || '—';
+                            if (dRemarks) dRemarks.textContent = data.remarks       || '-';
+
+                            app.openModal(detailModal);
+                        })
+                        .catch(() => {});
+                    return;
+                }
+
+                const editBtn = e.target.closest && e.target.closest('[data-contract-edit]');
+                if (editBtn) {
+                    const url       = editBtn.getAttribute('data-show-url');
+                    const updateUrl = editBtn.getAttribute('data-update-url');
+                    if (!url || !updateUrl || !editForm) return;
+
+                    fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                        .then(r => r.json())
+                        .then(resp => {
+                            const data = resp.data || {};
+                            const unit = data.unit || {};
+                            const meta = data.meta || data.remuneration || {};
+
+                            const idInput         = document.getElementById('editContractId');
+                            const typeSelect      = document.getElementById('editContractTypeSelect');
+                            const unitSelect      = document.getElementById('editContractUnitSelect');
+                            const unitHidden      = document.getElementById('editContractUnitHidden');
+                            const employmentSelect= document.getElementById('editEmploymentTypeSelect');
+                            const positionInput   = document.getElementById('editPositionInput');
+                            const noteInput       = document.getElementById('editNoteInput');
+                            const startInput      = document.getElementById('editStartDateInput');
+                            const endInput        = document.getElementById('editEndDateInput');
+
+                            const salaryInput     = document.getElementById('editSalaryAmountInput');
+                            const lunchInput      = document.getElementById('editLunchDailyInput');
+                            const allowanceSpecialInput  = document.getElementById('editAllowanceSpecialInput');
+                            const allowancePositionInput = document.getElementById('editAllowancePositionInput');
+                            const allowanceCommInput     = document.getElementById('editAllowanceCommInput');
+                            const allowanceOtherInput    = document.getElementById('editAllowanceOtherInput');
+
+                            const otherBenefitsDesc = document.getElementById('editOtherBenefitsDesc');
+                            const allowOtherDesc    = document.getElementById('editAllowanceOtherDesc');
+
+                            if (editForm) editForm.setAttribute('action', updateUrl);
+                            if (idInput)  idInput.value = data.id || '';
+
+                            if (typeSelect) typeSelect.value = data.contract_type || '';
+                            if (unitSelect) unitSelect.value = unit.id || '';
+                            if (unitHidden && !unitSelect) unitHidden.value = unit.id || unitHidden.value || '';
+
+                            if (employmentSelect) employmentSelect.value = data.employment_type || '';
+
+                            if (positionInput) positionInput.value = data.position_name || '';
+                            if (noteInput)     noteInput.value     = data.remarks      || '';
+                            if (startInput)    startInput.value    = data.start_date   || '';
+                            if (endInput)      endInput.value      = data.end_date     || '';
+
+                            if (salaryInput)           salaryInput.value           = meta.salary_amount                 || '';
+                            if (lunchInput)            lunchInput.value            = meta.lunch_allowance_daily         || '';
+                            if (allowanceSpecialInput) allowanceSpecialInput.value = meta.allowance_special_amount      || '';
+                            if (allowancePositionInput)allowancePositionInput.value= meta.allowance_position_amount     || '';
+                            if (allowanceCommInput)    allowanceCommInput.value    = meta.allowance_communication_amount|| '';
+                            if (allowanceOtherInput)   allowanceOtherInput.value   = meta.allowance_other_amount        || '';
+
+                            if (otherBenefitsDesc) otherBenefitsDesc.value = meta.other_benefits_desc   || '';
+                            if (allowOtherDesc)    allowOtherDesc.value    = meta.allowance_other_desc  || '';
+
+                            // trigger formatter+terbilang
+                            [salaryInput,lunchInput,allowanceSpecialInput,allowancePositionInput,allowanceCommInput,allowanceOtherInput]
+                                .forEach(inp => {
+                                    if (inp) {
+                                        const evt = new Event('input');
+                                        inp.dispatchEvent(evt);
+                                    }
+                                });
+
+                            app.bindRupiahFormatter();
+                            app.bindTerbilangAutoFill();
+
+                            app.openModal(editModal);
+                        })
+                        .catch(() => {});
+                }
             });
         },
     };
