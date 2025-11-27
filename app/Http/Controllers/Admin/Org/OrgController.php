@@ -278,12 +278,12 @@ class OrgController extends Controller
 
         // Operasi (DBS)
         $operasiCodes = [
-            'DBS OGRE',
-            'DBS CNM',
-            'DBS GNI',
-            'DBS INT',
-            'DBS INS',
-            'DBS SNE',
+            'DBSOGRE',
+            'DBSCNM',
+            'DBSGNI',
+            'DBSINT',
+            'DBSINS',
+            'DBSSNE',
         ];
 
         // Cabang

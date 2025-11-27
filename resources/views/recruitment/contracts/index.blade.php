@@ -40,7 +40,6 @@
     $spkCfg           = $contractTypeMap->get('SPK');
     $pkwtNewCfg       = $contractTypeMap->get('PKWT_BARU');
     $pkwtExtCfg       = $contractTypeMap->get('PKWT_PERPANJANGAN');
-    $pkwtRenewCfg     = $contractTypeMap->get('PKWT_PEMBAHARUAN');
     $pbCfg            = $contractTypeMap->get('PB_PENGAKHIRAN');
 @endphp
 
@@ -50,6 +49,10 @@
             <h2 class="u-title u-mb-sm">Penerbitan &amp; Penandatanganan Kontrak</h2>
             <p class="u-text-sm u-muted">
                 Monitoring draft–publish–e-sign kontrak kerja (SPK, PKWT, Perjanjian Bersama).
+                <br>
+                <span class="u-text-xxs">
+                    Format nomor: <code>(TYPE)-xxx/UNITCODE-mm/HEADCODE/YYYY</code> &mdash; reset nomor per <strong>jenis kontrak + unit + bulan</strong>.
+                </span>
             </p>
         </div>
 
@@ -129,7 +132,7 @@
                        name="q"
                        id="contractsSearch"
                        class="u-input u-input--sm"
-                       placeholder="Nama / No. Kontrak / Posisi"
+                       placeholder="No. Kontrak / Jenis / Unit"
                        value="{{ $searchFilter }}">
             </div>
         </form>
@@ -161,9 +164,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($contracts as $idx => $c)
+                    @foreach($contracts as $c)
                         @php
-                            if (!is_object($c)) continue;
+                            if (!is_object($c)) { continue; }
 
                             $jenis    = $c->contract_type ?? '—';
                             $unitName = optional($c->unit)->name ?? '—';
@@ -173,7 +176,7 @@
 
                             $periode = ($start && $end)
                                 ? $start->format('d M Y').' s/d '.$end->format('d M Y')
-                                : 's/d';
+                                : '—';
 
                             $st = $c->status ?? 'draft';
 
@@ -213,7 +216,7 @@
                             </td>
                             <td class="cell-actions">
                                 <div class="cell-actions__group">
-                                    {{-- tombol aksi (detail / approve / sign) nanti diisi --}}
+                                    {{-- tombol aksi (detail / approve / sign) akan diisi kemudian --}}
                                 </div>
                             </td>
                         </tr>
@@ -242,7 +245,7 @@
                 <div>
                     <div class="u-title">Draft Kontrak Baru</div>
                     <div class="u-muted u-text-sm">
-                        Susun draft kontrak (SPK / PKWT Baru / Perpanjangan / Pembaruan / PB) sesuai flow Rekrutmen SI.
+                        Susun draft kontrak (SPK / PKWT Baru / Perpanjangan / PB) sesuai flow Rekrutmen SI.
                     </div>
                 </div>
             </div>
@@ -289,8 +292,8 @@
                             {{-- PKWT FAMILY --}}
                             <option value="PKWT"
                                     data-mode=""
-                                    data-hint="Pilih detail PKWT: baru, perpanjangan, atau pembaruan."
-                                    @selected(in_array(old('contract_type'), ['PKWT_BARU','PKWT_PERPANJANGAN','PKWT_PEMBAHARUAN']))>
+                                    data-hint="Pilih detail PKWT: baru atau perpanjangan."
+                                    @selected(in_array(old('contract_type'), ['PKWT_BARU','PKWT_PERPANJANGAN']))>
                                 PKWT (Baru / Perpanjangan)
                             </option>
 
@@ -318,7 +321,7 @@
                         <div class="u-text-xs u-muted">
                             <span class="u-font-semibold">Catatan:</span><br>
                             • SPK untuk offering kandidat baru.<br>
-                            • PKWT digunakan untuk kontrak kerja baru, perpanjangan, maupun pembaruan.<br>
+                            • PKWT untuk kontrak kerja baru dan perpanjangan PKWT existing.<br>
                             • PB untuk pengakhiran PKWT dengan Perjanjian Bersama.
                         </div>
                     </div>
@@ -334,7 +337,7 @@
                         @if($pkwtNewCfg)
                             <option value="PKWT_BARU"
                                     data-mode="new"
-                                    data-hint="{{ $pkwtNewCfg['description'] ?? 'PKWT pertama kali.' }}"
+                                    data-hint="{{ $pkwtNewCfg['description'] ?? 'PKWT pertama kali (dari pelamar).' }}"
                                     @selected(old('contract_type') === 'PKWT_BARU')>
                                 {{ $pkwtNewCfg['label'] ?? 'PKWT Baru' }}
                             </option>
@@ -345,14 +348,6 @@
                                     data-hint="{{ $pkwtExtCfg['description'] ?? 'Perpanjangan PKWT dari kontrak aktif yang akan berakhir.' }}"
                                     @selected(old('contract_type') === 'PKWT_PERPANJANGAN')>
                                 {{ $pkwtExtCfg['label'] ?? 'PKWT Perpanjangan' }}
-                            </option>
-                        @endif
-                        @if($pkwtRenewCfg)
-                            <option value="PKWT_PEMBAHARUAN"
-                                    data-mode="new"
-                                    data-hint="{{ $pkwtRenewCfg['description'] ?? 'Pembaruan PKWT (kontrak baru lagi) setelah kontrak sebelumnya berakhir.' }}"
-                                    @selected(old('contract_type') === 'PKWT_PEMBAHARUAN')>
-                                {{ $pkwtRenewCfg['label'] ?? 'PKWT Pembaruan' }}
                             </option>
                         @endif
                     </select>
@@ -384,7 +379,7 @@
                     @endif
                 </div>
 
-                {{-- MODE NEW (SPK + PKWT BARU + PKWT PEMBAHARUAN) --}}
+                {{-- MODE NEW (SPK + PKWT BARU) --}}
                 <div data-mode-section="new" hidden>
                     <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
                         <div>
@@ -406,7 +401,7 @@
                                 @endforeach
                             </select>
                             <p class="u-text-xs u-muted u-mt-xxs">
-                                Data kandidat dari Monitoring Rekrutmen (status <strong>APPROVED</strong>).
+                                Data kandidat dari Monitoring Rekrutmen (status <strong>APPROVED/HIRED</strong>).
                             </p>
 
                             <div id="applicantPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
@@ -492,7 +487,7 @@
                     <div class="u-mt-lg">
                         <div class="u-flex u-items-center u-justify-between u-mb-xs">
                             <label class="u-text-sm u-font-semibold">Rincian Upah &amp; Fasilitas</label>
-                            <span class="u-text-xs u-muted">Mengisi gaji pokok, uang makan, dan fasilitas sesuai Draft/Template PKWT.</span>
+                            <span class="u-text-xs u-muted">Isi sesuai draft remunerasi (gaji pokok, uang makan, tunjangan).</span>
                         </div>
 
                         <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
@@ -502,9 +497,10 @@
                                        name="salary_amount"
                                        class="u-input"
                                        data-rupiah="true"
+                                       data-terbilang-target="salary_amount_words"
                                        placeholder="Mis. 7.500.000"
                                        value="{{ old('salary_amount') }}">
-                                <p class="u-text-xxs u-muted u-mt-xxs">Isi angka, sistem akan memformat ke ribuan.</p>
+                                <p class="u-text-xxs u-muted u-mt-xxs">Ketik angka, sistem akan memformat &amp; bisa mengisi terbilang otomatis.</p>
                             </div>
                             <div>
                                 <label class="u-text-xs u-font-medium u-mb-xxs d-block">Gaji Pokok (Terbilang)</label>
@@ -523,6 +519,7 @@
                                        name="lunch_allowance_daily"
                                        class="u-input"
                                        data-rupiah="true"
+                                       data-terbilang-target="lunch_allowance_words"
                                        placeholder="Mis. 40.000"
                                        value="{{ old('lunch_allowance_daily') }}">
                             </div>
@@ -535,6 +532,100 @@
                                        value="{{ old('lunch_allowance_words') }}">
                             </div>
                         </div>
+
+                        {{-- TUNJANGAN OPSIONAL --}}
+                        <details class="u-mt-md">
+                            <summary class="u-text-xs u-font-medium u-cursor-pointer">
+                                Tunjangan Lain (opsional)
+                            </summary>
+                            <div class="u-mt-sm u-space-y-sm">
+                                <div class="u-grid-2 u-stack-mobile u-gap-md">
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Khusus (Rp)</label>
+                                        <input type="text"
+                                               name="allowance_special_amount"
+                                               class="u-input"
+                                               data-rupiah="true"
+                                               data-terbilang-target="allowance_special_words"
+                                               value="{{ old('allowance_special_amount') }}">
+                                    </div>
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Khusus (Terbilang)</label>
+                                        <input type="text"
+                                               name="allowance_special_words"
+                                               class="u-input"
+                                               value="{{ old('allowance_special_words') }}">
+                                    </div>
+                                </div>
+
+                                <div class="u-grid-2 u-stack-mobile u-gap-md">
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Jabatan (Rp)</label>
+                                        <input type="text"
+                                               name="allowance_position_amount"
+                                               class="u-input"
+                                               data-rupiah="true"
+                                               data-terbilang-target="allowance_position_words"
+                                               value="{{ old('allowance_position_amount') }}">
+                                    </div>
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Jabatan (Terbilang)</label>
+                                        <input type="text"
+                                               name="allowance_position_words"
+                                               class="u-input"
+                                               value="{{ old('allowance_position_words') }}">
+                                    </div>
+                                </div>
+
+                                <div class="u-grid-2 u-stack-mobile u-gap-md">
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Komunikasi (Rp)</label>
+                                        <input type="text"
+                                               name="allowance_communication_amount"
+                                               class="u-input"
+                                               data-rupiah="true"
+                                               data-terbilang-target="allowance_communication_words"
+                                               value="{{ old('allowance_communication_amount') }}">
+                                    </div>
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Komunikasi (Terbilang)</label>
+                                        <input type="text"
+                                               name="allowance_communication_words"
+                                               class="u-input"
+                                               value="{{ old('allowance_communication_words') }}">
+                                    </div>
+                                </div>
+
+                                <div class="u-grid-2 u-stack-mobile u-gap-md">
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Lain (Rp)</label>
+                                        <input type="text"
+                                               name="allowance_other_amount"
+                                               class="u-input"
+                                               data-rupiah="true"
+                                               data-terbilang-target="allowance_other_words"
+                                               value="{{ old('allowance_other_amount') }}">
+                                    </div>
+                                    <div>
+                                        <label class="u-text-xxs u-font-medium u-mb-xxs d-block">Tunjangan Lain (Terbilang)</label>
+                                        <input type="text"
+                                               name="allowance_other_words"
+                                               class="u-input"
+                                               value="{{ old('allowance_other_words') }}">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="u-text-xxs u-font-medium u-mb-xxs d-block">
+                                        Keterangan Tunjangan Lain
+                                    </label>
+                                    <textarea name="allowance_other_desc"
+                                              class="u-input"
+                                              rows="2"
+                                              placeholder="Mis. tunjangan shift, tunjangan remote area, dll.">{{ old('allowance_other_desc') }}</textarea>
+                                </div>
+                            </div>
+                        </details>
 
                         <div class="u-mt-md">
                             <label class="u-text-xs u-font-medium u-mb-xxs d-block">
@@ -556,11 +647,11 @@
                             <option value="">Pilih kontrak aktif yang akan berakhir</option>
                             @foreach($expiringContracts as $c)
                                 @php
-                                    $startRaw = $c->start_date;
-                                    $endRaw   = $c->end_date;
+                                    $startRaw = $c->start_date ?? null;
+                                    $endRaw   = $c->end_date ?? null;
 
-                                    $start = $startRaw ? \Carbon\Carbon::parse($startRaw)->format('d M Y') : '-';
-                                    $end   = $endRaw   ? \Carbon\Carbon::parse($endRaw)->format('d M Y')   : '-';
+                                    $start = $startRaw ? Carbon::parse($startRaw)->format('d M Y') : '-';
+                                    $end   = $endRaw   ? Carbon::parse($endRaw)->format('d M Y')   : '-';
 
                                     $unit       = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
                                     $personName = $c->person_name ?? '-';
@@ -654,6 +745,7 @@
                                        name="salary_amount"
                                        class="u-input"
                                        data-rupiah="true"
+                                       data-terbilang-target="salary_amount_words"
                                        placeholder="Mis. 8.000.000"
                                        value="{{ old('salary_amount') }}">
                             </div>
@@ -674,6 +766,7 @@
                                        name="lunch_allowance_daily"
                                        class="u-input"
                                        data-rupiah="true"
+                                       data-terbilang-target="lunch_allowance_words"
                                        placeholder="Mis. 40.000"
                                        value="{{ old('lunch_allowance_daily') }}">
                             </div>
@@ -737,11 +830,11 @@
                             <option value="">Pilih kontrak PKWT yang diakhiri</option>
                             @foreach($expiringContracts as $c)
                                 @php
-                                    $startRaw = $c->start_date;
-                                    $endRaw   = $c->end_date;
+                                    $startRaw = $c->start_date ?? null;
+                                    $endRaw   = $c->end_date ?? null;
 
-                                    $start = $startRaw ? \Carbon\Carbon::parse($startRaw)->format('d M Y') : '-';
-                                    $end   = $endRaw   ? \Carbon\Carbon::parse($endRaw)->format('d M Y')   : '-';
+                                    $start = $startRaw ? Carbon::parse($startRaw)->format('d M Y') : '-';
+                                    $end   = $endRaw   ? Carbon::parse($endRaw)->format('d M Y')   : '-';
 
                                     $unit       = $c->unit_name ?? $c->unit_name_raw ?? 'Unit ?';
                                     $personName = $c->person_name ?? '-';
@@ -830,7 +923,7 @@
                     <div class="u-mt-lg">
                         <div class="u-flex u-items-center u-justify-between u-mb-xs">
                             <label class="u-text-sm u-font-semibold">Detail Perjanjian Bersama (PB)</label>
-                            <span class="u-text-xs u-muted">Tanggal efektif pengakhiran & kompensasi (jika ada).</span>
+                            <span class="u-text-xs u-muted">Tanggal efektif pengakhiran &amp; kompensasi (jika ada).</span>
                         </div>
 
                         <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
@@ -847,6 +940,7 @@
                                        name="pb_compensation_amount"
                                        class="u-input"
                                        data-rupiah="true"
+                                       data-terbilang-target="pb_compensation_amount_words"
                                        placeholder="Mis. 10.000.000"
                                        value="{{ old('pb_compensation_amount') }}">
                             </div>
@@ -896,6 +990,7 @@ document.addEventListener('DOMContentLoaded', function () {
         init() {
             this.bindModal();
             this.bindRupiahFormatter();
+            this.bindTerbilangAutoFill();
         },
 
         bindModal() {
@@ -1244,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         document.body.classList.add('modal-open');
 
                         const initialType = typeInput ? (typeInput.value || '') : '';
-                        const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN','PKWT_PEMBAHARUAN'];
+                        const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN'];
 
                         if (initialType === 'SPK') {
                             if (familySelect) {
@@ -1342,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.body.classList.add('modal-open');
 
                 const initialType = typeInput ? (typeInput.value || '') : '';
-                const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN','PKWT_PEMBAHARUAN'];
+                const typesPkwt = ['PKWT_BARU','PKWT_PERPANJANGAN'];
 
                 if (initialType === 'SPK') {
                     if (familySelect) {
@@ -1410,6 +1505,61 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (input.value) {
                     input.value = formatRupiah(input.value);
                 }
+            });
+        },
+
+        bindTerbilangAutoFill() {
+            function toInt(value) {
+                const digits = (value || '').replace(/[^\d]/g, '');
+                return digits ? parseInt(digits, 10) : 0;
+            }
+
+            function terbilang(n) {
+                n = Math.floor(Math.abs(n));
+                const huruf = [
+                    '', 'satu', 'dua', 'tiga', 'empat', 'lima',
+                    'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'
+                ];
+
+                if (n < 12) {
+                    return huruf[n];
+                } else if (n < 20) {
+                    return terbilang(n - 10) + ' belas';
+                } else if (n < 100) {
+                    return terbilang(Math.floor(n / 10)) + ' puluh ' + terbilang(n % 10);
+                } else if (n < 200) {
+                    return 'seratus ' + terbilang(n - 100);
+                } else if (n < 1000) {
+                    return terbilang(Math.floor(n / 100)) + ' ratus ' + terbilang(n % 100);
+                } else if (n < 2000) {
+                    return 'seribu ' + terbilang(n - 1000);
+                } else if (n < 1000000) {
+                    return terbilang(Math.floor(n / 1000)) + ' ribu ' + terbilang(n % 1000);
+                } else if (n < 1000000000) {
+                    return terbilang(Math.floor(n / 1000000)) + ' juta ' + terbilang(n % 1000000);
+                } else if (n < 1000000000000) {
+                    return terbilang(Math.floor(n / 1000000000)) + ' miliar ' + terbilang(n % 1000000000);
+                }
+                return String(n);
+            }
+
+            document.querySelectorAll('input[data-rupiah="true"][data-terbilang-target]').forEach(input => {
+                input.addEventListener('blur', function () {
+                    const targetName = this.getAttribute('data-terbilang-target');
+                    if (!targetName) return;
+
+                    const form = this.closest('form');
+                    if (!form) return;
+
+                    const target = form.querySelector('[name="' + targetName + '"]');
+                    if (!target) return;
+
+                    const nilai = toInt(this.value || '');
+                    if (!nilai) return;
+
+                    const text = terbilang(nilai).trim() + ' rupiah';
+                    target.value = text.toUpperCase();
+                });
             });
         },
     };
