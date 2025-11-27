@@ -102,7 +102,11 @@
     opacity: 0;
     transform: scale(1.05) translateX(-2%);
   }
-
+   /*=== MISC ==*/
+  #submitBtn:disabled {
+    background-color: #c4c4c4; /* gray */
+    cursor: not-allowed;
+  }
   </style>
 </head>
 
@@ -110,7 +114,7 @@
 
   <!-- ===== NAVBAR ===== -->
  <header id="navbar" class="fixed top-0 w-full h-20 z-30 bg-[#00A29A] backdrop-blur transition-all duration-300">
-  <div class="container mx-auto px-6 py-3  h-25 flex items-center justify-between">
+  <div class="container mx-auto px-6 py-3  h-20 flex items-center justify-between">
     <a href="{{ route('careers.index') }}" class="flex items-center gap-2">
       <img 
         src="{{ Vite::asset('resources/images/sapahc.png') }}" 
@@ -367,57 +371,86 @@
 </footer>
 
 <!-- Modal Background -->
-<div id="registerModal" 
-     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    
+<div id="registerModal"
+     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+
     <!-- Modal Card -->
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl">
-      <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-5">
+    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative">
 
-        <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">Register</h2>
+        <img src="/images/logo-alter.png" alt="logo-alter"
+             class="w-auto h-12 mx-auto mb-5">
 
-            <!-- Nama Lengkap -->
-    <div>
-        <label class="block font-medium text-gray-700 mb-1">Nama Lengkap</label>
-        <input type="text" placeholder="Masukkan nama lengkap..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-    </div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">
+            Pendaftaran Akun
+        </h2>
 
-    <!-- No KTP -->
-    <div>
-        <label class="block font-medium text-gray-700 mb-1">No KTP</label>
-        <input type="text" placeholder="Masukkan nomor KTP..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-    </div>
+        <!-- Nama Lengkap -->
+        <div class="mb-3">
+            <label class="block font-medium text-gray-700 mb-1">Nama Lengkap</label>
+            <input type="text" placeholder="Masukkan nama lengkap..."
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                   required>
+        </div>
 
-    <!-- Email -->
-    <div>
-        <label class="block font-medium text-gray-700 mb-1">Email</label>
-        <input type="email" placeholder="Masukkan email..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-    </div>
+        <!-- No KTP -->
+        <div class="mb-3">
+            <label class="block font-medium text-gray-700 mb-1">No KTP</label>
+            <input type="text" placeholder="Masukkan nomor KTP..."
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                   required>
+        </div>
 
-    <!-- Password -->
-    <div>
-        <label class="block font-medium text-gray-700 mb-1">Password</label>
-        <input type="password" placeholder="Buat password..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-    </div>
+        <!-- Email -->
+        <div class="mb-3">
+            <label class="block font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" placeholder="Masukkan email..."
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                   required>
+        </div>
 
-    <!-- Confirm Password -->
-    <div>
-        <label class="block font-medium text-gray-700 mb-1">Confirm Password</label>
-        <input type="password" placeholder="Konfirmasi password..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-    </div>
+        <!-- Password -->
+        <div class="mb-3">
+            <label class="block font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" placeholder="Buat password..."
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                   required>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="mb-3">
+            <label class="block font-medium text-gray-700 mb-1">Confirm Password</label>
+            <input type="password" placeholder="Konfirmasi password..."
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                   required>
+        </div>
+
+        <!-- Checkbox -->
+        <div class="mt-2">
+            <label class="block font-medium text-gray-700 mb-1">
+                <input type="checkbox" id="termsCheckbox" required>
+                Dengan melakukan registrasi saya menyatakan telah membaca dan menerima
+                <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+                    ketentuan yang berlaku
+                </a>
+            </label>
+        </div>
+
+        <!-- Close Button -->
+        <button onclick="closeModal()"
+                class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer">
+            ✕
+        </button>
 
         <!-- Action Buttons -->
         <div class="flex justify-end gap-3 mt-4">
-            <button onclick="closeModal()" 
+            <button onclick="closeModal()"
                     class="px-5 py-2 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
                 Cancel
             </button>
-            <button class="px-5 py-2 rounded-full bg-[#00A29A] text-white hover:bg-[#008f87] cursor-pointer">
+
+            <button id="submitBtn"
+                    class="px-5 py-2 rounded-full bg-[#00A29A] text-white hover:bg-[#008f87] cursor-pointer"
+                    disabled>
                 Submit
             </button>
         </div>
@@ -555,14 +588,37 @@
   prev.addEventListener('click', () => {
     carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
   });
-  function openModal() {
-    document.getElementById("registerModal").classList.remove("hidden");
+function openModal() {
+    const modal = document.getElementById('registerModal');
+    const card = document.getElementById('registerCard');
+
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    card.classList.remove('opacity-0', 'scale-95');
 }
 
 function closeModal() {
-    document.getElementById("registerModal").classList.add("hidden");
+    const modal = document.getElementById('registerModal');
+    const card = document.getElementById('registerCard');
+
+    // Start animation
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    card.classList.add('opacity-0', 'scale-95');
 }
-  </script>
+    const checkbox = document.getElementById('termsCheckbox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    checkbox.addEventListener('change', function () {
+        if (this.checked) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove("bg-gray-300");
+            submitBtn.classList.add("bg-[#00A29A]", "hover:bg-[#008f87]");
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.remove("bg-[#00A29A]", "hover:bg-[#008f87]");
+            submitBtn.classList.add("bg-gray-300");
+        }
+    });
+</script>
 
 </body>
 </html>
