@@ -7,10 +7,11 @@
         <h2 class="u-title">Training Request</h2>
         <div class="flex gap-4">
             @role('DHC')
-            <button type="button" class="u-btn u-btn--brand u-hover-lift btn-import">Import Data</button>
+            <button type="button" id="lna-import-btn" class="u-btn u-btn--brand u-hover-lift">Import Data</button>
             @endrole
-            <button type="button" class="u-btn u-btn--brand u-hover-lift btn-add">Input Data</button>
-            <button type="button" id="close-input-modal" class="u-btn u-btn--brand u-hover-lift hidden">Close Input Data</button>
+            @role('SDM Unit')
+            <button type="button" id="training-input-btn" class="u-btn u-btn--brand u-hover-lift">Input Data</button>
+            @endrole
         </div>
     </div>
 
@@ -38,16 +39,10 @@
     @endrole
 
     {{-- ===== DataTable Wrapper ===== --}}
-    @role('SDM Unit')
-        @include('training.training-request.modals.input-modal')
-        <div class="u-mb-lg" id="createContractTabs">
-            <button class="u-tab is-active" data-tab="basic">Table data</button>
-            <button class="u-tab" data-tab="details">Input data</button>
-        </div>
-    @endrole
+
     <div class="dt-wrapper">
         <div class="flex gap-5 p-10">
-            @hasanyrole('SDM Unit|GM/VP Unit|VP DHC')
+            @hasanyrole('SDM Unit|GM/VP Unit|VP DHC|Kepala Unit')
             <div class="flex justify-between w-full mb-10 u-mb-xl">
                 <div class="flex gap-5">
                     <button id="btn-all-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Semua Data</button>
@@ -67,9 +62,17 @@
             @include('training.training-request.partials.sdm-unit-table')
         </div>
         @endrole
+        @role('Kepala Unit')
+        <div class="u-scroll-x">
+            @include('training.training-request.partials.kepala-unit-table')
+        </div>
+        @endrole
     </div>
 </div>
 
+<!-- @role('SDM Unit') -->
+@include('training.training-request.modals.input-modal')
+<!-- @endrole -->
 @include('training.training-request.modals.import-modal')
 @include('training.training-request.modals.edit-modal')
 

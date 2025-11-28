@@ -2,29 +2,228 @@ import { initAllApprovalHandler } from "./training-approval/handler/allApproveHa
 import { initBulkApprovalHandler } from "./training-approval/handler/bulkApprovalHandler";
 import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
 import { initGetDataTable } from "./training-approval/getData";
-import { initImportHandler } from "./training-approval/handler/importHandler";
 import { initInputHandler } from "./training-approval/handler/inputHandler";
 import { initUpdateJenisPelatihanHandler } from "./training-approval/handler/updateJenisPelatihanHandler";
 import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
+import { initModalHandler } from "../../utils/modal";
 
-document.addEventListener("DOMContentLoaded", () => {
-    const tableBody = document.querySelector(".training-table tbody");
+const TRAINING_CONFIG = {
+    tables: {
+        selector: ".training-table",
+        dataAttributes: {
+            role: "data-role",
+            unitId: "data-unit-id",
+        },
+    },
+    modals: {
+        trainingInput: {
+            openBtn: "#training-input-btn",
+            modal: "#input-training-modal",
+            closeBtn: "#training-close-modal",
+        },
+        lnaImport: {
+            openBtn: "#lna-import-btn",
+            modal: "#lna-import-modal",
+            closeBtn: "#lna-close-modal",
+        },
+    },
+    buttons: {
+        downloadTemplate: ".btn-download-template",
+        bulkApprove: "#btn-bulk-approve",
+        allApprove: "#btn-all-approve",
+    },
+};
 
-    if (tableBody) {
-        initGetDataTable(tableBody);
-        initUpdateJenisPelatihanHandler(tableBody);
+const ROLES_REQUIRING_UNIT_ID = ["SDM Unit"];
+
+const getGlobalVariable = (variableName, defaultValue = null) => {
+    const value = window[variableName];
+    if (value === undefined || value === null) {
+        console.warn(`Global variable '${variableName}' is not defined, using default:`, defaultValue);
+        return defaultValue;
+    }
+    return value;
+};
+
+const initializeTrainingTables = () => {
+    const tables = document.querySelectorAll(TRAINING_CONFIG.tables.selector);
+
+    if (tables.length === 0) {
+        console.warn("No training tables found");
+        return;
     }
 
-    if (document.querySelector(".btn-add")) initInputHandler();
+    tables.forEach((table) => {
+        const tableBody = table.querySelector("tbody");
+        if (!tableBody) {
+            console.warn("Training table without tbody found", table);
+            return;
+        }
 
-    if (document.querySelector("#import-modal")) {
-        initDragDropUpload();
+        // Get configuration from data attributes or global variables
+        const userRole =
+            table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.role) ||
+            window.currentUserRole;
+        const unitId =
+            table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.unitId) ||
+            window.userUnitId;
+
+        if (!userRole) {
+            console.error("User role not defined for training table", table);
+            return;
+        }
+
+        if (ROLES_REQUIRING_UNIT_ID.includes(userRole) && !unitId) {
+            console.error(`Unit ID is required for role: ${userRole}`, table);
+            tableBody.innerHTML = `<tr><td colspan="20" class="text-center text-red-500">Error: Unit ID is required for ${userRole} role</td></tr>`;
+            return;
+        }
+
+        console.log(`Initializing training table for role: ${userRole}, unitId: ${unitId || 'not required'}`);
+
+        try {
+            initGetDataTable(tableBody, userRole, unitId);
+
+            // Initialize update handler for DHC role
+            if (userRole === "DHC") {
+                initUpdateJenisPelatihanHandler(tableBody);
+            }
+        } catch (error) {
+            console.error('Error initializing training table:', error);
+            tableBody.innerHTML = `<tr><td colspan="20" class="text-center text-red-500">Error initializing table</td></tr>`;
+        }
+    });
+};
+
+const initializeModals = () => {
+    // Training Input Modal
+    if (document.querySelector(TRAINING_CONFIG.modals.trainingInput.openBtn)) {
+        console.log("Initializing training input modal");
+        const { openBtn, modal, closeBtn } =
+            TRAINING_CONFIG.modals.trainingInput;
+        initModalHandler(openBtn, modal, closeBtn);
+        initInputHandler(modal);
     }
 
-    if (document.querySelector(".btn-download-template"))
+    // LNA Import Modal
+    if (document.querySelector(TRAINING_CONFIG.modals.lnaImport.modal)) {
+        console.log("Initializing LNA import modal");
+        const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.lnaImport;
+        initDragDropUpload(modal);
+        initModalHandler(openBtn, modal, closeBtn);
+    }
+};
+
+const initializeButtonHandlers = () => {
+    // Download Template
+    if (document.querySelector(TRAINING_CONFIG.buttons.downloadTemplate)) {
+        console.log("Initializing download template handler");
         initDownloadTemplateHandler();
+    }
 
-    if (document.querySelector("#btn-bulk-approve")) initBulkApprovalHandler();
+    // Bulk Approval
+    if (document.querySelector(TRAINING_CONFIG.buttons.bulkApprove)) {
+        console.log("Initializing bulk approval handler");
+        initBulkApprovalHandler();
+    }
 
-    if (document.querySelector("#btn-all-approve")) initAllApprovalHandler();
+    // All Approval
+    if (document.querySelector(TRAINING_CONFIG.buttons.allApprove)) {
+        console.log("Initializing all approval handler");
+        initAllApprovalHandler();
+    }
+};
+
+const initializeGlobalEventHandlers = () => {
+    // Global modal handlers
+    document.addEventListener("click", (e) => {
+        // Open modal
+        if (e.target.matches("[data-modal-open]")) {
+            const id = e.target.getAttribute("data-modal-open");
+            toggleModal(id, true);
+        }
+
+        // Close by button
+        if (e.target.matches("[data-modal-close]")) {
+            const id = e.target.getAttribute("data-modal-close");
+            toggleModal(id, false);
+        }
+
+        // Click outside
+        document.querySelectorAll(".u-modal").forEach((modal) => {
+            if (e.target === modal) {
+                modal.classList.add("hidden");
+            }
+        });
+    });
+
+    // Add global error handler
+    window.addEventListener("error", (event) => {
+        console.error("Global error:", event.error);
+    });
+};
+
+const toggleModal = (modalId, show) => {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.toggle("hidden", !show);
+    }
+};
+
+const validateEnvironment = () => {
+    const requiredGlobals = ["currentUserRole", "userUnitId"];
+    const missingGlobals = requiredGlobals.filter((global) => !window[global]);
+
+    if (missingGlobals.length > 0) {
+        console.warn("Missing global variables:", missingGlobals);
+        return false;
+    }
+
+    return true;
+};
+
+const initializeTrainingPage = () => {
+    console.log("Training page initialization started");
+
+    // Validate required environment
+    // if (!validateEnvironment()) {
+    //     console.error("Required environment variables are missing");
+    //     return;
+    // }
+
+    try {
+
+        const currentUserRole = getGlobalVariable('currentUserRole');
+        
+        if (!currentUserRole) {
+            console.warn('window.currentUserRole is not defined. Tables must have data-role attribute.');
+        }
+        // Initialize core components in order
+        initializeTrainingTables();
+        initializeModals();
+        initializeButtonHandlers();
+        initializeGlobalEventHandlers();
+
+        console.log("Training page initialization completed successfully");
+    } catch (error) {
+        console.error("Error during training page initialization:", error);
+    }
+};
+
+// Public API
+export const TrainingPage = {
+    init: initializeTrainingPage,
+    config: TRAINING_CONFIG,
+    utils: {
+        toggleModal,
+        validateEnvironment,
+    },
+};
+
+// Auto-initialize when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+    TrainingPage.init();
 });
+
+// Optional: Export for manual initialization
+export default TrainingPage;

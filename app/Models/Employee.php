@@ -41,4 +41,14 @@ class Employee extends Model
     {
         return $this->hasMany(\App\Models\Assignment::class, 'person_id', 'person_id');
     }
+
+    public function person()
+    {
+        return $this->belongsTo(\App\Models\Person::class, 'person_id');
+    }
+    
+    public function unit()
+    {
+        return $this->belongsTo(\App\Models\Unit::class, 'unit_id', 'id');
+    }
 }

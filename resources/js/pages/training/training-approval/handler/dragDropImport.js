@@ -1,30 +1,32 @@
 import { initImportHandler } from "./importHandler";
 
-export function initDragDropUpload() {
-    const importButton = document.querySelector(".btn-import");
-    const modal = document.querySelector("#import-modal");
-    const closeModal = document.querySelector("#close-modal");
-
+export function initDragDropUpload(modalSelector) {
     const area = document.getElementById("drag-drop-area");
     const input = document.getElementById("drag-drop-input");
     const fileInfo = document.getElementById("selected-file-info");
     const wrapper = document.getElementById("dragdrop-wrapper");
     const uploadForm = document.getElementById("import-form");
 
+    const modal = document.querySelector(modalSelector);
+
     let selectedFile = null;
 
     if (!wrapper || !area || !input || !uploadForm) return;
 
-    if (importButton && modal && closeModal) {
-        importButton.addEventListener("click", () => {
-            modal.classList.remove("hidden");
-        });
-        closeModal.addEventListener("click", () => {
-            modal.classList.add("hidden");
-        });
-    }
-
-    area.addEventListener("click", () => input.click());
+    let suppressClickAfterDialog = false;
+    area.addEventListener("click", (e) => {
+        if (selectedFile) return;
+        if (suppressClickAfterDialog) return;
+        suppressClickAfterDialog = true;
+    
+        const onFocus = () => {
+            suppressClickAfterDialog = false;
+            window.removeEventListener("focus", onFocus);
+        };
+        window.addEventListener("focus", onFocus);
+    
+        input.click();
+    });
 
     function resetFileSelection() {
         selectedFile = null;
@@ -34,6 +36,12 @@ export function initDragDropUpload() {
 
         area.classList.remove("border-blue-500", "bg-blue-50");
         area.classList.add("border-gray-200");
+
+        input.blur();
+    }
+
+    if (modal) {
+        modal.addEventListener("modalClosed", resetFileSelection);
     }
 
     input.addEventListener("change", () => {
@@ -92,7 +100,7 @@ export function initDragDropUpload() {
             );
         }
 
-        modal.classList.add("hidden");
+        if (modal) modal.classList.add("hidden");
 
         Swal.fire({
             title: "Mengunggah Data...",
@@ -108,15 +116,19 @@ export function initDragDropUpload() {
 
             console.log("res1", res);
 
+            if (modal) modal.classList.add("hidden");
+
             Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
                 text: res.message ?? "Upload selesai!",
                 timer: 2000,
                 timerProgressBar: true,
+                showConfirmButton: false,
             }).then(() => {
                 console.log("reload");
-                // window.location.reload();
+                // resetFileSelection();
+                location.reload();
             });
         } catch (err) {
             console.error(err);

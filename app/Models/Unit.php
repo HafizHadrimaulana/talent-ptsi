@@ -7,4 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Unit extends Model
 {
     protected $fillable = ['code','name'];
+
+    public function employees()
+    {
+        return $this->hasMany(Employee::class, 'unit_id', 'id');
+    }
 }

@@ -69,8 +69,8 @@ class TrainingImportServices
         // input ke training_reference
         foreach ($uniqueTrainings as $row) {
 
-            $unitName = trim($row->unit_kerja ?? '');
-            $unit = Unit::where('name', $unitName)->first();
+            $unitName = strtoupper(trim($row->unit_kerja ?? ''));
+            $unit = Unit::whereRaw('UPPER(TRIM(name)) = ?', [$unitName])->first();
 
             $batch[] = [
                 "unit_id"               => $unit->id ?? null,

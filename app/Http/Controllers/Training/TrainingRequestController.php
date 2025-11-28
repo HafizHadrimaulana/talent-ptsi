@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Imports\TrainingImportServices;
 use Illuminate\Support\Facades\Storage;
+use App\Models\TrainingReference;
+use App\Models\Employee;
+use App\Models\TrainingRequest;
+
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TrainingRequestController extends Controller
@@ -99,6 +104,184 @@ class TrainingRequestController extends Controller
             return response()->json([
                 "status" => "error",
                 "message" => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getDataTrainingReferences($unitId)
+    {
+        try {
+            Log::info("Mulai fetch data training references.", ["unit_id" => $unitId]);
+            $data = TrainingReference::where('unit_id', $unitId)
+                ->select(
+                    'id',
+                    'judul_sertifikasi',
+                    'penyelenggara',
+                    'jumlah_jam',
+                    'jenis_portofolio',
+                    'fungsi',
+                    'waktu_pelaksanaan',
+                    'nama_proyek',
+                    'biaya_pelatihan',
+                    'uhpd',
+                    'biaya_akomodasi',
+                    'estimasi_total_biaya'
+                )
+                ->orderBy('judul_sertifikasi')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error fetch data: " . $e->getMessage());
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getEmployeeByUnit($unitId)
+    {
+        try {
+            Log::info("Mulai fetch employee by unit.", ["unit_id" => $unitId]);
+        
+            $employees = Employee::with('person')
+                ->where('unit_id', $unitId)
+                ->get()
+                ->map(function ($emp) {
+                    return [
+                        'id' => $emp->id,
+                        'name' => $emp->person->full_name ?? '-',
+                        'person_id' => $emp->person_id,
+                    ];
+                });
+        
+            return response()->json([
+                'status' => 'success',
+                'data' => $employees
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error fetch data: " . $e->getMessage());
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function inputTrainingRequest(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            Log::info("Mulai input training request:", $request->all());
+
+            $payload = json_decode($request->data, true);
+
+            if (!$payload) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Payload tidak valid'
+                ], 400);
+            }
+
+            Log::info("Payload hasil decode:", $payload);
+
+            $employeeIds = collect($payload['peserta_list'])
+                ->pluck('id')
+                ->filter()
+                ->values()
+                ->all();
+
+            if (empty($employeeIds)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Peserta kosong'
+                ], 400);
+            }
+
+            // Pastikan employee ada
+            $validEmployees = Employee::whereIn('id', $employeeIds)
+                ->pluck('id')
+                ->all();
+
+            $missing = array_values(array_diff($employeeIds, $validEmployees));
+
+            if (!empty($missing)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Employee tidak ditemukan',
+                    'missing_ids' => $missing
+                ], 400);
+            }
+
+            // Upload file lampiran jika ada
+            $lampiran = null;
+            if ($request->hasFile('lampiran_penawaran')) {
+                $lampiran = $request->file('lampiran_penawaran')
+                    ->store('lampiran_penawaran', 'public');
+            }
+            $insertedRequests = [];
+
+            foreach ($employeeIds as $employeeId) {
+                $created[] = TrainingRequest::create([
+                    'training_reference_id'      => $payload['judul_sertifikasi'],
+                    'employee_id'                => $employeeId,
+                    'status_approval_training'   => 'created',
+                    'start_date'                 => $payload['start_date'],
+                    'end_date'                   => $payload['end_date'],
+                    'estimasi_total_biaya'       => $payload['estimasi_total_biaya'],
+                    'lampiran_penawaran'         => $lampiran,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Training request berhasil disimpan',
+                'data' => $insertedRequests
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error("Error input training request: " . $e->getMessage());
+
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getTrainingRequestList(Request $request, $unitId)
+    {
+        try {
+            $trainingRequest = TrainingRequest::with([
+                'trainingReference',
+                'employee.person',
+                'employee.unit'
+            ])
+            ->whereHas('employee', function ($q) use ($unitId) {
+                $q->where('unit_id', $unitId);
+            })
+            ->orderBy('id', 'desc')
+            ->get();
+
+            return response()->json([
+                "status" => "success",
+                "data" => $trainingRequest
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage()
             ], 500);
         }
     }

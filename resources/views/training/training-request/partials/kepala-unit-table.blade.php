@@ -1,5 +1,5 @@
 <table id="training-table"
-    class="u-table u-table-mobile training-table" data-role="SDM Unit" data-dt>
+    class="u-table u-table-mobile training-table" data-role="Kepala Unit" data-dt>
     <thead>
         <tr>
             <th>

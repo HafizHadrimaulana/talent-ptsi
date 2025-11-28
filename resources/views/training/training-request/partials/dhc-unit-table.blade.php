@@ -1,5 +1,5 @@
 <table id="training-table"
-    class="u-table u-table-mobile training-table" data-dt>
+    class="u-table u-table-mobile training-table" data-role="DHC" data-dt>
     <thead>
         <tr>
             <th>
@@ -35,4 +35,6 @@
 
 <script>
     window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
+    window.userUnitId  = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+
 </script>

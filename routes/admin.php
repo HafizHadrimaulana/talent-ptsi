@@ -185,8 +185,14 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         //// sdm unit
         Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
             ->name('training-request');
-        // Route::post('training-request/import-lna', [TrainingRequestController::class, 'import-lna'])
-        //     ->name('training-request.import-lna');
+        Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])
+            ->name('training-request.training-reference');
+        Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])
+            ->name('training-request.get-employee-by-unit');
+        Route::get('training-request/{id}/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])
+            ->name('training-request.get-training-request-list');
+        Route::post('training-request/input-training-request', [TrainingRequestController::class, 'inputTrainingRequest'])
+            ->name('training-request.input-training-request');
 
         // END
             

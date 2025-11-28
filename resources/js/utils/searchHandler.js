@@ -1,16 +1,14 @@
-export function initDataTable(tableSelector) {
-    console.log("tableSelector", tableSelector);
-    const searchForm = document.getElementById(tableSelector);
-    const searchInput = document.getElementById(`${tableSelector}-input`);
-    const searchBtn = document.getElementById(`${tableSelector}-btn`);
-    const clearBtn = document.getElementById(`${tableSelector}-clear`);
-
-    const searchHandler = {
+export function createSearchHandler({ formId, inputId, tableId, clearId }) {
+    return {
         init: function () {
             this.bindSearch();
         },
 
         bindSearch: function () {
+            const searchForm = document.getElementById(formId);
+            const searchInput = document.getElementById(inputId);
+            const clearBtn = document.getElementById(clearId);
+
             if (searchForm) {
                 searchForm.addEventListener("submit", (e) => {
                     e.preventDefault();
@@ -37,34 +35,22 @@ export function initDataTable(tableSelector) {
 
         performSearch: function () {
             const searchTerm = document
-                .getElementById("empSearchInput")
+                .getElementById(inputId)
                 .value.toLowerCase();
-            const tableRows = document.querySelectorAll(
-                `#${tableSelector} tbody tr`
-            );
+            const tableRows = document.querySelectorAll(`${tableId} tbody tr`);
 
             tableRows.forEach((row) => {
                 const rowText = row.textContent.toLowerCase();
-                if (rowText.includes(searchTerm)) {
-                    row.style.display = "";
-                } else {
-                    row.style.display = "none";
-                }
+                row.style.display = rowText.includes(searchTerm) ? "" : "none";
             });
         },
 
         debounce: function (func, wait) {
             let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
+            return function (...args) {
                 clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
+                timeout = setTimeout(() => func(...args), wait);
             };
         },
     };
-
-    searchHandler.init();
 }

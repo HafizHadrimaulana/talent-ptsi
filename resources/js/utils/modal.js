@@ -1,18 +1,31 @@
-export function initModalHandler(openBtnSelector, modalSelector, closeBtnSelector) {
+export function initModalHandler(
+    openBtnSelector,
+    modalSelector,
+    closeBtnSelector
+) {
+    console.log("modal handler");
     const openBtn = document.querySelector(openBtnSelector);
     const modal = document.querySelector(modalSelector);
     const closeBtn = document.querySelector(closeBtnSelector);
 
-    if (!openBtn || !modal || !closeBtn) return; 
+    console.log("openBtn", openBtn);
+    console.log("modal", modal);
+    console.log("closeBtn", closeBtn);
 
-    openBtn.addEventListener("click", () => modal.classList.remove("hidden"));
-    closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+    if (!openBtn || !modal || !closeBtn) return;
 
-    console.log('asd')
-
-    // Tutup modal kalau klik di luar konten modal
-    modal.addEventListener("click", (e) => {
-        if (e.target === modal) modal.classList.add("hidden");
+    openBtn.addEventListener("click", () => {
+        modal.classList.remove("hidden");
+        modal.hidden = false;
     });
 
+    closeBtn.addEventListener("click", () => {
+        modal.hidden = true;
+    });
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+            modal.hidden = false;
+        }
+    });
 }

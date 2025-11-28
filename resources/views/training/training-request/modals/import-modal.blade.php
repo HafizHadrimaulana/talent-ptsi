@@ -1,5 +1,5 @@
-<div id="import-modal"
-  class="u-modal hidden">
+<div id="lna-import-modal"
+  class="u-modal" hidden>
   <div class="u-modal__card">
     <h2 class="u-modal__head">Import Data Excel</h2>
 
@@ -33,7 +33,7 @@
           </div>
 
           <div class="u-modal__foot">
-            <button type="button" id="close-modal" class="u-btn u-btn--ghost">Tutup</button>
+            <button type="button" id="lna-close-modal" class="u-btn u-btn--ghost">Tutup</button>
             <button type="submit" class="u-btn u-btn--brand u-hover-lift">
               Upload
             </button>

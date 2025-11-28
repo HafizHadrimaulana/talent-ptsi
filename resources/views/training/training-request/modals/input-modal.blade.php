@@ -1,156 +1,169 @@
-<div id="input-training-modal" class="dt-wrapper u-mb-lg hidden">
-
-  <form id="add-form" method="POST">
-    @csrf
-
-    <div class="u-panels u-space-lg">
-
-      <div class="u-modal__head u-mb-lg">
-        <h3 class="u-uppercase">Tambah Data Pelatihan</h3>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Judul Sertifikasi</label>
-        <select name="judul_sertifikasi" class="u-input bg-white" readonly>
-          <option value="">-- Pilih Judul Sertifikasi --</option>
-        </select>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Penyelenggara</label>
-        <input type="text"
-            name="penyelenggara"
-            class="u-input"
-            readonly />
-        </select>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Jumlah Jam</label>
-        <input type="text"
-          name="jumlah_jam"
-          class="u-input"
-          readonly>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Waktu Pelaksanaan</label>
-        <input type="text"
-          name="waktu_pelaksanaan"
-          class="u-input"
-          readonly>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Nama Proyek</label>
-        <input type="text"
-          name="nama_proyek"
-          class="u-input"
-          readonly>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Jenis Portofolio</label>
-        <input type="text"
-          name="jenis_portofolio"
-          class="u-input"
-          readonly>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Jenis Pelatihan</label>
-        <input type="text"
-          name="jenis_pelatihan"
-          class="u-input"
-          readonly>
-      </div>
-
-      <div class="u-modal__head u-mb-lg">
-        <h3 class="u-uppercase">Biaya</h3>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Biaya Pelatihan (Rp)</label>
-        <input type="number" name="biaya_pelatihan" class="u-input">
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">UHPD (Rp)</label>
-        <input type="number" name="uhpd" class="u-input">
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Biaya Akomodasi (Rp)</label>
-        <input type="number" name="biaya_akomodasi" class="u-input">
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Estimasi Total Biaya (Rp)</label>
-        <input type="number" name="estimasi_total_biaya" class="u-input">
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Alasan</label>
-        <input name="alasan" class="u-input bg-white">
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Start Date</label>
-        <input type="date" name="start_date" class="u-input">
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">End Date</label>
-        <input type="date" name="end_date" class="u-input">
-      </div>
-
-      <div class="u-modal__head u-mb-lg">
-        <h3 class="u-uppercase">Peserta</h3>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Tambah Peserta</label>
-        <div class="w-full relative">
-    
-          <!-- INPUT MODEL TAG -->
-          <div id="peserta-container" class="tags-input">
-            <!-- Chips akan muncul di sini -->
-            <div id="peserta-selected" class="flex flex-wrap gap-2"></div>
-
-            <!-- Input search -->
-            <input 
-              type="text" 
-              id="peserta-search"
-              placeholder="Ketik nama peserta..."
-              autocomplete="off"
-            >
-          </div>
-
-          <!-- Dropdown hasil search -->
-          <div id="peserta-dropdown" class="dropdown-search"></div>
-
-          <!-- Hidden input untuk submit ke backend -->
-          <input type="hidden" name="peserta_list" id="peserta-list-hidden">
+<div id="input-training-modal"
+  class="u-modal" hidden>
+  <div class="u-modal__card u-modal__card--xl">
+    <div class="u-modal__head u-mb-sm">
+      <div class="u-flex u-items-center u-gap-md">
+        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
+        <div>
+          <div class="u-title" id="ip-modal-title">Ajukan Pelatihan Baru</div>
+          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Ajukan permintaan pelatihan</div>
         </div>
       </div>
-
-      <div class="u-modal__head u-mb-lg">
-        <h3 class="u-uppercase">Lampiran Penawaran</h3>
-      </div>
-
-      <div class="flex items-center gap-4 u-mb-lg">
-        <label class="w-48 font-medium after:content-['*'] after:text-red-500">Lampiran Penawaran</label>
-        <input type="file" accept=".pdf" name="lampiran_penawaran" class="u-input">
-      </div>
-
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
-
+    <div class="u-modal__body u-p-md u-space-y-lg">
+      <form id="add-form" method="POST">
+        @csrf
+          <div class="font-bold u-mb-sm">
+            <h3 class="u-uppercase">Tambah Data Pelatihan</h3>
+          </div>
+          <div class="u-mb-xl">
+            <div class="u-space-y-sm u-mb-sm">
+              <label class="w-48 font-medium after:content-['*'] after:text-red-500">Judul Sertifikasi</label>
+              <select name="judul_sertifikasi" class="u-input bg-white" required>
+                <option value="">-- Pilih Judul Sertifikasi --</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-x-10 gap-y-2">
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium">Penyelenggara</label>
+                <input type="text"
+                    name="penyelenggara"
+                    class="u-input"
+                    readonly />
+                </select>
+              </div>
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium">Nama Proyek</label>
+                <input type="text"
+                  name="nama_proyek"
+                  class="u-input"
+                  readonly>
+              </div>
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium">Jumlah Jam</label>
+                <input type="text"
+                  name="jumlah_jam"
+                  class="u-input"
+                  readonly>
+              </div>
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium">Waktu Pelaksanaan</label>
+                <input type="text"
+                  name="waktu_pelaksanaan"
+                  class="u-input"
+                  readonly>
+              </div>
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium">Jenis Portofolio</label>
+                <input type="text"
+                  name="jenis_portofolio"
+                  class="u-input"
+                  readonly>
+              </div>
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium">Jenis Pelatihan</label>
+                <input type="text"
+                  name="jenis_pelatihan"
+                  class="u-input"
+                  readonly>
+              </div>
+              
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium after:content-['*'] after:text-red-500">Start Date</label>
+                <input type="date" name="start_date" class="u-input font-normal" required>
+              </div>
+              
+              <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium after:content-['*'] after:text-red-500">End Date</label>
+                <input type="date" name="end_date" class="u-input font-normal" required>
+              </div>
+    
+              <!-- <div class="font-bold u-mb-sm">
+                <label class="w-48 font-medium after:content-['*'] after:text-red-500">Alasan</label>
+                <input name="alasan" class="u-input bg-white">
+              </div> -->
+    
+            </div>
+          </div>
+    
+          <div class="font-bold u-mb-sm">
+            <h3 class="u-uppercase">Biaya</h3>
+          </div>
+          <div class="grid grid-cols-2 gap-x-10 gap-y-2 u-space-lg u-mb-xl">
+            <div class="font-bold u-mb-sm">
+              <label class="w-48 font-medium">Biaya Pelatihan (Rp)</label>
+              <input type="text" name="biaya_pelatihan" class="u-input">
+            </div>
+            <div class="font-bold u-mb-sm">
+              <label class="w-48 font-medium">Realisasi Biaya Pelatihan (Rp)</label>
+              <input type="number" name="realisasi_biaya_pelatihan" class="u-input">
+            </div>
+    
+            <div class="font-bold u-mb-sm">
+              <label class="w-48 font-medium">UHPD (Rp)</label>
+              <input type="text" name="uhpd" class="u-input">
+            </div>
+    
+            <div class="font-bold u-mb-sm">
+              <label class="w-48 font-medium">Biaya Akomodasi (Rp)</label>
+              <input type="text" name="biaya_akomodasi" class="u-input">
+            </div>
+    
+            <div class="font-bold u-mb-sm">
+              <label class="w-48 font-medium">Estimasi Total Biaya (Rp)</label>
+              <input type="text" name="estimasi_total_biaya" class="u-input">
+            </div>
+          </div>
+    
+          <div class="font-bold u-mb-sm">
+            <h3 class="u-uppercase">Peserta</h3>
+          </div>
+          <div class="u-space-lg u-mb-xl">
+    
+            <div class="font-bold u-mb-sm">
+              <label class="w-48 font-medium after:content-['*'] after:text-red-500">Tambah Peserta</label>
+              <div class="w-full relative">
+          
+                <div id="peserta-container" class="tags-input">
+                  <div id="peserta-selected" class="flex flex-wrap gap-2"></div>
+                  <input
+                    type="text"
+                    id="peserta-search"
+                    placeholder="Ketik nama peserta..."
+                    autocomplete="off"
+                    class=""
+                  >
+                </div>
+    
+                <div id="peserta-dropdown" class="dropdown-search"></div>
+                <input type="hidden" name="peserta_list" id="peserta-list-hidden" class="u-input font-normal" required>
+              </div>
+            </div>
+          </div>
+    
+          <div class="font-bold u-mb-sm">
+            <h3 class="u-uppercase">Lampiran Penawaran</h3>
+          </div>
+    
+          <div class="font-bold u-mb-xl">
+            <label class="w-48 font-medium after:content-['*'] after:text-red-500">Lampiran Penawaran</label>
+            <input type="file" accept=".pdf" name="lampiran_penawaran" class="u-input font-normal" required>
+          </div>
+      </form>
+    </div>
+  
     <!-- Footer -->
-    <div class="flex justify-end">
-      <button type="submit" class="u-btn u-btn--brand u-hover-lift">Simpan</button>
+    <div class="u-modal__foot">
+      <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
+      <div class="u-flex u-gap-sm">
+        <button type="button" id="training-close-modal" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+        <button type="submit"  form="add-form" class="u-btn u-btn--brand u-hover-lift">Simpan</button>
+      </div>
     </div>
-
-  </form>
+  </div>
 </div>
 
 <style>
@@ -211,3 +224,7 @@
     background: #f1f5f9;
   }
 </style>
+
+<script>
+    window.userUnitId = "{{ auth()->user()->unit_id }}";
+</script>

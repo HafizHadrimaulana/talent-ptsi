@@ -4,6 +4,8 @@ export async function getJSON(url) {
         throw new Error(`GET ${url} failed with status ${response.status}`);
     }
 
+    console.log("response", response);
+
     const data = await response.json();
     return data;
 }
@@ -32,7 +34,7 @@ export async function postJSON(url, formData = null) {
 }
 
 export async function postFormData(url, formData) {
-    console.log('url in post form data', url);
+    console.log('post form data', formData);
     const res = await fetch(url, {
         method: "POST",
         body: formData,

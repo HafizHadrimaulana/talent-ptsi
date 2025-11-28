@@ -32,7 +32,11 @@ return new class extends Migration
 
             $table->timestamps();
             
-            $table->foreign('unit_id')->references('id')->on('units')->onDelete('cascade');
+            $table->foreign('unit_id')
+                ->references('id')->on('units')
+                ->onDelete('cascade');
+
+            $table->unique(['judul_sertifikasi', 'penyelenggara', 'unit_id'], 'training_composite_index');
         });
     }
 
