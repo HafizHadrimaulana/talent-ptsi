@@ -2,6 +2,8 @@
 @section('title','Login • Talent PTSI')
 
 @section('content')
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;400;700;900&display=swap" rel="stylesheet">
+
 <div class="auth-root relative min-h-dvh w-screen overflow-hidden">
   <!-- Fullscreen gradient -->
   <div class="bg-canvas fixed inset-0 -z-10 pointer-events-none"></div>
@@ -28,8 +30,8 @@
       <!-- Title + address + people -->
       <div class="relative flex h-full min-h-dvh px-[64px] pt-[60px] pb-[36px] text-white">
         <div class="z-[2] my-auto max-w-[760px]">
-          <h1 class="text-[68px] leading-[1.03] translate-y-[-200px] translate-x-[100px] font-extrabold drop-shadow-[0_12px_28px_rgba(0,0,0,.25)]" style="font-family:Montserrat;">
-            One Platform for All<br/>Human Capital Service
+            <h1 class="text-[50px] leading-[1.03] text-center font-bold drop-shadow-[0_12px_28px_rgba(0,0,0,.25)] transform translate-x-[105px] translate-y-[-200px] font-montserrat">
+            One Platform for All<br />Human Capital Service
           </h1>
 
           <div class="absolute mt-6 flex items-start gap-4  bottom-[0px] left-[180px]">
@@ -98,26 +100,34 @@
               @enderror
             </div>
 
-            <div class="flex items-center justify-between text-xs">
-              <label class="flex items-center gap-2 text-[#445167]">
-                <input type="checkbox" name="remember" class="rounded border-[#cdd6e3] text-brand focus:ring-brand">
-                <span>Remember me</span>
-              </label>
+           <div class="text-xs space-y-3 text-[#445167]">
 
-              <label class="flex items-start gap-2 text-[#445167]">
-                <input
-                  type="checkbox"
-                  id="termsCheckbox"
-                  class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
-                <span>
-                  Saya memahami ketentuan yang berlaku,
-                  <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
-                    Baca Ketentuan Privasi Pegawai
-                  </a>
-                </span>
-              </label>
-            </div>
+        <!-- Remember Me -->
+        <label class="flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            name="remember"
+            class="rounded border-[#cdd6e3] text-brand focus:ring-brand"
+          >
+          <span>Remember me</span>
+        </label>
 
+        <!-- Privacy Policy -->
+        <label class="flex items-start gap-2">
+          <input
+            type="checkbox"
+            id="termsCheckbox"
+            class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand"
+          >
+          <span>
+            Saya memahami ketentuan yang berlaku,
+            <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+              Baca Ketentuan Privasi Pegawai
+            </a>
+          </span>
+        </label>
+
+      </div>
             <div class="flex flex-col gap-2.5 mt-2">
               <button
                 id="signInBtn"
@@ -127,13 +137,14 @@
               </button>
 
               <button
+                id="forgotPwBtn"
                 type="button"
                 class="w-full rounded bg-[#FFFFFF] py-2.5 font-semibold text-black shadow-sm transition hover:brightness-110 cursor-pointer">
                 Forgot Password
               </button>
             </div>
           </form>
-
+          
         </div>
       </div>
     </section>
@@ -147,12 +158,77 @@
   </div>
 </div>
 
+<!-- Forgot Password Modal -->
+<div id="forgotPwModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden justify-center items-center p-4 z-999">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md relative">
+    
+    <h2 class="text-xl font-semibold mb-4">Reset Password</h2>
+
+    <label class="block text-sm font-medium mb-1">Email Address</label>
+    <p class="mb-1">Please enter your email address so that we can send a password reset link</p>
+    <input
+      id="resetEmail"
+      type="email"
+      placeholder="Enter your email"
+      class="w-full border rounded px-3 py-2 mb-4"
+    />
+
+    <div class="flex justify-end gap-2 mt-2">
+      <button
+        id="closeModalBtn"
+        class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 cursor-pointer"
+      >Cancel</button>
+
+      <button
+        class="px-4 py-2 rounded bg-[#00A29A] text-white hover:bg-green-700 cursor-pointer"
+      >Submit</button>
+    </div>
+
+  </div>
+</div>
+
+
 <script>
-  const checkbox = document.getElementById('termsCheckbox');
-  const signInBtn = document.getElementById('signInBtn');
+  // Open modal
+ const checkbox = document.getElementById('termsCheckbox');
+ const signInBtn = document.getElementById('signInBtn');
+
+  // Disable button by default
+  signInBtn.disabled = true;
+  signInBtn.style.backgroundColor = '#98A4B8';
+  signInBtn.style.cursor = 'not-allowed';
 
   checkbox.addEventListener('change', () => {
-    signInBtn.style.backgroundColor = checkbox.checked ? '#00A29A' : '#98A4B8';
+    if (checkbox.checked) {
+      signInBtn.disabled = false;
+      signInBtn.style.backgroundColor = '#00A29A';
+      signInBtn.style.cursor = 'pointer';
+    } else {
+      signInBtn.disabled = true;
+      signInBtn.style.backgroundColor = '#98A4B8';
+      signInBtn.style.cursor = 'not-allowed';
+    }
+  });
+    const forgotPwBtn = document.getElementById("forgotPwBtn");
+  const forgotPwModal = document.getElementById("forgotPwModal");
+  const closeModalBtn = document.getElementById("closeModalBtn");
+
+  forgotPwBtn.addEventListener("click", () => {
+    forgotPwModal.classList.remove("hidden");
+    forgotPwModal.classList.add("flex");
+  });
+
+  closeModalBtn.addEventListener("click", () => {
+    forgotPwModal.classList.add("hidden");
+    forgotPwModal.classList.remove("flex");
+  });
+
+  // Close modal when clicking outside the content
+  forgotPwModal.addEventListener("click", (e) => {
+    if (e.target === forgotPwModal) {
+      forgotPwModal.classList.add("hidden");
+      forgotPwModal.classList.remove("flex");
+    }
   });
 </script>
 @endsection

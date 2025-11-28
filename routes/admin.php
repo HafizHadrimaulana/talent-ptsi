@@ -124,6 +124,10 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('contracts', [ContractController::class, 'store'])
             ->middleware('permission:contract.create')->name('contracts.store');
 
+        // NEW: update draft kontrak
+        Route::put('contracts/{contract}', [ContractController::class, 'update'])
+            ->middleware('permission:contract.update')->name('contracts.update');
+
         // submit draft (SDM Unit → kepala unit / approver)
         Route::post('contracts/{contract}/submit',  [ContractController::class, 'submit'])
             ->middleware('permission:contract.update')->name('contracts.submit');

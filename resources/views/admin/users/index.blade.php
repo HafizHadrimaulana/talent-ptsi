@@ -128,7 +128,7 @@
                         data-modal-open="empModal"
                         data-employee-id="{{ $employee_pk }}"
                         data-emp='@json($basicData, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
-                  <i class="fa-regular fa-user u-mr-xs"></i>Details
+                  <i class="fas fa-eye"></i>Details
                 </button>
               </div>
             </td>
@@ -726,5 +726,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 </script>
-</script>
+
 @endsection

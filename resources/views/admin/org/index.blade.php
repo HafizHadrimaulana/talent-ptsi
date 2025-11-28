@@ -149,7 +149,7 @@
                         {{ $u->name }}
                       </span>
                       @if($u->category)
-                        <span class="u-text-xs u-muted">Type: {{ ucfirst($u->category) }}</span>
+                        <span class="u-text-xs u-muted">Group : {{ ucfirst($u->category) }}</span>
                       @endif
                     </div>
                     @canany(['org.create','org.update','org.delete'])
@@ -248,7 +248,7 @@
                           {{ $u->name }}
                         </span>
                         @if($u->category)
-                          <span class="u-text-xs u-muted">Type: {{ ucfirst($u->category) }}</span>
+                          <span class="u-text-xs u-muted">Group : {{ ucfirst($u->category) }}</span>
                         @endif
                       </div>
                       @canany(['org.create','org.update','org.delete'])

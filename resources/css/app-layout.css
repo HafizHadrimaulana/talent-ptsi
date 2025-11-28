@@ -66,14 +66,31 @@ body.scroll-lock{position:fixed;width:100%;top:var(--lock-top,0);touch-action:no
 
 /* ===== SIDEBAR ===== */
 .sidebar{
-  position:fixed;inset:var(--side-pad) auto var(--side-pad) var(--side-pad);
-  width:var(--sbw);border-radius:20px;box-shadow:var(--shadow-lg);
-  padding:12px;display:flex;flex-direction:column;gap:10px;
-  z-index:60;contain:paint;background:var(--sidebar);border:var(--border);
+  position:fixed;
+  inset:var(--side-pad) auto var(--side-pad) var(--side-pad);
+  width:var(--sbw);
+  border-radius:20px;
+  box-shadow:var(--shadow-lg);
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  z-index:60;
+  contain:paint;
+  background:var(--sidebar);
+  border:var(--border);
   transition:width .2s ease,transform .2s ease;
-  overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-gutter:stable;
+  /* FIX: hanya vertical scroll, horizontal di-hide */
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
 }
-body.sidebar-collapsed .sidebar{width:var(--sbw-collapsed)}
+body.sidebar-collapsed .sidebar{
+  width:var(--sbw-collapsed);
+}
+
 
 .brand{display:flex;align-items:center;gap:8px;padding:4px 6px 10px}
 .brand-link{display:flex;flex:1;justify-content:center;min-width:0}
