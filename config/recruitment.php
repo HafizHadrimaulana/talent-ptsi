@@ -4,32 +4,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Info Perusahaan (PIHAK PERTAMA)
+    | Identitas Perusahaan
     |--------------------------------------------------------------------------
     */
-    'company_name'        => 'PT Surveyor Indonesia',
-    'company_address'     => 'Gedung Surveyor Indonesia, Jl. Jend. Gatot Subroto Kav. 56, Jakarta 12950',
-    'company_city'        => 'Jakarta',
-
-    // Penandatangan default kontrak
-    'company_rep_name'    => 'Lussy Ariani Seba',
-    'company_rep_title'   => 'Direktur Sumber Daya Manusia',
+    'company_name' => 'PT Surveyor Indonesia',
+    'company_address' => 'Gedung Surveyor Indonesia, Jl. Jend. Gatot Subroto Kav. 56, Jakarta 12950',
+    'company_city' => 'Jakarta',
+    'company_rep_name' => 'Lussy Ariani Seba',
+    'company_rep_title' => 'Direktur Sumber Daya Manusia',
 
     /*
     |--------------------------------------------------------------------------
-    | Status Kontrak
+    | Status Kontrak (flow internal sistem)
     |--------------------------------------------------------------------------
     */
     'contract_statuses' => [
-        'draft'    => 'Draft',
-        'review'   => 'Review SDM Unit',
+        'draft' => 'Draft',
+        'review' => 'Review SDM Unit',
         'approved' => 'Disetujui',
-        'signed'   => 'Ditandatangani',
+        'signed' => 'Ditandatangani',
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Status Pelamar yang Eligible untuk Kontrak
+    | Status pelamar yang eligible untuk dibuatkan kontrak
     |--------------------------------------------------------------------------
     */
     'contract_applicant_statuses' => [
@@ -39,195 +37,183 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Jenis Kontrak
+    | Jenis Kontrak / Mode
     |--------------------------------------------------------------------------
-    | code:
-    |   SPK                = Offering Letter
-    |   PKWT_BARU         = PKWT baru (dari pelamar)
-    |   PKWT_PERPANJANGAN = Perpanjangan PKWT existing
-    |   PB_PENGAKHIRAN    = Perjanjian Bersama Pengakhiran PKWT
-    |--------------------------------------------------------------------------
+    |
+    | code              : disimpan di field contracts.contract_type
+    | label             : label tampilan
+    | mode              : new | extend | terminate (mapping ke section form)
+    | requires_applicant: butuh data pelamar dari modul rekrutmen
+    | requires_existing_contract: butuh source_contract_id (extend/terminate)
+    | requires_*        : default flag opsi e-sign / verifikasi
+    | template_key      : key ke array 'templates'
+    | document_type     : kode dokumen untuk numbering (SPK / PKWT / PB)
     */
     'contract_types' => [
-
-        [
-            'code'                       => 'SPK',
-            'label'                      => 'Surat Penawaran (Offering Letter)',
-            'mode'                       => 'new',       // new | extend | terminate
-            'requires_applicant'         => true,
+        'SPK' => [
+            'code' => 'SPK',
+            'label' => 'Surat Penawaran (Offering Letter)',
+            'mode' => 'new',
+            'requires_applicant' => true,
             'requires_existing_contract' => false,
-            'requires_draw_signature'    => true,
-            'requires_camera'            => true,
-            'requires_geolocation'       => true,
-            'template_key'               => 'offering_letter',
-            'document_type'              => 'SPK',
+            'requires_draw_signature' => true,
+            'requires_camera' => true,
+            'requires_geolocation' => true,
+            'template_key' => 'offering_letter',
+            'document_type' => 'SPK',
         ],
-
-        [
-            'code'                       => 'PKWT_BARU',
-            'label'                      => 'Baru',
-            'mode'                       => 'new',
-            'requires_applicant'         => true,
+        'PKWT_BARU' => [
+            'code' => 'PKWT_BARU',
+            'label' => 'PKWT Baru',
+            'mode' => 'new',
+            'requires_applicant' => true,
             'requires_existing_contract' => false,
-            'requires_draw_signature'    => true,
-            'requires_camera'            => true,
-            'requires_geolocation'       => true,
-            'template_key'               => 'pkwt',
-            'document_type'              => 'PKWT',
+            'requires_draw_signature' => true,
+            'requires_camera' => true,
+            'requires_geolocation' => true,
+            'template_key' => 'pkwt',
+            'document_type' => 'PKWT',
         ],
-
-        [
-            'code'                       => 'PKWT_PERPANJANGAN',
-            'label'                      => 'Perpanjangan',
-            'mode'                       => 'extend',
-            'requires_applicant'         => false,
+        'PKWT_PERPANJANGAN' => [
+            'code' => 'PKWT_PERPANJANGAN',
+            'label' => 'PKWT Perpanjangan',
+            'mode' => 'extend',
+            'requires_applicant' => false,
             'requires_existing_contract' => true,
-            'requires_draw_signature'    => true,
-            'requires_camera'            => true,
-            'requires_geolocation'       => true,
-            'template_key'               => 'pkwt',
-            'document_type'              => 'PKWT',
+            'requires_draw_signature' => true,
+            'requires_camera' => true,
+            'requires_geolocation' => true,
+            'template_key' => 'pkwt',
+            'document_type' => 'PKWT',
         ],
-
-        [
-            'code'                       => 'PB_PENGAKHIRAN',
-            'label'                      => 'Perjanjian Bersama Pengakhiran PKWT',
-            'mode'                       => 'terminate',
-            'requires_applicant'         => false,
+        'PB_PENGAKHIRAN' => [
+            'code' => 'PB_PENGAKHIRAN',
+            'label' => 'Perjanjian Bersama Pengakhiran PKWT',
+            'mode' => 'terminate',
+            'requires_applicant' => false,
             'requires_existing_contract' => true,
-            'requires_draw_signature'    => true,
-            'requires_camera'            => true,
-            'requires_geolocation'       => true,
-            'template_key'               => 'pb',
-            'document_type'              => 'PB',
+            'requires_draw_signature' => true,
+            'requires_camera' => true,
+            'requires_geolocation' => true,
+            'template_key' => 'pb',
+            'document_type' => 'PB',
         ],
-
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Tipe Hubungan Kerja (Employment Type)
+    | Jenis Hubungan Kerja
     |--------------------------------------------------------------------------
+    |
+    | code  : disimpan di contracts.employment_type & remuneration_json
+    | label : label tampilan
     */
     'employment_types' => [
-        [
-            'code'  => 'PKWT',
-            'label' => 'PKWT',
-        ],
-        [
-            'code'  => 'PKWTT',
-            'label' => 'Karyawan Tetap',
-        ],
-        [
-            'code'  => 'OUTSOURCE',
-            'label' => 'Outsource / Alih Daya',
-        ],
+        'PKWT' => 'PKWT',
+        'PKWTT' => 'Karyawan Tetap',
+        'OUTSOURCE' => 'Outsource / Alih Daya',
+        'kontrak-organik' => 'Kontrak Organik',
+        'kontrak-project-based' => 'Kontrak Project Based',
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Sumber Anggaran (Budget Source Type)
+    | Sumber Anggaran (opsional, jika nanti mau dipakai di form)
     |--------------------------------------------------------------------------
     */
     'budget_source_types' => [
         [
-            'code'  => 'RKAP',
+            'code' => 'RKAP',
             'label' => 'RKAP Unit',
         ],
         [
-            'code'  => 'NON_RKAP',
+            'code' => 'NON_RKAP',
             'label' => 'Non-RKAP / Overhead',
         ],
         [
-            'code'  => 'PROJECT',
+            'code' => 'PROJECT',
             'label' => 'Anggaran Proyek',
         ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Jenis Permohonan (Request Type)
+    | Jenis Permintaan (Request Type)
     |--------------------------------------------------------------------------
     */
     'request_types' => [
         [
-            'code'  => 'NEW',
+            'code' => 'NEW',
             'label' => 'Penambahan Baru',
         ],
         [
-            'code'  => 'REPLACEMENT',
+            'code' => 'REPLACEMENT',
             'label' => 'Pengganti',
         ],
         [
-            'code'  => 'EXTEND',
+            'code' => 'EXTEND',
             'label' => 'Perpanjangan',
         ],
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Template DOCX untuk SPK / PKWT / PB
+    | Template Dokumen (docx) untuk merge
     |--------------------------------------------------------------------------
+    |
+    | disk : disk storage Laravel
+    | path : path file template
+    | doc_type : kode jenis dokumen (sinkron dengan document_type di atas)
     */
     'templates' => [
-
-        // Format Surat Penawaran - Offering letter.docx
         'offering_letter' => [
-            'disk'     => 'public',
-            'path'     => 'templates/recruitment/Format Surat Penawaran - Offering letter.docx',
+            'disk' => 'public',
+            'path' => 'templates/recruitment/Format Surat Penawaran - Offering letter.docx',
             'doc_type' => 'SPK',
         ],
-
-        // Template PKWT (DHC) 2025_rev MI.docx
         'pkwt' => [
-            'disk'     => 'public',
-            'path'     => 'templates/recruitment/Template PKWT (DHC) 2025_rev MI.docx',
+            'disk' => 'public',
+            'path' => 'templates/recruitment/Template PKWT (DHC) 2025_rev MI.docx',
             'doc_type' => 'PKWT',
         ],
-
-        // Template - Perjanjian Bersama (PB) (DHC) 2025_rev MI.docx
         'pb' => [
-            'disk'     => 'public',
-            'path'     => 'templates/recruitment/Template - Perjanjian Bersama (PB) (DHC) 2025_rev MI.docx',
+            'disk' => 'public',
+            'path' => 'templates/recruitment/Template - Perjanjian Bersama (PB) (DHC) 2025_rev MI.docx',
             'doc_type' => 'PB',
         ],
-
     ],
 
     /*
     |--------------------------------------------------------------------------
     | Penomoran Kontrak
     |--------------------------------------------------------------------------
-    | Format di ContractController:
-    |   (TYPE)-NNN/UNITCODE-mm/HEADCODE/YYYY
     |
-    | NNN reset per kombinasi:
-    |   - jenis kontrak (SPK / PKWT / PB)
-    |   - unit_id
-    |   - bulan
-    |   - tahun
+    | default_head_code : inisial default kepala unit (kalau nggak ketemu mapping)
+    | doc_codes         : mapping contract_type => kode jenis dokumen di nomor
+    | head_codes        : mapping kode unit / directorate (mis. DSDM) => inisial kepala
     |
-    | Contoh: SPK-001/DSDM-11/DN/2025
-    |--------------------------------------------------------------------------
+    | Format final nomor (kurang lebih):
+    |   (DOC_CODE)-XXX/UNITCODE-mm/HEADCODE/YYYY
     */
     'numbering' => [
-
-        // default head code kalau tidak ketemu mapping unit di bawah
         'default_head_code' => 'DN',
 
-        // mapping jenis kontrak → prefix dokumen
         'doc_codes' => [
-            'SPK'                => 'SPK',
-            'PKWT_BARU'          => 'PKWT',
-            'PKWT_PERPANJANGAN'  => 'PKWT',
-            'PB_PENGAKHIRAN'     => 'PB',
+            'SPK' => 'SPK',
+            'PKWT_BARU' => 'PKWT',
+            'PKWT_PERPANJANGAN' => 'PKWT',
+            'PB_PENGAKHIRAN' => 'PB',
         ],
 
-        // mapping unit_code → kode kepala (VP/GM) di nomor kontrak
+        // Mapping kode-kode unit / directorate ke inisial kepala (bisa ditambah sewaktu-waktu)
         'head_codes' => [
-            'default' => 'DN',     // fallback
-            'DSDM'    => 'DN',     // Direktorat SDM (contoh)
-            // Tambah mapping lain kalau perlu: 'DBS1' => 'GM', dst
+            'default' => 'DN',
+            'DSDM' => 'DN', // contoh: Direktorat SDM, diisi inisial Kepala/Direktur
+            // 'DBS1' => 'EP',
+            // 'DBS2' => 'XX',
         ],
+
+        'head_role_names' => ['Kepala Unit'],
     ],
+
 ];
