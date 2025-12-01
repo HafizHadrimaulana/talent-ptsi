@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Database\Factories\RecruitmentRequestFactory;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Support\TicketNumberGenerator;
 
 class RecruitmentRequest extends Model
 {
@@ -14,7 +15,8 @@ class RecruitmentRequest extends Model
     protected $fillable = [
         'unit_id','title','position','headcount','justification',
         'status','requested_by','approved_by','approved_at','meta',
-        'is_published','slug','published_at','work_location','employment_type','requirements'
+        'is_published','slug','published_at','work_location','employment_type','requirements',
+        'ticket_number','budget_source_type','budget_ref','target_start_date','request_type'
     ];
 
     protected $casts = [
@@ -35,6 +37,39 @@ class RecruitmentRequest extends Model
         return $this->morphMany(Approval::class, 'approvable');
     }
 
+    /**
+     * Generate dan assign ticket number jika belum ada
+     */
+    public function generateTicketNumber(): void
+    {
+        if ($this->ticket_number) return;
+
+        $unitCode = $this->unit?->code ?? 'UNKNOWN';
+        $createdAt = $this->created_at ?? now();
+
+        // coba generate beberapa kali untuk menghindari collision pada kolom unique
+        $tries = 10;
+        for ($i = 0; $i < $tries; $i++) {
+            $candidate = TicketNumberGenerator::generate($unitCode, $createdAt instanceof \DateTimeInterface ? $createdAt : \Carbon\Carbon::parse($createdAt));
+            if (!self::where('ticket_number', $candidate)->exists()) {
+                $this->ticket_number = $candidate;
+                $this->save();
+                return;
+            }
+        }
+
+        // fallback: pakai uniqid tambahan JIKA masih collision
+        $this->ticket_number = TicketNumberGenerator::generate($unitCode, $createdAt instanceof \DateTimeInterface ? $createdAt : \Carbon\Carbon::parse($createdAt)) . '-' . substr(uniqid(), -6);
+        $this->save();
+    }
+
+    /**
+     * Relasi ke Unit
+     */
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
  
     public function scopeForViewer($q, \App\Models\User $user)
     {

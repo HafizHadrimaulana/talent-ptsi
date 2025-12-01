@@ -107,16 +107,44 @@
 
     <div class="top-actions">
       <div class="dropdown-wrap">
-        <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">
-          <i class="fa-solid fa-bell bell-icon"></i>
-        </button>
-        <div id="notifDropdown" class="dropdown" hidden>
-          <div class="dropdown-header">
-            Notifications
-            <button class="close-btn" type="button" data-close="#notifDropdown">✖</button>
-          </div>
-          <div class="muted text-sm">No notifications yet.</div>
-        </div>
+        @auth
+          @php
+            $unreadCount = 0;
+            $siteNotifs = collect();
+            $hasNotificationsApi = method_exists(auth()->user() ?? new \stdClass(), 'notificationsSite');
+            if ($hasNotificationsApi) {
+                try {
+                    $unreadCount = auth()->user()->notificationsSite()->whereNull('read_at')->count();
+                    $siteNotifs = auth()->user()->notificationsSite()->latest()->limit(8)->get();
+                } catch (\Throwable $e) {
+                    $unreadCount = 0; $siteNotifs = collect();
+                }
+            }
+          @endphp
+          @if($hasNotificationsApi)
+            <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">
+              <i class="fa-solid fa-bell bell-icon"></i>
+              @if($unreadCount)
+                <span class="badge">{{ $unreadCount }}</span>
+              @endif
+            </button>
+            <div id="notifDropdown" class="dropdown" hidden>
+              <div class="dropdown-header">
+                Notifications
+                <button class="close-btn" type="button" data-close="#notifDropdown">✖</button>
+              </div>
+              @if($siteNotifs->isEmpty())
+                <div class="muted text-sm">No notifications yet.</div>
+              @else
+                <ul class="notif-list">
+                  @foreach($siteNotifs as $n)
+                    <li class="notif-item">{{ $n->message ?? 'Notification' }}</li>
+                  @endforeach
+                </ul>
+              @endif
+            </div>
+          @endif
+        @endauth
       </div>
 
       <div class="dropdown-wrap user-area">

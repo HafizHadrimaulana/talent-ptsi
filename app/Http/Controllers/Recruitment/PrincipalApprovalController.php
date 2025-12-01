@@ -275,7 +275,11 @@ class PrincipalApprovalController extends Controller
             if (Schema::hasColumn($req->getTable(), 'status')) {
                 $req->update(['status' => 'approved']); // final: dasar proses rekrutmen/perpanjangan kontrak
             }
-            return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui.');
+            
+            // Generate ticket number saat status approved
+            $req->generateTicketNumber();
+            
+            return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui. Nomor Ticket: ' . $req->ticket_number);
         }
 
         $this->createPendingApproval($req, $stageIdx + 1);

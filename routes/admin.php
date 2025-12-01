@@ -138,6 +138,8 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         });
     });
 
+    
+
     // =========================
     // TRAINING
     // =========================
