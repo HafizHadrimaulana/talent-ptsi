@@ -821,75 +821,207 @@
         </div>
     @endcan
 
-    <div id="contractDetailModal" class="u-modal" hidden>
-        <div class="u-modal__card u-modal__card--lg">
+    {{-- DETAIL KONTRAK --}}
+    <div class="u-modal" id="contractDetailModal" hidden>
+        <div class="u-modal__backdrop" data-modal-close></div>
+        <div class="u-modal__dialog u-modal__dialog--lg u-card u-card--glass">
             <div class="u-modal__head">
-                <div class="u-flex u-items-center u-gap-md">
-                    <div class="u-avatar u-avatar--lg u-avatar--brand">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <div>
-                        <div class="u-title">Detail Kontrak</div>
-                        <div class="u-muted u-text-sm">
-                            Ringkasan informasi kontrak.
-                        </div>
-                    </div>
-                </div>
-                <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
-                    <i class="fas fa-times"></i>
-                </button>
+                <h3 class="u-modal__title">Detail Kontrak</h3>
+                <button type="button" class="u-modal__close" data-modal-close>&times;</button>
             </div>
-            <div class="u-modal__body u-p-md u-space-y-sm">
+
+            <div class="u-modal__body u-space-y-md">
                 <div class="u-grid-2 u-stack-mobile u-gap-md">
-                    <div>
-                        <div class="u-text-xxs u-muted">No. Kontrak</div>
-                        <div id="detailContractNo" class="u-text-sm u-font-semibold">-</div>
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Nomor Kontrak</div>
+                        <div class="u-text-sm u-font-semibold" id="detailContractNo">—</div>
                     </div>
-                    <div>
-                        <div class="u-text-xxs u-muted">Jenis Kontrak</div>
-                        <div id="detailContractType" class="u-text-sm">-</div>
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Jenis Kontrak</div>
+                        <div class="u-text-sm" id="detailContractType">—</div>
                     </div>
                 </div>
 
                 <div class="u-grid-2 u-stack-mobile u-gap-md">
-                    <div>
-                        <div class="u-text-xxs u-muted">Nama Pekerja / Kandidat</div>
-                        <div id="detailContractPerson" class="u-text-sm">-</div>
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Status</div>
+                        <div class="u-chip u-chip--soft" id="detailContractStatus">—</div>
                     </div>
-                    <div>
-                        <div class="u-text-xxs u-muted">Unit</div>
-                        <div id="detailContractUnit" class="u-text-sm">-</div>
-                    </div>
-                </div>
-
-                <div class="u-grid-2 u-stack-mobile u-gap-md">
-                    <div>
-                        <div class="u-text-xxs u-muted">Status</div>
-                        <div id="detailContractStatus" class="u-text-sm">-</div>
-                    </div>
-                    <div>
-                        <div class="u-text-xxs u-muted">Periode</div>
-                        <div id="detailContractPeriod" class="u-text-sm">-</div>
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Unit Kerja</div>
+                        <div class="u-text-sm" id="detailContractUnit">—</div>
                     </div>
                 </div>
 
                 <div class="u-grid-2 u-stack-mobile u-gap-md">
-                    <div>
-                        <div class="u-text-xxs u-muted">Nama Jabatan</div>
-                        <div id="detailContractPosition" class="u-text-sm">-</div>
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Periode Kontrak</div>
+                        <div class="u-text-sm" id="detailContractPeriod">—</div>
                     </div>
-                    <div>
-                        <div class="u-text-xxs u-muted">Catatan</div>
-                        <div id="detailContractRemarks" class="u-text-sm">-</div>
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Nama Pegawai / Kandidat</div>
+                        <div class="u-text-sm" id="detailContractPerson">—</div>
                     </div>
+                </div>
+
+                <div class="u-grid-2 u-stack-mobile u-gap-md">
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Nama Jabatan</div>
+                        <div class="u-text-sm" id="detailContractPosition">—</div>
+                    </div>
+                    <div class="u-space-y-xs">
+                        <div class="u-text-xs u-muted">Catatan</div>
+                        <div class="u-text-sm" id="detailContractRemarks">—</div>
+                    </div>
+                </div>
+
+                <div class="u-divider u-mt-md u-mb-xs"></div>
+
+                <div class="u-text-xs u-muted" id="detailFlowHint">
+                    {{-- diisi via JS dari data.flow_hint --}}
+                </div>
+                
+                {{-- Info Approval Status --}}
+                <div class="u-card u-card--border u-p-sm u-mt-md" id="approvalInfo" hidden>
+                    <div class="u-text-xs u-font-semibold u-mb-xs">Status Approval:</div>
+                    <div class="u-text-xs" id="approvalStatusText">-</div>
+                    <div class="u-text-xxs u-muted u-mt-xs" id="approvalNote">-</div>
                 </div>
             </div>
-            <div class="u-modal__foot">
-                <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+
+            <div class="u-modal__foot u-flex u-items-center u-justify-between u-gap-md">
+                <div class="u-text-xxs u-muted">
+                    Aksi berikut hanya muncul bagi pengguna yang memiliki hak akses pada tahap ini
+                    (SDM Unit, Kepala Unit, DHC, atau Dir SDM).
+                </div>
+
+                <div class="u-flex u-gap-xs">
+                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>
+                        Tutup
+                    </button>
+
+                    {{-- Tombol Reject: hanya untuk approver di tahap review --}}
+                    <button type="button"
+                            class="u-btn u-btn--danger u-btn--sm"
+                            id="detailRejectBtn"
+                            hidden>
+                        <i class="fas fa-times u-mr-xxs"></i> Reject
+                    </button>
+
+                    {{-- Tombol Approve + E-Sign untuk approver internal --}}
+                    <button type="button"
+                            class="u-btn u-btn--brand u-btn--sm u-hover-lift"
+                            id="detailApproveBtn"
+                            hidden>
+                        <i class="fas fa-check u-mr-xxs"></i> Approve & e-Sign
+                    </button>
+
+                    {{-- Tombol e-Sign untuk kandidat --}}
+                    <button type="button"
+                            class="u-btn u-btn--primary u-btn--sm u-hover-lift"
+                            id="detailSignBtn"
+                            hidden>
+                        <i class="fas fa-pen-nib u-mr-xxs"></i> e-Sign Kontrak
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
+    {{-- MODAL REJECT --}}
+    <div class="u-modal" id="rejectContractModal" hidden>
+        <div class="u-modal__backdrop" data-modal-close></div>
+        <div class="u-modal__dialog u-modal__dialog--md u-card u-card--glass">
+            <div class="u-modal__head">
+                <h3 class="u-modal__title">Reject Kontrak</h3>
+                <button type="button" class="u-modal__close" data-modal-close>&times;</button>
+            </div>
+
+            <form id="rejectContractForm" class="u-modal__body u-space-y-md">
+                @csrf
+                <p class="u-text-xs u-muted">
+                    Kontrak akan dikembalikan ke SDM Unit dengan status <strong>DRAFT</strong>.
+                    Berikan catatan alasan reject (opsional).
+                </p>
+
+                <div class="u-space-y-sm">
+                    <label class="u-text-xs u-font-medium d-block">Catatan Reject</label>
+                    <textarea name="note" class="u-input" rows="3" 
+                        placeholder="Alasan reject / revisi yang diperlukan..."></textarea>
+                </div>
+
+                <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+                    <button type="submit" class="u-btn u-btn--danger u-hover-lift">
+                        <i class="fas fa-times u-mr-xxs"></i> Reject ke Draft
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- MODAL E-SIGN (untuk APPROVE + E-SIGN) --}}
+    <div class="u-modal" id="signContractModal" hidden>
+        <div class="u-modal__backdrop" data-modal-close></div>
+        <div class="u-modal__dialog u-modal__dialog--md u-card u-card--glass">
+            <div class="u-modal__head">
+                <h3 class="u-modal__title">
+                    <span id="signModalTitle">Tanda Tangan Digital</span>
+                </h3>
+                <button type="button" class="u-modal__close" data-modal-close>&times;</button>
+            </div>
+
+            <form id="signContractForm" class="u-modal__body u-space-y-md">
+                @csrf
+                <input type="hidden" name="signature_role" id="signRoleInput" value="HEAD">
+                <input type="hidden" name="signature_image" id="signImageInput">
+                <input type="hidden" name="geo_lat" id="signGeoLat">
+                <input type="hidden" name="geo_lng" id="signGeoLng">
+                <input type="hidden" name="geo_accuracy" id="signGeoAcc">
+                <input type="hidden" name="camera_image" id="signCamInput">
+
+                <p class="u-text-xs u-muted" id="signModalDescription">
+                    Silakan tanda tangan pada kotak di bawah ini. Sistem dapat menyimpan
+                    lokasi (geo-location) dan foto (kamera) sesuai konfigurasi kontrak.
+                </p>
+
+                {{-- Catatan (optional) --}}
+                <div class="u-space-y-sm" id="signNoteSection">
+                    <label class="u-text-xs u-font-medium d-block">Catatan (opsional)</label>
+                    <textarea name="note" class="u-input" rows="2" 
+                        placeholder="Catatan approval / persetujuan..."></textarea>
+                </div>
+
+                <div class="u-card u-card--border u-p-sm u-flex u-flex-col u-gap-sm">
+                    <canvas id="signCanvas"
+                            style="width:100%;height:180px;border:1px dashed rgba(0,0,0,0.15);border-radius:10px;background:#fff;"></canvas>
+                    <div class="u-flex u-justify-between u-items-center u-text-xxs u-muted">
+                        <button type="button" class="u-btn u-btn--ghost u-btn--xs" id="signClearBtn">
+                            Bersihkan
+                        </button>
+                        <span id="signStatusHint">Belum ada coretan.</span>
+                    </div>
+                </div>
+
+                {{-- Info verifikasi requirements --}}
+                <div class="u-card u-card--soft u-p-xs u-mt-sm" id="verificationRequirements" hidden>
+                    <div class="u-text-xxs u-font-semibold">Verifikasi yang diperlukan:</div>
+                    <div class="u-text-xxs" id="reqCamera">• Kamera: Tidak diperlukan</div>
+                    <div class="u-text-xxs" id="reqGeo">• Geo-location: Tidak diperlukan</div>
+                    <div class="u-text-xxs" id="reqDraw">• Tanda tangan digital: Tidak diperlukan</div>
+                </div>
+
+                <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+                    <button type="submit" class="u-btn u-btn--brand u-hover-lift" id="signSubmitBtn">
+                        <i class="fas fa-pen-nib u-mr-xxs"></i> Simpan Tanda Tangan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- EDIT MODAL (sama seperti sebelumnya) --}}
     <div id="editContractModal" class="u-modal" hidden>
         <div class="u-modal__card u-modal__card--xl">
             <div class="u-modal__head">
@@ -1769,12 +1901,10 @@
                 },
 
                 bindFormSubmit() {
-                    // Fix form submission to properly handle submit action
                     document.querySelectorAll('form').forEach(form => {
                         form.addEventListener('submit', function(e) {
                             const submitBtn = e.submitter;
                             if (submitBtn && submitBtn.name === 'submit_action') {
-                                // Ensure the value is properly set
                                 this.submit_action = submitBtn.value;
                             }
                         });
@@ -1783,33 +1913,138 @@
 
                 bindDetailAndEdit() {
                     const detailModal = document.getElementById('contractDetailModal');
-                    const editModal = document.getElementById('editContractModal');
-                    const editForm = document.getElementById('editContractForm');
+                    const editModal   = document.getElementById('editContractModal');
+                    const editForm    = document.getElementById('editContractForm');
 
+                    // Modal baru
+                    const rejectModal = document.getElementById('rejectContractModal');
+                    const rejectForm  = document.getElementById('rejectContractForm');
+                    const signModal   = document.getElementById('signContractModal');
+                    const signForm    = document.getElementById('signContractForm');
+                    
+                    // Tombol di detail modal
+                    const detailApproveBtn = document.getElementById('detailApproveBtn');
+                    const detailRejectBtn  = document.getElementById('detailRejectBtn');
+                    const detailSignBtn    = document.getElementById('detailSignBtn');
+                    const detailFlowHint   = document.getElementById('detailFlowHint');
+                    
+                    // Canvas dan elemen sign
+                    const signCanvas     = document.getElementById('signCanvas');
+                    const signClearBtn   = document.getElementById('signClearBtn');
+                    const signImageInput = document.getElementById('signImageInput');
+                    const signStatusHint = document.getElementById('signStatusHint');
+                    const signModalTitle = document.getElementById('signModalTitle');
+                    const signModalDesc  = document.getElementById('signModalDescription');
+                    const signNoteSection = document.getElementById('signNoteSection');
+                    const verificationRequirements = document.getElementById('verificationRequirements');
+                    const signSubmitBtn = document.getElementById('signSubmitBtn');
+
+                    // Edit form elements
                     const editApplicantWrapper = document.getElementById('editApplicantWrapper');
-                    const editExistingWrapper = document.getElementById('editExistingWrapper');
-                    const editApplicantSelect = document.getElementById('editApplicantSelect');
-                    const editSourceSelect = document.getElementById('editSourceContractSelect');
+                    const editExistingWrapper  = document.getElementById('editExistingWrapper');
+                    const editApplicantSelect  = document.getElementById('editApplicantSelect');
+                    const editSourceSelect     = document.getElementById('editSourceContractSelect');
+
+                    let currentApproveUrl = null;
+                    let currentSignUrl    = null;
+                    let currentRejectUrl  = null;
+                    let currentContractId = null;
+                    let currentContractData = null;
+                    let signCtx           = null;
+                    let signDrawing       = false;
+                    let isApproverSign    = false;
 
                     function updateEditFormByType(ct) {
                         const type = ct || '';
-                        const isNewType = (type === 'SPK' || type === 'PKWT_BARU');
+                        const isNewType      = (type === 'SPK' || type === 'PKWT_BARU');
                         const isExistingType = (type === 'PKWT_PERPANJANGAN' || type === 'PB_PENGAKHIRAN');
 
                         if (!editApplicantWrapper || !editExistingWrapper) return;
 
                         if (isNewType) {
                             editApplicantWrapper.hidden = false;
-                            editExistingWrapper.hidden = true;
+                            editExistingWrapper.hidden  = true;
                         } else if (isExistingType) {
                             editApplicantWrapper.hidden = true;
-                            editExistingWrapper.hidden = false;
+                            editExistingWrapper.hidden  = false;
                         } else {
                             editApplicantWrapper.hidden = false;
-                            editExistingWrapper.hidden = true;
+                            editExistingWrapper.hidden  = true;
                         }
                     }
 
+                    function initSignCanvas() {
+                        if (!signCanvas) return;
+                        if (!signCtx) {
+                            signCanvas.width  = signCanvas.offsetWidth || 600;
+                            signCanvas.height = 180;
+                            signCtx = signCanvas.getContext('2d');
+                            signCtx.lineWidth   = 2;
+                            signCtx.lineCap     = 'round';
+                            signCtx.strokeStyle = '#222';
+                            signCtx.fillStyle = '#222';
+                        }
+
+                        function getPos(e) {
+                            const rect = signCanvas.getBoundingClientRect();
+                            const evt  = e.touches ? e.touches[0] : e;
+                            return {
+                                x: evt.clientX - rect.left,
+                                y: evt.clientY - rect.top,
+                            };
+                        }
+
+                        function startDraw(e) {
+                            e.preventDefault();
+                            signDrawing = true;
+                            const p = getPos(e);
+                            signCtx.beginPath();
+                            signCtx.moveTo(p.x, p.y);
+                            if (signStatusHint) signStatusHint.textContent = 'Sedang menggambar...';
+                            signCanvas.style.cursor = 'crosshair';
+                        }
+
+                        function moveDraw(e) {
+                            if (!signDrawing) return;
+                            e.preventDefault();
+                            const p = getPos(e);
+                            signCtx.lineTo(p.x, p.y);
+                            signCtx.stroke();
+                        }
+
+                        function endDraw(e) {
+                            if (!signDrawing) return;
+                            e.preventDefault();
+                            signDrawing = false;
+                            if (signStatusHint) signStatusHint.textContent = 'Tanda tangan sudah terisi.';
+                            signCanvas.style.cursor = 'default';
+                        }
+
+                        // bind sekali saja
+                        if (!signCanvas._boundEvents) {
+                            signCanvas.addEventListener('mousedown', startDraw);
+                            signCanvas.addEventListener('mousemove', moveDraw);
+                            signCanvas.addEventListener('mouseup', endDraw);
+                            signCanvas.addEventListener('mouseleave', endDraw);
+
+                            signCanvas.addEventListener('touchstart', startDraw, { passive: false });
+                            signCanvas.addEventListener('touchmove', moveDraw, { passive: false });
+                            signCanvas.addEventListener('touchend', endDraw, { passive: false });
+
+                            signCanvas._boundEvents = true;
+                        }
+                    }
+
+                    if (signClearBtn && signCanvas) {
+                        signClearBtn.addEventListener('click', function () {
+                            if (!signCtx) initSignCanvas();
+                            if (!signCtx) return;
+                            signCtx.clearRect(0, 0, signCanvas.width, signCanvas.height);
+                            if (signStatusHint) signStatusHint.textContent = 'Belum ada coretan.';
+                        });
+                    }
+
+                    // Handle detail button click
                     document.addEventListener('click', e => {
                         const detailBtn = e.target.closest && e.target.closest('[data-contract-detail]');
                         if (detailBtn) {
@@ -1828,50 +2063,96 @@
                                     const unit = data.unit || {};
 
                                     const start = data.start_date || null;
-                                    const end = data.end_date || null;
+                                    const end   = data.end_date || null;
                                     let periode = '-';
                                     if (start && end) {
                                         periode = start + ' s/d ' + end;
                                     }
 
                                     const status = data.status || '-';
-                                    let statusLabel = status.replace(/_/g, ' ');
+                                    let statusLabel = (status || '').replace(/_/g, ' ');
                                     statusLabel = statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1);
 
                                     const personName =
                                         data.person_name ||
                                         data.employee_name ||
-                                        data.full_name ||
-                                        data.applicant_name ||
+                                        data.display_name ||
                                         '-';
 
-                                    const dNo = document.getElementById('detailContractNo');
-                                    const dType = document.getElementById('detailContractType');
-                                    const dStatus = document.getElementById('detailContractStatus');
-                                    const dUnit = document.getElementById('detailContractUnit');
+                                    const dNo      = document.getElementById('detailContractNo');
+                                    const dType    = document.getElementById('detailContractType');
+                                    const dStatus  = document.getElementById('detailContractStatus');
+                                    const dUnit    = document.getElementById('detailContractUnit');
                                     const dPeriode = document.getElementById('detailContractPeriod');
-                                    const dPosition = document.getElementById('detailContractPosition');
+                                    const dPosition= document.getElementById('detailContractPosition');
                                     const dRemarks = document.getElementById('detailContractRemarks');
-                                    const dPerson = document.getElementById('detailContractPerson');
+                                    const dPerson  = document.getElementById('detailContractPerson');
 
-                                    if (dNo) dNo.textContent = data.contract_no || '—';
-                                    if (dType) dType.textContent = data.contract_type || '—';
-                                    if (dStatus) dStatus.textContent = statusLabel;
-                                    if (dUnit) dUnit.textContent = unit.name || '—';
+                                    if (dNo)      dNo.textContent      = data.contract_no || '—';
+                                    if (dType)    dType.textContent    = data.contract_type || '—';
+                                    if (dStatus)  dStatus.textContent  = statusLabel;
+                                    if (dUnit)    dUnit.textContent    = (unit && unit.name) || '—';
                                     if (dPeriode) dPeriode.textContent = periode;
-                                    if (dPosition) dPosition.textContent = data.position_name || '—';
+                                    if (dPosition)dPosition.textContent= data.position_name || '—';
                                     if (dRemarks) dRemarks.textContent = data.remarks || '-';
-                                    if (dPerson) dPerson.textContent = personName;
+                                    if (dPerson)  dPerson.textContent  = personName;
+
+                                    const flowHint = data.flow_hint || '';
+                                    if (detailFlowHint) detailFlowHint.textContent = flowHint;
+
+                                    // Approval info
+                                    const approvalInfo = document.getElementById('approvalInfo');
+                                    const approvalStatusText = document.getElementById('approvalStatusText');
+                                    const approvalNote = document.getElementById('approvalNote');
+                                    
+                                    if (data.approval) {
+                                        const statusMap = {
+                                            'pending': 'Menunggu',
+                                            'approved': 'Disetujui',
+                                            'rejected': 'Ditolak',
+                                            'completed': 'Selesai'
+                                        };
+                                        approvalStatusText.textContent = statusMap[data.approval.status] || data.approval.status;
+                                        approvalNote.textContent = data.approval.note || '-';
+                                        approvalInfo.hidden = false;
+                                    } else {
+                                        approvalInfo.hidden = true;
+                                    }
+
+                                    // simpan data
+                                    currentContractId = data.id || null;
+                                    currentContractData = data;
+                                    currentApproveUrl = data.approve_url || null;
+                                    currentSignUrl    = data.sign_url || null;
+                                    currentRejectUrl  = data.reject_url || null;
+
+                                    // Tentukan mode tanda tangan
+                                    isApproverSign = data.can_approve && data.status === 'review';
+                                    
+                                    // toggle tombol berdasarkan hak akses
+                                    if (detailApproveBtn) detailApproveBtn.hidden = !data.can_approve;
+                                    if (detailRejectBtn)  detailRejectBtn.hidden  = !data.can_approve;
+                                    if (detailSignBtn)    detailSignBtn.hidden    = !data.can_sign;
+
+                                    // Update teks tombol sign berdasarkan role
+                                    if (detailSignBtn && data.can_sign) {
+                                        if (data.status === 'approved') {
+                                            detailSignBtn.innerHTML = '<i class="fas fa-pen-nib u-mr-xxs"></i> e-Sign sebagai Kandidat';
+                                        }
+                                    }
 
                                     app.openModal(detailModal);
                                 })
-                                .catch(() => { });
+                                .catch(() => {
+                                    alert('Gagal memuat detail kontrak.');
+                                });
+
                             return;
                         }
 
                         const editBtn = e.target.closest && e.target.closest('[data-contract-edit]');
                         if (editBtn) {
-                            const url = editBtn.getAttribute('data-show-url');
+                            const url       = editBtn.getAttribute('data-show-url');
                             const updateUrl = editBtn.getAttribute('data-update-url');
                             if (!url || !updateUrl || !editForm) return;
 
@@ -1886,50 +2167,46 @@
                                     const data = resp.data || {};
                                     const unit = data.unit || {};
                                     let metaRaw = data.remuneration || data.meta || data.remuneration_json || {};
-                                    let meta = {};
+                                    let meta    = {};
 
                                     if (typeof metaRaw === 'string') {
-                                        try {
-                                            meta = JSON.parse(metaRaw);
-                                        } catch (e) {
-                                            meta = {};
-                                        }
+                                        try { meta = JSON.parse(metaRaw); } catch (e) { meta = {}; }
                                     } else if (metaRaw && typeof metaRaw === 'object') {
                                         meta = metaRaw;
                                     }
 
-                                    const idInput = document.getElementById('editContractId');
-                                    const typeSelect = document.getElementById('editContractTypeSelect');
-                                    const unitSelect = document.getElementById('editContractUnitSelect');
-                                    const unitHidden = document.getElementById('editContractUnitHidden');
+                                    const idInput          = document.getElementById('editContractId');
+                                    const typeSelect       = document.getElementById('editContractTypeSelect');
+                                    const unitSelect       = document.getElementById('editContractUnitSelect');
+                                    const unitHidden       = document.getElementById('editContractUnitHidden');
                                     const employmentSelect = document.getElementById('editEmploymentTypeSelect');
-                                    const positionInput = document.getElementById('editPositionInput');
-                                    const noteInput = document.getElementById('editNoteInput');
-                                    const startInput = document.getElementById('editStartDateInput');
-                                    const endInput = document.getElementById('editEndDateInput');
+                                    const positionInput    = document.getElementById('editPositionInput');
+                                    const noteInput        = document.getElementById('editNoteInput');
+                                    const startInput       = document.getElementById('editStartDateInput');
+                                    const endInput         = document.getElementById('editEndDateInput');
 
-                                    const salaryInput = document.getElementById('editSalaryAmountInput');
-                                    const salaryWordsInput = document.getElementById('edit_salary_amount_words');
-                                    const lunchInput = document.getElementById('editLunchDailyInput');
-                                    const lunchWordsInput = document.getElementById('edit_lunch_allowance_words');
+                                    const salaryInput           = document.getElementById('editSalaryAmountInput');
+                                    const salaryWordsInput      = document.getElementById('edit_salary_amount_words');
+                                    const lunchInput            = document.getElementById('editLunchDailyInput');
+                                    const lunchWordsInput       = document.getElementById('edit_lunch_allowance_words');
                                     const allowanceSpecialInput = document.getElementById('editAllowanceSpecialInput');
                                     const allowanceSpecialWords = document.getElementById('edit_allowance_special_words');
-                                    const allowancePositionInput = document.getElementById('editAllowancePositionInput');
-                                    const allowancePositionWords = document.getElementById('edit_allowance_position_words');
-                                    const allowanceCommInput = document.getElementById('editAllowanceCommInput');
-                                    const allowanceCommWords = document.getElementById('edit_allowance_communication_words');
-                                    const allowanceOtherInput = document.getElementById('editAllowanceOtherInput');
-                                    const allowanceOtherWords = document.getElementById('edit_allowance_other_words');
+                                    const allowancePositionInput= document.getElementById('editAllowancePositionInput');
+                                    const allowancePositionWords= document.getElementById('edit_allowance_position_words');
+                                    const allowanceCommInput    = document.getElementById('editAllowanceCommInput');
+                                    const allowanceCommWords    = document.getElementById('edit_allowance_communication_words');
+                                    const allowanceOtherInput   = document.getElementById('editAllowanceOtherInput');
+                                    const allowanceOtherWords   = document.getElementById('edit_allowance_other_words');
 
                                     const otherBenefitsDesc = document.getElementById('editOtherBenefitsDesc');
-                                    const allowOtherDesc = document.getElementById('editAllowanceOtherDesc');
+                                    const allowOtherDesc    = document.getElementById('editAllowanceOtherDesc');
 
                                     const editRequiresCamera = document.getElementById('editRequiresCamera');
-                                    const editRequiresGeo = document.getElementById('editRequiresGeolocation');
-                                    const editRequiresDraw = document.getElementById('editRequiresDraw');
+                                    const editRequiresGeo    = document.getElementById('editRequiresGeolocation');
+                                    const editRequiresDraw   = document.getElementById('editRequiresDraw');
 
                                     if (editForm) editForm.setAttribute('action', updateUrl);
-                                    if (idInput) idInput.value = data.id || '';
+                                    if (idInput)  idInput.value = data.id || '';
 
                                     if (typeSelect) {
                                         typeSelect.value = data.contract_type || '';
@@ -1944,7 +2221,9 @@
                                     }
 
                                     if (unitSelect) unitSelect.value = unit.id || '';
-                                    if (unitHidden && !unitSelect) unitHidden.value = unit.id || unitHidden.value || '';
+                                    if (unitHidden && !unitSelect) {
+                                        unitHidden.value = unit.id || unitHidden.value || '';
+                                    }
 
                                     if (employmentSelect) employmentSelect.value = data.employment_type || '';
 
@@ -1956,33 +2235,33 @@
                                     }
 
                                     if (positionInput) positionInput.value = data.position_name || '';
-                                    if (noteInput) noteInput.value = data.remarks || '';
-                                    if (startInput) startInput.value = data.start_date || '';
-                                    if (endInput) endInput.value = data.end_date || '';
+                                    if (noteInput)     noteInput.value     = data.remarks || '';
+                                    if (startInput)    startInput.value    = data.start_date || '';
+                                    if (endInput)      endInput.value      = data.end_date || '';
 
                                     const requiresCamera = ('requires_camera' in data) ? !!data.requires_camera : true;
-                                    const requiresGeo = ('requires_geolocation' in data) ? !!data.requires_geolocation : true;
-                                    const requiresDraw = ('requires_draw_signature' in data) ? !!data.requires_draw_signature : true;
+                                    const requiresGeo    = ('requires_geo' in data) ? !!data.requires_geo : true;
+                                    const requiresDraw   = ('requires_draw' in data) ? !!data.requires_draw : true;
 
                                     if (editRequiresCamera) editRequiresCamera.checked = requiresCamera;
-                                    if (editRequiresGeo) editRequiresGeo.checked = requiresGeo;
-                                    if (editRequiresDraw) editRequiresDraw.checked = requiresDraw;
+                                    if (editRequiresGeo)    editRequiresGeo.checked    = requiresGeo;
+                                    if (editRequiresDraw)   editRequiresDraw.checked   = requiresDraw;
 
-                                    if (salaryInput) salaryInput.value = meta.salary_amount || '';
-                                    if (salaryWordsInput) salaryWordsInput.value = meta.salary_amount_words || '';
-                                    if (lunchInput) lunchInput.value = meta.lunch_allowance_daily || '';
-                                    if (lunchWordsInput) lunchWordsInput.value = meta.lunch_allowance_words || '';
+                                    if (salaryInput)           salaryInput.value           = meta.salary_amount || '';
+                                    if (salaryWordsInput)      salaryWordsInput.value      = meta.salary_amount_words || '';
+                                    if (lunchInput)            lunchInput.value            = meta.lunch_allowance_daily || '';
+                                    if (lunchWordsInput)       lunchWordsInput.value       = meta.lunch_allowance_words || '';
                                     if (allowanceSpecialInput) allowanceSpecialInput.value = meta.allowance_special_amount || '';
                                     if (allowanceSpecialWords) allowanceSpecialWords.value = meta.allowance_special_words || '';
-                                    if (allowancePositionInput) allowancePositionInput.value = meta.allowance_position_amount || '';
-                                    if (allowancePositionWords) allowancePositionWords.value = meta.allowance_position_words || '';
-                                    if (allowanceCommInput) allowanceCommInput.value = meta.allowance_communication_amount || '';
-                                    if (allowanceCommWords) allowanceCommWords.value = meta.allowance_communication_words || '';
-                                    if (allowanceOtherInput) allowanceOtherInput.value = meta.allowance_other_amount || '';
-                                    if (allowanceOtherWords) allowanceOtherWords.value = meta.allowance_other_words || '';
+                                    if (allowancePositionInput)allowancePositionInput.value= meta.allowance_position_amount || '';
+                                    if (allowancePositionWords)allowancePositionWords.value= meta.allowance_position_words || '';
+                                    if (allowanceCommInput)    allowanceCommInput.value    = meta.allowance_communication_amount || '';
+                                    if (allowanceCommWords)    allowanceCommWords.value    = meta.allowance_communication_words || '';
+                                    if (allowanceOtherInput)   allowanceOtherInput.value   = meta.allowance_other_amount || '';
+                                    if (allowanceOtherWords)   allowanceOtherWords.value   = meta.allowance_other_words || '';
 
                                     if (otherBenefitsDesc) otherBenefitsDesc.value = meta.other_benefits_desc || '';
-                                    if (allowOtherDesc) allowOtherDesc.value = meta.allowance_other_desc || '';
+                                    if (allowOtherDesc)    allowOtherDesc.value    = meta.allowance_other_desc || '';
 
                                     [
                                         salaryInput,
@@ -2002,9 +2281,260 @@
                                     app.bindTerbilangAutoFill();
                                     app.openModal(editModal);
                                 })
-                                .catch(() => { });
+                                .catch(() => {});
                         }
                     });
+
+                    // Tombol Reject
+                    if (detailRejectBtn) {
+                        detailRejectBtn.addEventListener('click', function () {
+                            if (!currentRejectUrl) {
+                                alert('URL reject tidak tersedia.');
+                                return;
+                            }
+                            app.openModal(rejectModal);
+                        });
+                    }
+
+                    // Tombol Approve (sekarang include e-sign)
+                    if (detailApproveBtn) {
+                        detailApproveBtn.addEventListener('click', function () {
+                            if (!currentApproveUrl) {
+                                alert('URL approve tidak tersedia.');
+                                return;
+                            }
+                            
+                            // Setup modal untuk approver
+                            isApproverSign = true;
+                            signModalTitle.textContent = 'Approve & e-Sign Kontrak';
+                            signModalDesc.textContent = 'Sebagai Kepala Unit, silakan tanda tangan untuk menyetujui kontrak ini.';
+                            signNoteSection.hidden = false;
+                            
+                            // Setup verifikasi requirements
+                            if (currentContractData && verificationRequirements) {
+                                const reqCamera = document.getElementById('reqCamera');
+                                const reqGeo = document.getElementById('reqGeo');
+                                const reqDraw = document.getElementById('reqDraw');
+                                
+                                if (currentContractData.requires_camera) {
+                                    reqCamera.textContent = '• Kamera: Diperlukan (foto akan diambil)';
+                                    reqCamera.style.color = 'var(--color-brand)';
+                                }
+                                if (currentContractData.requires_geo) {
+                                    reqGeo.textContent = '• Geo-location: Diperlukan';
+                                    reqGeo.style.color = 'var(--color-brand)';
+                                }
+                                if (currentContractData.requires_draw) {
+                                    reqDraw.textContent = '• Tanda tangan digital: Diperlukan';
+                                    reqDraw.style.color = 'var(--color-brand)';
+                                }
+                                verificationRequirements.hidden = false;
+                            }
+                            
+                            // Setup form untuk approver
+                            signForm.setAttribute('action', currentApproveUrl);
+                            signForm.setAttribute('method', 'POST');
+                            
+                            // Reset canvas
+                            initSignCanvas();
+                            if (signCtx && signCanvas) {
+                                signCtx.clearRect(0, 0, signCanvas.width, signCanvas.height);
+                            }
+                            if (signStatusHint) signStatusHint.textContent = 'Belum ada coretan.';
+                            
+                            app.openModal(signModal);
+                        });
+                    }
+
+                    // Tombol E-Sign untuk kandidat
+                    if (detailSignBtn) {
+                        detailSignBtn.addEventListener('click', function () {
+                            if (!currentSignUrl) {
+                                alert('URL e-sign tidak tersedia.');
+                                return;
+                            }
+                            
+                            // Setup modal untuk kandidat
+                            isApproverSign = false;
+                            signModalTitle.textContent = 'e-Sign Kontrak sebagai Kandidat';
+                            signModalDesc.textContent = 'Sebagai kandidat/pegawai, silakan tanda tangan untuk menyetujui kontrak ini.';
+                            signNoteSection.hidden = false;
+                            
+                            // Setup verifikasi requirements
+                            if (currentContractData && verificationRequirements) {
+                                const reqCamera = document.getElementById('reqCamera');
+                                const reqGeo = document.getElementById('reqGeo');
+                                const reqDraw = document.getElementById('reqDraw');
+                                
+                                if (currentContractData.requires_camera) {
+                                    reqCamera.textContent = '• Kamera: Diperlukan (foto akan diambil)';
+                                    reqCamera.style.color = 'var(--color-brand)';
+                                }
+                                if (currentContractData.requires_geo) {
+                                    reqGeo.textContent = '• Geo-location: Diperlukan';
+                                    reqGeo.style.color = 'var(--color-brand)';
+                                }
+                                if (currentContractData.requires_draw) {
+                                    reqDraw.textContent = '• Tanda tangan digital: Diperlukan';
+                                    reqDraw.style.color = 'var(--color-brand)';
+                                }
+                                verificationRequirements.hidden = false;
+                            }
+                            
+                            // Setup form untuk kandidat
+                            signForm.setAttribute('action', currentSignUrl);
+                            signForm.setAttribute('method', 'POST');
+                            
+                            // Reset canvas
+                            initSignCanvas();
+                            if (signCtx && signCanvas) {
+                                signCtx.clearRect(0, 0, signCanvas.width, signCanvas.height);
+                            }
+                            if (signStatusHint) signStatusHint.textContent = 'Belum ada coretan.';
+                            
+                            app.openModal(signModal);
+                        });
+                    }
+
+                    // Form Reject
+                    if (rejectForm) {
+                        rejectForm.addEventListener('submit', function (e) {
+                            e.preventDefault();
+                            if (!currentRejectUrl) return;
+                            
+                            if (!confirm('Reject kontrak ini dan kembalikan ke SDM Unit (status: draft)?')) return;
+
+                            const formData = new FormData(rejectForm);
+                            
+                            fetch(currentRejectUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                                body: formData,
+                            })
+                                .then(r => {
+                                    if (!r.ok) throw new Error('Network response was not ok');
+                                    return r.json();
+                                })
+                                .then(data => {
+                                    if (data.ok) {
+                                        app.closeModal(rejectModal);
+                                        app.closeModal(detailModal);
+                                        window.toastOk('Berhasil', data.message || 'Kontrak berhasil direject.');
+                                        setTimeout(() => {
+                                            window.location.reload();
+                                        }, 1500);
+                                    } else {
+                                        throw new Error(data.message || 'Gagal reject kontrak.');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('Gagal reject kontrak: ' + error.message);
+                                });
+                        });
+                    }
+
+                    // Form Sign (untuk approve dan candidate sign)
+                    if (signForm) {
+                        signForm.addEventListener('submit', function (e) {
+                            e.preventDefault();
+                            
+                            const url = signForm.getAttribute('action');
+                            if (!url) return;
+                            
+                            // Validasi tanda tangan
+                            if (!signCtx) initSignCanvas();
+                            const dataUrl = signCanvas.toDataURL('image/png');
+                            
+                            // Cek apakah canvas kosong
+                            const isEmpty = this.isCanvasEmpty(signCanvas);
+                            if (isEmpty && currentContractData.requires_draw) {
+                                alert('Harap berikan tanda tangan digital terlebih dahulu.');
+                                return;
+                            }
+                            
+                            if (signImageInput) signImageInput.value = dataUrl;
+                            
+                            // Ambil geolocation jika diperlukan
+                            if (navigator.geolocation && currentContractData.requires_geo) {
+                                navigator.geolocation.getCurrentPosition(function (pos) {
+                                    const latInput = document.getElementById('signGeoLat');
+                                    const lngInput = document.getElementById('signGeoLng');
+                                    const accInput = document.getElementById('signGeoAcc');
+                                    if (latInput) latInput.value = pos.coords.latitude;
+                                    if (lngInput) lngInput.value = pos.coords.longitude;
+                                    if (accInput) accInput.value = pos.coords.accuracy;
+                                    
+                                    submitSignForm();
+                                }, function (error) {
+                                    console.warn('Geolocation error:', error);
+                                    if (confirm('Gagal mendapatkan lokasi. Lanjutkan tanpa geolocation?')) {
+                                        submitSignForm();
+                                    }
+                                });
+                            } else {
+                                submitSignForm();
+                            }
+                            
+                            function submitSignForm() {
+                                const formData = new FormData(signForm);
+                                
+                                // Disable submit button
+                                if (signSubmitBtn) {
+                                    signSubmitBtn.disabled = true;
+                                    signSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin u-mr-xxs"></i> Menyimpan...';
+                                }
+                                
+                                fetch(url, {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    },
+                                    body: formData,
+                                })
+                                    .then(r => {
+                                        if (!r.ok) throw new Error('Network response was not ok');
+                                        return r.json();
+                                    })
+                                    .then(data => {
+                                        if (data.ok) {
+                                            app.closeModal(signModal);
+                                            app.closeModal(detailModal);
+                                            window.toastOk('Berhasil', data.message || 'Tanda tangan berhasil disimpan.');
+                                            setTimeout(() => {
+                                                window.location.reload();
+                                            }, 1500);
+                                        } else {
+                                            throw new Error(data.message || 'Gagal menyimpan tanda tangan.');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        alert('Gagal menyimpan tanda tangan: ' + error.message);
+                                    })
+                                    .finally(() => {
+                                        if (signSubmitBtn) {
+                                            signSubmitBtn.disabled = false;
+                                            signSubmitBtn.innerHTML = '<i class="fas fa-pen-nib u-mr-xxs"></i> Simpan Tanda Tangan';
+                                        }
+                                    });
+                            }
+                        });
+                    }
+                },
+                
+                // Helper untuk cek canvas kosong
+                isCanvasEmpty(canvas) {
+                    const ctx = canvas.getContext('2d');
+                    const pixelBuffer = new Uint32Array(
+                        ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer
+                    );
+                    return !pixelBuffer.some(color => color !== 0);
                 },
             };
 

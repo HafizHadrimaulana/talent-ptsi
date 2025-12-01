@@ -20,7 +20,7 @@ return [
     */
     'contract_statuses' => [
         'draft' => 'Draft',
-        'review' => 'Review SDM Unit',
+        'review' => 'Review',
         'approved' => 'Disetujui',
         'signed' => 'Ditandatangani',
     ],
@@ -208,9 +208,6 @@ return [
         // Mapping kode-kode unit / directorate ke inisial kepala (bisa ditambah sewaktu-waktu)
         'head_codes' => [
             'default' => 'DN',
-            'DSDM' => 'DN', // contoh: Direktorat SDM, diisi inisial Kepala/Direktur
-            // 'DBS1' => 'EP',
-            // 'DBS2' => 'XX',
         ],
 
         'head_role_names' => ['Kepala Unit'],
