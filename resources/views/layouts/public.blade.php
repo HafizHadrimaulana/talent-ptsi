@@ -671,9 +671,10 @@
     </div>
 </div>
 
-<!-- LOGIN Modal Background -->
+<!-- LOGIN Modal -->
 <div id="loginModal"
-     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50
+            opacity-0 pointer-events-none transition-opacity duration-300">
 
     <!-- Modal Card -->
     <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative">
@@ -685,47 +686,89 @@
             Login Akun
         </h2>
 
-        <!-- Email -->
-        <div class="mb-3">
-            <label class="block font-medium text-gray-700 mb-1">Email</label>
-            <input type="email"
-                   placeholder="Masukkan email..."
-                   id="loginEmail"
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2
-                          focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                   required>
-        </div>
+        <!-- Laravel Login Form -->
+        <form method="POST" action="{{ route('login.store') }}" class="space-y-5.5">
+            @csrf
 
-        <!-- Password -->
-        <div class="mb-3">
-            <label class="block font-medium text-gray-700 mb-1">Password</label>
-            <input type="password"
-                   placeholder="Masukkan password..."
-                   id="loginPassword"
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2
-                          focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                   required>
-        </div>
+            <!-- Email / Username -->
+            <div class="flex flex-col gap-3">
+                <input
+                    type="text"
+                    name="login"
+                    value="{{ old('login') }}"
+                    placeholder="email@domain.com / EMP12345"
+                    autocomplete="username"
+                    class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm
+                           focus:border-brand focus:ring-2 focus:ring-brand" />
 
-        <!-- Remember Me -->
-        <div class="flex items-center gap-2 mt-2">
-            <input type="checkbox" id="rememberMe">
-            <label for="rememberMe" class="block font-medium text-gray-700 mb-1">
-                Remember Me
-            </label>
-        </div>
+                @error('login')
+                    <div class="text-red-600 text-xs">{{ $message }}</div>
+                @enderror
 
-        <!-- Terms & Conditions -->
-        <div class="mt-3">
-            <label class="block font-medium text-gray-700 mb-1">
-                <input type="checkbox" id="loginTermsCheckbox" required>
-                Saya menyetujui
-                <a href="#"
-                   class="font-semibold text-brand underline-offset-2 hover:underline">
-                    syarat & ketentuan
-                </a>
-            </label>
-        </div>
+                <!-- Password -->
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="********"
+                    autocomplete="current-password"
+                    class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm
+                           focus:border-brand focus:ring-2 focus:ring-brand" />
+
+                @error('password')
+                    <div class="text-red-600 text-xs">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <!-- Checkboxes -->
+            <div class="text-xs space-y-3 text-[#445167]">
+
+                <!-- Remember Me -->
+                <label class="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        name="remember"
+                        class="rounded border-[#cdd6e3] text-brand focus:ring-brand">
+                    <span>Remember me</span>
+                </label>
+
+                <!-- Terms & Conditions -->
+                <label class="flex items-start gap-2">
+                    <input
+                        type="checkbox"
+                        id="loginTermsCheckbox"
+                        class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
+                    <span>
+                        Saya memahami ketentuan yang berlaku,
+                        <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+                            Baca Ketentuan Privasi Pegawai
+                        </a>
+                    </span>
+                </label>
+
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex flex-col gap-2.5 mt-2">
+                <button
+                    id="loginSubmitBtn"
+                    type="submit"
+                    class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white
+                          shadow-sm transition-all duration-300 hover:brightness-110
+                          cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled>
+                    Sign in
+                </button>
+
+                <button
+                  id="forgotPwBtn"
+                  type="button"
+                  class="w-full rounded bg-white py-2.5 font-semibold text-black
+                        shadow-sm transition-all duration-300
+                        hover:bg-gray-100 hover:shadow-md cursor-pointer">
+                  Forgot Password
+              </button>
+            </div>
+        </form>
 
         <!-- Close Button -->
         <button onclick="closeLoginModal()"
@@ -733,21 +776,6 @@
             ✕
         </button>
 
-        <!-- Action Buttons -->
-        <div class="flex justify-end gap-3 mt-5">
-            <button onclick="closeLoginModal()"
-                    class="px-5 py-2 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
-                Cancel
-            </button>
-
-            <button id="loginSubmitBtn"
-                    disabled
-                    class="px-5 py-2 rounded-full bg-[#00A29A] text-white
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           hover:bg-[#008f87] cursor-pointer transition">
-                Login
-            </button>
-        </div>
     </div>
 </div>
 
@@ -1008,26 +1036,35 @@ function closeModal() {
       });
     });
 
-        const loginModal = document.getElementById("loginModal");
-    const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+    const loginModal = document.getElementById("loginModal");
     const loginTermsCheckbox = document.getElementById("loginTermsCheckbox");
+    const loginSubmitBtn = document.getElementById("loginSubmitBtn");
 
-    // OPEN modal (attach this to your login button)
     function openLoginModal() {
         loginModal.classList.remove("opacity-0", "pointer-events-none");
         loginModal.classList.add("opacity-100");
     }
 
-    // CLOSE modal
     function closeLoginModal() {
         loginModal.classList.add("opacity-0", "pointer-events-none");
         loginModal.classList.remove("opacity-100");
     }
 
-    // Enable submit only if T&C checked
+    // Enable button when terms are checked
     loginTermsCheckbox.addEventListener("change", () => {
         loginSubmitBtn.disabled = !loginTermsCheckbox.checked;
     });
+    loginTermsCheckbox.addEventListener("change", () => {
+    if (loginTermsCheckbox.checked) {
+        loginSubmitBtn.disabled = false;
+        loginSubmitBtn.classList.remove("bg-[#98A4B8]");
+        loginSubmitBtn.classList.add("bg-[#00A29A]");
+    } else {
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.classList.remove("bg-[#00A29A]");
+        loginSubmitBtn.classList.add("bg-[#98A4B8]");
+    }
+});
 </script>
 
 </body>
