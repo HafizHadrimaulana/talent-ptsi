@@ -176,6 +176,24 @@ class PrincipalApprovalController extends Controller
         return back()->with('ok', 'Draft Izin Prinsip berhasil dibuat.');
     }
 
+    public function destroy(RecruitmentRequest $req)
+    {
+        // 1. Pastikan user berhak mengakses unit ini (security check)
+        $this->authorizeUnit($req->unit_id);
+
+        // 2. Validasi: Hanya status 'draft' yang boleh dihapus
+        // Jika status sudah submitted/approved, tolak.
+        if (($req->status ?? null) !== 'draft') {
+            return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat dihapus.');
+        }
+
+        // 3. Lakukan penghapusan data
+        $req->delete();
+
+        // 4. Kembali ke halaman index dengan pesan sukses
+        return redirect()->route('recruitment.principal-approval.index')
+            ->with('ok', 'Draft Izin Prinsip berhasil dihapus.');
+    }
     public function update(Request $r, RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);

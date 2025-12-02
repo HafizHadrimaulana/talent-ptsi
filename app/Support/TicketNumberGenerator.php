@@ -7,8 +7,8 @@ class TicketNumberGenerator
     /**
      * Generate nomor ticket dengan format: UNITCODE-YY-MM-4RANDOM
      *
-     * @param string $unitCode
-     * @param \DateTimeInterface|null untuk tahun/bulan
+     * @param string 
+     * @param \DateTimeInterface|null 
      * @return string
      */
     public static function generate(string $unitCode, ?\DateTimeInterface $createdAt = null): string
