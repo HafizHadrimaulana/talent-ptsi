@@ -2,6 +2,42 @@
 @section('title','Izin Prinsip')
 
 @section('content')
+{{-- 1. Load Library (CKEditor & Mammoth) --}}
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+{{-- 2. Style Editor  Kertas A4 --}}
+<style>
+    .ck-editor__editable_inline {
+        min-height: 600px;
+        padding: 40px 60px !important; 
+        background-color: white !important;
+        border: 1px solid #d1d5db !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        color: black; 
+    }
+    .document-editor-wrapper {
+        background-color: #f3f4f6;
+        padding: 30px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        overflow-y: auto;
+        max-height: 70vh; 
+    }
+    .ck-editor {
+        max-width: 210mm; 
+        width: 100%;
+        min-width: 210mm;
+    }
+    .modal-card-wide {
+        width: 95% !important; 
+        max-width: 1200px !important; 
+    }
+    .ck.ck-balloon-panel {
+        z-index: 9999 !important;
+    }
+</style>
 @php
   use Illuminate\Support\Facades\DB;
   use Illuminate\Support\Facades\Gate;
@@ -276,23 +312,39 @@
 
 {{-- MODAL 1: URAIAN JABATAN --}}
 <div id="uraianModal" class="u-modal" hidden>
-  <div class="u-modal__card">
+  <div class="u-modal__card" style="width: 95%; max-width: 1200px;">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-file-alt"></i></div>
-        <div><div class="u-title">Editor Uraian Jabatan</div><div class="u-muted u-text-sm">Template formulir uraian</div></div>
+        <div>
+            <div class="u-title">Editor Uraian Jabatan</div>
+            <div class="u-muted u-text-sm">Silakan lengkapi formulir uraian jabatan di bawah ini.</div>
+        </div>
       </div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
     </div>
-    <div class="u-modal__body">
+
+    <div class="u-modal__body" style="background-color: #e5e7eb; padding: 20px;">
       <div class="u-space-y-md">
-        <div><label class="u-block u-text-sm u-font-medium u-mb-sm">Job Function / Jabatan</label><div id="uraianModalJob" class="u-font-medium">-</div></div>
-        <div><label class="u-block u-text-sm u-font-medium u-mb-sm">Isi Uraian</label><textarea id="uraianEditor" class="u-input" rows="10" placeholder="Ketik uraian jabatan disini..."></textarea></div>
+        
+        {{-- Header Judul --}}
+        <div>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Job Function / Jabatan</label>
+            <div id="uraianModalJob" class="u-font-medium u-text-lg">-</div>
+        </div>
+        
+        {{-- EDITOR AREA --}}
+        <div class="document-editor-wrapper">
+            <textarea id="uraianEditor"></textarea>
+        </div>
+
       </div>
     </div>
+
     <div class="u-modal__foot">
+      {{-- ... (Footer Tetap Sama) ... --}}
       <div class="u-flex u-justify-between u-items-center u-gap-sm">
-        <div class="u-muted u-text-sm">Simpan draft untuk melanjutkan editing.</div>
+        <div class="u-muted u-text-sm">Simpan draft untuk melanjutkan editing nanti.</div>
         <div class="u-flex u-gap-sm">
           <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
           <button type="button" class="u-btn u-btn--outline js-save-uraian-draft">Simpan Draf</button>
@@ -300,6 +352,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -472,7 +525,6 @@
 </div>
 
 {{-- MODAL 3: DETAIL APPROVAL --}}
-{{-- MODAL 3: DETAIL APPROVAL (REVISED FOR MULTI-DATA TABS) --}}
 <div id="detailApprovalModal" class="u-modal" hidden>
   <div class="u-modal__card" style="max-width: 900px;"> {{-- Sedikit diperlebar --}}
     <div class="u-modal__head">
@@ -604,14 +656,64 @@ document.addEventListener('DOMContentLoaded', function() {
   const positionsData = {!! json_encode($positions) !!};
   const picData       = {!! json_encode($picListFormatted) !!};
 
+  const templateWordUrl = "{{ asset('templates/Form_Uraian_Jabatan.docx') }}";
+
   const page = {
     dt: null,
-    init() { this.bindModal(); this.initDT(); this.bindExternalSearch(); },
+    editorInstance: null, 
+    defaultTemplateContent: '',
+
+    init() { 
+        this.initEditor();       // 1. Init Editor
+        this.loadServerTemplate(); // 2. Init load Word
+        this.bindModal(); 
+        this.initDT(); 
+        this.bindExternalSearch(); 
+    },
+
+    // --- A. INISIALISASI CKEDITOR ---
+    initEditor() {
+        ClassicEditor
+            .create(document.querySelector('#uraianEditor'), {
+                toolbar: [ 'heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', 'blockQuote', 'insertTable', '|', 'undo', 'redo' ],
+                // Konfigurasi agar tabel dari Word tampil baik
+                table: { contentToolbar: [ 'tableColumn', 'tableRow', 'mergeTableCells' ] }
+            })
+            .then(editor => {
+                this.editorInstance = editor;
+            })
+            .catch(error => { console.error(error); });
+    },
+
+    // --- B. LOGIKA UPLOAD WORD (MAMMOTH) ---
+    loadServerTemplate() {
+        // Ambil file dari server
+        fetch(templateWordUrl)
+            .then(response => {
+                if (!response.ok) throw new Error("Template file not found");
+                return response.arrayBuffer();
+            })
+            // Convert pakai Mammoth
+            .then(arrayBuffer => mammoth.convertToHtml({ arrayBuffer: arrayBuffer }))
+            .then(result => {
+                // Simpan hasilnya ke variabel global
+                this.defaultTemplateContent = result.value;
+            })
+            .catch(error => {
+                console.error("Gagal memuat template Word:", error);
+                this.defaultTemplateContent = '<p>Gagal memuat template.</p>';
+            });
+    },
+
     bindModal() {
-      const modalMain     = document.getElementById('createApprovalModal');
+      // Definisi Variabel Global Modal
+      const modalMain   = document.getElementById('createApprovalModal');
+      const detailModal = document.getElementById('detailApprovalModal');
+      const uraianModal = document.getElementById('uraianModal');
+      
       const form          = document.getElementById('createApprovalForm');
       const submitBtn     = document.getElementById('submitApprovalBtn');
-      const modalTitle    = document.getElementById('ip-modal-title'); // Judul Modal
+      const modalTitle    = document.getElementById('ip-modal-title');
       const modalSubtitle = document.getElementById('ip-modal-subtitle');
       
       const contractTypeSelect = form.querySelector('#contractTypeSelect');
@@ -620,11 +722,11 @@ document.addEventListener('DOMContentLoaded', function() {
       const dataTabsContainer  = document.getElementById('dataTabsContainer');
       const detailsJsonInput   = document.getElementById('detailsJson');
       
-      // Dynamic fields
-      const requestTypeSelect  = form.querySelector('[name="request_type"]'); // Tambahan selector
+      // Inputs
+      const requestTypeSelect  = form.querySelector('[name="request_type"]');
       const titleInput         = form.querySelector('#titleInput');
       const targetStartInput   = form.querySelector('#targetStartInput');
-      const justifInput        = form.querySelector('[name="justification"]'); // Tambahan selector
+      const justifInput        = form.querySelector('[name="justification"]');
 
       // Organik Elements
       const rkapSection      = form.querySelector('#rkapSection');
@@ -651,20 +753,18 @@ document.addEventListener('DOMContentLoaded', function() {
       const picProjectInput       = form.querySelector('#picProjectInput');
       const picProjectResults     = form.querySelector('#picProjectSearchResults');
 
-      // Modal Uraian
-      const uraianModal    = document.getElementById('uraianModal');
-      const uraianEditor   = document.getElementById('uraianEditor');
+      // Modal Uraian Elements (Hidden element)
+      const uraianEditorElement   = document.getElementById('uraianEditor'); // Element asli textarea
       const uraianModalJob = document.getElementById('uraianModalJob');
 
-      const defaultTemplate = "Nama Jabatan:\nUnit Kerja:\nPemangku:\nMelapor pada:\nTanggal\nLokasi\n...";
-      
-      // --- MULTI DATA STATE ---
+      // State Multi Data
       let activeDataIndex = 1;
       let totalDataCount  = 1;
       let multiDataStore  = {}; 
 
       function getActiveContractType() { return contractTypeSelect ? contractTypeSelect.value : ''; }
 
+      // --- SIMPAN DATA DARI TAB YANG AKTIF ---
       function saveCurrentTabData() {
           const type = getActiveContractType();
           const idx = activeDataIndex;
@@ -673,13 +773,18 @@ document.addEventListener('DOMContentLoaded', function() {
           multiDataStore[idx].title = titleInput.value;
           multiDataStore[idx].target_start_date = targetStartInput.value;
 
+          // Note: Kita tidak menyimpan CKEditor disini, 
+          // CKEditor disimpan saat tombol "Simpan" di modal uraian diklik.
+
           if (type === 'Organik') {
               const selectedRow = form.querySelector('.js-rkap-select.selected');
               const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
               multiDataStore[idx].type = 'Organik';
               multiDataStore[idx].rkap_job = rkapJob;
-              multiDataStore[idx].uraian_content = uraianEditor.dataset.savedContent || '';
+              // Ambil konten dari dataset hidden element (disimpan saat modal uraian ditutup)
+              multiDataStore[idx].uraian_content = uraianEditorElement.dataset.savedContent || '';
               multiDataStore[idx].uraian_status = uraianStatus.textContent;
+              
               multiDataStore[idx].pic_id = picOrganikInput.value;
               multiDataStore[idx].pic_text = picOrganikSearchInput.value;
               multiDataStore[idx].position = positionOrganikInput.value; 
@@ -690,8 +795,10 @@ document.addEventListener('DOMContentLoaded', function() {
               multiDataStore[idx].project_name = namaProjectInput.value;
               multiDataStore[idx].position = positionInput.value; 
               multiDataStore[idx].position_text = positionSearchInput.value;
+              
               multiDataStore[idx].uraian_content = uraianJabatanProject.value;
               multiDataStore[idx].uraian_status = uraianStatusProject.textContent;
+              
               multiDataStore[idx].pic_id = picProjectInput.value;
               multiDataStore[idx].pic_text = picProjectSearchInput.value;
           }
@@ -720,7 +827,10 @@ document.addEventListener('DOMContentLoaded', function() {
               if(data.uraian_status) uraianStatus.textContent = data.uraian_status;
               if(data.pic_id) picOrganikInput.value = data.pic_id;
               if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
-              if(data.uraian_content) uraianEditor.dataset.savedContent = data.uraian_content;
+              
+              // Load konten ke dataset hidden element
+              if(data.uraian_content) uraianEditorElement.dataset.savedContent = data.uraian_content;
+              
               if(data.position) positionOrganikInput.value = data.position;
               if(data.position_text) positionOrganikSearchInput.value = data.position_text;
 
@@ -731,8 +841,10 @@ document.addEventListener('DOMContentLoaded', function() {
               }
               if(data.position) positionInput.value = data.position;
               if(data.position_text) positionSearchInput.value = data.position_text;
+              
               if(data.uraian_content) uraianJabatanProject.value = data.uraian_content;
               if(data.uraian_status) uraianStatusProject.textContent = data.uraian_status;
+              
               if(data.pic_id) picProjectInput.value = data.pic_id;
               if(data.pic_text) picProjectSearchInput.value = data.pic_text;
           }
@@ -752,7 +864,9 @@ document.addEventListener('DOMContentLoaded', function() {
           if(uraianStatus) uraianStatus.textContent = 'Belum ada uraian';
           if(picOrganikInput) picOrganikInput.value = '';
           if(picOrganikSearchInput) picOrganikSearchInput.value = '';
-          if(uraianEditor) uraianEditor.dataset.savedContent = '';
+          
+          if(uraianEditorElement) uraianEditorElement.dataset.savedContent = ''; // Reset storage uraian
+          
           if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
           if(positionOrganikInput) positionOrganikInput.value = '';
           // Project
@@ -776,7 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
           for (let i = 1; i <= count; i++) {
               const btn = document.createElement('button');
               btn.type = 'button';
-              const activeClass = (i === activeDataIndex) ? 'u-btn--brand' : 'u-btn--soft'; // Fixed class
+              const activeClass = (i === activeDataIndex) ? 'u-btn--brand' : 'u-btn--soft';
               btn.className = `u-btn u-btn--sm ${activeClass}`;
               btn.textContent = `Data ${i}`;
               btn.dataset.idx = i;
@@ -799,7 +913,6 @@ document.addEventListener('DOMContentLoaded', function() {
           headcountInput.addEventListener('input', function(e) {
               let val = parseInt(e.target.value);
               if (isNaN(val) || val < 1) val = 1;
-              
               saveCurrentTabData();
               totalDataCount = val;
               if (activeDataIndex > totalDataCount) activeDataIndex = 1;
@@ -837,37 +950,55 @@ document.addEventListener('DOMContentLoaded', function() {
           detailsJsonInput.value = JSON.stringify(payload);
       });
 
+      // --- C. LOGIKA BUKA/TUTUP & SIMPAN MODAL URAIAN ---
+      
+      // Buka Modal Uraian
       function openUraianModalSafe(title, content, mode) {
-          uraianEditor.setAttribute('data-mode', mode);
+          // Set atribut untuk tahu ini uraian project atau organik
+          uraianEditorElement.setAttribute('data-mode', mode);
           uraianModalJob.textContent = title;
-          uraianEditor.value = content || '';
           
-          if (mode === 'view') {
-              uraianEditor.setAttribute('readonly', true);
-          } else {
-              uraianEditor.removeAttribute('readonly');
+          // Set isi CKEditor
+          const editor = page.editorInstance;
+          if(editor) {
+              let dataToDisplay = '';
+              if (content && content.trim() !== '') {
+                  dataToDisplay = content; 
+              } else {
+                  dataToDisplay = page.defaultTemplateContent; 
+              }
+
+              editor.setData(dataToDisplay);
+              
+              if (mode === 'view') {
+                  editor.enableReadOnlyMode('lock_id');
+              } else {
+                  editor.disableReadOnlyMode('lock_id');
+              }
           }
           
+          // Atur Z-Index agar Uraian di atas Detail/Main Modal
           if (modalMain) modalMain.style.zIndex = '1050';
-          if (detailModal) detailModal.style.zIndex = '1050';
-          
+          if (detailModal) detailModal.style.zIndex = '1050'; 
           if (uraianModal) uraianModal.style.zIndex = '2000'; 
           
           uraianModal.hidden = false;
           document.body.classList.add('modal-open');
       }
 
+      // Tutup Modal Uraian
       function closeUraianModalSafe() {
           uraianModal.hidden = true;
-          uraianEditor.removeAttribute('readonly'); 
+          const editor = page.editorInstance;
+          if(editor) editor.disableReadOnlyMode('lock_id'); // Reset readonly
           
           if (modalMain) modalMain.style.zIndex = '';
           if (detailModal) detailModal.style.zIndex = ''; 
           if (uraianModal) uraianModal.style.zIndex = '';
           
+          // Cek jika modal lain masih terbuka
           const isDetailOpen = detailModal && !detailModal.hidden;
           const isMainOpen = modalMain && !modalMain.hidden;
-
           if (isDetailOpen || isMainOpen) {
              document.body.classList.add('modal-open'); 
           } else {
@@ -875,21 +1006,51 @@ document.addEventListener('DOMContentLoaded', function() {
           }
       }
 
-      // Dropdown Setup
+      // Listener Tombol Simpan/Tutup di Modal Uraian
+      document.addEventListener('click', function(e) {
+        const saveDraft = e.target.closest('.js-save-uraian-draft');
+        const saveFinal = e.target.closest('.js-save-uraian-final');
+        const closeModal = e.target.closest('[data-modal-close]') && e.target.closest('#uraianModal');
+        
+        if (closeModal) { closeUraianModalSafe(); return; }
+
+        if (saveDraft || saveFinal) {
+            // Ambil data dari CKEditor
+            const editor = page.editorInstance;
+            const content = editor ? editor.getData() : '';
+            
+            const mode = uraianEditorElement.getAttribute('data-mode');
+            const statusText = saveFinal ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
+
+            if (mode === 'project') {
+                if(uraianJabatanProject) uraianJabatanProject.value = content;
+                if(uraianStatusProject) uraianStatusProject.textContent = statusText;
+            } else if (mode === 'organik') {
+                if(uraianStatus) uraianStatus.textContent = statusText;
+                // Simpan sementara di dataset hidden element agar diambil saveCurrentTabData()
+                uraianEditorElement.dataset.savedContent = content;
+            }
+            
+            // Simpan juga langsung ke multiDataStore aktif
+            if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
+            multiDataStore[activeDataIndex].uraian_content = content;
+            multiDataStore[activeDataIndex].uraian_status = statusText;
+            
+            closeUraianModalSafe();
+        }
+      });
+
+      // --- HELPER LAINNYA (Searchable Dropdown dll) ---
       function setupSearchableDropdown(searchInput, hiddenInput, resultsContainer, dataArray, allowNew = false) {
           if (!searchInput || !resultsContainer) return;
-
           const renderOptions = (filterText = '') => {
               resultsContainer.innerHTML = '';
               const lowerFilter = filterText.toLowerCase();
               const filtered = dataArray.filter(item => item.name.toLowerCase().includes(lowerFilter));
               let hasExactMatch = false;
-
-              // Render Matches
               if (filtered.length > 0) {
                   filtered.forEach(item => {
                       if (item.name.toLowerCase() === lowerFilter) hasExactMatch = true;
-                      
                       const div = document.createElement('div');
                       div.className = 'u-p-sm'; div.style.cursor = 'pointer'; div.style.borderBottom = '1px solid #f0f0f0';
                       div.textContent = item.name;
@@ -909,8 +1070,6 @@ document.addEventListener('DOMContentLoaded', function() {
                       resultsContainer.appendChild(noRes);
                   }
               }
-
-              //  opsi "Gunakan: ..."
               if (allowNew && filterText.trim() !== '' && !hasExactMatch) {
                   const addNewDiv = document.createElement('div');
                   addNewDiv.className = 'u-p-sm u-text-brand';
@@ -918,10 +1077,8 @@ document.addEventListener('DOMContentLoaded', function() {
                   addNewDiv.style.borderTop = '2px solid #f0f0f0';
                   addNewDiv.style.fontWeight = '500';
                   addNewDiv.innerHTML = `<i class="fas fa-plus-circle u-mr-xs"></i> Gunakan: "${filterText}"`;
-                  
                   addNewDiv.addEventListener('mouseenter', () => { addNewDiv.style.backgroundColor = '#eff6ff'; });
                   addNewDiv.addEventListener('mouseleave', () => { addNewDiv.style.backgroundColor = 'transparent'; });
-                  
                   addNewDiv.addEventListener('click', () => {
                       searchInput.value = filterText;
                       if(hiddenInput) hiddenInput.value = filterText; 
@@ -930,7 +1087,6 @@ document.addEventListener('DOMContentLoaded', function() {
                   resultsContainer.appendChild(addNewDiv);
               }
           };
-
           searchInput.addEventListener('focus', () => { renderOptions(searchInput.value); resultsContainer.style.display = 'block'; });
           searchInput.addEventListener('input', (e) => { renderOptions(e.target.value); resultsContainer.style.display = 'block'; });
           document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) resultsContainer.style.display = 'none'; });
@@ -986,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', function() {
       form.addEventListener('click', function(e) {
         if (e.target.closest('.js-open-uraian-project')) {
             const existing = multiDataStore[activeDataIndex] ? multiDataStore[activeDataIndex].uraian_content : uraianJabatanProject.value;
-            openUraianModalSafe('Project Based Position', existing || defaultTemplate, 'project');
+            openUraianModalSafe('Project Based Position', existing, 'project');
         }
         if (e.target.closest('.js-open-uraian')) {
             const selectedRow = form.querySelector('.js-rkap-select.selected');
@@ -994,8 +1150,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const job = selectedRow.closest('tr').dataset.jobName;
             const existing = (multiDataStore[activeDataIndex] && multiDataStore[activeDataIndex].uraian_content) 
                              ? multiDataStore[activeDataIndex].uraian_content 
-                             : uraianEditor.dataset.savedContent;
-            openUraianModalSafe(job, existing || defaultTemplate, 'organik');
+                             : uraianEditorElement.dataset.savedContent; // ambil dari storage
+            openUraianModalSafe(job, existing, 'organik');
         }
       });
       
@@ -1026,38 +1182,16 @@ document.addEventListener('DOMContentLoaded', function() {
       });
 
       document.addEventListener('click', function(e) {
-        const saveDraft = e.target.closest('.js-save-uraian-draft');
-        const saveFinal = e.target.closest('.js-save-uraian-final');
-        const closeModal = e.target.closest('[data-modal-close]') && e.target.closest('#uraianModal');
-        if (closeModal) { closeUraianModalSafe(); return; }
-
-        if (saveDraft || saveFinal) {
-            const mode = uraianEditor.getAttribute('data-mode');
-            const content = uraianEditor.value;
-            const statusText = saveFinal ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
-
-            if (mode === 'project') {
-                if(uraianJabatanProject) uraianJabatanProject.value = content;
-                if(uraianStatusProject) uraianStatusProject.textContent = statusText;
-            } else if (mode === 'organik') {
-                if(uraianStatus) uraianStatus.textContent = statusText;
-                uraianEditor.dataset.savedContent = content;
-            }
-            if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
-            multiDataStore[activeDataIndex].uraian_content = content;
-            multiDataStore[activeDataIndex].uraian_status = statusText;
-            closeUraianModalSafe();
-        }
-      });
-
-      const detailModal = document.getElementById('detailApprovalModal');
-      document.addEventListener('click', function(e) {
          if (e.target.matches('[data-modal-close]')) {
              const m = e.target.closest('.u-modal');
-             if(m) { m.hidden = true; document.body.classList.remove('modal-open'); }
+             if(m) { 
+                 m.hidden = true; 
+                 const anyOpen = document.querySelector('.u-modal:not([hidden])');
+                 if(!anyOpen) document.body.classList.remove('modal-open'); 
+             }
          }
 
-         // --- HANDLING CREATE / EDIT BUTTON ---
+         // HANDLING CREATE / EDIT / DETAIL
          const btnCreate = e.target.closest('[data-modal-open="createApprovalModal"]');
          if(btnCreate) {
              const m = document.getElementById('createApprovalModal');
@@ -1073,13 +1207,10 @@ document.addEventListener('DOMContentLoaded', function() {
                      setBudgetLock(false, ''); 
                      if(modalTitle) modalTitle.textContent = "Buat Izin Prinsip Baru";
                      if(modalSubtitle) modalSubtitle.textContent = "Ajukan permintaan rekrutmen atau perpanjangan kontrak";
-                     form.action = form.getAttribute('data-default-action'); // Reset Action URL
-
+                     form.action = form.getAttribute('data-default-action'); 
                      if(deleteForm) deleteForm.style.display = 'none';
                      let methodField = form.querySelector('input[name="_method"]');
-                     if (methodField) {
-                         methodField.remove();
-                     }
+                     if (methodField) methodField.remove();
                      
                      [positionSearchInput, positionInput, positionOrganikSearchInput, positionOrganikInput, 
                       picProjectSearchInput, picProjectInput, picOrganikSearchInput, picOrganikInput]
@@ -1114,12 +1245,10 @@ document.addEventListener('DOMContentLoaded', function() {
                      if(targetStartInput) targetStartInput.value = btnCreate.getAttribute('data-target-start');
                      if(justifInput) justifInput.value = btnCreate.getAttribute('data-justification');
 
-                     // Jenis Kontrak & Sumber Anggaran
                      const contractType = btnCreate.getAttribute('data-employment-type');
                      const budgetType   = btnCreate.getAttribute('data-budget-source-type');
                      
                      if(contractTypeSelect) contractTypeSelect.value = contractType;
-
                      if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
                      else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
                      else { 
@@ -1145,34 +1274,23 @@ document.addEventListener('DOMContentLoaded', function() {
                                  totalDataCount = detailsArray.length;
                                  headcountInput.value = totalDataCount;
                                  renderTabs(totalDataCount);
-                                 
-                                 detailsArray.forEach((detail, idx) => {
-                                     multiDataStore[idx + 1] = detail;
-                                 });
-                                 
+                                 detailsArray.forEach((detail, idx) => { multiDataStore[idx + 1] = detail; });
                                  activeDataIndex = 1;
                                  loadTabData(1);
                              }
-                         } catch (e) {
-                             console.warn('Failed to parse meta-json:', e);
-                         }
+                         } catch (e) { console.warn('Failed to parse meta-json:', e); }
                      }
                  }
              }
          }
 
-         // --- HANDLING TOGGLE DETAIL ROWS ---
          const toggleBtn = e.target.closest('.toggle-details');
          if (toggleBtn) {
              e.preventDefault();
              const recruitmentId = toggleBtn.getAttribute('data-target-id');
              const detailRows = document.querySelectorAll(`tr.recruitment-detail-row[data-recruitment-id="${recruitmentId}"]`);
              const isHidden = detailRows[0]?.style.display === 'none';
-             
-             detailRows.forEach(row => {
-                 row.style.display = isHidden ? 'table-row' : 'none';
-             });
-             
+             detailRows.forEach(row => { row.style.display = isHidden ? 'table-row' : 'none'; });
              const icon = toggleBtn.querySelector('i');
              if (icon) {
                  icon.classList.toggle('fa-chevron-down');
@@ -1180,11 +1298,9 @@ document.addEventListener('DOMContentLoaded', function() {
              }
          }
 
-         // --- HANDLING DETAIL BUTTON ---
           const btnDetail = e.target.closest('.js-open-detail');
           if (btnDetail && detailModal) {
               e.preventDefault();
-
               const safeTxt = (attr) => btnDetail.getAttribute(attr) || '-';
               const globalData = {
                   ticket: safeTxt('data-ticket-number'),
@@ -1194,7 +1310,6 @@ document.addEventListener('DOMContentLoaded', function() {
                   budgetSource: safeTxt('data-budget-source'),
                   employment: safeTxt('data-employment-type'),
                   justification: safeTxt('data-justification'),
-                  
                   title: safeTxt('data-title'),
                   position: safeTxt('data-position'),
                   headcount: safeTxt('data-headcount'),
@@ -1203,24 +1318,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
               let detailsArray = [];
               const metaJsonStr = btnDetail.getAttribute('data-meta-json');
-              
-              console.log('=== DETAIL BUTTON DEBUG ===');
-              console.log('Raw data-meta-json:', metaJsonStr);
-              
               try {
                   if(metaJsonStr && metaJsonStr.trim() !== '' && metaJsonStr !== '[]') {
                       detailsArray = JSON.parse(metaJsonStr);
-                      console.log('Parsed detailsArray:', detailsArray);
-                  } else {
-                      console.log('Meta JSON is empty or invalid:', metaJsonStr);
                   }
-              } catch(err) { 
-                  console.error('Parse Error:', err, 'Raw string:', metaJsonStr);
-                  detailsArray = [];
-              }
+              } catch(err) { detailsArray = []; }
 
               if (!Array.isArray(detailsArray) || detailsArray.length === 0) {
-                  console.log('Using fallback single data');
                   detailsArray = [{
                       title: globalData.title,
                       position_text: globalData.position,
@@ -1233,35 +1337,17 @@ document.addEventListener('DOMContentLoaded', function() {
                   }];
               }
 
-              console.log('Final detailsArray:', detailsArray);
-              console.log('Array length:', detailsArray.length);
-              console.log('========================');
-
               const tabsContainer = document.getElementById('detailTabsContainer');
               const indicatorText = document.getElementById('tab-indicator-text');
-              
-              if (!tabsContainer) {
-                  console.error('tabsContainer not found!');
-                  return;
-              }
-              
+              if (!tabsContainer) return;
               tabsContainer.innerHTML = '';
               
               const renderContent = (index) => {
                   const data = detailsArray[index];
-                  console.log(`Rendering content for index ${index}:`, data);
-                  if(!data) {
-                      console.warn(`No data at index ${index}`);
-                      return;
-                  }
-
+                  if(!data) return;
                   const setTxt = (id, val) => { 
                       const el = document.getElementById(id); 
-                      if(el) { 
-                          el.textContent = val || '-'; 
-                      } else {
-                          console.warn(`Element ${id} not found`);
-                      }
+                      if(el) el.textContent = val || '-'; 
                   };
                   
                   setTxt('view-ticket', globalData.ticket);
@@ -1294,45 +1380,30 @@ document.addEventListener('DOMContentLoaded', function() {
                           openUraianModalSafe(data.position_text || 'Detail Jabatan', uraianContent, 'view');
                       }
                   }
-
                   if(indicatorText) indicatorText.textContent = `Menampilkan Data ${index + 1} dari ${detailsArray.length}`;
               };
 
-              // Loop untuk membuat tombol Tab
-              console.log('Creating tabs...');
               detailsArray.forEach((item, i) => {
                   const btnTab = document.createElement('button');
                   btnTab.type = 'button';
                   btnTab.className = 'u-btn u-btn--sm u-btn--ghost u-hover-lift';
                   btnTab.textContent = `Data ${i + 1}`;
                   btnTab.style.borderRadius = '20px';
-                  
                   btnTab.addEventListener('click', (evt) => {
                       evt.preventDefault();
                       Array.from(tabsContainer.children).forEach(c => {
                           c.classList.remove('u-btn--brand', 'u-text-white');
                           c.classList.add('u-btn--ghost');
                       });
-
                       btnTab.classList.remove('u-btn--ghost');
                       btnTab.classList.add('u-btn--brand', 'u-text-white');
-                      
                       renderContent(i);
                   });
-
                   tabsContainer.appendChild(btnTab);
               });
 
-              console.log(`Created ${detailsArray.length} tabs`);
-
               const firstTab = tabsContainer.querySelector('button');
-              if(firstTab) {
-                  console.log('Clicking first tab...');
-                  firstTab.click();
-              } else {
-                  console.log('No first tab found, rendering content directly');
-                  renderContent(0);
-              }
+              if(firstTab) { firstTab.click(); } else { renderContent(0); }
 
               const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
               const formApprove = detailModal.querySelector('.detail-approve-form');
@@ -1346,7 +1417,6 @@ document.addEventListener('DOMContentLoaded', function() {
                   formReject.style.display = canApprove ? 'inline-block' : 'none';
                   formReject.action = btnDetail.getAttribute('data-reject-url') || '';
               }
-
               detailModal.hidden = false; 
               document.body.classList.add('modal-open');
           }
