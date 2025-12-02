@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder
             UnitsSeeder::class,
             RolesPermissionsSeeder::class,
             AdminUserSeeder::class,
-            StatusApprovalTrainingSeeder::class
+            // StatusApprovalTrainingSeeder::class
         ]);
     }
 }

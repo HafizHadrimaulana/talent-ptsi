@@ -96,7 +96,7 @@
                 aria-expanded="{{ $trOpen ? 'true' : 'false' }}">
           <span class="icon">🎓</span><span class="label">Training</span><span class="chev">▾</span>
         </button>
-          <div id="nav-training" 
+          <div id="nav-training"
               class="nav-children {{ $trOpen ? 'open' : '' }}" 
               data-accordion-panel="nav-training">
             @if($isSuper || $user?->can('training.view'))
@@ -121,10 +121,17 @@
             @endif
 
             @if($isSuper || $user?->can('training.view'))
+            @endif
+
+            @if($isSuper || $user?->can('training.view'))
             <a class="nav-item nav-child {{ request()->routeIs('training.principal-approval')?'active':'' }}"
                 href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
                 <span class="icon">🗂️</span><span class="label">Principal Approval</span>
+                href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
+                <span class="icon">🗂️</span><span class="label">Principal Approval</span>
             </a>
+            @endif
+          </div>
             @endif
           </div>
       </div>
