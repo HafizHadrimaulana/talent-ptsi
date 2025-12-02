@@ -177,10 +177,12 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
         // Training Request
         //// dhc unit
-        Route::get('training-request', [TrainingRequestController::class, 'getDataLna'])
+        Route::get('training-request', [TrainingRequestController::class, 'index'])
             ->name('training-request');
         Route::post('training-request/import-lna', [TrainingRequestController::class, 'importLna'])
             ->name('training-request.import-lna');
+        Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])
+            ->name('training-request.get-data-lna');
         Route::post('training-request/{id}/edit-lna', [TrainingRequestController::class, 'edit-lna'])
             ->name('training-request.edit-lna');
         Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'delete-lna'])

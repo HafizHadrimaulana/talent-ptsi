@@ -2,17 +2,9 @@
     class="u-table u-table-mobile training-table" data-role="DHC" data-dt>
     <thead>
         <tr>
-            <th>
-                <input type="checkbox" id="select-all">
-            </th>
             <th>No</th>
-            <th>Jenis Pelatihan</th>
-            <th>NIK</th>
-            <th>Nama</th>
-            <th>Status Pegawai</th>
-            <th>Jabatan</th>
-            <th>Unit Kerja</th>
             <th>Judul Sertifikasi</th>
+            <th>Unit</th>
             <th>Penyelenggara</th>
             <th>Jumlah Jam</th>
             <th>Waktu Pelaksanaan</th>
@@ -23,7 +15,7 @@
             <th>Nama Proyek</th>
             <th>Jenis Portofolio</th>
             <th>Fungsi</th>
-            <th>Status Approval</th>
+            <th>Kuota</th>
             <th class="cell-actions">Aksi</th>
         </tr>
     </thead>

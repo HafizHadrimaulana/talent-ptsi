@@ -78,6 +78,8 @@ class MonitoringController extends Controller
     
         $list = $query->orderBy('id', 'asc')->paginate(12);
 
+        Log::info('Data training berhasil ditampilkan', ['user' => auth()->user()->id, 'role' => auth()->user()->getRoleNames()->first()]);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Data training berhasil ditambahkan',
@@ -399,7 +401,7 @@ class MonitoringController extends Controller
 
     public function downloadTemplate()
     {
-        $filePath = public_path('templates/training-header-template.xlsx');
+        $filePath = public_path('templates/template-training-header.xlsx');
 
         if (!file_exists($filePath)) {
             abort(404, 'File template tidak ditemukan.');

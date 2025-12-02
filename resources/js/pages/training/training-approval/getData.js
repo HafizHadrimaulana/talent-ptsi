@@ -5,8 +5,16 @@ import { initApproveHandler } from "./handler/approveHandler";
 import { initRejectHandler } from "./handler/rejectHandler";
 import { initDragDropUpload } from "./handler/dragDropImport";
 
+const ROLES = {
+    SDM_UNIT: "SDM Unit",
+    DHC: "DHC",
+    KEPALA_UNIT: "Kepala Unit",
+    VP_DHC: "VP DHC",
+    DBS_UNIT: "DBS Unit",
+};
+
 const TABLE_CONFIGS = {
-    "SDM Unit": {
+    [ROLES.SDM_UNIT]: {
         apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
         columns: ['checkbox', 'no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'],
         dataMapper: (data) => {
@@ -29,25 +37,25 @@ const TABLE_CONFIGS = {
         },
         actions: ['details']
     },
-    "DHC": {
-        apiEndpoint: () => "/training/list",
-        columns: ['checkbox', 'no', 'jenis_pelatihan_editable', 'nik', 'nama_peserta', 'status_pegawai', 'jabatan_saat_ini', 'unit_kerja', 'judul_sertifikasi', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'status_approval_training', 'actions'],
-        dataMapper: (data) => data.data?.data || [],
+    [ROLES.DHC]: {
+        apiEndpoint: () => "/training/training-request/get-data-lna",
+        columns: ['no', 'judul_sertifikasi', 'unit', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
+        dataMapper: (data) => data.data || [],
         actions: ['edit', 'delete']
     },
-    "Kepala Unit": {
+    [ROLES.KEPALA_UNIT]: {
         apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
         columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'estimasi_total_biaya', 'status_approval_training', 'actions'],
         dataMapper: (data) => data.data || [],
         actions: ['approve', 'reject']
     },
-    "VP DHC": {
+    [ROLES.VP_DHC]: {
         apiEndpoint: () => "/training/list-approval", 
         columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'estimasi_total_biaya', 'status_approval', 'actions'],
         dataMapper: (data) => data.data || [],
         actions: ['approve', 'reject']
     },
-    "DBS Unit": {
+    [ROLES.DBS_UNIT]: {
         apiEndpoint: () => "/training/list-approval",
         columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'penyelenggara', 'estimasi_total_biaya', 'status_approval', 'actions'],
         dataMapper: (data) => data.data || [],
@@ -224,11 +232,17 @@ const COLUMN_RENDERERS = {
     }
 };
 
+let currentPage = 1;
+let perPage = 12;
+
+let lastUsedConfig = null;
+let lastUsedTableBody = null;
+
 const getTableConfig = (userRole, unitId) => {
     const config = TABLE_CONFIGS[userRole] || DEFAULT_CONFIG;
     return {
         ...config,
-        apiUrl: config.apiEndpoint(unitId)
+        apiUrl: (currentPage, perPage) => config.apiEndpoint(unitId) + `?page=${currentPage}&per_page=${perPage}`
     };
 };
 
@@ -249,20 +263,90 @@ const renderTableRow = (item, index, config) => {
     return `<tr>${cells}</tr>`;
 };
 
+function renderPagination(p) {
+    const container = document.getElementById("pagination");
+    if (!container) return;
+
+    let html = `<ul class="u-pagination u-flex u-gap-sm u-justify-center">`;
+
+    html += `
+        <li class="u-page-item ${p.current_page === 1 ? 'disabled' : ''}">
+            <a href="#" data-page="${p.current_page - 1}" class="u-page-link">‹ Prev</a>
+        </li>
+    `;
+
+    function pageItem(i, active = false) {
+        return `
+            <li class="u-page-item ${active ? 'active' : ''}">
+                <a href="#" data-page="${i}" class="u-page-link">${i}</a>
+            </li>
+        `;
+    }
+
+    // Generate pagination range with ellipsis
+    let start = Math.max(1, p.current_page - 2);
+    let end = Math.min(p.last_page, p.current_page + 2);
+
+    if (start > 1) {
+        html += pageItem(1);
+        if (start > 2) html += `<li class="ellipsis">...</li>`;
+    }
+
+    for (let i = start; i <= end; i++) {
+        html += pageItem(i, i === p.current_page);
+    }
+
+    if (end < p.last_page) {
+        if (end < p.last_page - 1) html += `<li class="ellipsis">...</li>`;
+        html += pageItem(p.last_page);
+    }
+
+    // Next Button
+    html += `
+        <li class="u-page-item ${p.current_page === p.last_page ? 'disabled' : ''}">
+            <a href="#" data-page="${p.current_page + 1}" class="u-page-link">Next ›</a>
+        </li>
+    `;
+
+    html += `</ul>`;
+    container.innerHTML = html;
+
+    container.querySelectorAll("a[data-page]").forEach(a => {
+        a.addEventListener("click", e => {
+            e.preventDefault();
+            const page = parseInt(a.dataset.page);
+            if (page >=1 && page <= p.last_page) {
+                window.currentPage = page;
+                loadTableData(window.lastUsedConfig, window.lastUsedTableBody);
+            }
+        });
+    });
+}
+
+
 const loadTableData = async (config, tableBody) => {
     try {
-        const data = await getJSON(config.apiUrl);
+        window.lastUsedConfig = config;
+        window.lastUsedTableBody = tableBody;
+        
+        const data = await getJSON(config.apiUrl(currentPage, perPage));
+        
         console.log("data", data.data);
         const processedData = config.dataMapper(data);
         
         if (!processedData?.length) {
             tableBody.innerHTML = renderEmptyState(config.columns.length);
+            renderPagination(data.pagination)
             return;
         }
 
         tableBody.innerHTML = processedData
             .map((item, index) => renderTableRow(item, index, config))
             .join("");
+
+        if (data.pagination) {
+            renderPagination(data.pagination);
+        }
             
     } catch (error) {
         console.error("Gagal memuat data:", error);
@@ -288,6 +372,9 @@ export function initGetDataTable(tableBody, options = {}) {
     const unitId = options.unitId || window.userUnitId;
     
     const config = getTableConfig(userRole, unitId);
+
+    lastUsedConfig = config;
+    lastUsedTableBody = tableBody;
     
     const reloadData = () => loadTableData(config, tableBody);
     

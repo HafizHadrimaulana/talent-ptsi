@@ -22,9 +22,27 @@ class TrainingRequestController extends Controller
         $this->importService = $importService;
     }
 
-    public function getDataLna()
+    public function index()
     {
-        return view('training.training-request.index');
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
+    
+        // mapping role ke table-name
+        $tableMap = [
+            'DHC'     => 'dhc-unit-table',
+            'SDM Unit'     => 'sdm-unit-table',
+            'GM/VP Unit'   => 'sdm-unit-table',
+            'Kepala Unit'  => 'kepala-unit-table',
+        ];
+
+        Log::info("Role: " . $role);
+        Log::info("Table: " . $tableMap[$role]);
+
+    
+        // fallback jika role tidak ada dalam map
+        $tableView = $tableMap[$role] ?? 'default-table';
+
+        return view('training.training-request.index', compact('tableView'));
     }
     
     public function importLna(Request $request)
@@ -101,6 +119,36 @@ class TrainingRequestController extends Controller
     
         } catch (\Exception $e) {
             Log::error("Error import chunk: " . $e->getMessage());
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getDataLna(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 12); // default 10
+            $page = $request->input('page', 1);
+    
+            $data = TrainingReference::orderBy('created_at', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            Log::info('data', $data->toArray());
+    
+            return response()->json([
+                "status" => "success",
+                "data" => $data->items(),
+                "pagination" => [
+                    "current_page" => $data->currentPage(),
+                    "last_page" => $data->lastPage(),
+                    "per_page" => $data->perPage(),
+                    "total" => $data->total()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error fetch data: " . $e->getMessage());
             return response()->json([
                 "status" => "error",
                 "message" => $e->getMessage(),
@@ -272,6 +320,8 @@ class TrainingRequestController extends Controller
             })
             ->orderBy('id', 'desc')
             ->get();
+
+            Log::info("Training request list:", $trainingRequest);
 
             return response()->json([
                 "status" => "success",

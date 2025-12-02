@@ -126,8 +126,6 @@ export function initDragDropUpload(modalSelector) {
                 timerProgressBar: true,
                 showConfirmButton: false,
             }).then(() => {
-                console.log("reload");
-                // resetFileSelection();
                 location.reload();
             });
         } catch (err) {

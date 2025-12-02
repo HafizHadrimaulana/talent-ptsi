@@ -54,25 +54,13 @@
         </div>
         @role('DHC')
         <div class="u-scroll-x">
-            @include('training.training-request.partials.dhc-unit-table')
-        </div>
-        @endrole
-        @role('SDM Unit')
-        <div class="u-scroll-x">
-            @include('training.training-request.partials.sdm-unit-table')
-        </div>
-        @endrole
-        @role('Kepala Unit')
-        <div class="u-scroll-x">
-            @include('training.training-request.partials.kepala-unit-table')
+            @include('training.training-request.partials.'. $tableView)
         </div>
         @endrole
     </div>
 </div>
 
-<!-- @role('SDM Unit') -->
 @include('training.training-request.modals.input-modal')
-<!-- @endrole -->
 @include('training.training-request.modals.import-modal')
 @include('training.training-request.modals.edit-modal')
 
