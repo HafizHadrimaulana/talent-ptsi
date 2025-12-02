@@ -126,6 +126,7 @@ class PrincipalApprovalController extends Controller
             'budget_source_type'   => 'nullable|string|max:100',
             'budget_ref'           => 'nullable|string',
             'publish_vacancy_pref' => 'nullable|string|max:10',
+            'details_json'         => 'nullable|string', // Multi-data dari frontend
         ]);
 
         $me   = Auth::user();
@@ -171,6 +172,18 @@ class PrincipalApprovalController extends Controller
             }
         }
 
+        // Parse details_json dan simpan ke meta untuk multi-data
+        if (!empty($data['details_json'])) {
+            try {
+                $detailsArray = json_decode($data['details_json'], true);
+                if (is_array($detailsArray)) {
+                    $insert['meta'] = ['recruitment_details' => $detailsArray];
+                }
+            } catch (\Exception $e) {
+                // Silent fail, lanjut dengan default
+            }
+        }
+
         $model->forceFill($insert)->save();
 
         return back()->with('ok', 'Draft Izin Prinsip berhasil dibuat.');
@@ -213,6 +226,7 @@ class PrincipalApprovalController extends Controller
             'budget_source_type'   => 'nullable|string|max:100',
             'budget_ref'           => 'nullable|string',
             'publish_vacancy_pref' => 'nullable|string|max:10',
+            'details_json'         => 'nullable|string', // Multi-data dari frontend
         ]);
 
         $tbl = $req->getTable();
@@ -244,6 +258,20 @@ class PrincipalApprovalController extends Controller
             if ($data[$key] === null || $data[$key] === '') continue;
             if ($col = $pick($cands)) {
                 $update[$col] = $data[$key];
+            }
+        }
+
+        // Parse details_json dan update meta untuk multi-data
+        if (!empty($data['details_json'])) {
+            try {
+                $detailsArray = json_decode($data['details_json'], true);
+                if (is_array($detailsArray)) {
+                    $currentMeta = $req->meta ?? [];
+                    $currentMeta['recruitment_details'] = $detailsArray;
+                    $update['meta'] = $currentMeta;
+                }
+            } catch (\Exception $e) {
+                // Silent fail, lanjut tanpa update meta
             }
         }
 
