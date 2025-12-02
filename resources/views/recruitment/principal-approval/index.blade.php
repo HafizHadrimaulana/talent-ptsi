@@ -2,11 +2,10 @@
 @section('title','Izin Prinsip')
 
 @section('content')
-{{-- 1. Load Library (CKEditor & Mammoth) --}}
 <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 
-{{-- 2. Style Editor  Kertas A4 --}}
+{{-- Style Editor  Kertas A4 --}}
 <style>
     .ck-editor__editable_inline {
         min-height: 600px;
@@ -47,7 +46,7 @@
   $me     = auth()->user();
   $meUnit = $me ? $me->unit_id : null;
 
-  // --- 1. SETUP DATA UTAMA ---
+  // SETUP DATA UTAMA 
   $canSeeAll      = isset($canSeeAll)      ? $canSeeAll      : false;
   $selectedUnitId = isset($selectedUnitId) ? $selectedUnitId : null;
   $units          = isset($units)          ? $units          : collect();
@@ -73,7 +72,7 @@
                 || ($me && $me->hasRole('Superadmin'));
 
 
-  // --- 2. SETUP DATA DUMMY / LOOKUP ---
+  // data dummy
   $rkapList = isset($rkapList) ? $rkapList : collect([
     (object)['name' => 'Reporter', 'rkap' => 5, 'existing' => 2],
     (object)['name' => 'KJJJ', 'rkap' => 3, 'existing' => 1],
@@ -167,11 +166,9 @@
         <tbody>
           @foreach($list as $r)
           @php
-            // --- 1. LOGIC PHP ORIGINAL (Agar kolom Aksi & Anggaran bekerja normal) ---
-            $meUnit = auth()->user()->unit_id; // Sesuaikan jika user logic berbeda
+            $meUnit = auth()->user()->unit_id;
             $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
             
-            // Logic Stage Approval
             $stageIndex = null;
             if ($r->relationLoaded('approvals')) {
               foreach ($r->approvals as $i => $ap) {
@@ -179,7 +176,6 @@
               }
             }
             
-            // Logic Roles (Sesuaikan dengan auth setup Anda)
             $me = auth()->user();
             $meRoles = [ 
                 'Superadmin' => $me && $me->hasRole('Superadmin'), 
@@ -197,7 +193,6 @@
             $justif          = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
             $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
             
-            // Logic Progress Text
             $totalStages = 3; $progressStep = null;
             if ($status === 'draft') { $progressText = 'Draft di SDM Unit'; $progressStep = 0; }
             elseif ($status === 'rejected') { $progressText = 'Ditolak'; }
@@ -209,7 +204,26 @@
 
             $canStage = false;
 
-            // --- 2. LOGIC MULTI DATA (Untuk Judul & Posisi) ---
+            if(in_array($status, ['in_review','submitted']) && $stageIndex !== null) {
+                if ($meRoles['Superadmin']) {
+                    $canStage = true;
+                } else {
+                    if ($stageIndex === 0) {
+                        // Kepala Unit hanya bisa approve unitnya sendiri
+                        $canStage = $meRoles['Kepala Unit'] && $sameUnit;
+                    } 
+                    elseif ($stageIndex === 1) {
+                        // Logic untuk DHC
+                        $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
+                        $canStage = $meRoles['DHC'] || $isKepalaUnitDHC;
+                    } 
+                    elseif ($stageIndex === 2) {
+                        $canStage = $meRoles['Dir SDM'];
+                    }
+                }
+            }
+
+            // --- LOGIC MULTI DATA ---
             $recruitmentDetails = collect($r->meta['recruitment_details'] ?? []);
             $detailCount = $recruitmentDetails->count();
             $hasMultiData = $detailCount > 1;
@@ -220,13 +234,13 @@
           
           <tr class="recruitment-main-row u-align-top" data-recruitment-id="{{ $r->id }}">
             
-            {{-- 1. No Ticket --}}
+            {{-- No Ticket --}}
             <td>
               @if(!empty($r->ticket_number)) <span class="u-badge u-badge--primary u-text-2xs" title="Nomor Ticket">{{ $r->ticket_number }}</span>
               @else <span class="u-text-2xs u-text-muted">-</span> @endif
             </td>
 
-            {{-- 2. JUDUL (MODIFIED: In-Cell Looping) --}}
+            {{-- JUDUL In-Cell Looping --}}
             <td style="min-width: 200px;">
                 @if($hasMultiData)
                     <div class="u-flex u-flex-col u-gap-xs">
@@ -242,13 +256,13 @@
                 @endif
             </td>
 
-            {{-- 3. Unit --}}
+            {{-- Unit --}}
             <td>{{ $unitNameRow }}</td>
 
-            {{-- 4. Jenis Permintaan --}}
+            {{-- Jenis Permintaan --}}
             <td><span class="u-badge u-badge--glass u-text-2xs">@if($requestType === 'Perpanjang Kontrak') Perpanjang Kontrak @elseif($requestType === 'Rekrutmen') Rekrutmen @else {{ $requestType }} @endif</span></td>
 
-            {{-- 5. POSISI (MODIFIED: In-Cell Looping) --}}
+            {{-- POSISI In-Cell Looping --}}
             <td>
               @if($hasMultiData)
                 <div class="u-flex u-flex-col u-gap-xs">
@@ -263,18 +277,18 @@
               @endif
             </td>
 
-            {{-- 6. HC --}}
+            {{-- HC --}}
             <td>
                 <span class="u-badge u-badge--glass">{{ $r->headcount }} Orang</span>
             </td>
 
-            {{-- 7. Jenis Kontrak --}}
+            {{-- Jenis Kontrak --}}
             <td>@if($employmentType) <span class="u-badge u-badge--glass">{{ $employmentType }}</span> @else <span class="u-text-2xs u-muted">-</span> @endif</td>
 
-            {{-- 9. Progress --}}
+            {{-- Progress --}}
             <td><div class="u-text-2xs"><span class="u-badge u-badge--glass">{{ $progressText }}</span>@if($progressStep !== null) <div class="u-muted u-mt-xxs">Stage {{ $progressStep }} / {{ $totalStages }}</div> @endif</div></td>
             
-            {{-- 10. Sumber Anggaran --}}
+            {{-- Sumber Anggaran --}}
             <td class="cell-actions">
               <div class="cell-actions__group">
                 @if($status === 'draft' && ($sameUnit || $meRoles['Superadmin']))
@@ -299,7 +313,27 @@
                     <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" class="u-inline js-confirm" data-confirm-title="Submit permintaan?" data-confirm-text="Permintaan akan dikirim." data-confirm-icon="question">@csrf<button class="u-btn u-btn--outline u-btn--sm u-hover-lift"><i class="fas fa-paper-plane u-mr-xs"></i> Submit</button></form>
                   @endif
                 @endif
-                <button type="button" class="u-btn u-btn--outline u-btn--sm u-hover-lift js-open-detail" data-modal-open="detailApprovalModal" data-id="{{ $r->id }}" data-ticket-number="{{ $r->ticket_number ?? '-' }}" data-title="{{ e($r->title) }}" data-unit="{{ e($unitNameRow) }}" data-request-type="{{ e($requestType) }}" data-position="{{ e($positionDisplay) }}" data-headcount="{{ (int) $r->headcount }}" data-employment-type="{{ e($employmentType ?? '') }}" data-target-start="{{ $targetStart ? \Illuminate\Support\Carbon::parse($targetStart)->format('d M Y') : '-' }}" data-budget-source="{{ e($budgetSource ?? '') }}" data-budget-ref="{{ e($budgetRef) }}" data-justification="{{ e($justif) }}" data-status="{{ e(ucfirst($status)) }}" data-can-approve="{{ $canStage ? 'true' : 'false' }}" data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'><i class="fas fa-info-circle u-mr-xs"></i> Detail</button>
+                <button type="button" class="u-btn u-btn--outline u-btn--sm u-hover-lift js-open-detail" 
+                        data-modal-open="detailApprovalModal" 
+                        data-id="{{ $r->id }}" 
+                        data-ticket-number="{{ $r->ticket_number ?? '-' }}" 
+                        data-title="{{ e($r->title) }}" 
+                        data-unit="{{ e($unitNameRow) }}" 
+                        data-request-type="{{ e($requestType) }}" 
+                        data-position="{{ e($positionDisplay) }}" 
+                        data-headcount="{{ (int) $r->headcount }}" 
+                        data-employment-type="{{ e($employmentType ?? '') }}" 
+                        data-target-start="{{ $targetStart ? \Illuminate\Support\Carbon::parse($targetStart)->format('d M Y') : '-' }}" 
+                        data-budget-source="{{ e($budgetSource ?? '') }}" 
+                        data-budget-ref="{{ e($budgetRef) }}" 
+                        data-justification="{{ e($justif) }}" 
+                        data-status="{{ e(ucfirst($status)) }}" 
+                        data-can-approve="{{ $canStage ? 'true' : 'false' }}" 
+                        data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" 
+                        data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" 
+                        data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'>
+                        <i class="fas fa-info-circle u-mr-xs"></i> Detail
+                </button>
               </div>
             </td>
           </tr>
@@ -310,7 +344,7 @@
   </div>
 </div>
 
-{{-- MODAL 1: URAIAN JABATAN --}}
+{{-- URAIAN JABATAN --}}
 <div id="uraianModal" class="u-modal" hidden>
   <div class="u-modal__card" style="width: 95%; max-width: 1200px;">
     <div class="u-modal__head">
@@ -326,14 +360,10 @@
 
     <div class="u-modal__body" style="background-color: #e5e7eb; padding: 20px;">
       <div class="u-space-y-md">
-        
-        {{-- Header Judul --}}
         <div>
             <label class="u-block u-text-sm u-font-medium u-mb-sm">Job Function / Jabatan</label>
             <div id="uraianModalJob" class="u-font-medium u-text-lg">-</div>
         </div>
-        
-        {{-- EDITOR AREA --}}
         <div class="document-editor-wrapper">
             <textarea id="uraianEditor"></textarea>
         </div>
@@ -342,7 +372,6 @@
     </div>
 
     <div class="u-modal__foot">
-      {{-- ... (Footer Tetap Sama) ... --}}
       <div class="u-flex u-justify-between u-items-center u-gap-sm">
         <div class="u-muted u-text-sm">Simpan draft untuk melanjutkan editing nanti.</div>
         <div class="u-flex u-gap-sm">
@@ -356,7 +385,7 @@
   </div>
 </div>
 
-{{-- MODAL 2: CREATE / EDIT APPROVAL --}}
+{{-- CREATE / EDIT APPROVAL --}}
 <div id="createApprovalModal" class="u-modal" hidden>
   <div class="u-modal__card">
     <div class="u-modal__head">
@@ -393,16 +422,12 @@
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
           <input class="u-input" type="number" min="1" name="headcount" id="headcountInput" value="1" placeholder="Jumlah orang" required>
         </div>
-
-        {{-- TAB NAVIGASI DATA --}}
         <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;">
            {{-- Tombol Data 1, Data 2, dll di-generate via JS --}}
         </div>
 
         {{-- [SECTION DINAMIS] --}}
         <div id="dynamicContentWrapper" class="u-p-md u-border u-rounded u-bg-light">
-            
-            {{-- 4a. Judul Permintaan --}}
             <div class="u-space-y-sm u-mb-md">
               <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
               <input class="u-input" id="titleInput" name="title" placeholder="Mis. Rekrutmen Analis TKDN Proyek X" required>
@@ -462,8 +487,6 @@
               <div id="rkapSelectedInfo" style="display:none;margin-top:12px;" class="u-space-y-sm">
                 <div class="u-text-sm u-font-medium">Selected: <span id="rkapSelectedName"></span></div>
                 <div class="u-grid-2 u-stack-mobile u-gap-md">
-                  
-                  {{-- Kolom Kiri: Uraian --}}
                   <div>
                     <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan</label>
                     <div class="u-flex u-items-center u-gap-sm">
@@ -471,10 +494,7 @@
                       <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian">Isi Uraian</button>
                     </div>
                   </div>
-
-                  {{-- Kolom Kanan: PIC & Posisi (Organik) --}}
                   <div>
-                    {{-- Field PIC (Existing) --}}
                     <div style="position: relative;" class="u-mb-md">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
                       <input type="text" id="picOrganikSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
@@ -492,14 +512,14 @@
               </div>
             </div>
 
-            {{-- 4c. Tanggal Mulai Kerja --}}
+            {{-- Tanggal Mulai Kerja --}}
             <div class="u-space-y-sm u-mt-md">
               <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja</label>
               <input class="u-input" type="date" id="targetStartInput" name="target_start_date">
             </div>
         </div>
 
-        {{-- 5. Justifikasi (Footer) --}}
+        {{-- Justifikasi --}}
         <div class="u-space-y-sm u-mt-md">
             <label class="u-block u-text-sm u-font-medium u-mb-sm">Justifikasi</label>
             <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan kebutuhan rekrutmen..."></textarea>
@@ -513,7 +533,6 @@
         <form method="POST" action="" id="deleteDraftForm" class="u-inline js-confirm" data-confirm-title="Hapus Draft?" data-confirm-text="Data draft akan dihapus permanen." data-confirm-icon="warning" style="display:none;">
             @csrf
             @method('DELETE')
-            {{-- Style khusus warna merah --}}
             <button type="submit" class="u-btn u-btn--outline u-hover-lift" style="color:#ef4444; border-color:#ef4444;">
                 <i class="fas fa-trash-alt u-mr-xs"></i> Hapus
             </button>
@@ -524,9 +543,9 @@
   </div>
 </div>
 
-{{-- MODAL 3: DETAIL APPROVAL --}}
+{{-- DETAIL APPROVAL --}}
 <div id="detailApprovalModal" class="u-modal" hidden>
-  <div class="u-modal__card" style="max-width: 900px;"> {{-- Sedikit diperlebar --}}
+  <div class="u-modal__card" style="max-width: 900px;"> 
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-info-circle"></i></div>
@@ -539,15 +558,12 @@
     </div>
 
     <div class="u-modal__body u-p-md">
-        {{-- AREA TABS NAVIGASI --}}
         <div id="detailTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-md u-border-b u-pb-sm">
-            {{-- Tombol Tab (Data 1, Data 2, ...) akan di-generate via JS disini --}}
+            {{-- Tombol Tab (Data 1, Data 2, ...) --}}
         </div>
 
-        {{-- AREA KONTEN DATA --}}
         <div id="detailContentContainer" class="u-animate-fade-in">
             <div class="u-grid-2 u-stack-mobile u-gap-lg">
-                {{-- Kolom Kiri --}}
                 <div class="u-space-y-sm">
                     <div>
                         <div class="u-text-xs u-font-bold u-muted u-uppercase">No Ticket</div>
@@ -579,7 +595,6 @@
                     </div>
                 </div>
 
-                {{-- Kolom Kanan --}}
                 <div class="u-space-y-sm">
                     <div>
                         <div class="u-text-xs u-font-bold u-muted u-uppercase">Status</div>
@@ -604,7 +619,6 @@
                     <div>
                         <div class="u-text-xs u-font-bold u-muted u-uppercase">Uraian Jabatan</div>
                         <div class="u-mt-xs">
-                             {{-- Tombol trigger modal uraian (read only) --}}
                              <button type="button" id="btn-view-uraian" class="u-btn u-btn--xs u-btn--outline">
                                 <i class="fas fa-file-alt u-mr-xs"></i> Lihat Uraian
                              </button>
@@ -623,7 +637,6 @@
              <span id="tab-indicator-text">Menampilkan Data 1</span>
         </div>
         <div class="u-flex u-gap-sm action-buttons">
-          {{-- Action Buttons (Approve/Reject) --}}
           <form method="POST" action="" class="detail-approve-form u-inline js-confirm" style="display:none;">
               @csrf
               <button type="submit" class="u-btn u-btn--brand u-success detail-approve-btn" 
@@ -633,7 +646,6 @@
                   <i class="fas fa-check u-mr-xs"></i> Approve
               </button>
           </form>
-          
           <form method="POST" action="" class="detail-reject-form u-inline js-confirm" style="display:none;">
               @csrf
               <button type="submit" class="u-btn u-btn--outline u-danger detail-reject-btn" 
@@ -643,7 +655,6 @@
                   <i class="fas fa-times u-mr-xs"></i> Reject
               </button>
           </form>
-
           <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
         </div>
       </div>
@@ -671,12 +682,11 @@ document.addEventListener('DOMContentLoaded', function() {
         this.bindExternalSearch(); 
     },
 
-    // --- A. INISIALISASI CKEDITOR ---
+    // CKEDITOR 
     initEditor() {
         ClassicEditor
             .create(document.querySelector('#uraianEditor'), {
                 toolbar: [ 'heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', 'blockQuote', 'insertTable', '|', 'undo', 'redo' ],
-                // Konfigurasi agar tabel dari Word tampil baik
                 table: { contentToolbar: [ 'tableColumn', 'tableRow', 'mergeTableCells' ] }
             })
             .then(editor => {
@@ -685,18 +695,15 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => { console.error(error); });
     },
 
-    // --- B. LOGIKA UPLOAD WORD (MAMMOTH) ---
+    // template WORD
     loadServerTemplate() {
-        // Ambil file dari server
         fetch(templateWordUrl)
             .then(response => {
                 if (!response.ok) throw new Error("Template file not found");
                 return response.arrayBuffer();
             })
-            // Convert pakai Mammoth
             .then(arrayBuffer => mammoth.convertToHtml({ arrayBuffer: arrayBuffer }))
             .then(result => {
-                // Simpan hasilnya ke variabel global
                 this.defaultTemplateContent = result.value;
             })
             .catch(error => {
@@ -706,7 +713,6 @@ document.addEventListener('DOMContentLoaded', function() {
     },
 
     bindModal() {
-      // Definisi Variabel Global Modal
       const modalMain   = document.getElementById('createApprovalModal');
       const detailModal = document.getElementById('detailApprovalModal');
       const uraianModal = document.getElementById('uraianModal');
@@ -753,7 +759,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const picProjectInput       = form.querySelector('#picProjectInput');
       const picProjectResults     = form.querySelector('#picProjectSearchResults');
 
-      // Modal Uraian Elements (Hidden element)
+      // Modal Uraian Elements
       const uraianEditorElement   = document.getElementById('uraianEditor'); // Element asli textarea
       const uraianModalJob = document.getElementById('uraianModalJob');
 
@@ -764,7 +770,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
       function getActiveContractType() { return contractTypeSelect ? contractTypeSelect.value : ''; }
 
-      // --- SIMPAN DATA DARI TAB YANG AKTIF ---
       function saveCurrentTabData() {
           const type = getActiveContractType();
           const idx = activeDataIndex;
@@ -773,26 +778,25 @@ document.addEventListener('DOMContentLoaded', function() {
           multiDataStore[idx].title = titleInput.value;
           multiDataStore[idx].target_start_date = targetStartInput.value;
 
-          // Note: Kita tidak menyimpan CKEditor disini, 
-          // CKEditor disimpan saat tombol "Simpan" di modal uraian diklik.
-
           if (type === 'Organik') {
               const selectedRow = form.querySelector('.js-rkap-select.selected');
               const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
               multiDataStore[idx].type = 'Organik';
               multiDataStore[idx].rkap_job = rkapJob;
-              // Ambil konten dari dataset hidden element (disimpan saat modal uraian ditutup)
+
               multiDataStore[idx].uraian_content = uraianEditorElement.dataset.savedContent || '';
               multiDataStore[idx].uraian_status = uraianStatus.textContent;
               
               multiDataStore[idx].pic_id = picOrganikInput.value;
               multiDataStore[idx].pic_text = picOrganikSearchInput.value;
+
               multiDataStore[idx].position = positionOrganikInput.value; 
               multiDataStore[idx].position_text = positionOrganikSearchInput.value;
           } else if (type === 'Project Based') {
               multiDataStore[idx].type = 'Project Based';
               multiDataStore[idx].project_code = kodeProjectSelect.value;
               multiDataStore[idx].project_name = namaProjectInput.value;
+
               multiDataStore[idx].position = positionInput.value; 
               multiDataStore[idx].position_text = positionSearchInput.value;
               
@@ -808,7 +812,6 @@ document.addEventListener('DOMContentLoaded', function() {
           resetDynamicInputs(); 
           const data = multiDataStore[idx];
           if (!data) return; 
-
           if(data.title) titleInput.value = data.title;
           if(data.target_start_date) targetStartInput.value = data.target_start_date;
 
@@ -828,7 +831,6 @@ document.addEventListener('DOMContentLoaded', function() {
               if(data.pic_id) picOrganikInput.value = data.pic_id;
               if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
               
-              // Load konten ke dataset hidden element
               if(data.uraian_content) uraianEditorElement.dataset.savedContent = data.uraian_content;
               
               if(data.position) positionOrganikInput.value = data.position;
@@ -949,16 +951,11 @@ document.addEventListener('DOMContentLoaded', function() {
           }
           detailsJsonInput.value = JSON.stringify(payload);
       });
-
-      // --- C. LOGIKA BUKA/TUTUP & SIMPAN MODAL URAIAN ---
       
-      // Buka Modal Uraian
       function openUraianModalSafe(title, content, mode) {
-          // Set atribut untuk tahu ini uraian project atau organik
           uraianEditorElement.setAttribute('data-mode', mode);
           uraianModalJob.textContent = title;
           
-          // Set isi CKEditor
           const editor = page.editorInstance;
           if(editor) {
               let dataToDisplay = '';
@@ -977,7 +974,7 @@ document.addEventListener('DOMContentLoaded', function() {
               }
           }
           
-          // Atur Z-Index agar Uraian di atas Detail/Main Modal
+          // Atur Z-Index
           if (modalMain) modalMain.style.zIndex = '1050';
           if (detailModal) detailModal.style.zIndex = '1050'; 
           if (uraianModal) uraianModal.style.zIndex = '2000'; 
@@ -986,17 +983,15 @@ document.addEventListener('DOMContentLoaded', function() {
           document.body.classList.add('modal-open');
       }
 
-      // Tutup Modal Uraian
       function closeUraianModalSafe() {
           uraianModal.hidden = true;
           const editor = page.editorInstance;
-          if(editor) editor.disableReadOnlyMode('lock_id'); // Reset readonly
+          if(editor) editor.disableReadOnlyMode('lock_id');
           
           if (modalMain) modalMain.style.zIndex = '';
           if (detailModal) detailModal.style.zIndex = ''; 
           if (uraianModal) uraianModal.style.zIndex = '';
           
-          // Cek jika modal lain masih terbuka
           const isDetailOpen = detailModal && !detailModal.hidden;
           const isMainOpen = modalMain && !modalMain.hidden;
           if (isDetailOpen || isMainOpen) {
@@ -1006,7 +1001,6 @@ document.addEventListener('DOMContentLoaded', function() {
           }
       }
 
-      // Listener Tombol Simpan/Tutup di Modal Uraian
       document.addEventListener('click', function(e) {
         const saveDraft = e.target.closest('.js-save-uraian-draft');
         const saveFinal = e.target.closest('.js-save-uraian-final');
@@ -1015,7 +1009,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (closeModal) { closeUraianModalSafe(); return; }
 
         if (saveDraft || saveFinal) {
-            // Ambil data dari CKEditor
             const editor = page.editorInstance;
             const content = editor ? editor.getData() : '';
             
@@ -1027,11 +1020,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(uraianStatusProject) uraianStatusProject.textContent = statusText;
             } else if (mode === 'organik') {
                 if(uraianStatus) uraianStatus.textContent = statusText;
-                // Simpan sementara di dataset hidden element agar diambil saveCurrentTabData()
                 uraianEditorElement.dataset.savedContent = content;
             }
             
-            // Simpan juga langsung ke multiDataStore aktif
             if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
             multiDataStore[activeDataIndex].uraian_content = content;
             multiDataStore[activeDataIndex].uraian_status = statusText;
@@ -1040,7 +1031,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
-      // --- HELPER LAINNYA (Searchable Dropdown dll) ---
       function setupSearchableDropdown(searchInput, hiddenInput, resultsContainer, dataArray, allowNew = false) {
           if (!searchInput || !resultsContainer) return;
           const renderOptions = (filterText = '') => {
@@ -1150,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const job = selectedRow.closest('tr').dataset.jobName;
             const existing = (multiDataStore[activeDataIndex] && multiDataStore[activeDataIndex].uraian_content) 
                              ? multiDataStore[activeDataIndex].uraian_content 
-                             : uraianEditorElement.dataset.savedContent; // ambil dari storage
+                             : uraianEditorElement.dataset.savedContent;
             openUraianModalSafe(job, existing, 'organik');
         }
       });
@@ -1191,7 +1181,6 @@ document.addEventListener('DOMContentLoaded', function() {
              }
          }
 
-         // HANDLING CREATE / EDIT / DETAIL
          const btnCreate = e.target.closest('[data-modal-open="createApprovalModal"]');
          if(btnCreate) {
              const m = document.getElementById('createApprovalModal');
