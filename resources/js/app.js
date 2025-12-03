@@ -61,10 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ================================
+  // DataTables: Contracts
+  // ================================
   if (document.querySelector('#contracts-table')) {
     initDataTables('#contracts-table', {
       columnDefs: [
-        { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 140, responsivePriority: 1 },
+        // kolom actions di paling kanan
+        { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 160, responsivePriority: 1 },
         { targets: 0, responsivePriority: 2 },
         { targets: 1, responsivePriority: 3 },
       ],
@@ -124,24 +128,112 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ================================
-  // Modal Detail (iOS glass)
+  // KONTRAK: Filter auto-apply
+  // ================================
+  const contractFilterForm = document.getElementById('contractFilterForm');
+  if (contractFilterForm) {
+    const filterFields = contractFilterForm.querySelectorAll('select, input[type="date"]');
+    filterFields.forEach(el => {
+      el.addEventListener('change', () => {
+        // auto submit (support <button type="submit"> & Safari)
+        if (typeof contractFilterForm.requestSubmit === 'function') {
+          contractFilterForm.requestSubmit();
+        } else {
+          contractFilterForm.submit();
+        }
+      });
+    });
+  }
+
+  // ================================
+  // KONTRAK: Modal trigger (data-modal-target)
+  // ================================
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-modal-target]');
+    if (!btn) return;
+
+    const targetSelector = btn.getAttribute('data-modal-target');
+    if (!targetSelector) return;
+
+    const modal = document.querySelector(targetSelector);
+    if (!modal) return;
+
+    modal.hidden = false;
+    document.body.classList.add('modal-open');
+
+    const firstInput = modal.querySelector('input, select, textarea, button');
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 80);
+    }
+  });
+
+  // ================================
+  // KONTRAK: E-Sign / Signature Pad
+  // (pakai window.SignaturePad kalau sudah ada script-nya)
+  // ================================
+  (function initContractSignaturePad() {
+    const canvas =
+      document.getElementById('contractSignatureCanvas') ||
+      document.querySelector('[data-signature-canvas]');
+    if (!canvas) return;
+    if (!window.SignaturePad) {
+      console.warn('SignaturePad belum dimuat (window.SignaturePad tidak ada).');
+      return;
+    }
+
+    const pad = new window.SignaturePad(canvas, {
+      minWidth: 0.6,
+      maxWidth: 1.8,
+      penColor: '#0f172a',              // tinta gelap, supaya tidak "putih"
+      backgroundColor: 'rgba(255,255,255,0)', // transparan, ikut background glass
+    });
+
+    window.ContractSignaturePad = pad;
+
+    const clearBtn = document.getElementById('contractSignatureClear');
+    const dataInput = document.getElementById('contractSignatureData');
+    const form = canvas.closest('form');
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        pad.clear();
+        if (dataInput) dataInput.value = '';
+      });
+    }
+
+    if (form && dataInput) {
+      form.addEventListener('submit', () => {
+        if (!pad.isEmpty()) {
+          try {
+            dataInput.value = pad.toDataURL('image/png');
+          } catch (err) {
+            console.error('Gagal ambil dataURL signature:', err);
+          }
+        }
+      });
+    }
+  })();
+
+  // ================================
+  // Modal Detail Employee (iOS glass)
   // ================================
   const modal          = document.getElementById('empModal');
   const loading        = document.getElementById('empLoading');
   const btnCloseTop    = document.getElementById('empClose');
   const btnCloseBottom = document.getElementById('empCloseBottom');
 
-  const openModal   = () => { if (modal) modal.hidden = false; };
-  const closeModal  = () => { if (modal) modal.hidden = true;  };
+  const openModalEmp   = () => { if (modal) modal.hidden = false; };
+  const closeModalEmp  = () => { if (modal) modal.hidden = true;  };
   const showLoading = (on = true) => { if (loading) loading.style.display = on ? 'block' : 'none'; };
 
   modal?.querySelector('.u-modal__card')?.addEventListener('click', (e) => e.stopPropagation());
 
-  btnCloseTop?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
-  btnCloseBottom?.addEventListener('click', (e) => { e.preventDefault(); closeModal(); });
+  btnCloseTop?.addEventListener('click', (e) => { e.preventDefault(); closeModalEmp(); });
+  btnCloseBottom?.addEventListener('click', (e) => { e.preventDefault(); closeModalEmp(); });
 
-  modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-  document.addEventListener('keydown', (e) => { if (!modal?.hidden && e.key === 'Escape') closeModal(); });
+  modal?.addEventListener('click', (e) => { if (e.target === modal) closeModalEmp(); });
+  document.addEventListener('keydown', (e) => { if (!modal?.hidden && e.key === 'Escape') closeModalEmp(); });
 
   // ================================
   // Tabs (click + wheel + drag-scroll)
@@ -261,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function showEmpByUrl(url, fallback = {}) {
     if (!url) return;
-    openModal();
+    openModalEmp();
     showLoading(true);
 
     if (el.ovLeft)  el.ovLeft.innerHTML = '';
