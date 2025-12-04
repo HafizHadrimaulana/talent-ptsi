@@ -12,6 +12,8 @@ use App\Http\Controllers\Public\ApplicationController as PublicApplicationContro
 // Account (modal one-page actions)
 use App\Http\Controllers\Account\AccountController;
 
+use App\Http\Controllers\Recruitment\PrincipalApprovalController;
+
 Route::middleware('web')->group(function () {
 
     // ====== PUBLIC (NO AUTH) ======
@@ -35,6 +37,9 @@ Route::middleware('web')->group(function () {
 
         // Logout
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+        Route::post('/recruitment/uraian-jabatan/preview-pdf', [PrincipalApprovalController::class, 'previewUraianPdf'])
+        ->name('recruitment.uraian-jabatan.preview-pdf');
     });
 
     // ====== LOAD INTERNAL / ADMIN ROUTES ======

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PrincipalApprovalController extends Controller
 {
@@ -434,5 +435,24 @@ class PrincipalApprovalController extends Controller
         if ($me->unit_id && $unitId && (string) $me->unit_id !== (string) $unitId) {
             abort(403);
         }
+    }
+
+    public function previewUraianPdf(Request $request)
+    {
+        $json = $request->input('data');
+        $d = json_decode($json, true);
+
+        if (!$d) {
+            return "Data uraian jabatan tidak valid atau kosong.";
+        }
+
+        $pdf = Pdf::loadView('pdf.uraian_jabatan', compact('d'));
+        
+        $pdf->setPaper('a4', 'portrait');
+        
+        $safeName = preg_replace('/[^A-Za-z0-9\-]/', '_', $d['nama'] ?? 'Draft');
+        $filename = 'Uraian_Jabatan_' . $safeName . '.pdf';
+        
+        return $pdf->stream($filename);
     }
 }
