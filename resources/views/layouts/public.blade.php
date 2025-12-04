@@ -165,7 +165,7 @@
 
     <!-- LEFT: Logo -->
     <a href="{{ route('careers.index') }}" class="flex items-center gap-2">
-      <img src="{{ Vite::asset('resources/images/sapahc.png') }}" alt="Test Company Logo" class="h-25 w-25 object-contain">
+      <img src="/images/logo-white.png" alt="Test Company Logo" class="h-25 w-25 object-contain">
       <img src="/images/logo.png" alt="Logo" class="w-35 h-auto object-contain">
       <img src="/images/Danantara_Indonesia.svg.png" alt="Danantara" class="w-35 h-auto object-contain">
     </a>
@@ -353,10 +353,11 @@
 
 
   <!-- ================= AKHLAK SECTION ================= -->
+  <!-- ================= ICONS CREATED WITH FREE ICON PACK ON FIGMA ============= -->
   <section class="py-20 text-center fade-section relative">
 
     <h2 class="text-3xl font-bold mb-8">
-      Our Core Value :
+      Our Core Values :
       <span class="text-[#083b78]">AKH</span><span class="text-[#19b1c9]">LAK</span>
     </h2>
 
@@ -373,7 +374,8 @@
                     hover:-translate-y-3 hover:scale-[1.06]
                     hover:[transform:rotateX(8deg)_rotateY(6deg)]
                     cursor-pointer"
-             data-desc="Amanah adalah sikap dapat dipercaya dalam memegang tanggung jawab.">
+             data-title="Amanah"
+             data-desc="Memegang teguh kepercayaan yang diberikan.">
           A
         </div>
 
@@ -383,7 +385,8 @@
                     hover:-translate-y-3 hover:scale-[1.06]
                     hover:[transform:rotateX(8deg)_rotateY(-6deg)]
                     cursor-pointer"
-             data-desc="Kompeten berarti memiliki kemampuan dan profesionalisme.">
+             data-title="Kompeten"
+             data-desc="Terus belajar dan meningkatkan kapabilitas.">
           K
         </div>
 
@@ -393,7 +396,8 @@
                     hover:-translate-y-3 hover:scale-[1.06]
                     hover:[transform:rotateX(8deg)_rotateY(6deg)]
                     cursor-pointer"
-             data-desc="Harmonis berarti saling menghormati dan peduli.">
+             data-title="Harmonis"
+             data-desc="Saling peduli dan menghormati perbedaan.">
           H
         </div>
 
@@ -403,7 +407,8 @@
                     hover:-translate-y-3 hover:scale-[1.06]
                     hover:[transform:rotateX(8deg)_rotateY(-6deg)]
                     cursor-pointer"
-             data-desc="Loyal adalah sikap setia terhadap organisasi dan nilai-nilai.">
+             data-title="Loyal"
+             data-desc="Berdedikasi dan dan mengutamakan kepentigan bangsa dan negara.">
           L
         </div>
 
@@ -413,7 +418,8 @@
                     hover:-translate-y-3 hover:scale-[1.06]
                     hover:[transform:rotateX(8deg)_rotateY(6deg)]
                     cursor-pointer"
-             data-desc="Adaptif berarti mampu menyesuaikan diri dengan perubahan.">
+             data-title="Adaptif"
+             data-desc="Terus berinovasi dan antusias dalam menggerakkan ataupun menghadapi perubahan.">
           A
         </div>
 
@@ -423,7 +429,8 @@
                     hover:-translate-y-3 hover:scale-[1.06]
                     hover:[transform:rotateX(8deg)_rotateY(-6deg)]
                     cursor-pointer"
-             data-desc="Kolaboratif berarti saling mendukung untuk solusi bersama.">
+             data-title="Kompeten"
+             data-desc="Membangun kerjasama yang sinergis.">
           K
         </div>
 
@@ -433,7 +440,9 @@
       <div id="akhDialog"
            class="max-w-xl mx-auto mt-10 p-5 bg-gradient-to-r from-[#083b78] to-[#19b1c9] text-white rounded-xl shadow-xl opacity-0
                   transition-all duration-500 transform translate-y-4 scale-95">
-        <p id="dialogContent" class="text-lg"></p>
+                  
+       <h2 id="akhDialogTitle" class="text-xl font-bold mb-3"></h2>
+       <p id="akhDialogContent" class="text-lg"></p>
       </div>
 
     </div>
@@ -685,6 +694,10 @@
         <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">
             Login Akun
         </h2>
+
+         <h3 class="text-l font-normal text-gray-800 mb-4 text-center">
+            Silahkan Login untuk mengakses informasi lowongan lebih lanjut
+        </h3>
 
         <!-- Laravel Login Form -->
         <form method="POST" action="{{ route('login.store') }}" class="space-y-5.5">
@@ -1023,11 +1036,19 @@ function closeModal() {
 
     const boxes = document.querySelectorAll(".akh-box");
     const dialog = document.getElementById("akhDialog");
-    const content = document.getElementById("dialogContent");
+
+    const titleEl = document.getElementById("akhDialogTitle");
+    const contentEl = document.getElementById("akhDialogContent");
 
     boxes.forEach(box => {
       box.addEventListener("mouseenter", () => {
-        content.textContent = box.dataset.desc;
+
+        // set title
+        titleEl.textContent = box.dataset.title || "";
+
+        // set description
+        contentEl.textContent = box.dataset.desc || "";
+
         dialog.classList.add("dialog-show");
       });
 
@@ -1035,6 +1056,7 @@ function closeModal() {
         dialog.classList.remove("dialog-show");
       });
     });
+
 
     const loginModal = document.getElementById("loginModal");
     const loginTermsCheckbox = document.getElementById("loginTermsCheckbox");
