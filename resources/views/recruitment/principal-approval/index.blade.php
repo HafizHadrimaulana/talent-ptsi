@@ -1221,6 +1221,30 @@ document.addEventListener('DOMContentLoaded', function() {
              
              const tabsContainer = document.getElementById('detailTabsContainer');
              tabsContainer.innerHTML = '';
+             
+             // Get approval URLs dan status
+             const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
+             const approveUrl = btnDetail.getAttribute('data-approve-url');
+             const rejectUrl = btnDetail.getAttribute('data-reject-url');
+             const recruitmentId = btnDetail.getAttribute('data-id');
+             
+             // Setup approve/reject forms
+             const approveForm = detailModal.querySelector('.detail-approve-form');
+             const rejectForm = detailModal.querySelector('.detail-reject-form');
+             const actionButtons = detailModal.querySelector('.action-buttons');
+             
+             if(canApprove && approveForm && rejectForm) {
+                 approveForm.style.display = 'block';
+                 rejectForm.style.display = 'block';
+                 if(approveForm.querySelector('button')) approveForm.querySelector('button').disabled = false;
+                 if(rejectForm.querySelector('button')) rejectForm.querySelector('button').disabled = false;
+                 if(approveUrl) approveForm.action = approveUrl;
+                 if(rejectUrl) rejectForm.action = rejectUrl;
+             } else {
+                 if(approveForm) approveForm.style.display = 'none';
+                 if(rejectForm) rejectForm.style.display = 'none';
+             }
+             
              const renderContent = (index) => {
                  const data = detailsArray[index];
                  const globalTitle = safeTxt('data-title');
