@@ -4,38 +4,33 @@
 @section('content')
 {{-- Style & Modal Stacking Fix --}}
 <style>
-    /* --- CUSTOM STYLE FOR MODAL STACKING & CENTERING --- */
     #createApprovalModal {
         z-index: 1050 !important;
     }
     
-    /* Fix: Agar modal Uraian selalu di atas & DI TENGAH layar */
     #uraianModal {
         z-index: 2000 !important; 
         background-color: rgba(0, 0, 0, 0.5); 
-        /* Flexbox centering magic */
-        display: none; /* Default hidden, nanti di-override JS/CSS saat aktif */
+        display: none;
         align-items: center;
         justify-content: center;
         position: fixed;
         inset: 0;
     }
     
-    /* Saat modal tidak hidden, paksa display flex agar centering jalan */
     #uraianModal:not([hidden]) {
         display: flex !important;
     }
 
-    /* Style Form */
     .modal-card-wide {
         width: 95% !important; 
         max-width: 1000px !important; 
-        max-height: 90vh; /* Agar tidak melebihi tinggi layar */
+        max-height: 90vh;
         display: flex;
         flex-direction: column;
     }
     .u-modal__body {
-        overflow-y: auto; /* Scrollable body */
+        overflow-y: auto; 
     }
     .uj-section-title {
         font-weight: 700;
@@ -45,7 +40,7 @@
         margin-bottom: 1rem;
         color: #374151;
         text-transform: uppercase;
-        background-color: #f3f4f6; /* Highlight judul section */
+        background-color: #f3f4f6;
         padding: 8px;
         margin-top: 10px;
     }
@@ -72,8 +67,6 @@
   
   $me       = auth()->user();
   $meUnit = $me ? $me->unit_id : null;
-  
-  // AMBIL NAMA UNIT USER LOGIN UNTUK AUTOFILL
   $meUnitName = $meUnit ? DB::table('units')->where('id', $meUnit)->value('name') : '';
 
   $canSeeAll       = isset($canSeeAll)       ? $canSeeAll       : false;
@@ -155,7 +148,18 @@
           @foreach($list as $r)
           @php
             $meUnit = auth()->user()->unit_id; $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
-            $stageIndex = null; if ($r->relationLoaded('approvals')) { foreach ($r->approvals as $i => $ap) { if (($ap->status ?? 'pending') === 'pending') { $stageIndex = $i; break; } } }
+            $stageIndex = null; 
+            $rejectedByLabel = '';
+            
+            if ($r->relationLoaded('approvals')) { 
+              foreach ($r->approvals as $i => $ap) { if (($ap->status ?? 'pending') === 'pending') {
+                $stageIndex = $i; break; } if (($ap->status ?? '') === 'rejected') {
+                  if ($i === 0) $rejectedByLabel = 'Kepala Unit';
+                  elseif ($i === 1) $rejectedByLabel = 'DHC';
+                  elseif ($i === 2) $rejectedByLabel = 'Dir SDM';
+                }
+              }
+            }
             $me = auth()->user();
             $meRoles = [ 'Superadmin' => $me && $me->hasRole('Superadmin'), 'Kepala Unit' => $me && $me->hasRole('Kepala Unit'), 'DHC' => $me && $me->hasRole('DHC'), 'Dir SDM' => $me && $me->hasRole('Dir SDM') ];
             $status = $r->status ?? 'draft';
@@ -169,7 +173,7 @@
             
             $totalStages = 3; $progressStep = null;
             if ($status === 'draft') { $progressText = 'Draft di SDM Unit'; $progressStep = 0; }
-            elseif ($status === 'rejected') { $progressText = 'Ditolak'; }
+            elseif ($status === 'rejected') {$progressText = $rejectedByLabel ? 'Ditolak oleh ' . $rejectedByLabel : 'Ditolak';}
             elseif ($status === 'approved') { $progressText = 'Selesai (Approved Dir SDM)'; $progressStep = $totalStages; }
             elseif ($stageIndex === 0) { $progressText = 'Menunggu Kepala Unit'; $progressStep = 1; }
             elseif ($stageIndex === 1) { $progressText = 'Menunggu DHC'; $progressStep = 2; }
@@ -276,7 +280,7 @@
   </div>
 </div>
 
-{{-- MODAL URAIAN JABATAN (FORM BASED) - Z-INDEX 2000 --}}
+{{-- MODAL URAIAN JABATAN (FORM BASED) --}}
 <div id="uraianModal" class="u-modal" hidden>
   <div class="u-modal__card modal-card-wide">
     <div class="u-modal__head">
@@ -297,12 +301,10 @@
         <div class="u-card u-p-md">
             <h3 class="uj-section-title">1. Identitas Jabatan</h3>
             <div class="u-grid-2-custom">
-                {{-- Kiri --}}
                 <div class="u-space-y-sm">
                     <div><label class="uj-label">Nama Jabatan</label><input type="text" class="u-input" id="uj_nama" placeholder="Otomatis dari Posisi/Job Function"></div>
                     <div><label class="uj-label">Unit Kerja (Divisi/UUS/Cabang)</label><input type="text" class="u-input" id="uj_unit" placeholder="Otomatis dari Unit User"></div>
                 </div>
-                {{-- Kanan --}}
                 <div class="u-space-y-sm">
                     <div><label class="uj-label">Melapor Pada</label><input type="text" class="u-input" id="uj_melapor" placeholder="Jabatan Atasan Langsung"></div>
                     <div><label class="uj-label">Pemangku</label><input type="text" class="u-input" id="uj_pemangku" placeholder="Nama Pemangku"></div>
@@ -337,7 +339,6 @@
                         <label class="uj-label">Dimensi Non-Keuangan</label>
                         <input type="text" class="u-input" id="uj_dimensi_non_keuangan" placeholder="-">
                     </div>
-                    
                 </div>
                 <div class="u-grid-2-custom">
                     <div>
@@ -422,7 +423,6 @@
             <div id="uj_struktur_preview" style="margin-top:8px;"></div>
           </div>
         </div>
-
       </form>
     </div>
 
@@ -442,7 +442,7 @@
   </div>
 </div>
 
-{{-- MODAL CREATE (UTAMA) - Z-INDEX 1050 --}}
+{{-- MODAL CREATE (UTAMA) --}}
 <div id="createApprovalModal" class="u-modal" hidden>
   <div class="u-modal__card">
     <div class="u-modal__head">
@@ -463,7 +463,6 @@
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan</label>
           <select class="u-input" name="request_type"><option value="Rekrutmen">Rekrutmen</option><option value="Perpanjang Kontrak">Perpanjang Kontrak</option></select>
         </div>
-        
         <div class="u-grid-2 u-stack-mobile u-gap-md">
           <div class="u-space-y-sm">
             <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak</label>
@@ -474,13 +473,12 @@
             <select class="u-input" id="budgetSourceSelect" name="budget_source_type" style="-webkit-appearance: none; -moz-appearance: none; appearance: none;"><option value="">Sumber anggaran</option><option value="RKAP">RKAP</option><option value="RAB Proyek">RAB Proyek</option><option value="Lainnya">Lainnya</option></select>
           </div>
         </div>
-
         <div class="u-space-y-sm">
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
           <input class="u-input" type="number" min="1" name="headcount" id="headcountInput" value="1" placeholder="Jumlah orang" required>
         </div>
         
-        {{-- Tabs Container (PENTING: Jangan Dihapus) --}}
+        {{-- Tabs Container Multidata --}}
         <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;">
            {{-- Tombol Data 1, Data 2, dll di-generate via JS --}}
         </div>
@@ -565,7 +563,6 @@
                       <input type="hidden" name="pic" id="picOrganikInput">
                       <div id="picOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                     </div>
-                    
                   </div>
                 </div>
               </div>
@@ -630,11 +627,6 @@
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Jabatan (Rp)</label>
                       <input class="u-input" type="number" id="dyn_allowanceJ" placeholder="Masukkan angka">
-                      <!-- <select class="u-input" id="dyn_allowance">
-                          <option value="">Pilih Tunjangan</option>
-                          <option value="Tunjangan A">Tunjangan A</option>
-                          <option value="Tunjangan B">Tunjangan B</option>
-                      </select> -->
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Project (Rp)</label>
@@ -678,8 +670,8 @@
                       <div id="dyn_cv_preview_text" class="u-text-2xs u-text-brand u-mt-xs"></div>
                   </div>
                   <div class="u-space-y-sm">
-                          <label class="u-block u-text-sm u-font-medium u-mb-sm">PPH 21</label>
-                          <input class="u-input" type="number" id="dyn_pph21" placeholder="Masukkan angka">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">PPH 21</label>
+                      <input class="u-input" type="number" id="dyn_pph21" placeholder="Masukkan angka">
                   </div>
               </div>
           </div>
@@ -725,7 +717,6 @@
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Judul</div><div class="u-font-medium" id="view-title">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Jenis Permintaan</div><div id="view-request-type">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Headcount</div><div id="view-headcount">-</div></div>
-                    <!-- <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Target Mulai</div><div id="view-target">-</div></div> -->
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">PIC Request</div><div id="view-pic">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Detail Penjelasan</div><div id="view-justification">-</div></div>
                 </div>
@@ -828,7 +819,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const targetStartInput   = form.querySelector('#targetStartInput'); 
       const justifInput        = form.querySelector('[name="justification"]');
 
-      // [NEW] Define New Elements Reference
       const dynInputs = {
           start_date:  form.querySelector('#dyn_start_date'),
           end_date:    form.querySelector('#dyn_end_date'),
@@ -851,7 +841,83 @@ document.addEventListener('DOMContentLoaded', function() {
           cv_preview:  form.querySelector('#dyn_cv_preview_text')
       };
 
-      // 2. LOGIKA KALKULASI GAJI (Auto Fill THR & Kompensasi)
+      // Kumpulkan input yang memicu perhitungan
+      const calcInputs = [
+          dynInputs.salary, 
+          dynInputs.thr, 
+          dynInputs.kompensasi,
+          dynInputs.start_date, 
+          dynInputs.end_date
+      ];
+
+      // Fungsi hitung renumerasi ke API
+      function calculateRemuneration() {
+          // Ambil value Gaji & Tanggal
+          const salary = parseFloat(dynInputs.salary ? dynInputs.salary.value : 0) || 0;
+          const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
+          const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
+
+          if (salary <= 0 || !start || !end) return;
+
+          // Ambil nilai dari input form
+          let valThr = parseFloat(dynInputs.thr ? dynInputs.thr.value : 0);
+          let valKomp = parseFloat(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
+
+          // paksa nilai THR & Kompensasi menggunakan nilai Gaji Pokok agar perhitungan akurat.
+          if (salary > 0 && valThr === 0) {
+              valThr = salary;
+              if(dynInputs.thr) dynInputs.thr.value = salary;
+          }
+          if (salary > 0 && valKomp === 0) {
+              valKomp = salary;
+              if(dynInputs.kompensasi) dynInputs.kompensasi.value = salary;
+          }
+
+          const payload = {
+              salary: salary,
+              start_date: start,
+              end_date: end,
+              thr: valThr,
+              kompensasi: valKomp,
+              _token: '{{ csrf_token() }}'
+          };
+
+          if(dynInputs.pph21) dynInputs.pph21.placeholder = "Menghitung...";
+
+          fetch("{{ route('api.calculate.salary') }}", {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+              },
+              body: JSON.stringify(payload)
+          })
+          .then(response => response.json())
+          .then(data => {
+              console.log("RESPONSE:", data);
+              if(dynInputs.pph21)   dynInputs.pph21.value   = data.pph21_bulanan; 
+              if(dynInputs.bpjs_kes) dynInputs.bpjs_kes.value = data.bpjs_kesehatan;
+              if(dynInputs.bpjs_tk)  dynInputs.bpjs_tk.value  = data.bpjs_ketenagakerjaan;
+          })
+          .catch(error => {
+              console.error('Error calculating:', error);
+          });
+      }
+
+      // Auto calculate saat mengetik
+      let calcTimeout;
+      calcInputs.forEach(input => {
+          if(input) {
+              input.addEventListener('input', function() {
+                  clearTimeout(calcTimeout);
+                  // Delay 800ms agar tidak spam request saat mengetik cepat
+                  calcTimeout = setTimeout(calculateRemuneration, 800); 
+              });
+              input.addEventListener('change', calculateRemuneration);
+          }
+      });
+
+      // LOGIKA KALKULASI GAJI
       if(dynInputs.salary) {
           dynInputs.salary.addEventListener('input', function(e) {
               const val = e.target.value;
@@ -860,12 +926,11 @@ document.addEventListener('DOMContentLoaded', function() {
               if(dynInputs.thr) dynInputs.thr.value = val;
               if(dynInputs.kompensasi) dynInputs.kompensasi.value = val;
 
-              // [BARU] Autofill Terbilang
+              // Autofill Terbilang
               if(dynInputs.terbilang) {
                   if(val && !isNaN(val)) {
-                      // Konversi angka ke kata, tambahkan "rupiah", dan UpperCase huruf pertama
+                      // Konversi angka ke kata
                       let text = terbilang(val) + ' rupiah';
-                      // Membuat huruf pertama kapital (Capitalize first letter)
                       text = text.charAt(0).toUpperCase() + text.slice(1);
                       dynInputs.terbilang.value = text;
                   } else {
@@ -875,7 +940,7 @@ document.addEventListener('DOMContentLoaded', function() {
           });
       }
 
-      // 3. LOGIKA FILE UPLOAD (Convert to Base64 agar tidak hilang saat pindah tab)
+      // LOGIKA FILE UPLOAD (Convert to Base64)
       if(dynInputs.cv) {
           dynInputs.cv.addEventListener('change', function(e) {
               const file = e.target.files[0];
@@ -970,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', function() {
       window.openUraianForm = function(currentData, mode) {
           uraianForm.reset();
           const d = currentData.uraian_data || {};
-          // ... (isi field uraian) ...
+
           ujInputs.nama.value = d.nama || '';
           ujInputs.unit.value = d.unit || '';
           ujInputs.pemangku.value = d.pemangku || '';
@@ -1097,8 +1162,7 @@ document.addEventListener('DOMContentLoaded', function() {
           btnPreviewPdf.addEventListener('click', function() { submitPdfForm(this.dataset.json); });
       }
 
-      // --- LOGIC FORM UTAMA ---
-      
+      // --- Logic section dinamis ---      
       function resetDynamicInputs() {
           if(titleInput) titleInput.value = '';
           Object.values(dynInputs).forEach(el => {
@@ -1113,12 +1177,10 @@ document.addEventListener('DOMContentLoaded', function() {
           if(rkapSelectedInfo) rkapSelectedInfo.style.display = 'none';
           if(rkapSelectedName) rkapSelectedName.textContent = '';
           if(uraianStatus) uraianStatus.textContent = 'Belum ada uraian';
-          
           if(picOrganikInput) picOrganikInput.value = '';
           if(picOrganikSearchInput) picOrganikSearchInput.value = '';
           if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
           if(positionOrganikInput) positionOrganikInput.value = '';
-
           if(kodeProjectSelect) kodeProjectSelect.value = '';
           if(namaProjectInput) namaProjectInput.value = '';
           if(positionSearchInput) positionSearchInput.value = '';
@@ -1132,7 +1194,6 @@ document.addEventListener('DOMContentLoaded', function() {
           const type = getActiveContractType();
           const idx = activeDataIndex;
           if (!multiDataStore[idx]) multiDataStore[idx] = {};
-
           if(titleInput) multiDataStore[idx].title = titleInput.value;
 
           multiDataStore[idx].start_date = dynInputs.start_date?.value || '';
@@ -1395,7 +1456,7 @@ document.addEventListener('DOMContentLoaded', function() {
              }
          }
          
-         // ... Detail Modal Logic ...
+         // Detail Modal Logic
          const btnDetail = e.target.closest('.js-open-detail');
          if(btnDetail && detailModal) {
              const safeTxt = (attr) => btnDetail.getAttribute(attr) || '-';
@@ -1440,7 +1501,6 @@ document.addEventListener('DOMContentLoaded', function() {
                  setTxt('view-title', data.title || globalTitle);
                  setTxt('view-position', data.position_text || safeTxt('data-position'));
                  setTxt('view-headcount', '1 Orang');
-                //  setTxt('view-target', data.target_start_date || safeTxt('data-target-start'));
                  setTxt('view-employment', data.type || safeTxt('data-employment-type'));
                  setTxt('view-pic', data.pic_text || '-');
 
@@ -1455,26 +1515,21 @@ document.addEventListener('DOMContentLoaded', function() {
                      btnPdf.style.display = 'none';
                  }
                  
-                 // [FIX] Pindahkan extra info ke dalam detailContentContainer
                  const container = document.getElementById('detailContentContainer');
                  let extraDetailDiv = document.getElementById('view-extra-details');
                  
                  if(!extraDetailDiv) {
                      extraDetailDiv = document.createElement('div');
                      extraDetailDiv.id = 'view-extra-details';
-                     // Style untuk pemisah (garis atas, margin, padding) agar senada
                      extraDetailDiv.className = 'u-mt-lg u-pt-md u-border-t'; 
                      container.appendChild(extraDetailDiv);
                  } else {
-                     // Pastikan div ini ada di dalam container yang benar
                      if (extraDetailDiv.parentNode !== container) {
                          container.appendChild(extraDetailDiv);
                      }
                  }
 
                  const makeRow = (lbl, val) => `<div class="u-flex u-justify-between u-mb-xs u-border-b u-pb-xs" style="border-color: #f3f4f6;"><span class="u-text-muted u-text-xs u-uppercase u-font-bold">${lbl}</span><span class="u-font-medium u-text-sm u-text-right">${val || '-'}</span></div>`;
-
-                 // Menghapus background card agar menyatu dengan background modal
                  extraDetailDiv.innerHTML = `
                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em;">Detail Kandidat & Remunerasi</div>
                     <div class="u-grid-2-custom u-gap-lg">

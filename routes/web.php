@@ -14,6 +14,8 @@ use App\Http\Controllers\Account\AccountController;
 
 use App\Http\Controllers\Recruitment\PrincipalApprovalController;
 
+use App\Http\Controllers\Recruitment\SalaryController;
+
 Route::middleware('web')->group(function () {
 
     // ====== PUBLIC (NO AUTH) ======
@@ -41,6 +43,9 @@ Route::middleware('web')->group(function () {
         Route::post('/recruitment/uraian-jabatan/preview-pdf', [PrincipalApprovalController::class, 'previewUraianPdf'])
         ->name('recruitment.uraian-jabatan.preview-pdf');
     });
+
+    Route::post('/ajax/calculate-salary', [SalaryController::class, 'calculate'])
+    ->name('api.calculate.salary');
 
     // ====== LOAD INTERNAL / ADMIN ROUTES ======
     require __DIR__ . '/admin.php';
