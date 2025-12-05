@@ -14,9 +14,6 @@ return new class extends Migration
         Schema::create('training_temp', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger('file_training_id');
-            $table->unsignedBigInteger('status_approval_training_id');
-
             $table->string('jenis_pelatihan')->nullable();
             $table->string('nik')->nullable();
             $table->string('nama_peserta')->nullable();
@@ -40,16 +37,6 @@ return new class extends Migration
             $table->string('fungsi')->nullable();
 
             $table->string('alasan')->nullable();
-            
-            $table->foreign('file_training_id')
-                ->references('id')
-                ->on('file_training')
-                ->onDelete('cascade');
-
-            $table->foreign('status_approval_training_id')
-                ->references('id')
-                ->on('status_approval_training')
-                ->onDelete('cascade');
             
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();

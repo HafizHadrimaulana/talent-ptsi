@@ -16,23 +16,9 @@ HeadingRowFormatter::default('none');
 
 class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
-    protected $fileTrainingId;
     protected $parsedRows = [];
-
-    public function __construct($fileTrainingId)
-    {
-        $this->fileTrainingId = $fileTrainingId;
-    }
-
-    protected function normalizeHeader($header)
-    {
-        return strtolower(
-            trim(
-                preg_replace('/\s+/', '_', str_replace(["\n", "\r"], ' ', $header))
-            )
-        );
-    }
-
+    protected int $rowCount = 0;
+    
     public function headingRow(): int
     {
         return 8;
@@ -41,13 +27,11 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
     public function collection(Collection $rows)
     {
 
-        foreach ($rows as $row) {
+        foreach ($rows as $row) { 
 
             $row = $this->normalizeRowKeys($row);
 
             TrainingTemp::create([
-                'file_training_id' => $this->fileTrainingId,
-                'status_approval_training_id' => 1,
                 'jenis_pelatihan' => $row['kompetensi_porto/non_porto/resertifikasi'] ?? null,
                 'nik' => $row['nik'] ?? null,
                 'nama_peserta' => $row['nama_peserta'] ?? null,
@@ -70,7 +54,17 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
             ]);
 
             $this->parsedRows[] = $row;
+            $this->rowCount++;
         }
+    }
+
+    protected function normalizeHeader($header)
+    {
+        return strtolower(
+            trim(
+                preg_replace('/\s+/', '_', str_replace(["\n", "\r"], ' ', $header))
+            )
+        );
     }
 
     protected function normalizeRowKeys($row)
@@ -97,9 +91,9 @@ class TrainingImport implements ToCollection, WithHeadingRow, WithChunkReading
         return is_numeric($clean) ? (float) $clean : null;
     }
 
-    public function getParsedRows()
+    public function getRowCount(): int
     {
-        return $this->parsedRows;
+        return $this->rowCount;
     }
 
     public function chunkSize(): int

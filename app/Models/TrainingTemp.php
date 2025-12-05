@@ -12,8 +12,6 @@ class TrainingTemp extends Model
     protected $table = 'training_temp';
 
     protected $fillable = [
-        'file_training_id',
-        'status_approval_training_id',
         'jenis_pelatihan',
         'nik',
         'nama_peserta',
@@ -35,16 +33,6 @@ class TrainingTemp extends Model
         'start_date',
         'end_date',
     ];
-
-    public function fileTraining()
-    {
-        return $this->belongsTo(FileTraining::class, 'file_training_id');
-    }
-
-    public function statusApproval()
-    {
-        return $this->belongsTo(StatusApprovalTraining::class, 'status_approval_training_id');
-    }
 
     protected $casts = [
         'biaya_pelatihan' => 'decimal:2',

@@ -37,7 +37,6 @@ class TrainingRequestController extends Controller
 
         Log::info("Role: " . $role);
         Log::info("Table: " . $tableMap[$role]);
-
     
         // fallback jika role tidak ada dalam map
         $tableView = $tableMap[$role] ?? 'default-table';
@@ -47,22 +46,29 @@ class TrainingRequestController extends Controller
     
     public function importLna(Request $request)
     {
-        Log::info("Mulai import LNA.");
+        $request->validate([
+            "chunk" => "required|file",
+            "index" => "required|integer",
+            "total" => "required|integer",
+            "filename" => "required|string",
+        ]);
+
         try {
-            $request->validate([
-                "chunk" => "required|file",
-                "index" => "required|integer",
-                "total" => "required|integer",
-                "filename" => "required|string",
-            ]);
-
             $chunk = $request->file('chunk');
-            $index = $request->index;
-            $total = $request->total;
-            $filename = $request->filename;
+            $index    = (int) $request->index;
+            $total    = (int) $request->total;
+            $filename = trim($request->filename);
+            
+            if ($index < 0 || $index >= $total) {
+                return response()->json([
+                    "status"  => "error",
+                    "message" => "Index chunk tidak valid.",
+                ], 422);
+            }
 
-            $tempDir = "chunks/{$filename}";
+            $safeFilename = basename($filename);
 
+            $tempDir = "chunks/{$safeFilename}";
             if (!Storage::exists($tempDir)) {
                 Storage::makeDirectory($tempDir);
             }
@@ -79,12 +85,25 @@ class TrainingRequestController extends Controller
                 ]);
             }
 
-            $finalName = time() . "_" . $filename;
-            $finalPath = "uploads/{$finalName}";
+            $uploadsDir = 'uploads';
+            if (!Storage::exists($uploadsDir)) {
+                Storage::makeDirectory($uploadsDir);
+            }
+
+            $finalName = time() . "_" . $safeFilename;
+            $finalPath = "{$uploadsDir}/{$finalName}";
+            $fullPath  = storage_path("app/{$finalPath}");
             
             Log::info("File final selesai digabung: {$finalName}");
 
-            $output = fopen(storage_path("app/{$finalPath}"), "ab");
+            $output = @fopen($fullPath, "ab");
+            if ($output === false) {
+                Log::error("Gagal membuka file final untuk ditulis: {$fullPath}");
+                return response()->json([
+                    "status"  => "error",
+                    "message" => "Tidak dapat membuat file gabungan di server.",
+                ], 500);
+            }
 
             for ($i = 0; $i < $total; $i++) {
                 $cPath = "{$tempDir}/chunk_{$i}.part";
@@ -96,7 +115,16 @@ class TrainingRequestController extends Controller
                     ], 500);
                 }
     
-                fwrite($output, Storage::get($cPath));
+                $content = Storage::get($cPath);
+                if (fwrite($output, $content) === false) {
+                    fclose($output);
+                    Log::error("Gagal menulis chunk {$i} ke file final.");
+
+                    return response()->json([
+                        "status"  => "error",
+                        "message" => "Gagal menulis chunk {$i} ke file final.",
+                    ], 500);
+                }
             }
 
             fclose($output);
@@ -107,14 +135,28 @@ class TrainingRequestController extends Controller
             Log::info("File final selesai digabung: {$finalName}");
 
             $importResult = $this->importService->handleImport(
-                storage_path("app/{$finalPath}"),
+                $fullPath,
                 auth()->id()
             );
 
+            // Hapus file final setelah berhasil diproses
+            if (Storage::exists($finalPath)) {
+                Storage::delete($finalPath);
+                Log::info("File final {$finalName} dihapus setelah import.");
+            }
+
+            // Gunakan angka dari service
+            $importedRows  = $importResult['imported_rows']  ?? 0;
+            $processedRows = $importResult['processed_rows'] ?? 0;
+            $message       = $importResult['message']
+                ?? "Berhasil mengimport {$importedRows} baris.";
+
             return response()->json([
-                "status" => "success",
-                "message" => "Chunk {$index} uploaded.",
-                "data" => $importResult
+                "status"         => "success",
+                "message"        => $message,
+                "imported_rows"  => $importedRows,
+                "processed_rows" => $processedRows,
+                "data"           => $importResult,
             ]);
     
         } catch (\Exception $e) {
@@ -129,14 +171,12 @@ class TrainingRequestController extends Controller
     public function getDataLna(Request $request)
     {
         try {
-            $perPage = $request->input('per_page', 12); // default 10
+            $perPage = $request->input('per_page', 12);
             $page = $request->input('page', 1);
     
-            $data = TrainingReference::orderBy('created_at', 'desc')
+            $data = TrainingReference::orderBy('created_at', 'asc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
-            Log::info('data', $data->toArray());
-    
             return response()->json([
                 "status" => "success",
                 "data" => $data->items(),

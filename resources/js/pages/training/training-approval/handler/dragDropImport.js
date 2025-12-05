@@ -114,7 +114,7 @@ export function initDragDropUpload(modalSelector) {
         try {
             const res = await initImportHandler(selectedFile);
 
-            console.log("res1", res);
+            console.log("response import", res);
 
             if (modal) modal.classList.add("hidden");
 
@@ -122,11 +122,12 @@ export function initDragDropUpload(modalSelector) {
                 icon: "success",
                 title: "Berhasil!",
                 text: res.message ?? "Upload selesai!",
-                timer: 2000,
-                timerProgressBar: true,
-                showConfirmButton: false,
+                // timer: 2000,
+                // timerProgressBar: true,
+                showConfirmButton: true,
             }).then(() => {
-                location.reload();
+                // location.reload();
+                console.log('import end')
             });
         } catch (err) {
             console.error(err);

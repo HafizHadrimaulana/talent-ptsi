@@ -163,9 +163,9 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('dashboard.detail-evaluation');
 
         Route::post('dashboard/input-evaluation', [TrainingDashboardController::class,'inputEvaluation'])
-        ->name('dashboard.input-evaluation');
+            ->name('dashboard.input-evaluation');
         Route::post('dashboard/{id}/update-jenis-pelatihan', [TrainingDashboardController::class,'updateJenisPelatihan'])
-        ->name('dashboard.update-jenis-pelatihan');
+             ->name('dashboard.update-jenis-pelatihan');
 
         Route::get('dashboard/{id}/get-detail-evaluation', [TrainingDashboardController::class,'getDetailEvaluation'])
             ->name('dashboard.get-detail-evaluation');

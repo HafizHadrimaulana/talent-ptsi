@@ -18,19 +18,10 @@ class TrainingImportServices
     {
         Log::info("Mulai handleImport. File: $filePath");
 
-        // Input to file_training
-        $fileTraining = FileTraining::create([
-            'file_name' => basename($filePath),
-            'imported_by' => $userId ?? 0,
-            'rows' => 0,
-        ]);
-
-        // Input to training_temp
-        $importer = new TrainingImport($fileTraining->id);
+        $importer = new TrainingImport();
         Excel::import($importer, $filePath);
 
-        $rowsCount = TrainingTemp::where('file_training_id', $fileTraining->id)->count();
-        $fileTraining->update(['rows' => $rowsCount]);
+        $rowsCount = $importer->getRowCount();
 
         $uniqueTrainings = DB::table('training_temp')
             ->select(
@@ -45,9 +36,8 @@ class TrainingImportServices
                 DB::raw('MAX(estimasi_total_biaya) as estimasi_total_biaya'),
                 DB::raw('MAX(nama_proyek) as nama_proyek'),
                 DB::raw('MAX(jenis_portofolio) as jenis_portofolio'),
-                DB::raw('MAX(fungsi) as fungsi')
+                DB::raw('MAX(fungsi) as fungsi'),
             )
-            ->where('file_training_id', $fileTraining->id)
             ->groupBy('judul_sertifikasi', 'penyelenggara', 'unit_kerja')
             ->get();
 
@@ -58,19 +48,26 @@ class TrainingImportServices
                 'status' => 'success',
                 'message' => 'Tidak ada training baru pada file import',
                 'imported_rows' => $rowsCount,
+                'processed_rows' => 0,
             ];
         }
 
         $batch = [];
         $batchSize = 500;
+        $processed = 0;
 
         Log::info("Mulai import training services.");
 
         // input ke training_reference
         foreach ($uniqueTrainings as $row) {
 
-            $unitName = strtoupper(trim($row->unit_kerja ?? ''));
-            $unit = Unit::whereRaw('UPPER(TRIM(name)) = ?', [$unitName])->first();
+            $unitNameRaw = $row->unit_kerja ?? '';
+            $unitName    = strtoupper(trim($unitNameRaw));
+
+            $unit = null;
+            if ($unitName !== '') {
+                $unit = Unit::whereRaw('UPPER(TRIM(name)) = ?', [$unitName])->first();
+            }
 
             $batch[] = [
                 "unit_id"               => $unit->id ?? null,
@@ -85,12 +82,14 @@ class TrainingImportServices
                 "nama_proyek"           => $row->nama_proyek ?? null,
                 "jenis_portofolio"      => $row->jenis_portofolio ?? null,
                 "fungsi"                => $row->fungsi ?? null,
+                "kuota"                 => 10,
                 "created_at"            => now(),
                 "updated_at"            => now(),
             ];
 
+            $processed++;
+
             if (count($batch) == $batchSize) {
-                Log::info("batch");
                 $this->upsertTrainingReferences($batch);
                 $batch = [];
             }
@@ -101,9 +100,10 @@ class TrainingImportServices
         }
 
         return [
-            "status" => "success",
-            "message" => "Import selesai",
-            "imported_rows" => $rowsCount,
+            "status"         => "success",
+            "message"        => $message,
+            "imported_rows"  => $rowsCount,
+            "processed_rows" => $processed,
         ];
     }
 

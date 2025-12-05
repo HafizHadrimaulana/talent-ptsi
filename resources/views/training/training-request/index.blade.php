@@ -6,40 +6,46 @@
     <div class="u-flex u-items-center u-justify-between u-mb-md">
         <h2 class="u-title">Training Request</h2>
         <div class="flex gap-4">
-            @role('DHC')
-            <button type="button" id="lna-import-btn" class="u-btn u-btn--brand u-hover-lift">Import Data</button>
-            @endrole
             @role('SDM Unit')
-            <button type="button" id="training-input-btn" class="u-btn u-btn--brand u-hover-lift">Input Data</button>
+                <button type="button" id="training-input-btn" class="u-btn u-btn--brand u-hover-lift">Input Data</button>
             @endrole
         </div>
     </div>
 
-    {{-- ===== Alerts (Optional) ===== --}}
-    @if(session('success'))
-        <div class="u-card u-mb-md u-success">
-        <div class="u-flex u-items-center u-gap-sm">
-            <i class='fas fa-check-circle u-success-icon'></i>
-            <span>{{ session('success') }}</span>
-        </div>
-        </div>
-    @endif
-    @if($errors->any())
-        <div class="alert danger">{{ $errors->first() }}</div>
-    @endif
+    @php
+        $activeTab = $activeTab ?? 'lna'; // default tab untuk DHC
+    @endphp
 
+    {{-- Tabs khusus DHC: Data Training & Data LNA --}}
     @role('DHC')
-    <div class="bg-blue-50 border border-blue-300 rounded-sm u-p-md u-mb-md shadow-sm">
-        <p class="text-blue-800 text-md leading-relaxed mb-4">
-            Please download the Excel file template in the appropriate format and fill in the required data. Make sure <span class="font-medium">not to change the headers and columns </span>in the template to avoid import errors.
-            <button type="button" class="btn-download-template inline-block text-blue-600 px-4 py-2 font-medium transition underline underline-offset-2 cursor-pointer">
-                Download Template Excel</button >
-        </p>
-    </div>
+        <div class="u-mx-md u-mb-md">
+            <div class="u-tabs__list flex gap-6 text-sm font-medium" id="dhc-tabs">
+                <button
+                    type="button"
+                    data-tab="lna"
+                    class="u-tabs__item pb-2 -mb-px border-b-2
+                        {{ $activeTab === 'lna'
+                            ? 'border-blue-600 text-slate-900'
+                            : 'border-gray-300 text-slate-500 hover:text-slate-800' }}"
+                >
+                    Data LNA
+                </button>
+
+                <button
+                    type="button"
+                    data-tab="training"
+                    class="u-tabs__item pb-2 -mb-px border-b-2
+                        {{ $activeTab === 'training'
+                            ? 'border-blue-600 text-slate-900'
+                            : 'border-gray-300 text-slate-500 hover:text-slate-800' }}"
+                >
+                    Data Training
+                </button>
+            </div>
+        </div>
     @endrole
 
     {{-- ===== DataTable Wrapper ===== --}}
-
     <div class="dt-wrapper">
         <div class="flex gap-5 p-10">
             @hasanyrole('SDM Unit|GM/VP Unit|VP DHC|Kepala Unit')
@@ -52,15 +58,33 @@
             </div>
             @endhasanyrole
         </div>
-        @role('DHC')
+
         <div class="u-scroll-x">
-            @include('training.training-request.partials.'. $tableView)
+            @role('DHC')
+                {{-- DHC: pakai tab-panel dengan 2 partial --}}
+                <div class="u-tabs__panels">
+                    <div
+                        id="tab-training"
+                        class="u-tabs__panel {{ $activeTab === 'training' ? '' : 'hidden' }}">
+                        @include('training.training-request.partials.' . $tableView)
+                    </div>
+
+                    <div
+                        id="tab-lna"
+                        class="u-tabs__panel {{ $activeTab === 'lna' ? '' : 'hidden' }}">
+                        @include('training.training-request.partials.training-request-table')
+                    </div>
+                </div>
+            @else
+                {{-- Role non-DHC tetap pakai mekanisme lama (kalau masih dipakai) --}}
+                @include('training.training-request.partials.' . $tableView)
+            @endrole
         </div>
-        @endrole
     </div>
 </div>
 
 @include('training.training-request.modals.input-modal')
+@include('training.training-request.modals.lna-input-modal')
 @include('training.training-request.modals.import-modal')
 @include('training.training-request.modals.edit-modal')
 

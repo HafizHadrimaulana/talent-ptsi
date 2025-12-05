@@ -39,7 +39,7 @@ const TABLE_CONFIGS = {
     },
     [ROLES.DHC]: {
         apiEndpoint: () => "/training/training-request/get-data-lna",
-        columns: ['no', 'judul_sertifikasi', 'unit', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
+        columns: ['no', 'judul_sertifikasi', 'unit_id', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
         dataMapper: (data) => data.data || [],
         actions: ['edit', 'delete']
     },

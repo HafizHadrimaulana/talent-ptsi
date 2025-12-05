@@ -15,6 +15,12 @@ const TRAINING_CONFIG = {
             unitId: "data-unit-id",
         },
     },
+    tabs: {
+        container: "#dhc-tabs",
+        panelSelector: ".u-tabs__panel",
+        activeClass: "is-active",
+        hiddenClass: "hidden",
+    },
     modals: {
         trainingInput: {
             openBtn: "#training-input-btn",
@@ -25,6 +31,11 @@ const TRAINING_CONFIG = {
             openBtn: "#lna-import-btn",
             modal: "#lna-import-modal",
             closeBtn: "#lna-close-modal",
+        },
+        lnaInput: {
+            openBtn: "#lna-input-btn",
+            modal: "#lna-input-modal",
+            closeBtn: "#lna-input-close-modal",
         },
     },
     buttons: {
@@ -95,6 +106,42 @@ const initializeTrainingTables = () => {
     });
 };
 
+const initializeTabs = () => {
+    const container = document.querySelector('#dhc-tabs');
+    if (!container) return; // bukan DHC atau tabs belum dirender
+
+    const buttons = container.querySelectorAll('.u-tabs__item');
+    const panels  = document.querySelectorAll('.u-tabs__panel');
+
+    if (!buttons.length || !panels.length) return;
+
+    buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const target = btn.dataset.tab; // 'training' atau 'lna'
+            if (!target) return;
+
+            // Toggle active di button
+            buttons.forEach((b) => {
+                b.classList.remove(TRAINING_CONFIG.tabs.activeClass);
+                b.classList.add('border-transparent', 'text-slate-500');
+            });
+            btn.classList.remove('border-transparent', 'text-slate-500');
+            btn.classList.add('border-blue-600', 'text-slate-900', 'font-semibold');
+
+            // Toggle panel
+            panels.forEach((panel) => {
+                if (panel.id === `tab-${target}`) {
+                    panel.classList.add(TRAINING_CONFIG.tabs.activeClass);
+                    panel.classList.remove(TRAINING_CONFIG.tabs.hiddenClass);
+                } else {
+                    panel.classList.remove(TRAINING_CONFIG.tabs.activeClass);
+                    panel.classList.add(TRAINING_CONFIG.tabs.hiddenClass);
+                }
+            });
+        });
+    });
+};
+
 const initializeModals = () => {
     // Training Input Modal
     if (document.querySelector(TRAINING_CONFIG.modals.trainingInput.openBtn)) {
@@ -109,6 +156,13 @@ const initializeModals = () => {
     if (document.querySelector(TRAINING_CONFIG.modals.lnaImport.modal)) {
         console.log("Initializing LNA import modal");
         const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.lnaImport;
+        initDragDropUpload(modal);
+        initModalHandler(openBtn, modal, closeBtn);
+    }
+
+    if (document.querySelector(TRAINING_CONFIG.modals.lnaInput.modal)) {
+        console.log("Initializing LNA input modal");
+        const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.lnaInput;
         initDragDropUpload(modal);
         initModalHandler(openBtn, modal, closeBtn);
     }
@@ -199,6 +253,7 @@ const initializeTrainingPage = () => {
             console.warn('window.currentUserRole is not defined. Tables must have data-role attribute.');
         }
         // Initialize core components in order
+        initializeTabs();
         initializeTrainingTables();
         initializeModals();
         initializeButtonHandlers();

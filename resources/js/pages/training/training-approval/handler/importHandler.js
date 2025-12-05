@@ -23,7 +23,7 @@ export async function initImportHandler(file) {
             console.log("index", i);
             const res = await postFormData("/training/training-request/import-lna", formData);
 
-            console.log("res", res);
+            console.log("response import", res);
 
             if (!res || res.status !== "success") {
                 console.error("Chunk gagal:", res);

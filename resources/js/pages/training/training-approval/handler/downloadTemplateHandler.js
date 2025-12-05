@@ -6,8 +6,8 @@ export function initDownloadTemplateHandler() {
             e.preventDefault();
 
             Swal.fire({
-                title: "Download Template?",
-                text: "Apakah Anda yakin ingin mengunduh template Excel pelatihan?",
+                title: "Unduh Template?",
+                text: "Pastikan untuk tidak mengubah header dan kolom dalam template agar tidak terjadi kesalahan saat mengimpor.",
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonText: "Ya, download sekarang",
