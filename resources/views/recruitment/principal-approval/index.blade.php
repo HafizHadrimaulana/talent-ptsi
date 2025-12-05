@@ -70,7 +70,7 @@
   use Illuminate\Support\Facades\DB;
   use Illuminate\Support\Facades\Gate;
   
-  $me      = auth()->user();
+  $me       = auth()->user();
   $meUnit = $me ? $me->unit_id : null;
   
   // AMBIL NAMA UNIT USER LOGIN UNTUK AUTOFILL
@@ -479,6 +479,8 @@
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
           <input class="u-input" type="number" min="1" name="headcount" id="headcountInput" value="1" placeholder="Jumlah orang" required>
         </div>
+        
+        {{-- Tabs Container (PENTING: Jangan Dihapus) --}}
         <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;">
            {{-- Tombol Data 1, Data 2, dll di-generate via JS --}}
         </div>
@@ -504,7 +506,7 @@
                 <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project</label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
               </div>
               <div class="u-space-y-sm" style="position: relative;">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan (Project)</label>
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Project Based -->
                 <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off">
                 <input type="hidden" name="position" id="positionInput">
                 <div id="positionSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -549,6 +551,12 @@
                       <div id="uraianStatus" class="u-text-2xs u-muted">Belum ada uraian</div>
                       <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian">Isi Uraian</button>
                     </div>
+                    <div style="position: relative;">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Organik -->
+                      <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off">
+                      <input type="hidden" id="positionOrganikInput"> 
+                      <div id="positionOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
+                    </div>  
                   </div>
                   <div>
                     <div style="position: relative;" class="u-mb-md">
@@ -557,28 +565,130 @@
                       <input type="hidden" name="pic" id="picOrganikInput">
                       <div id="picOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                     </div>
-                    <div style="position: relative;">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan (Organik)</label>
-                      <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off">
-                      <input type="hidden" id="positionOrganikInput"> 
-                      <div id="positionOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
-                    </div>
+                    
                   </div>
                 </div>
               </div>
             </div>
 
-            {{-- Tanggal Mulai Kerja --}}
-            <div class="u-space-y-sm u-mt-md">
-              <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja</label>
-              <input class="u-input" type="date" id="targetStartInput" name="target_start_date">
-            </div>
+            <div id="extraDynamicFields" class="u-mt-md u-pt-md u-border-t">
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja</label>
+                      <input class="u-input" type="date" id="dyn_start_date">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Selesai Kerja</label>
+                      <input class="u-input" type="date" id="dyn_end_date">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Lokasi Kerja</label>
+                      <input class="u-input" type="text" id="dyn_location" placeholder="Input lokasi kerja">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan</label>
+                      <select class="u-input" id="dyn_education">
+                          <option value="">Pilih Pendidikan</option>
+                          <option value="SMA">SMA</option>
+                          <option value="D3">D3</option>
+                          <option value="D4">D4</option>
+                          <option value="S1">S1</option>
+                          <option value="S2">S2</option>
+                          <option value="S3">S3</option>
+                      </select>
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-md">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Brevet</label>
+                      <select class="u-input" id="dyn_brevet">
+                          <option value="">Pilih Brevet</option>
+                          <option value="A">A</option>
+                          <option value="B">B</option>
+                          <option value="C">C</option>
+                      </select>
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Experience</label>
+                      <input class="u-input" type="text" id="dyn_experience" placeholder="Masukkan pengalaman">
+                  </div>
+              </div>
+              <div class="u-bg-light u-p-sm u-rounded u-font-bold u-text-sm u-mb-sm" style="color:#374151;"><b>Remunerasi</b></div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_salary" placeholder="1.000.000">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Terbilang</label>
+                      <input class="u-input" type="text" id="dyn_terbilang" placeholder="Satu juta rupiah">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Jabatan (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceJ" placeholder="Masukkan angka">
+                      <!-- <select class="u-input" id="dyn_allowance">
+                          <option value="">Pilih Tunjangan</option>
+                          <option value="Tunjangan A">Tunjangan A</option>
+                          <option value="Tunjangan B">Tunjangan B</option>
+                      </select> -->
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Project (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceP" placeholder="Masukkan angka">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Komunikasi (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceC" placeholder="Masukkan angka">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Project (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceK" placeholder="Masukkan angka">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">BPJS Kesehatan (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_bpjs_kes" placeholder="Masukkan angka">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">BPJS Ketenagakerjaan (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_bpjs_tk" placeholder="Masukkan angka">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">THR (1x Gaji Pokok)</label>
+                      <input class="u-input u-bg-light" type="number" id="dyn_thr" readonly placeholder="Autofill">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Kompensasi (1x Gaji Pokok)</label>
+                      <input class="u-input u-bg-light" type="number" id="dyn_kompensasi" readonly placeholder="Autofill">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Apakah sudah ada kandidat? (Jika ya, Upload CV)</label>
+                      <input type="file" id="dyn_cv" class="u-input" accept=".pdf,.doc,.docx">
+                      <div id="dyn_cv_preview_text" class="u-text-2xs u-text-brand u-mt-xs"></div>
+                  </div>
+                  <div class="u-space-y-sm">
+                          <label class="u-block u-text-sm u-font-medium u-mb-sm">PPH 21</label>
+                          <input class="u-input" type="number" id="dyn_pph21" placeholder="Masukkan angka">
+                  </div>
+              </div>
+          </div>
         </div>
 
         {{-- Justifikasi --}}
         <div class="u-space-y-sm u-mt-md">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Justifikasi</label>
-            <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan kebutuhan rekrutmen..."></textarea>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Detail Penjelasan Kebutuhan</label>
+            <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan secara detail..."></textarea>
         </div>
       </form>
     </div>
@@ -615,9 +725,9 @@
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Judul</div><div class="u-font-medium" id="view-title">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Jenis Permintaan</div><div id="view-request-type">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Headcount</div><div id="view-headcount">-</div></div>
-                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Target Mulai</div><div id="view-target">-</div></div>
+                    <!-- <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Target Mulai</div><div id="view-target">-</div></div> -->
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">PIC Request</div><div id="view-pic">-</div></div>
-                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Justifikasi</div><div id="view-justification" class="u-text-sm u-muted u-p-sm u-bg-light u-rounded u-mt-xs" style="white-space: pre-line;">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Detail Penjelasan</div><div id="view-justification">-</div></div>
                 </div>
                 <div class="u-space-y-sm">
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Status</div><div id="view-status">-</div></div>
@@ -652,10 +762,40 @@
 </div>
 
 <script>
+  function terbilang(nilai) {
+    nilai = Math.floor(Math.abs(nilai));
+    var huruf = [
+        '', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'
+    ];
+    var temp = '';
+
+    if (nilai < 12) {
+        temp = ' ' + huruf[nilai];
+    } else if (nilai < 20) {
+        temp = terbilang(nilai - 10) + ' belas ';
+    } else if (nilai < 100) {
+        temp = terbilang(Math.floor(nilai / 10)) + ' puluh ' + terbilang(nilai % 10);
+    } else if (nilai < 200) {
+        temp = ' seratus ' + terbilang(nilai - 100);
+    } else if (nilai < 1000) {
+        temp = terbilang(Math.floor(nilai / 100)) + ' ratus ' + terbilang(nilai % 100);
+    } else if (nilai < 2000) {
+        temp = ' seribu ' + terbilang(nilai - 1000);
+    } else if (nilai < 1000000) {
+        temp = terbilang(Math.floor(nilai / 1000)) + ' ribu ' + terbilang(nilai % 1000);
+    } else if (nilai < 1000000000) {
+        temp = terbilang(Math.floor(nilai / 1000000)) + ' juta ' + terbilang(nilai % 1000000);
+    } else if (nilai < 1000000000000) {
+        temp = terbilang(Math.floor(nilai / 1000000000)) + ' milyar ' + terbilang(nilai % 1000000000);
+    } else if (nilai < 1000000000000000) {
+        temp = terbilang(Math.floor(nilai / 1000000000000)) + ' trilyun ' + terbilang(nilai % 1000000000000);
+    }
+
+    return temp.trim();
+}
 document.addEventListener('DOMContentLoaded', function() {
   const positionsData = {!! json_encode($positions) !!};
   const picData       = {!! json_encode($picListFormatted) !!};
-  // Pass variabel unit kerja user login ke JS
   const meUnitName    = {!! json_encode($meUnitName) !!}; 
 
   const page = {
@@ -685,10 +825,73 @@ document.addEventListener('DOMContentLoaded', function() {
       // Inputs Form Utama
       const requestTypeSelect  = form.querySelector('[name="request_type"]');
       const titleInput         = form.querySelector('#titleInput');
-      const targetStartInput   = form.querySelector('#targetStartInput');
+      const targetStartInput   = form.querySelector('#targetStartInput'); 
       const justifInput        = form.querySelector('[name="justification"]');
 
-      // Elements Form Uraian (Baru - Sesuai Gambar)
+      // [NEW] Define New Elements Reference
+      const dynInputs = {
+          start_date:  form.querySelector('#dyn_start_date'),
+          end_date:    form.querySelector('#dyn_end_date'),
+          location:    form.querySelector('#dyn_location'),
+          education:   form.querySelector('#dyn_education'),
+          brevet:      form.querySelector('#dyn_brevet'),
+          experience:  form.querySelector('#dyn_experience'),
+          salary:      form.querySelector('#dyn_salary'),
+          terbilang:   form.querySelector('#dyn_terbilang'),
+          allowanceJ:   form.querySelector('#dyn_allowanceJ'),
+          allowanceP:   form.querySelector('#dyn_allowanceP'),
+          allowanceC:   form.querySelector('#dyn_allowanceC'),
+          allowanceK:   form.querySelector('#dyn_allowanceK'),
+          pph21:       form.querySelector('#dyn_pph21'),
+          bpjs_kes:    form.querySelector('#dyn_bpjs_kes'),
+          bpjs_tk:     form.querySelector('#dyn_bpjs_tk'),
+          thr:         form.querySelector('#dyn_thr'),
+          kompensasi:  form.querySelector('#dyn_kompensasi'),
+          cv:          form.querySelector('#dyn_cv'),
+          cv_preview:  form.querySelector('#dyn_cv_preview_text')
+      };
+
+      // 2. LOGIKA KALKULASI GAJI (Auto Fill THR & Kompensasi)
+      if(dynInputs.salary) {
+          dynInputs.salary.addEventListener('input', function(e) {
+              const val = e.target.value;
+              
+              // Autofill THR & Kompensasi
+              if(dynInputs.thr) dynInputs.thr.value = val;
+              if(dynInputs.kompensasi) dynInputs.kompensasi.value = val;
+
+              // [BARU] Autofill Terbilang
+              if(dynInputs.terbilang) {
+                  if(val && !isNaN(val)) {
+                      // Konversi angka ke kata, tambahkan "rupiah", dan UpperCase huruf pertama
+                      let text = terbilang(val) + ' rupiah';
+                      // Membuat huruf pertama kapital (Capitalize first letter)
+                      text = text.charAt(0).toUpperCase() + text.slice(1);
+                      dynInputs.terbilang.value = text;
+                  } else {
+                      dynInputs.terbilang.value = '';
+                  }
+              }
+          });
+      }
+
+      // 3. LOGIKA FILE UPLOAD (Convert to Base64 agar tidak hilang saat pindah tab)
+      if(dynInputs.cv) {
+          dynInputs.cv.addEventListener('change', function(e) {
+              const file = e.target.files[0];
+              if(file) {
+                   const reader = new FileReader();
+                   reader.onload = function(evt) {
+                       dynInputs.cv._base64 = evt.target.result;
+                       dynInputs.cv._filename = file.name;
+                       if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = "File selected: " + file.name;
+                   };
+                   reader.readAsDataURL(file);
+              }
+          });
+      }
+
+      // Elements Form Uraian
       const uraianForm = document.getElementById('uraianForm');
       const ujInputs = {
           nama: document.getElementById('uj_nama'),
@@ -697,36 +900,26 @@ document.addEventListener('DOMContentLoaded', function() {
           melapor: document.getElementById('uj_melapor'),
           tujuan: document.getElementById('uj_tujuan'),
           akuntabilitas: document.getElementById('uj_akuntabilitas'),
-          
-          // Section 4 Dimensi
           dimensi_keuangan: document.getElementById('uj_dimensi_keuangan'),
           anggaran: document.getElementById('uj_anggaran'),
           dimensi_non_keuangan: document.getElementById('uj_dimensi_non_keuangan'),
           bawahan_langsung: document.getElementById('uj_bawahan_langsung'),
           total_staff: document.getElementById('uj_total_staff'),
           total_pegawai: document.getElementById('uj_total_pegawai'),
-          
-          // Section 5 Wewenang
           wewenang: document.getElementById('uj_wewenang'),
-          
-          // Section 6 Hubungan Kerja
           hub_internal: document.getElementById('uj_hub_internal'),
           hub_eksternal: document.getElementById('uj_hub_eksternal'),
-          
-          // Section 7 Spesifikasi Jabatan
           spek_pendidikan: document.getElementById('uj_spek_pendidikan'),
           spek_pengetahuan: document.getElementById('uj_spek_pengetahuan'),
           spek_kompetensi: document.getElementById('uj_spek_kompetensi'),
           spek_kompetensi_wajib: document.getElementById('uj_spek_kompetensi_wajib'),
           spek_kompetensi_generik: document.getElementById('uj_spek_kompetensi_generik'),
-          
-          // Section 8 Struktur Organisasi
           struktur: document.getElementById('uj_struktur')
       };
       const btnPreviewPdf = document.getElementById('btnPreviewPdf');
       const uraianStatusDisplay = document.getElementById('uj_status_display');
 
-      // Handle file input for struktur organisasi (convert to base64)
+      // Handle file input for struktur organisasi
       if(ujInputs.struktur) {
           ujInputs.struktur.addEventListener('change', function(e) {
               const file = e.target.files[0];
@@ -734,9 +927,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if(file && file.type.startsWith('image/')) {
                   const reader = new FileReader();
                   reader.onload = function(evt) {
-                      // Simpan base64 di memory untuk PDF nanti
                       ujInputs.struktur._base64 = evt.target.result;
-                      // Preview gambar
                       previewDiv.innerHTML = `<img src="${evt.target.result}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
                   };
                   reader.readAsDataURL(file);
@@ -747,18 +938,16 @@ document.addEventListener('DOMContentLoaded', function() {
           });
       }
 
-
-      // Organik & Project Logic References
-      const rkapSection      = form.querySelector('#rkapSection');
+      // References & Searchables
+      const rkapSection       = form.querySelector('#rkapSection');
       const rkapSelectedInfo = form.querySelector('#rkapSelectedInfo');
       const rkapSelectedName = form.querySelector('#rkapSelectedName');
-      const uraianStatus     = form.querySelector('#uraianStatus'); 
-      const projectSection       = form.querySelector('#projectSection');
-      const kodeProjectSelect    = form.querySelector('#kodeProjectSelect');
-      const namaProjectInput     = form.querySelector('#namaProjectInput');
-      const uraianStatusProject  = form.querySelector('#uraianStatusProject');
+      const uraianStatus      = form.querySelector('#uraianStatus'); 
+      const projectSection        = form.querySelector('#projectSection');
+      const kodeProjectSelect     = form.querySelector('#kodeProjectSelect');
+      const namaProjectInput      = form.querySelector('#namaProjectInput');
+      const uraianStatusProject   = form.querySelector('#uraianStatusProject');
       
-      // Searchables
       const picOrganikSearchInput = form.querySelector('#picOrganikSearchInput');
       const picOrganikInput       = form.querySelector('#picOrganikInput');
       const picOrganikResults     = form.querySelector('#picOrganikSearchResults');
@@ -772,89 +961,57 @@ document.addEventListener('DOMContentLoaded', function() {
       const picProjectInput       = form.querySelector('#picProjectInput');
       const picProjectResults     = form.querySelector('#picProjectSearchResults');
 
-      // State Multi Data
       let activeDataIndex = 1;
       let totalDataCount  = 1;
       let multiDataStore  = {}; 
 
       function getActiveContractType() { return contractTypeSelect ? contractTypeSelect.value : ''; }
 
-      // --- LOGIC FORM URAIAN (POPUP) ---
       window.openUraianForm = function(currentData, mode) {
-          // Reset Form
           uraianForm.reset();
-          
-          // Fill Data if Exists
           const d = currentData.uraian_data || {};
+          // ... (isi field uraian) ...
           ujInputs.nama.value = d.nama || '';
           ujInputs.unit.value = d.unit || '';
           ujInputs.pemangku.value = d.pemangku || '';
           ujInputs.melapor.value = d.melapor || '';
           ujInputs.tujuan.value = d.tujuan || '';
           ujInputs.akuntabilitas.value = d.akuntabilitas || '';
-          
-          // Populate Dimensi
           if(ujInputs.dimensi_keuangan) ujInputs.dimensi_keuangan.value = d.dimensi_keuangan || '';
           if(ujInputs.anggaran) ujInputs.anggaran.value = d.anggaran || '';
           if(ujInputs.dimensi_non_keuangan) ujInputs.dimensi_non_keuangan.value = d.dimensi_non_keuangan || '';
           if(ujInputs.bawahan_langsung) ujInputs.bawahan_langsung.value = d.bawahan_langsung || '';
           if(ujInputs.total_staff) ujInputs.total_staff.value = d.total_staff || '';
           if(ujInputs.total_pegawai) ujInputs.total_pegawai.value = d.total_pegawai || '';
-          
           if(ujInputs.wewenang) ujInputs.wewenang.value = d.wewenang || '';
-
-          // Populate Hubungan Kerja (6)
           if(ujInputs.hub_internal) ujInputs.hub_internal.value = d.hub_internal || '';
           if(ujInputs.hub_eksternal) ujInputs.hub_eksternal.value = d.hub_eksternal || '';
-
-          // Populate Spesifikasi Jabatan (7)
           if(ujInputs.spek_pendidikan) ujInputs.spek_pendidikan.value = d.spek_pendidikan || '';
           if(ujInputs.spek_pengetahuan) ujInputs.spek_pengetahuan.value = d.spek_pengetahuan || '';
           if(ujInputs.spek_kompetensi) ujInputs.spek_kompetensi.value = d.spek_kompetensi || '';
           if(ujInputs.spek_kompetensi_wajib) ujInputs.spek_kompetensi_wajib.value = d.spek_kompetensi_wajib || '';
           if(ujInputs.spek_kompetensi_generik) ujInputs.spek_kompetensi_generik.value = d.spek_kompetensi_generik || '';
 
-          // Preview struktur organisasi if exists (8)
           if(d.struktur_organisasi) {
               const previewDiv = document.getElementById('uj_struktur_preview');
-              if(previewDiv) {
-                  previewDiv.innerHTML = `<img src="${d.struktur_organisasi}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
-              }
+              if(previewDiv) previewDiv.innerHTML = `<img src="${d.struktur_organisasi}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
               if(ujInputs.struktur) ujInputs.struktur._base64 = d.struktur_organisasi;
           }
 
-          // --- AUTO FILL LOGIC (START) ---
-          
-          // 1. Autofill Unit Kerja (jika kosong, isi dengan unit user login)
-          if (!ujInputs.unit.value && meUnitName) {
-              ujInputs.unit.value = meUnitName;
-          }
-
-          // 2. Autofill Nama Jabatan (jika kosong)
+          if (!ujInputs.unit.value && meUnitName) ujInputs.unit.value = meUnitName;
           if (!ujInputs.nama.value) {
               if (mode === 'organik') {
-                  // Coba ambil dari row RKAP selected
                   const selectedRow = form.querySelector('.js-rkap-select.selected');
-                  if(selectedRow) {
-                      ujInputs.nama.value = selectedRow.closest('tr').dataset.jobName;
-                  } 
-                  // Atau coba ambil dari input posisi manual organik
-                  else if (positionOrganikSearchInput && positionOrganikSearchInput.value) {
-                      ujInputs.nama.value = positionOrganikSearchInput.value;
-                  }
+                  if(selectedRow) ujInputs.nama.value = selectedRow.closest('tr').dataset.jobName;
+                  else if (positionOrganikSearchInput && positionOrganikSearchInput.value) ujInputs.nama.value = positionOrganikSearchInput.value;
               } else if (mode === 'project') {
-                  // Ambil dari input posisi project
-                  if(positionSearchInput && positionSearchInput.value) {
-                      ujInputs.nama.value = positionSearchInput.value;
-                  }
+                  if(positionSearchInput && positionSearchInput.value) ujInputs.nama.value = positionSearchInput.value;
               }
           }
-          // --- AUTO FILL LOGIC (END) ---
 
           const status = currentData.uraian_status || 'Belum diisi';
           uraianStatusDisplay.textContent = 'Status: ' + status;
           
-          // Logic Tombol Preview
           if(status === 'Final' || status === 'Finalized') {
               btnPreviewPdf.style.display = 'inline-flex';
               btnPreviewPdf.dataset.json = JSON.stringify(d);
@@ -862,18 +1019,14 @@ document.addEventListener('DOMContentLoaded', function() {
               btnPreviewPdf.style.display = 'none';
           }
 
-          // Show Modal with High Z-Index & Flex Display
           uraianModal.hidden = false;
-          uraianModal.style.zIndex = '2000'; // Safety force inline style
+          uraianModal.style.zIndex = '2000'; 
           document.body.classList.add('modal-open');
       };
 
-      // Handle Save Button di dalam Modal Uraian
       document.addEventListener('click', function(e) {
           if(e.target.classList.contains('js-save-uraian-form')) {
               const status = e.target.getAttribute('data-status');
-              
-              // Collect Data
               const dataObj = {
                   nama: ujInputs.nama.value,
                   unit: ujInputs.unit.value,
@@ -881,58 +1034,44 @@ document.addEventListener('DOMContentLoaded', function() {
                   melapor: ujInputs.melapor.value,
                   tujuan: ujInputs.tujuan.value,
                   akuntabilitas: ujInputs.akuntabilitas.value,
-                  
                   dimensi_keuangan: ujInputs.dimensi_keuangan ? ujInputs.dimensi_keuangan.value : '',
                   anggaran: ujInputs.anggaran ? ujInputs.anggaran.value : '',
                   dimensi_non_keuangan: ujInputs.dimensi_non_keuangan ? ujInputs.dimensi_non_keuangan.value : '',
                   bawahan_langsung: ujInputs.bawahan_langsung ? ujInputs.bawahan_langsung.value : '',
                   total_staff: ujInputs.total_staff ? ujInputs.total_staff.value : '',
                   total_pegawai: ujInputs.total_pegawai ? ujInputs.total_pegawai.value : '',
-                  
                   wewenang: ujInputs.wewenang ? ujInputs.wewenang.value : '',
-                  
                   hub_internal: ujInputs.hub_internal ? ujInputs.hub_internal.value : '',
                   hub_eksternal: ujInputs.hub_eksternal ? ujInputs.hub_eksternal.value : '',
-                  
                   spek_pendidikan: ujInputs.spek_pendidikan ? ujInputs.spek_pendidikan.value : '',
                   spek_pengetahuan: ujInputs.spek_pengetahuan ? ujInputs.spek_pengetahuan.value : '',
                   spek_kompetensi: ujInputs.spek_kompetensi ? ujInputs.spek_kompetensi.value : '',
                   spek_kompetensi_wajib: ujInputs.spek_kompetensi_wajib ? ujInputs.spek_kompetensi_wajib.value : '',
                   spek_kompetensi_generik: ujInputs.spek_kompetensi_generik ? ujInputs.spek_kompetensi_generik.value : '',
-                  
                   struktur_organisasi: (ujInputs.struktur && ujInputs.struktur._base64) ? ujInputs.struktur._base64 : ''
               };
 
-              // Simpan ke Store
               if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
               multiDataStore[activeDataIndex].uraian_data = dataObj;
-              multiDataStore[activeDataIndex].uraian_status = status; // Draft / Final
+              multiDataStore[activeDataIndex].uraian_status = status; 
 
-              // Update UI di form utama
               const type = getActiveContractType();
               const textStatus = (status === 'Final') ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
               
-              if(type === 'Organik') {
-                  if(uraianStatus) uraianStatus.textContent = textStatus;
-              } else {
-                  if(uraianStatusProject) uraianStatusProject.textContent = textStatus;
-              }
+              if(type === 'Organik') { if(uraianStatus) uraianStatus.textContent = textStatus; } 
+              else { if(uraianStatusProject) uraianStatusProject.textContent = textStatus; }
 
-              // Update tombol preview di modal itu sendiri
               if(status === 'Final') {
                   btnPreviewPdf.dataset.json = JSON.stringify(dataObj);
                   btnPreviewPdf.style.display = 'inline-flex';
                   uraianStatusDisplay.textContent = 'Status: Final';
                   alert('Data berhasil difinalisasi.');
               } else {
-                  // Jika draft, tutup modal
                   uraianModal.hidden = true;
-                  // Jangan hapus class modal-open jika modal utama masih terbuka
               }
           }
       });
 
-      // Handle Preview PDF Button
       function submitPdfForm(jsonData) {
           if(!jsonData) return;
           let formPdf = document.getElementById('pdf-generator-form');
@@ -955,26 +1094,75 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       if(btnPreviewPdf) {
-          btnPreviewPdf.addEventListener('click', function() {
-              submitPdfForm(this.dataset.json);
-          });
+          btnPreviewPdf.addEventListener('click', function() { submitPdfForm(this.dataset.json); });
       }
 
-      // --- LOGIC FORM UTAMA (Sama seperti sebelumnya) ---
+      // --- LOGIC FORM UTAMA ---
+      
+      function resetDynamicInputs() {
+          if(titleInput) titleInput.value = '';
+          Object.values(dynInputs).forEach(el => {
+              if(el && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) el.value = '';
+          });
+          if(dynInputs.cv) { dynInputs.cv.value = ''; dynInputs.cv._base64 = null; dynInputs.cv._filename = null; }
+          if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = '';
+
+          form.querySelectorAll('.js-rkap-select.selected').forEach(b => {
+               b.classList.remove('selected', 'u-success'); b.classList.add('u-btn--outline'); b.innerHTML = '+';
+          });
+          if(rkapSelectedInfo) rkapSelectedInfo.style.display = 'none';
+          if(rkapSelectedName) rkapSelectedName.textContent = '';
+          if(uraianStatus) uraianStatus.textContent = 'Belum ada uraian';
+          
+          if(picOrganikInput) picOrganikInput.value = '';
+          if(picOrganikSearchInput) picOrganikSearchInput.value = '';
+          if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
+          if(positionOrganikInput) positionOrganikInput.value = '';
+
+          if(kodeProjectSelect) kodeProjectSelect.value = '';
+          if(namaProjectInput) namaProjectInput.value = '';
+          if(positionSearchInput) positionSearchInput.value = '';
+          if(positionInput) positionInput.value = '';
+          if(uraianStatusProject) uraianStatusProject.textContent = 'Belum ada uraian';
+          if(picProjectInput) picProjectInput.value = '';
+          if(picProjectSearchInput) picProjectSearchInput.value = '';
+      }
+
       function saveCurrentTabData() {
           const type = getActiveContractType();
           const idx = activeDataIndex;
           if (!multiDataStore[idx]) multiDataStore[idx] = {};
 
-          multiDataStore[idx].title = titleInput.value;
-          multiDataStore[idx].target_start_date = targetStartInput.value;
+          if(titleInput) multiDataStore[idx].title = titleInput.value;
+
+          multiDataStore[idx].start_date = dynInputs.start_date?.value || '';
+          multiDataStore[idx].end_date   = dynInputs.end_date?.value || '';
+          multiDataStore[idx].location   = dynInputs.location?.value || '';
+          multiDataStore[idx].education  = dynInputs.education?.value || '';
+          multiDataStore[idx].brevet     = dynInputs.brevet?.value || '';
+          multiDataStore[idx].experience = dynInputs.experience?.value || '';
+          multiDataStore[idx].salary     = dynInputs.salary?.value || '';
+          multiDataStore[idx].terbilang  = dynInputs.terbilang?.value || '';
+          multiDataStore[idx].allowanceJ  = dynInputs.allowanceJ?.value || '';
+          multiDataStore[idx].allowanceP  = dynInputs.allowanceP?.value || '';
+          multiDataStore[idx].allowanceC  = dynInputs.allowanceC?.value || '';
+          multiDataStore[idx].allowanceK  = dynInputs.allowanceK?.value || '';
+          multiDataStore[idx].pph21      = dynInputs.pph21?.value || '';
+          multiDataStore[idx].bpjs_kes   = dynInputs.bpjs_kes?.value || '';
+          multiDataStore[idx].bpjs_tk    = dynInputs.bpjs_tk?.value || '';
+          multiDataStore[idx].thr        = dynInputs.thr?.value || '';
+          multiDataStore[idx].kompensasi = dynInputs.kompensasi?.value || '';
+
+          if(dynInputs.cv && dynInputs.cv._base64) {
+              multiDataStore[idx].cv_file = dynInputs.cv._base64;
+              multiDataStore[idx].cv_filename = dynInputs.cv._filename;
+          }
 
           if (type === 'Organik') {
               const selectedRow = form.querySelector('.js-rkap-select.selected');
               const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
               multiDataStore[idx].type = 'Organik';
               multiDataStore[idx].rkap_job = rkapJob;
-              
               multiDataStore[idx].pic_id = picOrganikInput.value;
               multiDataStore[idx].pic_text = picOrganikSearchInput.value;
               multiDataStore[idx].position = positionOrganikInput.value; 
@@ -994,24 +1182,55 @@ document.addEventListener('DOMContentLoaded', function() {
           resetDynamicInputs(); 
           const data = multiDataStore[idx];
           if (!data) return; 
-          if(data.title) titleInput.value = data.title;
-          if(data.target_start_date) targetStartInput.value = data.target_start_date;
+
+          if(data.title && titleInput) titleInput.value = data.title;
+
+          if(dynInputs.start_date) dynInputs.start_date.value = data.start_date || '';
+          if(dynInputs.end_date)   dynInputs.end_date.value   = data.end_date || '';
+          if(dynInputs.location)   dynInputs.location.value   = data.location || '';
+          if(dynInputs.education)  dynInputs.education.value  = data.education || '';
+          if(dynInputs.brevet)     dynInputs.brevet.value     = data.brevet || '';
+          if(dynInputs.experience) dynInputs.experience.value = data.experience || '';
+          if(dynInputs.salary)     dynInputs.salary.value     = data.salary || '';
+          if(dynInputs.terbilang)  dynInputs.terbilang.value  = data.terbilang || '';
+          if(dynInputs.allowanceJ)  dynInputs.allowanceJ.value  = data.allowanceJ || '';
+          if(dynInputs.allowanceP)  dynInputs.allowanceP.value  = data.allowanceP || '';
+          if(dynInputs.allowanceC)  dynInputs.allowanceC.value  = data.allowanceC || '';
+          if(dynInputs.allowanceK)  dynInputs.allowanceK.value  = data.allowanceK || '';
+          if(dynInputs.pph21)      dynInputs.pph21.value      = data.pph21 || '';
+          if(dynInputs.bpjs_kes)   dynInputs.bpjs_kes.value   = data.bpjs_kes || '';
+          if(dynInputs.bpjs_tk)    dynInputs.bpjs_tk.value    = data.bpjs_tk || '';
+          if(dynInputs.thr)        dynInputs.thr.value        = data.thr || '';
+          if(dynInputs.kompensasi) dynInputs.kompensasi.value = data.kompensasi || '';
+
+          if(data.salary && dynInputs.terbilang) {
+               let text = terbilang(data.salary) + 'rupiah';
+               text = text.charAt(0).toUpperCase() + text.slice(1);
+               dynInputs.terbilang.value = text;
+          } else if (dynInputs.terbilang) {
+               // Jika data salary kosong, ambil dari data.terbilang jika ada, atau kosongkan
+               dynInputs.terbilang.value = data.terbilang || '';
+          }
+          if(data.cv_filename && dynInputs.cv_preview) {
+              dynInputs.cv_preview.textContent = "Current File: " + data.cv_filename;
+              dynInputs.cv._base64 = data.cv_file;
+              dynInputs.cv._filename = data.cv_filename;
+          }
 
           const type = getActiveContractType();
           const statusText = (data.uraian_status === 'Final') ? 'Tersimpan (Final)' : (data.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
 
           if (type === 'Organik' && data.type === 'Organik') {
               if (data.rkap_job) {
-                  const rows = form.querySelectorAll('#rkap-table tbody tr');
-                  rows.forEach(tr => {
-                      if (tr.dataset.jobName === data.rkap_job) {
-                          const btn = tr.querySelector('.js-rkap-select');
-                          toggleRkapSelect(btn, true);
-                      }
-                  });
+                   const rows = form.querySelectorAll('#rkap-table tbody tr');
+                   rows.forEach(tr => {
+                       if (tr.dataset.jobName === data.rkap_job) {
+                           const btn = tr.querySelector('.js-rkap-select');
+                           toggleRkapSelect(btn, true);
+                       }
+                   });
               }
               if(uraianStatus) uraianStatus.textContent = statusText;
-              
               if(data.pic_id) picOrganikInput.value = data.pic_id;
               if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
               if(data.position) positionOrganikInput.value = data.position;
@@ -1019,46 +1238,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
           } else if (type === 'Project Based' && data.type === 'Project Based') {
               if(data.project_code) {
-                  kodeProjectSelect.value = data.project_code;
-                  namaProjectInput.value = data.project_name || ''; 
+                   kodeProjectSelect.value = data.project_code;
+                   namaProjectInput.value = data.project_name || ''; 
               }
               if(data.position) positionInput.value = data.position;
               if(data.position_text) positionSearchInput.value = data.position_text;
               if(uraianStatusProject) uraianStatusProject.textContent = statusText;
-              
               if(data.pic_id) picProjectInput.value = data.pic_id;
               if(data.pic_text) picProjectSearchInput.value = data.pic_text;
           }
       }
 
-      function resetDynamicInputs() {
-          if(titleInput) titleInput.value = '';
-          if(targetStartInput) targetStartInput.value = '';
-          // Organik
-          form.querySelectorAll('.js-rkap-select.selected').forEach(b => {
-             b.classList.remove('selected', 'u-success'); b.classList.add('u-btn--outline'); b.innerHTML = '+';
-          });
-          if(rkapSelectedInfo) rkapSelectedInfo.style.display = 'none';
-          if(rkapSelectedName) rkapSelectedName.textContent = '';
-          if(uraianStatus) uraianStatus.textContent = 'Belum ada uraian';
-          if(picOrganikInput) picOrganikInput.value = '';
-          if(picOrganikSearchInput) picOrganikSearchInput.value = '';
-          if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
-          if(positionOrganikInput) positionOrganikInput.value = '';
-          // Project
-          if(kodeProjectSelect) kodeProjectSelect.value = '';
-          if(namaProjectInput) namaProjectInput.value = '';
-          if(positionSearchInput) positionSearchInput.value = '';
-          if(positionInput) positionInput.value = '';
-          if(uraianStatusProject) uraianStatusProject.textContent = 'Belum ada uraian';
-          if(picProjectInput) picProjectInput.value = '';
-          if(picProjectSearchInput) picProjectSearchInput.value = '';
-      }
-
       function renderTabs(count) {
           dataTabsContainer.innerHTML = '';
-          if (count <= 1) { dataTabsContainer.style.display = 'none'; return; }
           dataTabsContainer.style.display = 'flex';
+          
           for (let i = 1; i <= count; i++) {
               const btn = document.createElement('button');
               btn.type = 'button';
@@ -1067,11 +1261,12 @@ document.addEventListener('DOMContentLoaded', function() {
               btn.textContent = `Data ${i}`;
               btn.dataset.idx = i;
               btn.addEventListener('click', () => {
-                  saveCurrentTabData();
+                  saveCurrentTabData(); 
                   const prevBtn = dataTabsContainer.querySelector(`button[data-idx="${activeDataIndex}"]`);
                   if(prevBtn) { prevBtn.classList.remove('u-btn--brand'); prevBtn.classList.add('u-btn--soft'); }
                   btn.classList.remove('u-btn--soft'); btn.classList.add('u-btn--brand');
-                  activeDataIndex = i; loadTabData(i);
+                  activeDataIndex = i; 
+                  loadTabData(i); 
               });
               dataTabsContainer.appendChild(btn);
           }
@@ -1081,11 +1276,10 @@ document.addEventListener('DOMContentLoaded', function() {
           headcountInput.addEventListener('input', function(e) {
               let val = parseInt(e.target.value);
               if (isNaN(val) || val < 1) val = 1;
-              saveCurrentTabData();
+              saveCurrentTabData(); 
               totalDataCount = val;
-              if (activeDataIndex > totalDataCount) activeDataIndex = 1;
+              if (activeDataIndex > totalDataCount) { activeDataIndex = 1; loadTabData(1); }
               renderTabs(totalDataCount);
-              if (totalDataCount === 1) { if (activeDataIndex !== 1) { activeDataIndex = 1; loadTabData(1); } }
           });
       }
 
@@ -1110,20 +1304,16 @@ document.addEventListener('DOMContentLoaded', function() {
               let d = multiDataStore[i] || {};
               d.type = getActiveContractType(); 
               if(!d.title) d.title = titleInput.value; 
-              if(!d.target_start_date) d.target_start_date = targetStartInput.value;
               payload.push(d);
           }
           detailsJsonInput.value = JSON.stringify(payload);
       });
 
       document.addEventListener('click', function(e) {
-         // Close Modal Uraian
          if (e.target.closest('#uraianModal [data-modal-close]')) {
              const m = document.getElementById('uraianModal');
              m.hidden = true; 
-             // Jangan remove modal-open jika modal utama masih ada
          }
-         // Close Modal Utama
          else if (e.target.closest('#createApprovalModal [data-modal-close]') || e.target.closest('#detailApprovalModal [data-modal-close]')) {
              const m = e.target.closest('.u-modal');
              if(m) { m.hidden = true; document.body.classList.remove('modal-open'); }
@@ -1136,8 +1326,8 @@ document.addEventListener('DOMContentLoaded', function() {
              if(m) { 
                  m.hidden = false; document.body.classList.add('modal-open'); 
                  const mode = btnCreate.getAttribute('data-mode');
-                 multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1; renderTabs(1); resetDynamicInputs();
-
+                 multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1; 
+                 
                  if(mode === 'create') {
                      form.reset(); 
                      setBudgetLock(false, ''); 
@@ -1149,59 +1339,62 @@ document.addEventListener('DOMContentLoaded', function() {
                      if (methodField) methodField.remove();
                      [positionSearchInput, positionInput, positionOrganikSearchInput, positionOrganikInput, 
                       picProjectSearchInput, picProjectInput, picOrganikSearchInput, picOrganikInput].forEach(el => { if(el) el.value = ''; });
+                     resetDynamicInputs();
+                     renderTabs(1); 
+                     loadTabData(1);
                      updateVisibility();
+
                  } else if (mode === 'edit') {
-                     if(modalTitle) modalTitle.textContent = "Edit Izin Prinsip";
-                     const updateUrl = btnCreate.getAttribute('data-update-url');
-                     if(updateUrl) form.action = updateUrl;
-                     const deleteUrl = btnCreate.getAttribute('data-delete-url');
-                     if(deleteForm) { deleteForm.style.display = 'block'; deleteForm.action = deleteUrl || ''; }
-                     
-                     let methodField = form.querySelector('input[name="_method"]');
-                     if (!methodField) { methodField = document.createElement('input'); methodField.type = 'hidden'; methodField.name = '_method'; methodField.value = 'PUT'; form.appendChild(methodField); }
+                      if(modalTitle) modalTitle.textContent = "Edit Izin Prinsip";
+                      const updateUrl = btnCreate.getAttribute('data-update-url');
+                      if(updateUrl) form.action = updateUrl;
+                      const deleteUrl = btnCreate.getAttribute('data-delete-url');
+                      if(deleteForm) { deleteForm.style.display = 'block'; deleteForm.action = deleteUrl || ''; }
+                      
+                      let methodField = form.querySelector('input[name="_method"]');
+                      if (!methodField) { methodField = document.createElement('input'); methodField.type = 'hidden'; methodField.name = '_method'; methodField.value = 'PUT'; form.appendChild(methodField); }
 
-                     // Load basic data
-                     if(requestTypeSelect) requestTypeSelect.value = btnCreate.getAttribute('data-request-type');
-                     if(titleInput) titleInput.value = btnCreate.getAttribute('data-title');
-                     if(headcountInput) headcountInput.value = btnCreate.getAttribute('data-headcount');
-                     if(targetStartInput) targetStartInput.value = btnCreate.getAttribute('data-target-start');
-                     if(justifInput) justifInput.value = btnCreate.getAttribute('data-justification');
+                      if(requestTypeSelect) requestTypeSelect.value = btnCreate.getAttribute('data-request-type');
+                      if(titleInput) titleInput.value = btnCreate.getAttribute('data-title');
+                      if(justifInput) justifInput.value = btnCreate.getAttribute('data-justification');
 
-                     const contractType = btnCreate.getAttribute('data-employment-type');
-                     const budgetType   = btnCreate.getAttribute('data-budget-source-type');
-                     
-                     if(contractTypeSelect) contractTypeSelect.value = contractType;
-                     if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
-                     else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
-                     else { setBudgetLock(false, ''); if(budgetSourceSelect) budgetSourceSelect.value = budgetType; }
-                     updateVisibility();
+                      const contractType = btnCreate.getAttribute('data-employment-type');
+                      const budgetType   = btnCreate.getAttribute('data-budget-source-type');
+                      
+                      if(contractTypeSelect) contractTypeSelect.value = contractType;
+                      if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
+                      else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
+                      else { setBudgetLock(false, ''); if(budgetSourceSelect) budgetSourceSelect.value = budgetType; }
+                      updateVisibility();
 
-                     const posName = btnCreate.getAttribute('data-position');
-                     if (contractType === 'Organik') {
-                         if(positionOrganikSearchInput) positionOrganikSearchInput.value = posName;
-                         if(positionOrganikInput) positionOrganikInput.value = posName; 
-                     } else {
-                         if(positionSearchInput) positionSearchInput.value = posName;
-                         if(positionInput) positionInput.value = posName;
-                     }
+                      const posName = btnCreate.getAttribute('data-position');
+                      if (contractType === 'Organik') {
+                          if(positionOrganikSearchInput) positionOrganikSearchInput.value = posName;
+                          if(positionOrganikInput) positionOrganikInput.value = posName; 
+                      } else {
+                          if(positionSearchInput) positionSearchInput.value = posName;
+                          if(positionInput) positionInput.value = posName;
+                      }
 
-                     const metaJsonStr = btnCreate.getAttribute('data-meta-json');
-                     if (metaJsonStr) {
-                         try {
-                             const detailsArray = JSON.parse(metaJsonStr);
-                             if (Array.isArray(detailsArray) && detailsArray.length > 0) {
-                                 totalDataCount = detailsArray.length;
-                                 headcountInput.value = totalDataCount;
-                                 renderTabs(totalDataCount);
-                                 detailsArray.forEach((detail, idx) => { multiDataStore[idx + 1] = detail; });
-                                 activeDataIndex = 1;
-                                 loadTabData(1);
-                             }
-                         } catch (e) { console.warn('Failed to parse meta-json:', e); }
-                     }
+                      totalDataCount = parseInt(btnCreate.getAttribute('data-headcount')) || 1;
+                      if(headcountInput) headcountInput.value = totalDataCount;
+                      renderTabs(totalDataCount);
+
+                      const metaJsonStr = btnCreate.getAttribute('data-meta-json');
+                      if (metaJsonStr) {
+                          try {
+                              const detailsArray = JSON.parse(metaJsonStr);
+                              if (Array.isArray(detailsArray) && detailsArray.length > 0) {
+                                  detailsArray.forEach((detail, idx) => { multiDataStore[idx + 1] = detail; });
+                              }
+                          } catch (e) { console.warn('Failed to parse meta-json:', e); }
+                      }
+                      activeDataIndex = 1;
+                      loadTabData(1);
                  }
              }
          }
+         
          // ... Detail Modal Logic ...
          const btnDetail = e.target.closest('.js-open-detail');
          if(btnDetail && detailModal) {
@@ -1222,16 +1415,12 @@ document.addEventListener('DOMContentLoaded', function() {
              const tabsContainer = document.getElementById('detailTabsContainer');
              tabsContainer.innerHTML = '';
              
-             // Get approval URLs dan status
              const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
              const approveUrl = btnDetail.getAttribute('data-approve-url');
              const rejectUrl = btnDetail.getAttribute('data-reject-url');
-             const recruitmentId = btnDetail.getAttribute('data-id');
              
-             // Setup approve/reject forms
              const approveForm = detailModal.querySelector('.detail-approve-form');
              const rejectForm = detailModal.querySelector('.detail-reject-form');
-             const actionButtons = detailModal.querySelector('.action-buttons');
              
              if(canApprove && approveForm && rejectForm) {
                  approveForm.style.display = 'block';
@@ -1251,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', function() {
                  setTxt('view-title', data.title || globalTitle);
                  setTxt('view-position', data.position_text || safeTxt('data-position'));
                  setTxt('view-headcount', '1 Orang');
-                 setTxt('view-target', data.target_start_date || safeTxt('data-target-start'));
+                //  setTxt('view-target', data.target_start_date || safeTxt('data-target-start'));
                  setTxt('view-employment', data.type || safeTxt('data-employment-type'));
                  setTxt('view-pic', data.pic_text || '-');
 
@@ -1265,40 +1454,76 @@ document.addEventListener('DOMContentLoaded', function() {
                      statusUraian.textContent = 'Tidak ada uraian';
                      btnPdf.style.display = 'none';
                  }
+                 
+                 // [FIX] Pindahkan extra info ke dalam detailContentContainer
+                 const container = document.getElementById('detailContentContainer');
+                 let extraDetailDiv = document.getElementById('view-extra-details');
+                 
+                 if(!extraDetailDiv) {
+                     extraDetailDiv = document.createElement('div');
+                     extraDetailDiv.id = 'view-extra-details';
+                     // Style untuk pemisah (garis atas, margin, padding) agar senada
+                     extraDetailDiv.className = 'u-mt-lg u-pt-md u-border-t'; 
+                     container.appendChild(extraDetailDiv);
+                 } else {
+                     // Pastikan div ini ada di dalam container yang benar
+                     if (extraDetailDiv.parentNode !== container) {
+                         container.appendChild(extraDetailDiv);
+                     }
+                 }
+
+                 const makeRow = (lbl, val) => `<div class="u-flex u-justify-between u-mb-xs u-border-b u-pb-xs" style="border-color: #f3f4f6;"><span class="u-text-muted u-text-xs u-uppercase u-font-bold">${lbl}</span><span class="u-font-medium u-text-sm u-text-right">${val || '-'}</span></div>`;
+
+                 // Menghapus background card agar menyatu dengan background modal
+                 extraDetailDiv.innerHTML = `
+                    <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em;">Detail Kandidat & Remunerasi</div>
+                    <div class="u-grid-2-custom u-gap-lg">
+                        <div>
+                            ${makeRow('Mulai Kerja', data.start_date)}
+                            ${makeRow('Selesai Kerja', data.end_date)}
+                            ${makeRow('Lokasi', data.location)}
+                            ${makeRow('Pendidikan', data.education)}
+                            ${makeRow('Brevet', data.brevet)}
+                            ${makeRow('Pengalaman', data.experience)}
+                        </div>
+                        <div>
+                            ${makeRow('Gaji Pokok', data.salary)}
+                            ${makeRow('Tunjangan Jabatan', data.allowanceJ)}
+                            ${makeRow('Tunjangan Project', data.allowanceP)}
+                            ${makeRow('Tunjangan Komunikasi', data.allowanceC)}
+                            ${makeRow('Tunjangan Kinerja', data.allowanceK)}
+                            ${makeRow('THR', data.thr)}
+                            ${makeRow('Kompensasi', data.kompensasi)}
+                            <div class="u-mt-sm u-flex u-justify-between u-items-center">
+                                <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
+                                ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
+                            </div>
+                        </div>
+                    </div>
+                 `;
              };
              
              detailsArray.forEach((item, i) => {
-                  const btnTab = document.createElement('button');
-                  btnTab.type = 'button';
-                  
-                  // Logika style: Jika index 0 (pertama), pakai style brand (biru), sisanya ghost
-                  const initialStyle = (i === 0) ? 'u-btn--brand u-text-white' : 'u-btn--ghost';
-                  btnTab.className = `u-btn u-btn--sm ${initialStyle} u-hover-lift`;
-                  
-                  btnTab.textContent = `Data ${i + 1}`;
-                  btnTab.style.borderRadius = '20px'; // Opsional: agar lebih bulat
-
-                  btnTab.addEventListener('click', (evt) => {
-                      evt.preventDefault();
-                      
-                      // Reset semua tombol tab menjadi style ghost (polos)
-                      Array.from(tabsContainer.children).forEach(c => {
-                          c.classList.remove('u-btn--brand', 'u-text-white');
-                          c.classList.add('u-btn--ghost');
-                      });
-                      
-                      // Set tombol yang diklik menjadi style brand (biru)
-                      btnTab.classList.remove('u-btn--ghost');
-                      btnTab.classList.add('u-btn--brand', 'u-text-white');
-                      
-                      renderContent(i);
-                  });
-                  tabsContainer.appendChild(btnTab);
+                 const btnTab = document.createElement('button');
+                 btnTab.type = 'button';
+                 const initialStyle = (i === 0) ? 'u-btn--brand u-text-white' : 'u-btn--ghost';
+                 btnTab.className = `u-btn u-btn--sm ${initialStyle} u-hover-lift`;
+                 btnTab.textContent = `Data ${i + 1}`;
+                 btnTab.style.borderRadius = '20px'; 
+                 btnTab.addEventListener('click', (evt) => {
+                     evt.preventDefault();
+                     Array.from(tabsContainer.children).forEach(c => {
+                         c.classList.remove('u-btn--brand', 'u-text-white');
+                         c.classList.add('u-btn--ghost');
+                     });
+                     btnTab.classList.remove('u-btn--ghost');
+                     btnTab.classList.add('u-btn--brand', 'u-text-white');
+                     renderContent(i);
+                 });
+                 tabsContainer.appendChild(btnTab);
              });
              
-             // Load konten pertama
              renderContent(0);
-             
              detailModal.hidden = false; 
              document.body.classList.add('modal-open');
          }
@@ -1317,7 +1542,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
       
-      // SEARCHABLES & VISIBILITY
       function toggleRkapSelect(sel, forceSelect = false) { 
         const tr = sel.closest('tr'); const job = tr.dataset.jobName;
         form.querySelectorAll('.js-rkap-select.selected').forEach(el => { if (el !== sel) { el.classList.remove('selected', 'u-success'); el.classList.add('u-btn--outline'); el.innerHTML = '+'; } });
@@ -1366,7 +1590,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const updateVisibility = () => { 
         const type = contractTypeSelect ? contractTypeSelect.value : ''; 
         const budget = budgetSourceSelect ? budgetSourceSelect.value : '';
-        
         const isOrganik = (type === 'Organik') && (budget === 'RKAP'); 
         const isProject = (type === 'Project Based'); 
         
@@ -1374,24 +1597,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isOrganik && rkapSelectedInfo) rkapSelectedInfo.style.display = 'none';
         if (projectSection) projectSection.style.display = isProject ? 'block' : 'none';
 
-        // LOGIC PENENTUAN FIELD "POSITION" YANG DIKIRIM KE SERVER
         if (type === 'Organik') {
-            // Jika Organik, field 'position' diambil dari input Organik
-            if(positionInput) positionInput.removeAttribute('name'); // Matikan input project
-            if(positionOrganikInput) positionOrganikInput.setAttribute('name', 'position'); // Aktifkan input organik
-            
-            // Pastikan nilai positionOrganikInput terisi dari selection RKAP jika ada
+            if(positionInput) positionInput.removeAttribute('name'); 
+            if(positionOrganikInput) positionOrganikInput.setAttribute('name', 'position'); 
             const selectedRow = form.querySelector('.js-rkap-select.selected');
             if(selectedRow && positionOrganikInput) {
                 positionOrganikInput.value = selectedRow.closest('tr').dataset.jobName;
             }
-            
         } else if (type === 'Project Based') {
-            // Jika Project, field 'position' diambil dari input Project
-            if(positionOrganikInput) positionOrganikInput.removeAttribute('name'); // Matikan input organik
-            if(positionInput) positionInput.setAttribute('name', 'position'); // Aktifkan input project
+            if(positionOrganikInput) positionOrganikInput.removeAttribute('name'); 
+            if(positionInput) positionInput.setAttribute('name', 'position'); 
         } else {
-            // Jika belum pilih, matikan keduanya
             if(positionInput) positionInput.removeAttribute('name');
             if(positionOrganikInput) positionOrganikInput.removeAttribute('name');
         }
