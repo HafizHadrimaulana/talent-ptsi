@@ -187,6 +187,8 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.edit-lna');
         Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'delete-lna'])
             ->name('training-request.delete-lna');
+        Route::post('/training/lna/store', [TrainingRequestController::class, 'lnaStore'])
+            ->name('training.lna.store');
 
         //// sdm unit
         Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])

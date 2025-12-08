@@ -375,4 +375,8 @@ class TrainingRequestController extends Controller
             ], 500);
         }
     }
+
+    public function lnaStore(Request $request) {
+        Log::info('store');
+    }
 }

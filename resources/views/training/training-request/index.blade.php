@@ -19,14 +19,18 @@
     {{-- Tabs khusus DHC: Data Training & Data LNA --}}
     @role('DHC')
         <div class="u-mx-md u-mb-md">
-            <div class="u-tabs__list flex gap-6 text-sm font-medium" id="dhc-tabs">
+            <div
+                id="dhc-tabs"
+                class="u-tabs__list flex text-sm font-medium"
+            >
+            <div class="border-b-2 border-slate-300 gap-10">
                 <button
                     type="button"
                     data-tab="lna"
-                    class="u-tabs__item pb-2 -mb-px border-b-2
+                    class="u-tabs__item pb-2 -mb-px mr-6 border-b-2
                         {{ $activeTab === 'lna'
                             ? 'border-blue-600 text-slate-900'
-                            : 'border-gray-300 text-slate-500 hover:text-slate-800' }}"
+                            : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
                 >
                     Data LNA
                 </button>
@@ -34,13 +38,14 @@
                 <button
                     type="button"
                     data-tab="training"
-                    class="u-tabs__item pb-2 -mb-px border-b-2
+                    class="u-tabs__item pb-2 -mb-px mr-6 border-b-2
                         {{ $activeTab === 'training'
                             ? 'border-blue-600 text-slate-900'
-                            : 'border-gray-300 text-slate-500 hover:text-slate-800' }}"
+                            : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
                 >
                     Data Training
                 </button>
+            </div>
             </div>
         </div>
     @endrole
@@ -49,13 +54,13 @@
     <div class="dt-wrapper">
         <div class="flex gap-5 p-10">
             @hasanyrole('SDM Unit|GM/VP Unit|VP DHC|Kepala Unit')
-            <div class="flex justify-between w-full mb-10 u-mb-xl">
-                <div class="flex gap-5">
-                    <button id="btn-all-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Semua Data</button>
-                    <button id="btn-bulk-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Data yang Dipilih</button>
+                <div class="flex justify-between w-full mb-10 u-mb-xl">
+                    <div class="flex gap-5">
+                        <button id="btn-all-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Semua Data</button>
+                        <button id="btn-bulk-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Data yang Dipilih</button>
+                    </div>
+                    <button id="btn-export" class="u-btn u-btn--brand u-hover-lift">Export Data</button>
                 </div>
-                <button id="btn-export" class="u-btn u-btn--brand u-hover-lift">Export Data</button>
-            </div>
             @endhasanyrole
         </div>
 
