@@ -83,7 +83,6 @@ class PrincipalApprovalController extends Controller
                         $qDraft->where('status', 'draft');
 
                         if ($isKepalaUnit) {
-                            // kepala unit tidak melihat draft milik SDM (kecuali aturan diubah)
                             $qDraft->whereRaw('1 = 0');
                         } else {
                             $qDraft->where(function ($qOwner) use ($tbl, $creatorCols, $me) {
@@ -117,7 +116,7 @@ class PrincipalApprovalController extends Controller
     public function store(Request $r)
     {
         $data = $r->validate([
-            'request_type'         => 'required|string|in:Rekrutmen,Perpanjang Kontrak', // 2 jalur sesuai flowmap
+            'request_type'         => 'required|string|in:Rekrutmen,Perpanjang Kontrak', // 2 jalur
             'title'                => 'required|string',
             'position'             => 'required|string',
             'headcount'            => 'required|integer|min:1',
@@ -181,7 +180,6 @@ class PrincipalApprovalController extends Controller
                     $insert['meta'] = ['recruitment_details' => $detailsArray];
                 }
             } catch (\Exception $e) {
-                // Silent fail, lanjut dengan default
             }
         }
 
@@ -192,19 +190,14 @@ class PrincipalApprovalController extends Controller
 
     public function destroy(RecruitmentRequest $req)
     {
-        // 1. Pastikan user berhak mengakses unit ini (security check)
         $this->authorizeUnit($req->unit_id);
 
-        // 2. Validasi: Hanya status 'draft' yang boleh dihapus
-        // Jika status sudah submitted/approved, tolak.
         if (($req->status ?? null) !== 'draft') {
             return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat dihapus.');
         }
 
-        // 3. Lakukan penghapusan data
         $req->delete();
 
-        // 4. Kembali ke halaman index dengan pesan sukses
         return redirect()->route('recruitment.principal-approval.index')
             ->with('ok', 'Draft Izin Prinsip berhasil dihapus.');
     }
@@ -227,7 +220,7 @@ class PrincipalApprovalController extends Controller
             'budget_source_type'   => 'nullable|string|max:100',
             'budget_ref'           => 'nullable|string',
             'publish_vacancy_pref' => 'nullable|string|max:10',
-            'details_json'         => 'nullable|string', // Multi-data dari frontend
+            'details_json'         => 'nullable|string',
         ]);
 
         $tbl = $req->getTable();
@@ -262,7 +255,6 @@ class PrincipalApprovalController extends Controller
             }
         }
 
-        // Parse details_json dan update meta untuk multi-data
         if (!empty($data['details_json'])) {
             try {
                 $detailsArray = json_decode($data['details_json'], true);
@@ -272,7 +264,7 @@ class PrincipalApprovalController extends Controller
                     $update['meta'] = $currentMeta;
                 }
             } catch (\Exception $e) {
-                // Silent fail, lanjut tanpa update meta
+
             }
         }
 
@@ -323,7 +315,6 @@ class PrincipalApprovalController extends Controller
                 $req->update(['status' => 'approved']); // final: dasar proses rekrutmen/perpanjangan kontrak
             }
             
-            // Generate ticket number saat status approved
             $req->generateTicketNumber();
             
             return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui. Nomor Ticket: ' . $req->ticket_number);
@@ -407,7 +398,6 @@ class PrincipalApprovalController extends Controller
         }
 
         if ($stage['key'] === 'kepala_unit') {
-            // Kepala Unit hanya approve request unit-nya
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
 
@@ -419,7 +409,6 @@ class PrincipalApprovalController extends Controller
                 && ((string) $user->unit_id === (string) $this->dhcUnitId());
             return $isKepalaUnitDhc;
         }
-
         return $allowed;
     }
 
