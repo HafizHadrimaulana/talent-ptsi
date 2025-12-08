@@ -13,8 +13,8 @@ html[data-theme="dark"]{
   --glass-bg:rgba(18,26,46,.48);--glass-stroke:rgba(255,255,255,.08);
 }
 
-/* RESET */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* RESET – jangan hapus margin/padding global */
+*,*::before,*::after{box-sizing:border-box}
 body{color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
 
@@ -241,7 +241,8 @@ body.modal-open{overflow:hidden}
   .u-tabs{gap:.25rem;flex-wrap:wrap;white-space:normal}
   .u-tab{padding:.35rem .7rem;font-size:.75rem}
   .u-tree-wrap{max-height:none}
-  .u-tree-col{flex:1 1 100%}
+  .u-tree-col{flex:1 1
+  100%}
 }
 @media (min-width:769px) and (max-width:1024px){
   .u-modal__card{width:88vw}.u-modal__card--xl{width:92vw}
