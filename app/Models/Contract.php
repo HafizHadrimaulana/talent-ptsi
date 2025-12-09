@@ -28,6 +28,9 @@ class Contract extends Model
         'budget_source_type',
         'position_id',
         'position_level_id',
+        'position_name',
+        'parent_contract_id',
+        'sequence_no',
         'start_date',
         'end_date',
         'requires_draw_signature',
@@ -35,6 +38,7 @@ class Contract extends Model
         'requires_geolocation',
         'status',
         'remuneration_json',
+        'meta_json',
         'document_id',
         'created_by_person_id',
         'created_by_user_id',
@@ -44,6 +48,7 @@ class Contract extends Model
         'start_date'              => 'date',
         'end_date'                => 'date',
         'remuneration_json'       => 'array',
+        'meta_json'               => 'array',
         'requires_draw_signature' => 'boolean',
         'requires_camera'         => 'boolean',
         'requires_geolocation'    => 'boolean',
@@ -54,82 +59,57 @@ class Contract extends Model
         return ContractFactory::new();
     }
 
-    /**
-     * Unit (Divisi / Cabang / Enabler)
-     */
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'unit_id');
     }
 
-    /**
-     * Applicant (kalau kontrak untuk pelamar)
-     */
     public function applicant(): BelongsTo
     {
         return $this->belongsTo(Applicant::class, 'applicant_id');
     }
 
-    /**
-     * Employee (kalau kontrak untuk karyawan existing)
-     * Relasi lewat employee_id (bukan PK id)
-     */
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 
-    /**
-     * Dokumen kontrak (file SPK/PKWT/PB)
-     */
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'document_id');
     }
 
-    /**
-     * Relasi approval berjenjang (morph)
-     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class, 'parent_contract_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'parent_contract_id');
+    }
+
     public function approvals(): MorphMany
     {
         return $this->morphMany(Approval::class, 'approvable');
     }
 
-    /**
-     * Signature (e-sign) via document_id
-     */
     public function signatures(): HasMany
     {
         return $this->hasMany(Signature::class, 'document_id', 'document_id');
     }
 
-    /**
-     * Scope visibilitas kontrak per viewer (unit + role).
-     *
-     * - Superadmin      : semua kontrak
-     * - contract.approve: kontrak di unit-nya, status review/approved/signed
-     * - contract.view   : semua kontrak di unit-nya (termasuk draft)
-     * - lainnya         : tidak lihat apa-apa
-     */
     public function scopeForViewer(Builder $q, User $user): Builder
     {
-        // Superadmin lihat semua
         if ($user->hasRole('Superadmin')) {
             return $q;
         }
-
-        // Approver (Kepala Unit / dsb)
         if ($user->can('contract.approve')) {
-            return $q->where('unit_id', $user->unit_id)
-                ->whereIn('status', ['review', 'approved', 'signed']);
+            return $q->where('unit_id', $user->unit_id)->whereIn('status', ['review', 'approved', 'signed']);
         }
-
-        // Viewer biasa di unit sendiri
         if ($user->can('contract.view')) {
             return $q->where('unit_id', $user->unit_id);
         }
-
-        // fallback: kosong
         return $q->whereRaw('1 = 0');
     }
 }
