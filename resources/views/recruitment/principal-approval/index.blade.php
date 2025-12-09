@@ -496,7 +496,7 @@
               <div class="u-grid-2 u-stack-mobile u-gap-md">
                 <div class="u-space-y-sm">
                   <label class="u-block u-text-sm u-font-medium u-mb-sm">Kode Project</label>
-                  <select class="u-input" id="kodeProjectSelect" name="kode_project" required>
+                  <select class="u-input" id="kodeProjectSelect" name="kode_project">
                     <option value="">Pilih kode project</option>
                     @foreach($projectList as $p) <option value="{{ $p['kode'] }}" data-nama="{{ $p['nama'] }}">{{ $p['kode'] }}</option> @endforeach
                   </select>
@@ -505,7 +505,7 @@
               </div>
               <div class="u-space-y-sm" style="position: relative;">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Project Based -->
-                <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off" required>
+                <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off">
                 <input type="hidden" name="position" id="positionInput">
                 <div id="positionSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
               </div>
@@ -518,7 +518,7 @@
               </div>
               <div class="u-space-y-sm" style="position: relative;">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
-                <input type="text" id="picProjectSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off" required>
+                <input type="text" id="picProjectSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
                 <input type="hidden" name="pic_project" id="picProjectInput">
                 <div id="picProjectSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
               </div>
@@ -528,13 +528,13 @@
             <div id="rkapSection" class="u-space-y-md" style="display:none;">
               <div class="u-flex u-items-center u-justify-between"><div><label class="u-block u-text-sm u-font-medium u-mb-sm">Tabel RKAP 2025</label><div class="u-text-2xs u-muted">Pilih job function untuk memakai kuota RKAP</div></div></div>
               <div class="u-scroll-x">
-                <table class="u-table u-table--striped" id="rkap-table" required>
+                <table class="u-table u-table--striped" id="rkap-table">
                   <thead><tr><th>Job Function</th><th>RKAP 2025</th><th>Jumlah karyawan existing</th><th class="cell-actions">Aksi</th></tr></thead>
                   <tbody>
                     @foreach($rkapList as $j)
                       <tr data-job-name="{{ $j->name }}" data-job-rkap="{{ $j->rkap }}" data-job-existing="{{ $j->existing }}">
                         <td>{{ $j->name }}</td><td>{{ $j->rkap }}</td><td>{{ $j->existing }}</td>
-                        <td class="cell-actions"><button type="button" class="u-btn u-btn--sm u-btn--outline js-rkap-select" title="Pilih {{ $j->name }}" required>+</button></td>
+                        <td class="cell-actions"><button type="button" class="u-btn u-btn--sm u-btn--outline js-rkap-select" title="Pilih {{ $j->name }}">+</button></td>
                       </tr>
                     @endforeach
                   </tbody>
@@ -551,7 +551,7 @@
                     </div>
                     <div style="position: relative;">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Organik -->
-                      <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off" required>
+                      <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off">
                       <input type="hidden" id="positionOrganikInput"> 
                       <div id="positionOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                     </div>  
@@ -559,7 +559,7 @@
                   <div>
                     <div style="position: relative;" class="u-mb-md">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
-                      <input type="text" id="picOrganikSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off" required>
+                      <input type="text" id="picOrganikSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
                       <input type="hidden" name="pic" id="picOrganikInput">
                       <div id="picOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                     </div>
@@ -582,7 +582,7 @@
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Lokasi Kerja</label>
-                      <input class="u-input" type="text" id="dyn_location" placeholder="Input lokasi kerja" required>
+                      <input class="u-input" type="text" id="dyn_location" placeholder="Input lokasi kerja">
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan</label>
@@ -712,7 +712,7 @@
         <div id="detailTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-md u-border-b u-pb-sm"></div>
         <div id="detailContentContainer" class="u-animate-fade-in">
             <div class="u-grid-2 u-stack-mobile u-gap-lg">
-                <div class="u-space-y-sm">
+                <div class="u-card u-p-md">
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">No Ticket</div><div class="u-font-medium" id="view-ticket">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Judul</div><div class="u-font-medium" id="view-title">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Jenis Permintaan</div><div id="view-request-type">-</div></div>
@@ -720,7 +720,7 @@
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">PIC Request</div><div id="view-pic">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Detail Penjelasan</div><div id="view-justification">-</div></div>
                 </div>
-                <div class="u-space-y-sm">
+                <div class="u-card u-p-md">
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Status</div><div id="view-status">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Unit</div><div id="view-unit">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Posisi</div><div id="view-position" class="u-font-medium">-</div></div>
@@ -1521,15 +1521,23 @@ document.addEventListener('DOMContentLoaded', function() {
                  if(!extraDetailDiv) {
                      extraDetailDiv = document.createElement('div');
                      extraDetailDiv.id = 'view-extra-details';
-                     extraDetailDiv.className = 'u-mt-lg u-pt-md u-border-t '; 
+                     extraDetailDiv.style.marginTop = '24px';
                      container.appendChild(extraDetailDiv);
                  } else {
                      if (extraDetailDiv.parentNode !== container) {
                          container.appendChild(extraDetailDiv);
                      }
+                     extraDetailDiv.style.marginTop = '24px';
                  }
 
-                 const makeRow = (lbl, val) => `<div class="u-flex u-justify-between u-mb-xs u-border-b u-pb-xs" style="border-color: #f3f4f6;"><span class="u-text-muted u-text-xs u-uppercase u-font-bold">${lbl}</span><span class="u-font-medium u-text-sm u-text-right">${val || '-'}</span></div>`;
+                 const makeRow = (lbl, val, isBold = false) => {
+                      const styleVal = isBold ? 'font-weight: 800; color: #111827;' : 'font-medium';
+                      const styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
+                      return `<div class="u-flex u-justify-between u-mb-xs u-border-b u-pb-xs" style="border-color: #f3f4f6;">
+                                  <span class="u-text-xs u-uppercase ${styleLbl}">${lbl}</span>
+                                  <span class="u-text-sm u-text-right ${styleVal}">${val || '-'}</span>
+                              </div>`;
+                  };
                  const formatRp = (val) => {
                       if (!val) return '-';
                       // Konversi ke angka float
@@ -1538,32 +1546,58 @@ document.addEventListener('DOMContentLoaded', function() {
                       // Format ke Rp 1.000.000
                       return 'Rp ' + num.toLocaleString('id-ID'); 
                   };
+
+                  // Hitung total anggaran perbulan
+                  const parseVal = (v) => parseFloat(v) || 0;
+                  
+                  const totalAnggaran = 
+                      parseVal(data.salary) + 
+                      parseVal(data.allowanceJ) + 
+                      parseVal(data.allowanceP) + 
+                      parseVal(data.allowanceC) + 
+                      parseVal(data.allowanceK) + 
+                      parseVal(data.thr/12) + 
+                      parseVal(data.kompensasi/12) + 
+                      parseVal(data.bpjs_tk) + 
+                      parseVal(data.bpjs_kes) + 
+                      parseVal(data.pph21);
+
                  extraDetailDiv.innerHTML = `
-                    <div class="u-text-xs u-font-bold u-muted u-uppercase">Detail Kandidat & Remunerasi</div>
-                    <div class="u-grid-2-custom u-gap-lg">
-                        <div>
-                            ${makeRow('Mulai Kerja', data.start_date)}
-                            ${makeRow('Selesai Kerja', data.end_date)}
-                            ${makeRow('Lokasi', data.location)}
-                            ${makeRow('Pendidikan', data.education)}
-                            ${makeRow('Brevet', data.brevet)}
-                            ${makeRow('Pengalaman', data.experience)}
-                            <div class="u-mt-sm u-flex u-justify-between u-items-center">
-                                <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
-                                ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
-                            </div>
+                    <div class="u-card u-p-md">
+                        <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">
+                            Detail Kandidat & Remunerasi
                         </div>
-                        <div>
-                            ${makeRow('Gaji Pokok', formatRp(data.salary))}
-                            ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
-                            ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
-                            ${makeRow('Tunjangan Komunikasi', formatRp(data.allowanceC))}
-                            ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
-                            ${makeRow('THR', formatRp(data.thr))}
-                            ${makeRow('Kompensasi', formatRp(data.kompensasi))}
-                            ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
-                            ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
-                            ${makeRow('PPh 21', formatRp(data.pph21))}
+                        <div class="u-grid-2 u-stack-mobile u-gap-lg">
+                          <div>
+                              ${makeRow('Mulai Kerja', data.start_date)}
+                              ${makeRow('Selesai Kerja', data.end_date)}
+                              ${makeRow('Lokasi', data.location)}
+                              ${makeRow('Pendidikan', data.education)}
+                              ${makeRow('Brevet', data.brevet)}
+                              ${makeRow('Pengalaman', data.experience)}
+                              <div class="u-mt-sm u-flex u-justify-between u-items-center">
+                                  <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
+                                  ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
+                              </div>
+                          </div>
+                          <div> 
+                              ${makeRow('Gaji Pokok', formatRp(data.salary))}
+                              ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
+                              ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
+                              ${makeRow('Tunjangan Komunikasi', formatRp(data.allowanceC))}
+                              ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
+                              ${makeRow('THR', formatRp(data.thr))}
+                              ${makeRow('Kompensasi', formatRp(data.kompensasi))}
+                              ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
+                              ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
+                              ${makeRow('PPh 21', formatRp(data.pph21))}
+                              <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
+                                  ${makeRow('TOTAL ANGGARAN (per bulan)', formatRp(totalAnggaran), true)}
+                              </div>
+                              <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
+                                  ${makeRow('TOTAL ANGGARAN (per bulan)', formatRp(totalAnggaran), true)}
+                              </div>
+                          </div>
                         </div>
                     </div>
                  `;
@@ -1587,8 +1621,7 @@ document.addEventListener('DOMContentLoaded', function() {
                      renderContent(i);
                  });
                  tabsContainer.appendChild(btnTab);
-             });
-             
+             });          
              renderContent(0);
              detailModal.hidden = false; 
              document.body.classList.add('modal-open');
