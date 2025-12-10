@@ -10,16 +10,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
+// Tambahkan Library Excel
+use App\Exports\RecruitmentRequestExport;
+use Maatwebsite\Excel\Facades\Excel;
+
 class PrincipalApprovalController extends Controller
 {
     protected function stages(): array
     {
-        // Flow approval baru: Kepala Unit → DHC Checker → SVP DHC → VP DHC → Dir SDM
         return [
             ['key' => 'kepala_unit', 'roles' => ['Kepala Unit']],
             ['key' => 'dhc_checker', 'roles' => ['DHC']],
-            ['key' => 'svp_dhc',     'roles' => ['SVP DHC']], // Role Baru
-            ['key' => 'vp_dhc',      'roles' => ['VP DHC']],  // Role Baru
+            ['key' => 'svp_dhc',     'roles' => ['SVP DHC']],
+            ['key' => 'vp_dhc',      'roles' => ['VP DHC']],
             ['key' => 'dir_sdm',     'roles' => ['Dir SDM']],
         ];
     }
@@ -28,8 +31,8 @@ class PrincipalApprovalController extends Controller
     {
         return $user?->hasRole('Superadmin')
             || $user?->hasRole('DHC')
-            || $user?->hasRole('SVP DHC') // Tambahkan visibilitas
-            || $user?->hasRole('VP DHC')  // Tambahkan visibilitas
+            || $user?->hasRole('SVP DHC')
+            || $user?->hasRole('VP DHC')
             || $user?->hasRole('Dir SDM');
     }
 
@@ -56,23 +59,16 @@ class PrincipalApprovalController extends Controller
         }
     }
 
-    public function index(Request $r)
+    // =========================================================================
+    //  CORE LOGIC (Refactoring)
+    //  Logika filter asli Anda dipindahkan ke sini agar bisa dipakai Index & Export
+    // =========================================================================
+    protected function getBaseQuery($me, $canSeeAll, $selectedUnitId)
     {
-        $me  = Auth::user();
+        $query = RecruitmentRequest::query();
         $tbl = (new RecruitmentRequest())->getTable();
 
-        $canSeeAll = $this->canSeeAll($me);
-
-        $selectedUnitId = $canSeeAll
-            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
-            : (int) ($me?->unit_id);
-
-        $units = $canSeeAll
-            ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
-            : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
-
-        $query = RecruitmentRequest::query();
-
+        // Logika Filter Asli Anda (Tidak ada yang dihapus)
         if (!$canSeeAll && $me) {
             $isKepalaUnit = $me->hasRole('Kepala Unit');
 
@@ -106,8 +102,33 @@ class PrincipalApprovalController extends Controller
             $query->where('unit_id', $selectedUnitId);
         }
 
+        return $query;
+    }
+
+    // =========================================================================
+    //  METHOD TAMPILAN WEB (INDEX)
+    // =========================================================================
+    public function index(Request $r)
+    {
+        $me = Auth::user();
+        $canSeeAll = $this->canSeeAll($me);
+
+        $selectedUnitId = $canSeeAll
+            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
+            : (int) ($me?->unit_id);
+
+        $units = $canSeeAll
+            ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
+            : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
+
+        // Panggil Logic Utama (getBaseQuery)
+        $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
+
+        // Lanjutkan proses tampilan web
         $list = $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc')])
-                      ->latest()->paginate(50)->withQueryString();
+                      ->latest()
+                      ->paginate(50)
+                      ->withQueryString();
 
         return view('recruitment.principal-approval.index', [
             'list'           => $list,
@@ -116,6 +137,36 @@ class PrincipalApprovalController extends Controller
             'selectedUnitId' => $selectedUnitId,
         ]);
     }
+
+    // =========================================================================
+    //  METHOD EXPORT EXCEL (BARU)
+    // =========================================================================
+    public function exportExcel(Request $r)
+    {
+        $me = Auth::user();
+        $canSeeAll = $this->canSeeAll($me);
+        $selectedUnitId = $canSeeAll 
+            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null) 
+            : (int) ($me?->unit_id);
+
+        // Panggil Logic Utama yang SAMA dengan Index
+        $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
+        
+        // Urutkan data terbaru
+        $query->latest(); 
+
+        // Ambil Map Posisi untuk translate ID -> Nama di Excel
+        $positionsMap = DB::table('positions')->pluck('name', 'id')->toArray();
+
+        return Excel::download(
+            new RecruitmentRequestExport($query, $positionsMap), 
+            'Daftar_Izin_Prinsip_' . date('Y-m-d_H-i') . '.xlsx'
+        );
+    }
+
+    // =========================================================================
+    //  METHOD CRUD LAINNYA (TETAP SAMA)
+    // =========================================================================
 
     public function store(Request $r)
     {
@@ -176,7 +227,6 @@ class PrincipalApprovalController extends Controller
             }
         }
 
-        // Parse details_json dan simpan ke meta untuk multi-data
         if (!empty($data['details_json'])) {
             try {
                 $detailsArray = json_decode($data['details_json'], true);
@@ -205,6 +255,7 @@ class PrincipalApprovalController extends Controller
         return redirect()->route('recruitment.principal-approval.index')
             ->with('ok', 'Draft Izin Prinsip berhasil dihapus.');
     }
+
     public function update(Request $r, RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
@@ -291,7 +342,6 @@ class PrincipalApprovalController extends Controller
             $req->update(['status' => 'submitted']);
         }
 
-        // flow: create pending utk Kepala Unit
         $this->createPendingApproval($req, 0);
 
         if (Schema::hasColumn($req->getTable(), 'status')) {
@@ -311,7 +361,7 @@ class PrincipalApprovalController extends Controller
             abort(403);
         }
 
-        $note = $r->input('note'); // Catatan standar (jika ada)
+        $note = $r->input('note'); 
         $extendedNote = $r->input('extended_note');
 
         if (!empty($extendedNote)) {
@@ -319,12 +369,13 @@ class PrincipalApprovalController extends Controller
             $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
         }
 
+        // Fix: Gunakan variabel $note yang sudah diproses, bukan input mentah
         $this->closePending($req, 'approved', $note);
 
         $isLast = $stageIdx >= (count($this->stages()) - 1);
         if ($isLast) {
             if (Schema::hasColumn($req->getTable(), 'status')) {
-                $req->update(['status' => 'approved']); // final: dasar proses rekrutmen/perpanjangan kontrak
+                $req->update(['status' => 'approved']);
             }
             
             $req->generateTicketNumber();
@@ -413,12 +464,9 @@ class PrincipalApprovalController extends Controller
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
 
-        // Logic otorisasi DHC, SVP DHC, dan VP DHC
         if (in_array($stage['key'], ['dhc_checker', 'svp_dhc', 'vp_dhc'])) {
-            if ($allowed) return true; // Jika punya role dan unit bebas, izinkan
+            if ($allowed) return true;
             
-            // Logic khusus: Jika user adalah Kepala Unit TAPI unitnya adalah DHC
-            // (Kadang kepala unit DHC merangkap checker/approver internal DHC)
             $isKepalaUnit = $user->hasRole('Kepala Unit');
             $isKepalaUnitDhc = $isKepalaUnit
                 && $this->dhcUnitId()
@@ -458,7 +506,6 @@ class PrincipalApprovalController extends Controller
         }
 
         $pdf = Pdf::loadView('pdf.uraian_jabatan', compact('d'));
-        
         $pdf->setPaper('a4', 'portrait');
         
         $safeName = preg_replace('/[^A-Za-z0-9\-]/', '_', $d['nama'] ?? 'Draft');

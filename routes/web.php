@@ -31,6 +31,9 @@ Route::middleware('web')->group(function () {
         ->name('recruitment.uraian-jabatan.preview-pdf');
     });
 
+    Route::get('recruitment/principal-approval/export', [App\Http\Controllers\Recruitment\PrincipalApprovalController::class, 'exportExcel'])
+    ->name('recruitment.principal-approval.export');
+
     Route::post('/ajax/calculate-salary', [SalaryController::class, 'calculate'])
     ->name('api.calculate.salary');
 
