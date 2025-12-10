@@ -788,12 +788,12 @@
             <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
 
             {{-- Form Reject --}}
-            <form method="POST" action="" class="detail-reject-form u-inline js-confirm" style="display:none;">
+            <form method="POST" action="" class="detail-reject-form u-inline" style="display:none;">
                 @csrf
-                <input type="hidden" name="note" class="reject-note-input"> 
-                <button type="submit" class="u-btn u-btn--outline u-danger detail-reject-btn" 
-                    data-confirm-title="Tolak permintaan?" 
-                    data-confirm-text="Permintaan ini akan ditolak.">
+                {{-- ID ditambahkan agar JS bisa memindahkan catatan kesini --}}
+                <input type="hidden" name="note" class="reject-note-input" id="real_reject_note"> 
+                <button type="button" class="u-btn u-btn--outline u-danger detail-reject-btn" 
+                    onclick="triggerCustomConfirm(this, 'reject')">
                     <i class="fas fa-times u-mr-xs"></i> Reject
                 </button>
             </form>
@@ -804,12 +804,12 @@
             </button>
 
             {{-- Form Approve --}}
-            <form method="POST" action="" class="detail-approve-form u-inline js-confirm" style="display:none;">
+            <form method="POST" action="" class="detail-approve-form u-inline" style="display:none;">
                 @csrf
+                {{-- ID ini sudah ada sebelumnya --}}
                 <input type="hidden" name="extended_note" id="hidden_extended_note">
-                <button type="submit" class="u-btn u-btn--brand u-success detail-approve-btn" 
-                    data-confirm-title="Setujui permintaan?" 
-                    data-confirm-text="Data pada tab yang aktif akan disetujui.">
+                <button type="button" class="u-btn u-btn--brand u-success detail-approve-btn" 
+                    onclick="triggerCustomConfirm(this, 'approve')">
                     <i class="fas fa-check u-mr-xs"></i> Approve
                 </button>
             </form>
@@ -817,6 +817,33 @@
       </div>
     </div>
   </div>
+</div>
+
+{{-- MODAL KONFIRMASI (CUSTOM POPUP) --}}
+<div id="confirmationModal" class="u-modal" style="z-index: 3000; display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.6);">
+    <div class="u-modal__card" style="width: 100%; max-width: 400px; background: white; border-radius: 12px; overflow: hidden; animation: u-slide-up 0.2s ease-out; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div class="u-p-lg u-text-center">
+            {{-- Pesan Konfirmasi --}}
+            <div class="u-mb-lg">
+                <h3 id="conf-title" class="u-font-bold u-text-dark" style="font-size: 1.1rem; line-height: 1.5;">
+                    Apakah Anda yakin menyetujui izin prinsip ini?
+                </h3>
+            </div>
+            
+            {{-- Tombol Aksi --}}
+            <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 25px;">
+                {{-- Tombol Ya (Hijau) --}}
+                <button type="button" id="btn-conf-yes" class="u-btn" style="background-color: #22c55e; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
+                    Ya
+                </button>
+                
+                {{-- Tombol Tidak (Merah) --}}
+                <button type="button" id="btn-conf-no" class="u-btn" style="background-color: #ef4444; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
+                    Tidak
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div id="noteEditorModal" class="u-modal" hidden>
@@ -853,6 +880,62 @@
             }
         }
     }
+
+    // --- POPUP KONFIRMASI ---
+    let formToSubmit = null;
+
+    function triggerCustomConfirm(btn, action) {
+        const modal = document.getElementById('confirmationModal');
+        const titleEl = document.getElementById('conf-title');
+        
+        // 1. Simpan form yang akan di-submit
+        formToSubmit = btn.closest('form');
+
+        // 2. Sinkronisasi Catatan (PENTING AGAR CATATAN TIDAK HILANG)
+        // Ambil nilai dari editor catatan (yang tersimpan di hidden_extended_note)
+        const noteEditorValue = document.getElementById('hidden_extended_note').value;
+        
+        // Masukkan ke input hidden form yang sesuai
+        if(action === 'reject') {
+            const rejectInput = document.getElementById('real_reject_note');
+            if(rejectInput) rejectInput.value = noteEditorValue;
+            
+            // Ubah Teks Judul Popup
+            titleEl.textContent = "Apakah Anda yakin menolak izin prinsip ini?";
+        } else {
+            // Untuk approve, inputnya adalah hidden_extended_note itu sendiri, jadi aman.
+            // Ubah Teks Judul Popup
+            titleEl.textContent = "Apakah Anda yakin menyetujui izin prinsip ini?";
+        }
+
+        // 3. Tampilkan Modal
+        modal.style.display = 'flex';
+    }
+
+    // Event Listener untuk Tombol YA dan TIDAK di dalam Popup
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tombol YA -> Submit Form
+        const btnYes = document.getElementById('btn-conf-yes');
+        if(btnYes) {
+            btnYes.addEventListener('click', function() {
+                if(formToSubmit) {
+                    formToSubmit.submit(); // Lanjutkan proses asli
+                }
+                document.getElementById('confirmationModal').style.display = 'none';
+            });
+        }
+
+        // Tombol TIDAK -> Tutup Popup saja
+        const btnNo = document.getElementById('btn-conf-no');
+        if(btnNo) {
+            btnNo.addEventListener('click', function() {
+                document.getElementById('confirmationModal').style.display = 'none';
+                formToSubmit = null; // Reset form
+            });
+        }
+    });
+    // -------------------------------
+
   function terbilang(nilai) {
     nilai = Math.floor(Math.abs(nilai));
     var huruf = [

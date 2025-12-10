@@ -130,6 +130,9 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('principal-approval', [RecruitmentApprovalController::class, 'store'])
             ->middleware('permission:recruitment.update')
             ->name('principal-approval.store');
+        
+        Route::delete('principal-approval/{req}', [RecruitmentApprovalController::class, 'destroy'])
+            ->middleware('permission:recruitment.update')->name('principal-approval.destroy');
 
         Route::put('principal-approval/{req}', [RecruitmentApprovalController::class, 'update'])
             ->middleware('permission:recruitment.update')
