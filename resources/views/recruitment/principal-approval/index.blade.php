@@ -2,7 +2,8 @@
 @section('title','Izin Prinsip')
 
 @section('content')
-{{-- Style & Modal Stacking Fix --}}
+<script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
+
 <style>
     #createApprovalModal {
         z-index: 1050 !important;
@@ -22,48 +23,41 @@
         display: flex !important;
     }
 
-    .modal-card-wide {
-        width: 95% !important; 
-        max-width: 1000px !important; 
-        max-height: 90vh;
-        display: flex;
-        flex-direction: column;
+    #noteEditorModal {
+        z-index: 2050 !important; 
+        background-color: rgba(0, 0, 0, 0.5); 
+        /* Flexbox centering magic - Wajib ada */
+        display: none; 
+        align-items: center; 
+        justify-content: center; 
+        position: fixed; 
+        inset: 0;
     }
-    .u-modal__body {
-        overflow-y: auto; 
+
+    #noteEditorModal:not([hidden]) {
+        display: flex !important;
     }
-    .uj-section-title {
-        font-weight: 700;
-        font-size: 0.95rem;
-        border-bottom: 1px solid #e5e7eb;
-        padding-bottom: 0.5rem;
-        margin-bottom: 1rem;
-        color: #374151;
-        text-transform: uppercase;
-        background-color: #f3f4f6;
-        padding: 8px;
-        margin-top: 10px;
-    }
-    .uj-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #4b5563;
-        margin-bottom: 0.25rem;
-        display: block;
-    }
-    .u-grid-2-custom {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    @media (max-width: 768px) {
-        .u-grid-2-custom { grid-template-columns: 1fr; }
-    }
+
+    #detailApprovalModal { z-index: 1060 !important; }
+
+    .modal-card-wide { width: 95% !important; max-width: 1000px !important; max-height: 90vh; display: flex; flex-direction: column; }
+    .u-modal__body { overflow-y: auto; }
+    
+    .uj-section-title { font-weight: 700; font-size: 0.95rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; margin-bottom: 1rem; color: #374151; text-transform: uppercase; background-color: #f3f4f6; padding: 8px; margin-top: 10px; }
+    .uj-label { font-size: 0.85rem; font-weight: 600; color: #4b5563; margin-bottom: 0.25rem; display: block; }
+    
+    .u-grid-2-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 768px) { .u-grid-2-custom { grid-template-columns: 1fr; } }
+
+    /* --- CKEditor Styles --- */
+    .ck-editor__editable_inline { min-height: 200px; max-height: 400px; }
+    .ck.ck-balloon-panel { z-index: 2060 !important; }
 </style>
 
 @php
   use Illuminate\Support\Facades\DB;
   use Illuminate\Support\Facades\Gate;
+  use Illuminate\Support\Facades\Auth;
   
   $me       = auth()->user();
   $meUnit = $me ? $me->unit_id : null;
@@ -147,22 +141,63 @@
         <tbody>
           @foreach($list as $r)
           @php
-            $meUnit = auth()->user()->unit_id; $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
-            $stageIndex = null; 
-            $rejectedByLabel = '';
-            
-            if ($r->relationLoaded('approvals')) { 
-              foreach ($r->approvals as $i => $ap) { if (($ap->status ?? 'pending') === 'pending') {
-                $stageIndex = $i; break; } if (($ap->status ?? '') === 'rejected') {
-                  if ($i === 0) $rejectedByLabel = 'Kepala Unit';
-                  elseif ($i === 1) $rejectedByLabel = 'DHC';
-                  elseif ($i === 2) $rejectedByLabel = 'Dir SDM';
-                }
-              }
-            }
+            $meUnit = auth()->user()->unit_id; 
+            $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
             $me = auth()->user();
-            $meRoles = [ 'Superadmin' => $me && $me->hasRole('Superadmin'), 'Kepala Unit' => $me && $me->hasRole('Kepala Unit'), 'DHC' => $me && $me->hasRole('DHC'), 'Dir SDM' => $me && $me->hasRole('Dir SDM') ];
-            $status = $r->status ?? 'draft';
+
+            // --- 1. LOGIC APPROVAL HISTORY & NOTES ---
+            $approvalHistory = [];
+            $roleTitles = ['Kepala Unit', 'DHC', 'SVP DHC', 'VP DHC', 'Dir SDM'];
+            
+            if ($r->relationLoaded('approvals')) {
+                foreach ($r->approvals as $index => $app) {
+                    $rawNote = $app->note;
+                    $cleanNote = preg_replace('/\[stage=[^\]]+\]/', '', $rawNote); 
+                    $cleanNote = trim($cleanNote); 
+
+                    $approvalHistory[] = [
+                        'role'   => $roleTitles[$index] ?? 'Approver',
+                        'status' => $app->status, 
+                        'date'   => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->format('d M Y H:i') : '-',
+                        'note'   => $cleanNote
+                    ];
+                }
+            }
+
+            // --- 2. LOGIC VISIBILITY CATATAN ---
+            $isRequester = $me->id === $r->created_by || $me->id === $r->requested_by;
+            $isApprover = $me->hasRole('Kepala Unit') 
+                       || $me->hasRole('DHC') 
+                       || $me->hasRole('SVP DHC') 
+                       || $me->hasRole('VP DHC') 
+                       || $me->hasRole('Dir SDM')
+                       || $me->hasRole('Superadmin')
+                       || $me->hasRole('SDM Unit');
+            
+            $canViewNotes = $isRequester || $isApprover;
+            
+            $stageIndex = null; 
+            $rejectedByLabel = ''; 
+
+            if ($r->relationLoaded('approvals')) { 
+                foreach ($r->approvals as $i => $ap) { 
+                    if ($stageIndex === null && ($ap->status ?? 'pending') === 'pending') { $stageIndex = $i; }
+                    if (($ap->status ?? '') === 'rejected') { $rejectedByLabel = $roleTitles[$i] ?? 'Approver'; }
+                } 
+            }
+
+            $me = auth()->user();
+            // DEFINISI ROLES USER LOGIN
+            $meRoles = [ 
+                'Superadmin'  => $me && $me->hasRole('Superadmin'), 
+                'Kepala Unit' => $me && $me->hasRole('Kepala Unit'), 
+                'DHC'         => $me && $me->hasRole('DHC'), 
+                'SVP DHC'     => $me && $me->hasRole('SVP DHC'),
+                'VP DHC'      => $me && $me->hasRole('VP DHC'),
+                'Dir SDM'     => $me && $me->hasRole('Dir SDM') 
+            ];
+            
+            $status          = $r->status ?? 'draft';
             $employmentType  = $r->employment_type ?? $r->contract_type ?? null;
             $targetStart     = $r->target_start_date ?? $r->start_date ?? null;
             $budgetSource    = $r->budget_source_type ?? $r->budget_source ?? null;
@@ -171,24 +206,34 @@
             $justif          = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
             $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
             
-            $totalStages = 3; $progressStep = null;
+            $totalStages = 5;
+            $progressStep = null;
+
             if ($status === 'draft') { $progressText = 'Draft di SDM Unit'; $progressStep = 0; }
-            elseif ($status === 'rejected') {$progressText = $rejectedByLabel ? 'Ditolak oleh ' . $rejectedByLabel : 'Ditolak';}
+            elseif ($status === 'rejected') { $progressText = $rejectedByLabel ? 'Ditolak oleh ' . $rejectedByLabel : 'Ditolak'; }
             elseif ($status === 'approved') { $progressText = 'Selesai (Approved Dir SDM)'; $progressStep = $totalStages; }
             elseif ($stageIndex === 0) { $progressText = 'Menunggu Kepala Unit'; $progressStep = 1; }
-            elseif ($stageIndex === 1) { $progressText = 'Menunggu DHC'; $progressStep = 2; }
-            elseif ($stageIndex === 2) { $progressText = 'Menunggu Dir SDM'; $progressStep = 3; }
+            elseif ($stageIndex === 1) { $progressText = 'Menunggu DHC';         $progressStep = 2; }
+            elseif ($stageIndex === 2) { $progressText = 'Menunggu SVP DHC';     $progressStep = 3; }
+            elseif ($stageIndex === 3) { $progressText = 'Menunggu VP DHC';      $progressStep = 4; }
+            elseif ($stageIndex === 4) { $progressText = 'Menunggu Dir SDM';     $progressStep = 5; }
             else { $progressText = 'In Review'; }
 
+            // --- 4. LOGIC TOMBOL AKSI (PERMISSION) ---
             $canStage = false;
+            $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
+
             if(in_array($status, ['in_review','submitted']) && $stageIndex !== null) {
                 if ($meRoles['Superadmin']) { $canStage = true; } 
                 else {
                     if ($stageIndex === 0) { $canStage = $meRoles['Kepala Unit'] && $sameUnit; } 
-                    elseif ($stageIndex === 1) { $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId); $canStage = $meRoles['DHC'] || $isKepalaUnitDHC; } 
-                    elseif ($stageIndex === 2) { $canStage = $meRoles['Dir SDM']; }
+                    elseif ($stageIndex === 1) { $canStage = $meRoles['DHC'] || $isKepalaUnitDHC; } 
+                    elseif ($stageIndex === 2) { $canStage = $meRoles['SVP DHC'] || $isKepalaUnitDHC; } 
+                    elseif ($stageIndex === 3) { $canStage = $meRoles['VP DHC'] || $isKepalaUnitDHC; } 
+                    elseif ($stageIndex === 4) { $canStage = $meRoles['Dir SDM']; }
                 }
             }
+            
             $recruitmentDetails = collect($r->meta['recruitment_details'] ?? []);
             $hasMultiData = $recruitmentDetails->count() > 1;
             $posObj = $positions->firstWhere('id', $r->position);
@@ -264,6 +309,8 @@
                         data-budget-ref="{{ e($budgetRef) }}" 
                         data-justification="{{ e($justif) }}" 
                         data-status="{{ e(ucfirst($status)) }}" 
+                        data-history='{{ json_encode($approvalHistory) }}'
+                        data-can-view-notes="{{ $canViewNotes ? 'true' : 'false' }}"
                         data-can-approve="{{ $canStage ? 'true' : 'false' }}" 
                         data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" 
                         data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" 
@@ -581,8 +628,8 @@
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Lokasi Kerja</label>
-                      <input class="u-input" type="text" id="dyn_location" placeholder="Input lokasi kerja">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Kota Lokasi Penempatan Kerja</label>
+                      <input class="u-input" type="text" id="dyn_location" placeholder="Masukkan nama Kota/Kabupaten">
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan</label>
@@ -599,16 +646,11 @@
               </div>
               <div class="u-grid-2-custom u-mb-md">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Brevet</label>
-                      <select class="u-input" id="dyn_brevet" required>
-                          <option value="">Pilih Brevet</option>
-                          <option value="A">A</option>
-                          <option value="B">B</option>
-                          <option value="C">C</option>
-                      </select>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pelatihan</label>
+                      <input class="u-input" type="text" id="dyn_brevet" placeholder="Masukkan pelatihan">
                   </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Experience</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pengalaman</label>
                       <input class="u-input" type="text" id="dyn_experience" placeholder="Masukkan pengalaman" required>
                   </div>
               </div>
@@ -620,7 +662,7 @@
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Terbilang</label>
-                      <input class="u-input" type="text" id="dyn_terbilang" placeholder="Satu juta rupiah">
+                      <input class="u-input" type="text" id="dyn_terbilang" placeholder="NOL RUPIAH" readonly>
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
@@ -695,7 +737,7 @@
   </div>
 </div>
 
-{{-- DETAIL APPROVAL (READ ONLY) --}}
+{{-- DETAIL APPROVAL --}}
 <div id="detailApprovalModal" class="u-modal" hidden>
   <div class="u-modal__card" style="max-width: 900px;"> 
     <div class="u-modal__head">
@@ -743,16 +785,74 @@
       <div class="u-flex u-justify-between u-items-center u-gap-sm">
         <div class="u-muted u-text-sm"><span id="tab-indicator-text">Menampilkan Data 1</span></div>
         <div class="u-flex u-gap-sm action-buttons">
-          <form method="POST" action="" class="detail-approve-form u-inline js-confirm" style="display:none;">@csrf<button type="submit" class="u-btn u-btn--brand u-success detail-approve-btn" data-confirm-title="Setujui permintaan?" data-confirm-text="Data pada tab yang aktif akan disetujui." data-confirm-icon="success"><i class="fas fa-check u-mr-xs"></i> Approve</button></form>
-          <form method="POST" action="" class="detail-reject-form u-inline js-confirm" style="display:none;">@csrf<button type="submit" class="u-btn u-btn--outline u-danger detail-reject-btn" data-confirm-title="Tolak permintaan?" data-confirm-text="Permintaan ini akan ditolak." data-confirm-icon="error"><i class="fas fa-times u-mr-xs"></i> Reject</button></form>
-          <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+            <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+
+            {{-- Form Reject --}}
+            <form method="POST" action="" class="detail-reject-form u-inline js-confirm" style="display:none;">
+                @csrf
+                <input type="hidden" name="note" class="reject-note-input"> 
+                <button type="submit" class="u-btn u-btn--outline u-danger detail-reject-btn" 
+                    data-confirm-title="Tolak permintaan?" 
+                    data-confirm-text="Permintaan ini akan ditolak.">
+                    <i class="fas fa-times u-mr-xs"></i> Reject
+                </button>
+            </form>
+
+            {{-- Tombol Catatan --}}
+            <button type="button" class="u-btn u-btn--outline u-text-brand js-open-note-modal" style="display:none;" id="btn-add-note">
+                <i class="fas fa-edit u-mr-xs"></i> Catatan
+            </button>
+
+            {{-- Form Approve --}}
+            <form method="POST" action="" class="detail-approve-form u-inline js-confirm" style="display:none;">
+                @csrf
+                <input type="hidden" name="extended_note" id="hidden_extended_note">
+                <button type="submit" class="u-btn u-btn--brand u-success detail-approve-btn" 
+                    data-confirm-title="Setujui permintaan?" 
+                    data-confirm-text="Data pada tab yang aktif akan disetujui.">
+                    <i class="fas fa-check u-mr-xs"></i> Approve
+                </button>
+            </form>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<div id="noteEditorModal" class="u-modal" hidden>
+  <div class="u-modal__card" style="width: 700px; max-width: 95%;">
+    <div class="u-modal__head">
+      <div class="u-title"><i class="fas fa-sticky-note u-mr-xs"></i> Tambahkan Catatan</div>
+      <button class="u-btn u-btn--ghost u-btn--sm js-close-note-modal"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="u-modal__body u-p-md">
+      <div class="u-mb-sm u-text-sm u-muted">Catatan ini akan tersimpan dan dapat dilihat oleh admin SDM Unit.</div>
+      <textarea id="editorContent"></textarea>
+    </div>
+    <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+      <button type="button" class="u-btn u-btn--ghost js-close-note-modal">Batal</button>
+      <button type="button" class="u-btn u-btn--brand js-save-note">Simpan Catatan</button>
+    </div>
+  </div>
+</div>
+
 <script>
+    function toggleHistoryNote(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            // Toggle display antara none dan block
+            if (el.style.display === "none" || el.style.display === "") {
+                el.style.display = "block";
+                // Ubah text indikator (opsional, visual saja)
+                const icon = document.getElementById('icon-' + id);
+                if(icon) icon.className = "fas fa-chevron-up u-mr-xs";
+            } else {
+                el.style.display = "none";
+                const icon = document.getElementById('icon-' + id);
+                if(icon) icon.className = "fas fa-chevron-down u-mr-xs";
+            }
+        }
+    }
   function terbilang(nilai) {
     nilai = Math.floor(Math.abs(nilai));
     var huruf = [
@@ -1370,6 +1470,57 @@ document.addEventListener('DOMContentLoaded', function() {
           detailsJsonInput.value = JSON.stringify(payload);
       });
 
+      const btnAddNote       = document.getElementById('btn-add-note');
+      const noteModal        = document.getElementById('noteEditorModal');
+      const hiddenNoteInput  = document.getElementById('hidden_extended_note');
+      const closeNoteBtns    = document.querySelectorAll('.js-close-note-modal');
+      const saveNoteBtn      = document.querySelector('.js-save-note');
+      let myNoteEditor = null;
+
+      if (!myNoteEditor && document.querySelector('#editorContent')) {
+        ClassicEditor
+            .create(document.querySelector('#editorContent'), {
+                toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'blockQuote', 'insertTable', 'undo', 'redo' ],
+                placeholder: 'Tulis catatan persetujuan/penolakan di sini...'
+            })
+            .then(editor => { myNoteEditor = editor; })
+            .catch(error => { console.error(error); });
+      }
+
+      if(btnAddNote) {
+          btnAddNote.addEventListener('click', function() {
+              if(myNoteEditor) { myNoteEditor.setData(hiddenNoteInput.value || ''); }
+              noteModal.hidden = false;
+              noteModal.style.display = 'flex'; 
+          });
+      }
+      closeNoteBtns.forEach(btn => {
+          btn.addEventListener('click', function() {
+              noteModal.hidden = true;
+              noteModal.style.display = 'none';
+          });
+      });
+      if(saveNoteBtn) {
+          saveNoteBtn.addEventListener('click', function() {
+              if(myNoteEditor) {
+                  const content = myNoteEditor.getData();
+                  hiddenNoteInput.value = content; 
+                  const cleanText = content.replace(/<[^>]*>?/gm, '').trim(); 
+                  if(cleanText !== '') {
+                      btnAddNote.classList.remove('u-btn--outline');
+                      btnAddNote.classList.add('u-btn--brand');
+                      btnAddNote.innerHTML = '<i class="fas fa-check-circle u-mr-xs"></i> Catatan Tersimpan';
+                  } else {
+                      btnAddNote.classList.add('u-btn--outline');
+                      btnAddNote.classList.remove('u-btn--brand');
+                      btnAddNote.innerHTML = '<i class="fas fa-edit u-mr-xs"></i> Catatan';
+                  }
+              }
+              noteModal.hidden = true;
+              noteModal.style.display = 'none';
+          });
+      }
+
       document.addEventListener('click', function(e) {
          if (e.target.closest('#uraianModal [data-modal-close]')) {
              const m = document.getElementById('uraianModal');
@@ -1465,6 +1616,12 @@ document.addEventListener('DOMContentLoaded', function() {
              try { detailsArray = JSON.parse(metaJsonStr); } catch(e){}
              if(!Array.isArray(detailsArray) || detailsArray.length===0) detailsArray = [{}];
 
+
+             const historyJson = btnDetail.getAttribute('data-history');
+             const canViewNotes = btnDetail.getAttribute('data-can-view-notes') === 'true';
+             let historyData = [];
+             try { historyData = JSON.parse(historyJson); } catch(e) {}
+
              const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '-'; };
              setTxt('view-ticket', safeTxt('data-ticket-number'));
              setTxt('view-status', safeTxt('data-status'));
@@ -1482,19 +1639,22 @@ document.addEventListener('DOMContentLoaded', function() {
              
              const approveForm = detailModal.querySelector('.detail-approve-form');
              const rejectForm = detailModal.querySelector('.detail-reject-form');
-             
-             if(canApprove && approveForm && rejectForm) {
+
+            // Logic Tampilan Tombol Catatan di Detail Modal
+            if(canApprove && approveForm && rejectForm) {
                  approveForm.style.display = 'block';
                  rejectForm.style.display = 'block';
                  if(approveForm.querySelector('button')) approveForm.querySelector('button').disabled = false;
                  if(rejectForm.querySelector('button')) rejectForm.querySelector('button').disabled = false;
                  if(approveUrl) approveForm.action = approveUrl;
                  if(rejectUrl) rejectForm.action = rejectUrl;
+                 if(btnAddNote) btnAddNote.style.display = 'block';
              } else {
                  if(approveForm) approveForm.style.display = 'none';
                  if(rejectForm) rejectForm.style.display = 'none';
+                 if(btnAddNote) btnAddNote.style.display = 'none';
              }
-             
+
              const renderContent = (index) => {
                  const data = detailsArray[index];
                  const globalTitle = safeTxt('data-title');
@@ -1530,39 +1690,121 @@ document.addEventListener('DOMContentLoaded', function() {
                      extraDetailDiv.style.marginTop = '24px';
                  }
 
-                 const makeRow = (lbl, val, isBold = false) => {
-                      const styleVal = isBold ? 'font-weight: 800; color: #111827;' : 'font-medium';
-                      const styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
-                      return `<div class="u-flex u-justify-between u-mb-xs u-border-b u-pb-xs" style="border-color: #f3f4f6;">
+                 const makeRow = (lbl, val, isBold = false, isGrand = false) => {
+                      let styleVal = isBold ? 'font-weight: 800; color: #111827;' : 'font-medium';
+                      let styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
+                      let borderStyle = 'border-bottom: 1px solid #f3f4f6;';
+                      if (isGrand) {
+                          styleVal = 'font-weight: 900; color: #059669; font-size: 1.1em;'; // Warna Hijau Emerald
+                          styleLbl = 'font-weight: 800; color: #065f46; font-size: 1.0em;';
+                          borderStyle = 'border-top: 2px solid #059669; padding-top: 8px; margin-top: 8px;';
+                      }
+
+                      return `<div class="u-flex u-justify-between u-mb-xs u-pb-xs" style="${borderStyle}">
                                   <span class="u-text-xs u-uppercase ${styleLbl}">${lbl}</span>
                                   <span class="u-text-sm u-text-right ${styleVal}">${val || '-'}</span>
                               </div>`;
                   };
-                 const formatRp = (val) => {
+
+                  const formatRp = (val) => {
                       if (!val) return '-';
-                      // Konversi ke angka float
                       let num = parseFloat(val);
                       if (isNaN(num)) return '-';
-                      // Format ke Rp 1.000.000
                       return 'Rp ' + num.toLocaleString('id-ID'); 
                   };
 
-                  // Hitung total anggaran perbulan
                   const parseVal = (v) => parseFloat(v) || 0;
                   
-                  const totalAnggaran = 
+                  const totalAnggaranPerBulan = 
                       parseVal(data.salary) + 
                       parseVal(data.allowanceJ) + 
                       parseVal(data.allowanceP) + 
                       parseVal(data.allowanceC) + 
                       parseVal(data.allowanceK) + 
-                      parseVal(data.thr/12) + 
-                      parseVal(data.kompensasi/12) + 
+                      parseVal(data.thr) + 
+                      parseVal(data.kompensasi) + 
                       parseVal(data.bpjs_tk) + 
                       parseVal(data.bpjs_kes) + 
                       parseVal(data.pph21);
 
-                 extraDetailDiv.innerHTML = `
+                  let duration = 1; 
+                  if (data.start_date && data.end_date) {
+                      const d1 = new Date(data.start_date);
+                      const d2 = new Date(data.end_date);
+                      d2.setDate(d2.getDate() + 1);
+                      let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+                      if (d2.getDate() < d1.getDate()) {
+                          months--;
+                      }
+                      duration = months > 0 ? months : 1;
+                  }
+                  const grandTotal = totalAnggaranPerBulan * duration;
+                  
+                  let historyHtml = '';
+                  if (historyData.length > 0) {
+                     historyHtml += `<div class="u-mt-lg u-pt-md u-border-t">`;
+                     historyHtml += `<div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em;">Riwayat Persetujuan</div>`;
+                     historyHtml += `<div class="u-space-y-sm">`; 
+                     
+                     console.log("DEBUG HISTORY:", {
+                        roleSaya: "{{ $me->getRoleNames()->first() ?? 'User' }}", 
+                        bisaLihatCatatan: canViewNotes, 
+                        dataHistory: historyData
+                    });
+                    historyData.forEach((h, index) => {
+                        let badgeClass = 'u-badge--subtle';
+                        let icon = '<i class="fas fa-circle-notch fa-spin"></i>';
+                        
+                        if(h.status === 'approved') { badgeClass = 'u-badge--success'; icon = '<i class="fas fa-check-circle"></i>'; } 
+                        else if(h.status === 'rejected') { badgeClass = 'u-badge--danger'; icon = '<i class="fas fa-times-circle"></i>'; } 
+                        else { icon = '<i class="far fa-clock"></i>'; }
+
+                        // 1. Cek Validasi Note
+                        // Pastikan note ada isinya (setelah dibersihkan dari [stage=...])
+                        let contentNote = (h.note && h.note !== 'null') ? h.note.trim() : '';
+                        let hasNote = (canViewNotes && contentNote.length > 0);
+                        
+                        // 2. ID Unik untuk setiap baris
+                        let noteId = `history-note-${index}`; 
+                        let iconId = `icon-history-note-${index}`;
+                        
+                        // 3. Setup Attribute (Gunakan fungsi global toggleHistoryNote)
+                        let cursorStyle = hasNote ? 'cursor: pointer;' : '';
+                        let clickAttr = hasNote ? `onclick="toggleHistoryNote('${noteId}')"` : '';
+                        
+                        // 4. Indikator Visual
+                        let noteIndicator = hasNote 
+                            ? `<div class="u-text-2xs u-text-brand u-mt-xxs u-font-medium"><i id="${iconId}" class="fas fa-chevron-down u-mr-xs"></i> Lihat Catatan</div>` 
+                            : '';
+
+                        // 5. Render HTML
+                        historyHtml += `
+                        <div class="u-card u-p-sm u-bg-white u-border u-mb-sm u-hover-lift" style="${cursorStyle}" ${clickAttr} title="${hasNote ? 'Klik untuk melihat catatan' : ''}">
+                            <div class="u-flex u-justify-between u-items-center">
+                                <div>
+                                    <div class="u-font-bold u-text-sm u-text-dark">${h.role}</div>
+                                    <div class="u-text-2xs u-muted"><i class="far fa-calendar-alt"></i> ${h.date}</div>
+                                </div>
+                                <div class="u-text-right">
+                                    <div class="u-badge ${badgeClass} u-text-2xs">${icon} ${h.status.toUpperCase()}</div>
+                                    ${noteIndicator}
+                                </div>
+                            </div>
+                            
+                            ${ hasNote ? 
+                                // Default display: none agar tersembunyi
+                                `<div id="${noteId}" style="display: none;" class="u-bg-light u-p-sm u-rounded u-text-sm u-mt-sm u-animate-fade-in" style="border-left: 3px solid #3b82f6;">
+                                        <div class="u-text-xs u-font-bold u-text-muted u-mb-xxs u-uppercase">Isi Catatan:</div>
+                                        <div class="ck-content" style="font-size: 0.9em; color: #374151;">${h.note}</div>
+                                    </div>` : '' 
+                            }
+                        </div>
+                        `;
+                    });
+                     historyHtml += `</div></div>`;
+                 }
+
+                  extraDetailDiv.innerHTML = `
                     <div class="u-card u-p-md">
                         <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">
                             Detail Kandidat & Remunerasi
@@ -1571,15 +1813,17 @@ document.addEventListener('DOMContentLoaded', function() {
                           <div>
                               ${makeRow('Mulai Kerja', data.start_date)}
                               ${makeRow('Selesai Kerja', data.end_date)}
-                              ${makeRow('Lokasi', data.location)}
+                              ${makeRow('Durasi Kontrak', duration + ' Bulan', true)} ${makeRow('Lokasi', data.location)}
                               ${makeRow('Pendidikan', data.education)}
                               ${makeRow('Brevet', data.brevet)}
                               ${makeRow('Pengalaman', data.experience)}
+                              
                               <div class="u-mt-sm u-flex u-justify-between u-items-center">
                                   <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
                                   ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
                               </div>
                           </div>
+
                           <div> 
                               ${makeRow('Gaji Pokok', formatRp(data.salary))}
                               ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
@@ -1591,16 +1835,17 @@ document.addEventListener('DOMContentLoaded', function() {
                               ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
                               ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
                               ${makeRow('PPh 21', formatRp(data.pph21))}
+                              
                               <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
-                                  ${makeRow('TOTAL ANGGARAN (per bulan)', formatRp(totalAnggaran), true)}
+                                  ${makeRow('TOTAL ANGGARAN (PER BULAN)', formatRp(totalAnggaranPerBulan), true)}
                               </div>
-                              <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
-                                  ${makeRow('TOTAL ANGGARAN (per bulan)', formatRp(totalAnggaran), true)}
-                              </div>
+
+                              ${makeRow(`TOTAL SELURUHNYA (${duration} BULAN)`, formatRp(grandTotal), false, true)}
                           </div>
                         </div>
                     </div>
-                 `;
+                    ${historyHtml}
+                  `;
              };
              
              detailsArray.forEach((item, i) => {

@@ -14,10 +14,12 @@ class PrincipalApprovalController extends Controller
 {
     protected function stages(): array
     {
-        // Flow approval: Kepala Unit → DHC Checker → Dir SDM
+        // Flow approval baru: Kepala Unit → DHC Checker → SVP DHC → VP DHC → Dir SDM
         return [
             ['key' => 'kepala_unit', 'roles' => ['Kepala Unit']],
             ['key' => 'dhc_checker', 'roles' => ['DHC']],
+            ['key' => 'svp_dhc',     'roles' => ['SVP DHC']], // Role Baru
+            ['key' => 'vp_dhc',      'roles' => ['VP DHC']],  // Role Baru
             ['key' => 'dir_sdm',     'roles' => ['Dir SDM']],
         ];
     }
@@ -26,6 +28,8 @@ class PrincipalApprovalController extends Controller
     {
         return $user?->hasRole('Superadmin')
             || $user?->hasRole('DHC')
+            || $user?->hasRole('SVP DHC') // Tambahkan visibilitas
+            || $user?->hasRole('VP DHC')  // Tambahkan visibilitas
             || $user?->hasRole('Dir SDM');
     }
 
@@ -116,7 +120,7 @@ class PrincipalApprovalController extends Controller
     public function store(Request $r)
     {
         $data = $r->validate([
-            'request_type'         => 'required|string|in:Rekrutmen,Perpanjang Kontrak', // 2 jalur
+            'request_type'         => 'required|string|in:Rekrutmen,Perpanjang Kontrak', 
             'title'                => 'required|string',
             'position'             => 'required|string',
             'headcount'            => 'required|integer|min:1',
@@ -126,7 +130,7 @@ class PrincipalApprovalController extends Controller
             'budget_source_type'   => 'nullable|string|max:100',
             'budget_ref'           => 'nullable|string',
             'publish_vacancy_pref' => 'nullable|string|max:10',
-            'details_json'         => 'nullable|string', // Multi-data dari frontend
+            'details_json'         => 'nullable|string', 
         ]);
 
         $me   = Auth::user();
@@ -307,7 +311,15 @@ class PrincipalApprovalController extends Controller
             abort(403);
         }
 
-        $this->closePending($req, 'approved', $r->input('note'));
+        $note = $r->input('note'); // Catatan standar (jika ada)
+        $extendedNote = $r->input('extended_note');
+
+        if (!empty($extendedNote)) {
+            $cleanNote = strip_tags($extendedNote, '<b><i><u><ol><ul><li><br><p>'); 
+            $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
+        }
+
+        $this->closePending($req, 'approved', $note);
 
         $isLast = $stageIdx >= (count($this->stages()) - 1);
         if ($isLast) {
@@ -401,14 +413,20 @@ class PrincipalApprovalController extends Controller
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
 
-        if ($stage['key'] === 'dhc_checker') {
-            if ($allowed) return true;
+        // Logic otorisasi DHC, SVP DHC, dan VP DHC
+        if (in_array($stage['key'], ['dhc_checker', 'svp_dhc', 'vp_dhc'])) {
+            if ($allowed) return true; // Jika punya role dan unit bebas, izinkan
+            
+            // Logic khusus: Jika user adalah Kepala Unit TAPI unitnya adalah DHC
+            // (Kadang kepala unit DHC merangkap checker/approver internal DHC)
             $isKepalaUnit = $user->hasRole('Kepala Unit');
             $isKepalaUnitDhc = $isKepalaUnit
                 && $this->dhcUnitId()
                 && ((string) $user->unit_id === (string) $this->dhcUnitId());
+                
             return $isKepalaUnitDhc;
         }
+        
         return $allowed;
     }
 
@@ -417,7 +435,11 @@ class PrincipalApprovalController extends Controller
         $me = Auth::user();
         if (!$me) abort(401);
 
-        if ($me->hasRole('Superadmin') || $me->hasRole('DHC') || $me->hasRole('Dir SDM')) {
+        if ($me->hasRole('Superadmin') 
+            || $me->hasRole('DHC') 
+            || $me->hasRole('SVP DHC') 
+            || $me->hasRole('VP DHC') 
+            || $me->hasRole('Dir SDM')) {
             return;
         }
 

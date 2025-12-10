@@ -45,8 +45,8 @@
                     $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
                 @endphp
                 <img src="{{ $base64 }}" class="logo" alt="Logo Surveyor Indonesia">
+                <label style="font-size: 10pt; font-weight: bold; margin-left: 10px;">FP-DSDM-XXXX</label>
             </td>
-
         </tr>
     </table>
 
