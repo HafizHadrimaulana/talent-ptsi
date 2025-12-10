@@ -95,11 +95,26 @@
           <div class="grid grid-cols-2 gap-x-10 gap-y-2 u-space-lg u-mb-xl">
             <div class="font-bold u-mb-sm">
               <label class="w-48 font-medium">Biaya Pelatihan (Rp)</label>
-              <input type="text" name="biaya_pelatihan" class="u-input">
+              <input type="text" 
+                    name="biaya_pelatihan" 
+                    class="u-input u-bg-gray-100 u-text-gray-500 u-pointer-events-none"
+                    readonly>
             </div>
-            <div class="font-bold u-mb-sm">
-              <label class="w-48 font-medium">Realisasi Biaya Pelatihan (Rp)</label>
-              <input type="number" name="realisasi_biaya_pelatihan" class="u-input">
+
+            <!-- REALISASI BIAYA -->
+            <div id="realisasi-wrapper" class="font-bold u-mb-sm">
+              <label class="font-medium">Realisasi Biaya Pelatihan (Rp)</label>
+
+              <input type="text" 
+                    id="realisasi_biaya_pelatihan" 
+                    name="realisasi_biaya_pelatihan" 
+                    class="u-input u-bg-gray-100 u-text-gray-500 u-pointer-events-none"
+                    readonly>
+
+              <div class="u-flex u-items-center u-gap-sm u-mt-sm">
+                  <input type="checkbox" id="toggle-realisasi" class="u-checkbox">
+                  <label for="toggle-realisasi" class="font-medium">Biaya berbeda dengan rencana?</label>
+              </div>
             </div>
     
             <div class="font-bold u-mb-sm">
@@ -114,7 +129,7 @@
     
             <div class="font-bold u-mb-sm">
               <label class="w-48 font-medium">Estimasi Total Biaya (Rp)</label>
-              <input type="text" name="estimasi_total_biaya" class="u-input">
+              <input type="text" name="estimasi_total_biaya" id="estimasi_total_biaya" class="u-input" readonly>
             </div>
           </div>
     

@@ -33,7 +33,9 @@ export function initRejectHandler(tableBody) {
                 didOpen: () => Swal.showLoading(),
             });
 
-            const res = await postJSON(`/training/monitoring/${id}/reject`);
+            const res = await postJSON(
+                `/training/training-request/${id}/reject-training-request`
+            );
             console.log("res", res);
 
             Swal.close();

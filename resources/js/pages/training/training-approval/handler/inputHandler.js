@@ -4,27 +4,47 @@ export function initInputHandler(modalSelector) {
     const modal = document.querySelector(modalSelector);
     const inputForm = document.querySelector("#add-form");
 
-    const judulSelect = inputForm.querySelector("select[name='judul_sertifikasi']");
-    const penyelenggara = inputForm.querySelector("input[name='penyelenggara']");
+    const biayaHelper = initBiayaHandler(inputForm);
+
+    const judulSelect = inputForm.querySelector(
+        "select[name='judul_sertifikasi']"
+    );
+    const penyelenggara = inputForm.querySelector(
+        "input[name='penyelenggara']"
+    );
     const jumlahJam = inputForm.querySelector("input[name='jumlah_jam']");
-    const jenisPelatihan = inputForm.querySelector("input[name='jenis_pelatihan']");
-    const jenisPortofolio = inputForm.querySelector("input[name='jenis_portofolio']");
-    const waktuPelaksanaan = inputForm.querySelector("input[name='waktu_pelaksanaan']");
+    const jenisPelatihan = inputForm.querySelector(
+        "input[name='jenis_pelatihan']"
+    );
+    const jenisPortofolio = inputForm.querySelector(
+        "input[name='jenis_portofolio']"
+    );
+    const waktuPelaksanaan = inputForm.querySelector(
+        "input[name='waktu_pelaksanaan']"
+    );
     const namaProyek = inputForm.querySelector("input[name='nama_proyek']");
 
-    const biayaPelatihan = inputForm.querySelector("input[name='biaya_pelatihan']");
-    const realisasiBiayaPelatihan = inputForm.querySelector("input[name='realisasi_biaya_pelatihan']");
+    const biayaPelatihan = inputForm.querySelector(
+        "input[name='biaya_pelatihan']"
+    );
+    const realisasiBiayaPelatihan = inputForm.querySelector(
+        "input[name='realisasi_biaya_pelatihan']"
+    );
     const uhpd = inputForm.querySelector("input[name='uhpd']");
-    const biayaAkomodasi = inputForm.querySelector("input[name='biaya_akomodasi']");
-    const estimasiTotalBiaya = inputForm.querySelector("input[name='estimasi_total_biaya']");
+    const biayaAkomodasi = inputForm.querySelector(
+        "input[name='biaya_akomodasi']"
+    );
+    const estimasiTotalBiaya = inputForm.querySelector(
+        "input[name='estimasi_total_biaya']"
+    );
+
+    initBiayaHandler(inputForm);
 
     // const alasan = inputForm.querySelector("input[name='alasan']");
     const startDate = inputForm.querySelector("input[name='start_date']");
     const endDate = inputForm.querySelector("input[name='end_date']");
 
     let sertifikasiList = [];
-
-    // start peserta
     let pesertaData = [];
 
     const searchInput = document.getElementById("peserta-search");
@@ -35,9 +55,18 @@ export function initInputHandler(modalSelector) {
     let selectedPeserta = [];
 
     function getName(item) {
-        if (!item && item !== 0) return "";
-        if (typeof item === "string") return item;
-        return item.name ?? item.person_name ?? item.full_name ?? "";
+        if (!item) return "";
+
+        const name =
+            item.name ||
+            item.person_name ||
+            item.full_name ||
+            "";
+
+        const empId = item.employee_id || "";
+
+        // Jika tidak ada employee_id, cukup tampilkan nama saja
+        return empId ? `${name} - ${empId}` : name;
     }
 
     /** Helper: ambil id dari item jika ada */
@@ -53,6 +82,8 @@ export function initInputHandler(modalSelector) {
             const res = await getJSON(
                 `/training/training-request/${unitId}/get-employee-by-unit`
             );
+
+            console.log('peserta', res);
 
             if (res.status === "success") {
                 pesertaData = res.data;
@@ -233,9 +264,10 @@ export function initInputHandler(modalSelector) {
         biayaPelatihan.value = safeValue(formatRupiah(data.biaya_pelatihan));
         uhpd.value = safeValue(formatRupiah(data.uhpd));
         biayaAkomodasi.value = safeValue(formatRupiah(data.biaya_akomodasi));
-        estimasiTotalBiaya.value = safeValue(formatRupiah(data.estimasi_total_biaya));
         startDate.value = safeValue(formatDate(data.start_date));
         endDate.value = safeValue(formatDate(data.end_date));
+
+        biayaHelper.hitungTotal();
     });
 
     inputForm.addEventListener("submit", async (e) => {
@@ -246,7 +278,11 @@ export function initInputHandler(modalSelector) {
         const raw = Object.fromEntries(new FormData(form));
 
         if (!raw.judul_sertifikasi) {
-            Swal.fire("Peringatan", "Judul sertifikasi harus dipilih", "warning");
+            Swal.fire(
+                "Peringatan",
+                "Judul sertifikasi harus dipilih",
+                "warning"
+            );
             return;
         }
 
@@ -258,15 +294,17 @@ export function initInputHandler(modalSelector) {
             jenis_portofolio: cleanValue(raw.jenis_portofolio),
             waktu_pelaksanaan: cleanValue(raw.waktu_pelaksanaan),
             nama_proyek: cleanValue(raw.nama_proyek),
-    
+
             biaya_pelatihan: toNumber(raw.biaya_pelatihan),
             uhpd: toNumber(raw.uhpd),
             biaya_akomodasi: toNumber(raw.biaya_akomodasi),
             estimasi_total_biaya: toNumber(raw.estimasi_total_biaya),
-    
+
+            realisasi_biaya_pelatihan: toNumber(raw.realisasi_biaya_pelatihan),
+
             start_date: raw.start_date,
             end_date: raw.end_date,
-    
+
             peserta_list: JSON.parse(raw.peserta_list || "[]"),
         };
 
@@ -284,8 +322,11 @@ export function initInputHandler(modalSelector) {
             for (let [key, value] of fd.entries()) {
                 console.log(key + ":", value);
             }
-            
-            const res = await postFormData("/training/training-request/input-training-request", fd);
+
+            const res = await postFormData(
+                "/training/training-request/input-training-request",
+                fd
+            );
 
             console.log("res input training", res);
             Swal.close();
@@ -340,12 +381,13 @@ export function initInputHandler(modalSelector) {
 
     function buildFormData(form, payload) {
         const fd = new FormData();
-    
+
         fd.append("data", JSON.stringify(payload));
-    
-        const file = form.querySelector('input[name="lampiran_penawaran"]').files[0];
+
+        const file = form.querySelector('input[name="lampiran_penawaran"]')
+            .files[0];
         if (file) fd.append("lampiran_penawaran", file);
-    
+
         return fd;
     }
 
@@ -371,7 +413,7 @@ export function initInputHandler(modalSelector) {
         let date = new Date(dateValue);
 
         if (isNaN(date)) {
-            const parts = dateValue.split(/[-/]/); 
+            const parts = dateValue.split(/[-/]/);
             if (parts.length === 3) {
                 const [day, month, year] = parts;
                 date = new Date(`${year}-${month}-${day}`);
@@ -391,7 +433,7 @@ export function initInputHandler(modalSelector) {
         if (!rupiah) return 0;
         return parseInt(rupiah.replace(/[^\d]/g, "")) || 0;
     }
-    
+
     function toIsoDate(dateString) {
         if (!dateString) return null;
         const d = new Date(dateString);
@@ -399,5 +441,121 @@ export function initInputHandler(modalSelector) {
         return d.toISOString().slice(0, 10);
     }
 
+    function initBiayaHandler(inputForm) {
+        console.log("Initializing biaya handler", inputForm);
+        const biayaPelatihan = inputForm.querySelector(
+            "input[name='biaya_pelatihan']"
+        );
+        const toggleRealisasi = inputForm.querySelector("#toggle-realisasi");
+        const realisasiBiaya = inputForm.querySelector(
+            "input[name='realisasi_biaya_pelatihan']"
+        );
 
+        const uhpd = inputForm.querySelector("input[name='uhpd']");
+        const akomodasi = inputForm.querySelector(
+            "input[name='biaya_akomodasi']"
+        );
+        const total = inputForm.querySelector(
+            "input[name='estimasi_total_biaya']"
+        );
+
+        realisasiBiaya.readOnly = true;
+        realisasiBiaya.classList.add("u-input--disabled");
+
+        total.value = "";
+
+        if (!biayaPelatihan || !uhpd || !akomodasi || !total) {
+            console.warn("Biaya handler: element tidak ditemukan di form");
+            return;
+        }
+
+        // Toggle realisasi biaya pelatihan
+        if (toggleRealisasi) {
+            toggleRealisasi.addEventListener("change", function () {
+                if (this.checked) {
+                    // Aktifkan input
+                    realisasiBiaya.readOnly = false;
+                    realisasiBiaya.placeholder = "Masukkan realisasi biaya...";
+                    realisasiBiaya.classList.remove(
+                        "u-bg-gray-100",
+                        "u-text-gray-500",
+                        "u-pointer-events-none"
+                    );
+                    total.value = "";
+                    realisasiBiaya.value = "";
+                    realisasiBiaya.focus();
+                } else {
+                    // Kunci lagi input
+                    realisasiBiaya.readOnly = true;
+                    realisasiBiaya.value = "";
+                    realisasiBiaya.placeholder = "";
+                    realisasiBiaya.classList.add(
+                        "u-bg-gray-100",
+                        "u-text-gray-500",
+                        "u-pointer-events-none"
+                    );
+                    total.value = "";
+                    hitungTotal();
+                }
+            });
+        }
+
+        function formatInputRupiah(element) {
+            element.addEventListener("input", () => {
+                const val = element.value.replace(/[^\d]/g, "");
+                element.value = formatRupiah(val);
+                hitungTotal(); // hitung ulang ketika angka berubah
+            });
+        }
+
+        // Terapkan auto format rupiah
+        [uhpd, akomodasi, realisasiBiaya].forEach((el) => {
+            if (el) formatInputRupiah(el);
+        });
+
+        biayaPelatihan.addEventListener("input", () => {
+            const val = biayaPelatihan.value.replace(/[^\d]/g, "");
+            biayaPelatihan.value = formatRupiah(val);
+            hitungTotal();
+        });
+
+        // ============ HITUNG TOTAL =============
+        function hitungTotal() {
+            const u = parseInt(uhpd.value.replace(/\D/g, "")) || 0;
+            const a = parseInt(akomodasi.value.replace(/\D/g, "")) || 0;
+
+            let biaya = 0;
+
+            if (toggleRealisasi.checked) {
+                // pakai realisasi
+                biaya = parseInt(realisasiBiaya.value.replace(/\D/g, "")) || 0;
+            } else {
+                // pakai biaya rencana
+                biaya = parseInt(biayaPelatihan.value.replace(/\D/g, "")) || 0;
+            }
+
+            if (u === 0 && a === 0 && biaya === 0) {
+                total.value = "";
+                return;
+            }
+
+            const jumlah = biaya + u + a;
+            total.value = formatRupiah(jumlah);
+        }
+
+        // ============ FORMAT RUPIAH =============
+        function formatRupiah(value) {
+            if (!value) return "";
+            const number = parseInt(value, 10);
+
+            return new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            }).format(number);
+        }
+
+        return { hitungTotal };
+    }
 }

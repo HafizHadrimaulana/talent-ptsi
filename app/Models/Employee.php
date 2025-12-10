@@ -82,9 +82,4 @@ class Employee extends Model
     {
         return $this->belongsTo(\App\Models\Person::class, 'person_id');
     }
-    
-    public function unit()
-    {
-        return $this->belongsTo(\App\Models\Unit::class, 'unit_id', 'id');
-    }
 }

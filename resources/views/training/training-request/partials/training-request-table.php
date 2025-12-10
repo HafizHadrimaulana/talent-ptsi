@@ -1,5 +1,5 @@
-<table id="training-request-table"
-    class="u-table u-table-mobile" data-dt>
+<table id="training-request"
+    class="u-table u-table-mobile training-table" data-role="SDM Unit" data-dt>
     <thead>
         <tr>
             <th>No</th>
@@ -21,6 +21,6 @@
 <div class="u-dt-pagination" id="pagination"></div>
 
 <script>
-    // window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
-    // window.userUnitId  = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+    window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
+    window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
 </script>

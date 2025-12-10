@@ -5,11 +5,6 @@
 <div class="u-card u-card--glass u-hover-lift">
     <div class="u-flex u-items-center u-justify-between u-mb-md">
         <h2 class="u-title">Training Request</h2>
-        <div class="flex gap-4">
-            @role('SDM Unit')
-                <button type="button" id="training-input-btn" class="u-btn u-btn--brand u-hover-lift">Input Data</button>
-            @endrole
-        </div>
     </div>
 
     @php
@@ -23,14 +18,14 @@
                 id="dhc-tabs"
                 class="u-tabs__list flex text-sm font-medium"
             >
-            <div class="border-b-2 border-slate-300 gap-10">
+            <div class="border-b-2 border-slate-300 space-x-2">
                 <button
                     type="button"
                     data-tab="lna"
-                    class="u-tabs__item pb-2 -mb-px mr-6 border-b-2
+                    class="u-tabs__item pb-2 -mb-px border-b-2
                         {{ $activeTab === 'lna'
                             ? 'border-blue-600 text-slate-900'
-                            : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
+                            : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-blue-600' }}"
                 >
                     Data LNA
                 </button>
@@ -38,10 +33,10 @@
                 <button
                     type="button"
                     data-tab="training"
-                    class="u-tabs__item pb-2 -mb-px mr-6 border-b-2
+                    class="u-tabs__item pb-2 -mb-px border-b-2
                         {{ $activeTab === 'training'
                             ? 'border-blue-600 text-slate-900'
-                            : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300' }}"
+                            : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-blue-600' }}"
                 >
                     Data Training
                 </button>
@@ -52,26 +47,24 @@
 
     {{-- ===== DataTable Wrapper ===== --}}
     <div class="dt-wrapper">
-        <div class="flex gap-5 p-10">
-            @hasanyrole('SDM Unit|GM/VP Unit|VP DHC|Kepala Unit')
-                <div class="flex justify-between w-full mb-10 u-mb-xl">
-                    <div class="flex gap-5">
-                        <button id="btn-all-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Semua Data</button>
-                        <button id="btn-bulk-approve" class="u-btn u-btn--brand u-hover-lift">Kirim Data yang Dipilih</button>
-                    </div>
-                    <button id="btn-export" class="u-btn u-btn--brand u-hover-lift">Export Data</button>
-                </div>
-            @endhasanyrole
-        </div>
-
         <div class="u-scroll-x">
+
             @role('DHC')
                 {{-- DHC: pakai tab-panel dengan 2 partial --}}
                 <div class="u-tabs__panels">
                     <div
                         id="tab-training"
                         class="u-tabs__panel {{ $activeTab === 'training' ? '' : 'hidden' }}">
-                        @include('training.training-request.partials.' . $tableView)
+
+                        {{-- Jika $tableView array → loop, jika string → include sekali --}}
+                        @if (is_array($tableView))
+                            @foreach ($tableView as $view)
+                                @include('training.training-request.partials.' . $view)
+                            @endforeach
+                        @else
+                            @include('training.training-request.partials.' . $tableView)
+                        @endif
+
                     </div>
 
                     <div
@@ -80,12 +73,22 @@
                         @include('training.training-request.partials.training-request-table')
                     </div>
                 </div>
+
             @else
-                {{-- Role non-DHC tetap pakai mekanisme lama (kalau masih dipakai) --}}
-                @include('training.training-request.partials.' . $tableView)
+                {{-- Role non-DHC --}}
+                @if (is_array($tableView))
+                    @foreach ($tableView as $view)
+                        @include('training.training-request.partials.' . $view)
+                    @endforeach
+                @else
+                    @include('training.training-request.partials.' . $tableView)
+                @endif
+
             @endrole
+
         </div>
     </div>
+
 </div>
 
 @include('training.training-request.modals.input-modal')

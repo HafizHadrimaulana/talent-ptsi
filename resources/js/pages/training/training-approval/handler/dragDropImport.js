@@ -1,6 +1,6 @@
 import { initImportHandler } from "./importHandler";
 
-export function initDragDropUpload(modalSelector) {
+export function initDragDropUpload(modalSelector, role) {
     const area = document.getElementById("drag-drop-area");
     const input = document.getElementById("drag-drop-input");
     const fileInfo = document.getElementById("selected-file-info");
@@ -8,6 +8,8 @@ export function initDragDropUpload(modalSelector) {
     const uploadForm = document.getElementById("import-form");
 
     const modal = document.querySelector(modalSelector);
+
+    console.log('role', role)
 
     let selectedFile = null;
 
@@ -112,7 +114,7 @@ export function initDragDropUpload(modalSelector) {
         console.log("selected file in dragdop", selectedFile);
 
         try {
-            const res = await initImportHandler(selectedFile);
+            const res = await initImportHandler(selectedFile, role);
 
             console.log("response import", res);
 

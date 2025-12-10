@@ -1,9 +1,17 @@
 import { postFormData } from "@/utils/fetch";
 
-export async function initImportHandler(file) {
+export async function initImportHandler(file, role) {
     console.log("file in chunk", file);
+    console.log("role init import handler", role);
 
-    const chunkSize = 500 * 1024; // 500KB
+    const endpoints = {
+        lna: "/training/training-request/import-lna",
+        training: "/training/training-request/import-training",
+    };
+
+    const uploadUrl = endpoints[role] || endpoints["training"];
+
+    const chunkSize = 500 * 1024;
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     try {
@@ -21,7 +29,7 @@ export async function initImportHandler(file) {
 
             console.log("chunk", chunk);
             console.log("index", i);
-            const res = await postFormData("/training/training-request/import-lna", formData);
+            const res = await postFormData(uploadUrl, formData);
 
             console.log("response import", res);
 
@@ -34,7 +42,6 @@ export async function initImportHandler(file) {
         }
 
         return { status: "success" };
-
     } catch (err) {
         console.error("Error upload:", err);
         return { status: "error", message: err.message };

@@ -279,8 +279,10 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.edit-lna');
         Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'delete-lna'])
             ->name('training-request.delete-lna');
-        Route::post('/training/lna/store', [TrainingRequestController::class, 'lnaStore'])
+        Route::post('training-request/lna/store', [TrainingRequestController::class, 'lnaStore'])
             ->name('training.lna.store');
+        Route::get('training/get-data-units', [TrainingRequestController::class, 'getDataUnits'])
+            ->name('training.get-data-units');
 
         //// sdm unit
         Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
@@ -293,9 +295,16 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.get-training-request-list');
         Route::post('training-request/input-training-request', [TrainingRequestController::class, 'inputTrainingRequest'])
             ->name('training-request.input-training-request');
-
+        Route::post('training-request/import-training', [TrainingRequestController::class, 'importTraining'])
+            ->name('training-request.import-training');
         // END
             
+        // Kepala Unit
+        Route::post('training-request/{id}/approve-training-request', [TrainingRequestController::class,'approveTrainingRequest'])
+            ->name('training-request.approve-training-request');
+        Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
+            ->name('training-request.reject-training-request');
+
         // Monitoring
         Route::get('monitoring', fn () => view('training.monitoring.monitoring'))
             ->middleware('permission:training.view')->name('monitoring');
@@ -315,7 +324,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
         Route::post('monitoring/{id}/approve', [TrainingMonitoringController::class,'approveStatus'])
             ->name('monitoring.approveStatus');
-        Route::post('monitoring/{id}/reject', [TrainingMonitoringController::class,'rejectStatus'])
+        Route::post('monitoring/{id}/reject', [TrainingMonitoringController::class,'rejectTrainingRequest'])
             ->name('monitoring.rejectStatus');
         Route::post('all-approve', [TrainingMonitoringController::class,'updateAllStatus'])
             ->name('allApprove');

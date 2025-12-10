@@ -1,7 +1,18 @@
 <div id="lna-import-modal"
   class="u-modal" hidden>
   <div class="u-modal__card">
-    <h2 class="u-modal__head">Import Data Excel</h2>
+    <div class="u-modal__head u-mb-sm">
+      <div class="u-flex u-items-center u-gap-md">
+        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
+        <div>
+          <div class="u-title" id="ip-modal-title">Import Data Excel</div>
+          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Import data pelatihan</div>
+        </div>
+      </div>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
 
     <div class="u-modal__body">
       <div class="u-modal__body">
@@ -27,19 +38,20 @@
                   </div>
                 </div>
 
-              <div id="selected-file-info" class="hidden mt-4"></div>
+              <div id="selected-file-info" class="hidden"></div>
 
             </div>
           </div>
-
-          <div class="u-modal__foot">
-            <button type="button" id="lna-close-modal" class="u-btn u-btn--ghost">Tutup</button>
-            <button type="submit" class="u-btn u-btn--brand u-hover-lift">
-              Upload
-            </button>
-          </div>
-
         </form>
+      </div>
+    </div>
+
+        <!-- Footer -->
+    <div class="u-modal__foot">
+      <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
+      <div class="u-flex u-gap-sm">
+        <button type="button" id="lna-close-modal" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+        <button type="submit"  form="import-form" class="u-btn u-btn--brand u-hover-lift">Upload</button>
       </div>
     </div>
   </div>

@@ -1,7 +1,7 @@
 <div class="flex gap-4 justify-between u-py-sm">
     <div>
         <button type="button" id="lna-import-btn" class="u-btn u-btn--brand u-hover-lift">Import Data</button>
-        <button type="button" id="lna-input-btn" class="u-btn u-btn--brand u-hover-lift">Input Data</button>
+        <button type="button" id="lna-input-btn" data-role="lna" class="u-btn u-btn--brand u-hover-lift">Input Data</button>
     </div>
     <button type="button" class="btn-download-template u-btn u-btn--outline u-hover-lift">Download Template Excel</button >
 </div>

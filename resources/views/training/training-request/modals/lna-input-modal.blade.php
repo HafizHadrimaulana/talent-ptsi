@@ -31,7 +31,7 @@
           {{-- Judul Sertifikasi --}}
           <div class="u-space-y-sm u-mb-sm">
             <label class="w-48 font-medium after:content-['*'] after:text-red-500">Judul Sertifikasi</label>
-            <input type="text" name="judul_sertifikasi" class="u-input" required />
+            <input type="text" name="judul_sertifikasi" class="u-input"  />
           </div>
 
           <div class="grid grid-cols-2 gap-x-10 gap-y-4 u-mb-xl">
@@ -39,11 +39,9 @@
             {{-- DROPDOWN UNIT --}}
             <div>
               <label class="font-medium">Unit</label>
-              <select name="unit" class="u-input" required>
+              <select name="unit" class="u-input" >
                   <option value="">-- Pilih Unit --</option>
-                  @foreach(\App\Models\Unit::all() as $unit)
-                      <option value="{{ $unit->id }}">{{ $unit->nama }}</option>
-                  @endforeach
+
               </select>
             </div>
 

@@ -35,7 +35,7 @@ const TABLE_CONFIGS = {
                 employee: item.employee
             }));
         },
-        actions: ['details']
+        actions: ['details', 'edit', 'delete']
     },
     [ROLES.DHC]: {
         apiEndpoint: () => "/training/training-request/get-data-lna",
@@ -45,19 +45,37 @@ const TABLE_CONFIGS = {
     },
     [ROLES.KEPALA_UNIT]: {
         apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
-        columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'estimasi_total_biaya', 'status_approval_training', 'actions'],
-        dataMapper: (data) => data.data || [],
+        columns: ['checkbox', 'no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'],
+        
+        dataMapper: (data) => {
+            if (data.status !== "success") return [];
+            
+            return data.data.map(item => ({
+                id: item.id,
+                judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
+                nama_peserta: item.employee?.person?.full_name || "-",
+                nik: item.employee?.employee_id || "-",
+                tanggal_mulai: item.start_date,
+                tanggal_berakhir: item.end_date,
+                realisasi_biaya_pelatihan: item.realisasi_biaya_pelatihan,
+                estimasi_total_biaya: item.estimasi_total_biaya || item.training_reference?.estimasi_total_biaya || "0.00",
+                lampiran_penawaran: item.lampiran_penawaran,
+                status_approval_training: item.status_approval_training,
+                training_reference: item.training_reference,
+                employee: item.employee
+            }));
+        },
         actions: ['approve', 'reject']
     },
     [ROLES.VP_DHC]: {
         apiEndpoint: () => "/training/list-approval", 
-        columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'estimasi_total_biaya', 'status_approval', 'actions'],
+        columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'estimasi_total_biaya', 'status_approval_training', 'actions'],
         dataMapper: (data) => data.data || [],
         actions: ['approve', 'reject']
     },
     [ROLES.DBS_UNIT]: {
         apiEndpoint: () => "/training/list-approval",
-        columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'penyelenggara', 'estimasi_total_biaya', 'status_approval', 'actions'],
+        columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'penyelenggara', 'estimasi_total_biaya', 'status_approval_training', 'actions'],
         dataMapper: (data) => data.data || [],
         actions: ['approve', 'reject']
     }
@@ -163,7 +181,7 @@ const COLUMN_RENDERERS = {
 
     estimasi_total_biaya: (item, index, config) => `<td>${formatRupiah(item.estimasi_total_biaya)}</td>`,
 
-    status_lampiran_penawaran: (item, index, config) => {
+    lampiran_penawaran: (item, index, config) => {
         const hasLampiran = item.lampiran_penawaran && 
         item.lampiran_penawaran !== "null" && 
         item.lampiran_penawaran.trim() !== "";
@@ -176,17 +194,17 @@ const COLUMN_RENDERERS = {
         return `
         <td>
             <div class="${badgeClass}">
-                ${status}s
+                ${status}
             </div>
         </td>
         `;
     },
 
     status_approval: (item, index, config) => {
-        const status = item.status_approval?.status_approval;
+        const status = item.status_approval_training;
         let badgeClass = "u-badge";
         
-        if (status === "Disetujui") badgeClass = "u-badge u-badge--success";
+        if (status === "created") badgeClass = "u-badge u-badge--success";
         if (status === "Ditolak") badgeClass = "u-badge u-badge--danger";
         if (status === "Menunggu") badgeClass = "u-badge u-badge--warning";
         if (status === "Draft") badgeClass = "u-badge u-badge--secondary";
@@ -199,7 +217,6 @@ const COLUMN_RENDERERS = {
             </td>
         `;
     },
-
     
     nik: (item, index, config) => `<td>${item.nik ?? "-"}</td>`,
     nama_peserta: (item, index, config) => `<td>${item.nama_peserta ?? "-"}</td>`,
@@ -217,7 +234,6 @@ const COLUMN_RENDERERS = {
     nama_proyek: (item, index, config) => `<td>${item.nama_proyek ?? "-"}</td>`,
     jenis_portofolio: (item, index, config) => `<td>${item.jenis_portofolio ?? "-"}</td>`,
     fungsi: (item, index, config) => `<td>${item.fungsi ?? "-"}</td>`,
-    status_approval: (item, index, config) => `<td>${item.status_approval?.status_approval ?? "-"}</td>`,
     
     actions: (item, index, config) => {
         const buttons = config.actions.map(action => {

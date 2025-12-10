@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\TrainingReference;
 use App\Models\Employee;
 use App\Models\TrainingRequest;
+use App\Models\Unit;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +32,6 @@ class TrainingRequestController extends Controller
         $tableMap = [
             'DHC'     => 'dhc-unit-table',
             'SDM Unit'     => 'sdm-unit-table',
-            'GM/VP Unit'   => 'sdm-unit-table',
             'Kepala Unit'  => 'kepala-unit-table',
         ];
 
@@ -58,26 +58,9 @@ class TrainingRequestController extends Controller
             $index    = (int) $request->index;
             $total    = (int) $request->total;
             $filename = trim($request->filename);
+
+            $tempDir = $this->saveChunkFile($chunk, $index, $total, $filename);
             
-            if ($index < 0 || $index >= $total) {
-                return response()->json([
-                    "status"  => "error",
-                    "message" => "Index chunk tidak valid.",
-                ], 422);
-            }
-
-            $safeFilename = basename($filename);
-
-            $tempDir = "chunks/{$safeFilename}";
-            if (!Storage::exists($tempDir)) {
-                Storage::makeDirectory($tempDir);
-            }
-
-            $chunkPath = "{$tempDir}/chunk_{$index}.part";
-            Storage::put($chunkPath, file_get_contents($chunk));
-
-            Log::info("Chunk " . $index . " berhasil di-upload.");
-
             if ($index + 1 < $total) {
                 return response()->json([
                     "status"  => "success",
@@ -85,78 +68,71 @@ class TrainingRequestController extends Controller
                 ]);
             }
 
-            $uploadsDir = 'uploads';
-            if (!Storage::exists($uploadsDir)) {
-                Storage::makeDirectory($uploadsDir);
-            }
+                // Gabungkan chunks
+            [$finalPath, $fullPath] = $this->mergeChunks($tempDir, $filename, $total);
 
-            $finalName = time() . "_" . $safeFilename;
-            $finalPath = "{$uploadsDir}/{$finalName}";
-            $fullPath  = storage_path("app/{$finalPath}");
-            
-            Log::info("File final selesai digabung: {$finalName}");
+            // Import sesuai LNA
+            $result = $this->processImport($fullPath);
 
-            $output = @fopen($fullPath, "ab");
-            if ($output === false) {
-                Log::error("Gagal membuka file final untuk ditulis: {$fullPath}");
-                return response()->json([
-                    "status"  => "error",
-                    "message" => "Tidak dapat membuat file gabungan di server.",
-                ], 500);
-            }
-
-            for ($i = 0; $i < $total; $i++) {
-                $cPath = "{$tempDir}/chunk_{$i}.part";
-    
-                if (!Storage::exists($cPath)) {
-                    return response()->json([
-                        "status" => "error",
-                        "message" => "Missing chunk {$i}"
-                    ], 500);
-                }
-    
-                $content = Storage::get($cPath);
-                if (fwrite($output, $content) === false) {
-                    fclose($output);
-                    Log::error("Gagal menulis chunk {$i} ke file final.");
-
-                    return response()->json([
-                        "status"  => "error",
-                        "message" => "Gagal menulis chunk {$i} ke file final.",
-                    ], 500);
-                }
-            }
-
-            fclose($output);
-
-            // Hapus chunk
-            Storage::deleteDirectory($tempDir);
-    
-            Log::info("File final selesai digabung: {$finalName}");
-
-            $importResult = $this->importService->handleImport(
-                $fullPath,
-                auth()->id()
-            );
-
-            // Hapus file final setelah berhasil diproses
-            if (Storage::exists($finalPath)) {
-                Storage::delete($finalPath);
-                Log::info("File final {$finalName} dihapus setelah import.");
-            }
-
-            // Gunakan angka dari service
-            $importedRows  = $importResult['imported_rows']  ?? 0;
-            $processedRows = $importResult['processed_rows'] ?? 0;
-            $message       = $importResult['message']
-                ?? "Berhasil mengimport {$importedRows} baris.";
+            // Hapus file gabungan
+            Storage::delete($finalPath);
 
             return response()->json([
                 "status"         => "success",
-                "message"        => $message,
-                "imported_rows"  => $importedRows,
-                "processed_rows" => $processedRows,
-                "data"           => $importResult,
+                "message"        => $result['message'] ?? 'Import selesai',
+                "imported_rows"  => $result['imported_rows'] ?? 0,
+                "processed_rows" => $result['processed_rows'] ?? 0,
+                "data"           => $result
+            ]);
+    
+        } catch (\Exception $e) {
+            Log::error("Error import chunk: " . $e->getMessage());
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function importTraining(Request $request)
+    {
+        $request->validate([
+            "chunk" => "required|file",
+            "index" => "required|integer",
+            "total" => "required|integer",
+            "filename" => "required|string",
+        ]);
+
+        try {
+            $chunk = $request->file('chunk');
+            $index    = (int) $request->index;
+            $total    = (int) $request->total;
+            $filename = trim($request->filename);
+
+            $tempDir = $this->saveChunkFile($chunk, $index, $total, $filename);
+            
+            if ($index + 1 < $total) {
+                return response()->json([
+                    "status"  => "success",
+                    "message" => "Chunk {$index} uploaded."
+                ]);
+            }
+
+            // Gabungkan chunks
+            [$finalPath, $fullPath] = $this->mergeChunks($tempDir, $filename, $total);
+
+            // Import sesuai LNA
+            $result = $this->processImport($fullPath);
+
+            // Hapus file gabungan
+            Storage::delete($finalPath);
+
+            return response()->json([
+                "status"         => "success",
+                "message"        => $result['message'] ?? 'Import selesai',
+                "imported_rows"  => $result['imported_rows'] ?? 0,
+                "processed_rows" => $result['processed_rows'] ?? 0,
+                "data"           => $result
             ]);
     
         } catch (\Exception $e) {
@@ -174,7 +150,7 @@ class TrainingRequestController extends Controller
             $perPage = $request->input('per_page', 12);
             $page = $request->input('page', 1);
     
-            $data = TrainingReference::orderBy('created_at', 'asc')
+            $data = TrainingReference::orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
             return response()->json([
@@ -200,6 +176,21 @@ class TrainingRequestController extends Controller
     {
         try {
             Log::info("Mulai fetch data training references.", ["unit_id" => $unitId]);
+
+            // --- 1. Validasi apakah unit_id ada ---
+            $unitExists = Unit::where('id', $unitId)->exists();
+
+            if (!$unitExists) {
+                Log::warning("Unit tidak ditemukan.", ["unit_id" => $unitId]);
+
+                return response()->json([
+                    'status' => 'not_found',
+                    'message' => 'Unit tidak ditemukan.',
+                    'data' => []
+                ], 404);
+            }
+
+            // --- 2. Ambil data training berdasarkan unit_id ---
             $data = TrainingReference::where('unit_id', $unitId)
                 ->select(
                     'id',
@@ -217,6 +208,20 @@ class TrainingRequestController extends Controller
                 )
                 ->orderBy('judul_sertifikasi')
                 ->get();
+
+            // --- 3. Jika data kosong ---
+            if ($data->isEmpty()) {
+                Log::info("Tidak ada data training references untuk unit ini.", ["unit_id" => $unitId]);
+
+                return response()->json([
+                    'status' => 'empty',
+                    'message' => 'Tidak ada data training reference untuk unit tersebut.',
+                    'data' => []
+                ]);
+            }
+
+            // --- 4. Jika ada data ---
+            Log::info("Fetch data training references selesai.", $data->toArray());
 
             return response()->json([
                 'status' => 'success',
@@ -244,6 +249,7 @@ class TrainingRequestController extends Controller
                     return [
                         'id' => $emp->id,
                         'name' => $emp->person->full_name ?? '-',
+                        'employee_id' => $emp->employee_id,
                         'person_id' => $emp->person_id,
                     ];
                 });
@@ -320,10 +326,11 @@ class TrainingRequestController extends Controller
                 $created[] = TrainingRequest::create([
                     'training_reference_id'      => $payload['judul_sertifikasi'],
                     'employee_id'                => $employeeId,
-                    'status_approval_training'   => 'created',
                     'start_date'                 => $payload['start_date'],
                     'end_date'                   => $payload['end_date'],
+                    'realisasi_biaya_pelatihan'  => $payload['realisasi_biaya_pelatihan'] ?? null,
                     'estimasi_total_biaya'       => $payload['estimasi_total_biaya'],
+                    'status_approval_training'   => 'in_review_gmvp',
                     'lampiran_penawaran'         => $lampiran,
                 ]);
             }
@@ -350,22 +357,29 @@ class TrainingRequestController extends Controller
     public function getTrainingRequestList(Request $request, $unitId)
     {
         try {
-            $trainingRequest = TrainingRequest::with([
-                'trainingReference',
-                'employee.person',
-                'employee.unit'
-            ])
-            ->whereHas('employee', function ($q) use ($unitId) {
-                $q->where('unit_id', $unitId);
-            })
-            ->orderBy('id', 'desc')
-            ->get();
+            $perPage = $request->input('per_page', 12);
+            $page = $request->input('page', 1);
 
-            Log::info("Training request list:", $trainingRequest);
+            $trainingRequest = TrainingRequest::with([
+                    'trainingReference',
+                    'employee.person',
+                    'employee.unit'
+                ])
+                ->whereHas('employee', function ($q) use ($unitId) {
+                    $q->where('unit_id', $unitId);
+                })
+                ->orderBy('id', 'asc')
+                ->paginate($perPage, ['*'], 'page', $page);
 
             return response()->json([
                 "status" => "success",
-                "data" => $trainingRequest
+                "data" => $trainingRequest->items(), // selalu array, termasuk jika kosong
+                "pagination" => [
+                    "current_page" => $trainingRequest->currentPage(),
+                    "last_page" => $trainingRequest->lastPage(),
+                    "per_page" => $trainingRequest->perPage(),
+                    "total" => $trainingRequest->total()
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -376,7 +390,272 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function lnaStore(Request $request) {
-        Log::info('store');
+    public function lnaStore(Request $request) 
+    {
+        Log::info("Mulai input training request:", $request->all());
+        
+        try {
+            // Validasi sederhana
+            $request->validate([
+                'unit_id'               => 'nullable|exists:units,id',
+                'judul_sertifikasi'     => 'nullable|string|max:255',
+                'penyelenggara'         => 'nullable|string|max:255',
+                'jumlah_jam'            => 'nullable|string|max:255',
+                'waktu_pelaksanaan'     => 'nullable|string|max:255',
+                'biaya_pelatihan'       => 'nullable|numeric',
+                'uhpd'                  => 'nullable|numeric',
+                'biaya_akomodasi'       => 'nullable|numeric',
+                'estimasi_total_biaya'  => 'nullable|numeric',
+                'nama_proyek'           => 'nullable|string|max:255',
+                'jenis_portofolio'      => 'nullable|string|max:255',
+                'fungsi'                => 'nullable|string|max:255',
+                'kuota'                 => 'nullable|integer|min:0',
+            ]);
+    
+            // Simpan ke tabel training_reference
+            $data = TrainingReference::create([
+                'judul_sertifikasi'      => $request->judul_sertifikasi,
+                'unit'                   => 11,
+                'penyelenggara'          => $request->penyelenggara,
+                'jumlah_jam'             => $request->jumlah_jam,
+                'waktu_pelaksanaan'      => $request->waktu_pelaksanaan,
+                'nama_proyek'            => $request->nama_proyek,
+                'jenis_portofolio'       => $request->jenis_portofolio,
+                'fungsi'                 => $request->fungsi,
+                'kuota'                  => $request->kuota,
+                'biaya_pelatihan'        => $request->biaya_pelatihan,
+                'uhpd'                   => $request->uhpd,
+                'biaya_akomodasi'        => $request->biaya_akomodasi,
+                'estimasi_total_biaya'   => $request->estimasi_total_biaya,
+            ]);
+    
+            Log::info("Data training berhasil disimpan.", $data->toArray());
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Data training berhasil disimpan.',
+                'data'    => $data
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage()
+            ], 500);
+        }
+        
     }
+
+    public function getDataUnits(Request $request) {
+        try {
+            $units = Unit::select('id', 'name')->orderBy('name')->get();
+            return response()->json([
+                "status" => "success",
+                "data" => $units
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error fetch data: " . $e->getMessage());
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function approveTrainingRequest($id)
+    {
+        $trainingRequest = TrainingRequest::find($id);
+        Log::info('training request', $trainingRequest->toArray());
+        if (!$trainingRequest) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak ditemukan.',
+            ], 404);
+        }
+
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
+
+        try {
+            $this->processApproval($trainingRequest, $role, 'approve');
+            return response()->json([
+                'status' => 'success',
+                'message' => "Data ID {$id} berhasil di-approve oleh {$role}.",
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Approve error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    public function rejectTrainingRequest($id)
+    {
+        try {
+            $trainingRequest = TrainingRequest::findOrFail($id);
+
+            $user = auth()->user();
+            $role = $user->getRoleNames()->first();
+
+            // Jika sudah final, tidak boleh reject
+            if (in_array($trainingRequest->status_approval, ['approve', 'reject'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Data ini sudah final dan tidak bisa ditolak.',
+                ], 400);
+            }
+
+            // Kirim ke processApproval()
+            $this->processApproval($trainingRequest, $role, 'reject');
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Data ID {$id} berhasil direject oleh {$role}.",
+            ]);
+
+        } catch (\Exception $e) {
+
+            Log::error("Reject failed", [
+                'id' => $id,
+                'role' => $role ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat menolak data.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function saveChunkFile($chunk, $index, $total, $filename)
+    {
+        $safeFilename = basename($filename);
+        $tempDir = "chunks/{$safeFilename}";
+
+        if (!Storage::exists($tempDir)) {
+            Storage::makeDirectory($tempDir);
+        }
+
+        $chunkPath = "{$tempDir}/chunk_{$index}.part";
+        Storage::put($chunkPath, file_get_contents($chunk));
+
+        return $tempDir;
+    }
+
+    private function mergeChunks($tempDir, $filename, $total)
+    {
+        $uploadsDir = 'uploads';
+
+        if (!Storage::exists($uploadsDir)) {
+            Storage::makeDirectory($uploadsDir);
+        }
+
+        $finalName = time() . "_" . basename($filename);
+        $finalPath = "{$uploadsDir}/{$finalName}";
+        $fullPath  = storage_path("app/{$finalPath}");
+
+        $output = fopen($fullPath, "ab");
+
+        for ($i = 0; $i < $total; $i++) {
+            $cPath = "{$tempDir}/chunk_{$i}.part";
+            $content = Storage::get($cPath);
+            fwrite($output, $content);
+        }
+
+        fclose($output);
+
+        // Hapus chunk
+        Storage::deleteDirectory($tempDir);
+
+        return [$finalPath, $fullPath, $finalName];
+    }
+
+    private function processImport($fullPath)
+    {
+        $result = $this->importService->handleImport(
+            $fullPath,
+            auth()->id()
+        );
+
+        return $result;
+    }
+
+    private function processApproval(TrainingRequest $trainingRequest, string $role, string $action): void
+    {
+        Log::info('Process approval', [
+            'training_id' => $trainingRequest->id,
+            'current_status' => $trainingRequest->status_approval_training,
+            'role' => $role,
+            'action' => $action,
+        ]);
+        
+        // Status transition map
+        $approvalFlow = [
+            'in_review_gmvp'  => ['in_review_dhc', 'Kepala Unit'],
+            'in_review_dhc'   => ['in_review_vpdhc', 'DHC'],
+            'in_review_vpdhc' => ['approve', 'Kepala Unit DHC'],
+        ];
+
+        $currentStatus = $trainingRequest->status_approval_training;
+
+        // === HANDLE REJECT ===
+        if ($action === 'reject') {
+
+            // Status yang boleh direject
+            $rejectableStatus = ['in_review_gmvp', 'in_review_dhc'];
+
+            if (!in_array($trainingRequest->status_approval, $rejectableStatus)) {
+                throw new \Exception(
+                    "Data pada status {$trainingRequest->status_approval} tidak bisa direject."
+                );
+            }
+
+            $trainingRequest->update([
+                'status_approval' => 'reject',
+                'updated_at' => now()
+            ]);
+
+            Log::warning("TrainingRequest {$trainingRequest->id} rejected", [
+                'role' => $role,
+                'status_before' => $trainingRequest->status_approval,
+            ]);
+
+            return;
+        }
+
+        // === HANDLE APPROVE ===
+        if (!isset($approvalFlow[$currentStatus])) {
+            throw new \Exception("Status {$currentStatus} tidak bisa di-approve.");
+        }
+
+        [$nextStatus, $allowedRole] = $approvalFlow[$currentStatus];
+
+        if ($allowedRole !== $role) {
+            throw new \Exception("Role {$role} tidak diperbolehkan approve pada status {$currentStatus}.");
+        }
+
+        $trainingRequest->update([
+            'status_approval_training' => $nextStatus,
+            'updated_at' => now()
+        ]);
+
+        Log::info("TrainingRequest {$trainingRequest->id} updated", [
+            'from' => $currentStatus,
+            'to'   => $nextStatus,
+            'role' => $role,
+        ]);
+
+        // Jika final approve → insert ke tabel training
+        if ($nextStatus === 'approve') {
+            $this->insertToTraining($trainingRequest);
+        }
+
+        Log::info("TrainingRequest {$trainingRequest->id} approved");
+
+    }
+
 }

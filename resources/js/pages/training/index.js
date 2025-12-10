@@ -6,6 +6,7 @@ import { initInputHandler } from "./training-approval/handler/inputHandler";
 import { initUpdateJenisPelatihanHandler } from "./training-approval/handler/updateJenisPelatihanHandler";
 import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
 import { initModalHandler } from "../../utils/modal";
+import { initInputLnaHandler } from "./training-approval/handler/inputLnaHandler";
 
 const TRAINING_CONFIG = {
     tables: {
@@ -27,6 +28,11 @@ const TRAINING_CONFIG = {
             modal: "#input-training-modal",
             closeBtn: "#training-close-modal",
         },
+        trainingImport: {
+            openBtn: "#training-import-btn",
+            modal: "#lna-import-modal",
+            closeBtn: "#lna-close-modal",
+        },
         lnaImport: {
             openBtn: "#lna-import-btn",
             modal: "#lna-import-modal",
@@ -36,7 +42,7 @@ const TRAINING_CONFIG = {
             openBtn: "#lna-input-btn",
             modal: "#lna-input-modal",
             closeBtn: "#lna-input-close-modal",
-        },
+        }, 
     },
     buttons: {
         downloadTemplate: ".btn-download-template",
@@ -50,7 +56,10 @@ const ROLES_REQUIRING_UNIT_ID = ["SDM Unit"];
 const getGlobalVariable = (variableName, defaultValue = null) => {
     const value = window[variableName];
     if (value === undefined || value === null) {
-        console.warn(`Global variable '${variableName}' is not defined, using default:`, defaultValue);
+        console.warn(
+            `Global variable '${variableName}' is not defined, using default:`,
+            defaultValue
+        );
         return defaultValue;
     }
     return value;
@@ -90,7 +99,11 @@ const initializeTrainingTables = () => {
             return;
         }
 
-        console.log(`Initializing training table for role: ${userRole}, unitId: ${unitId || 'not required'}`);
+        console.log(
+            `Initializing training table for role: ${userRole}, unitId: ${
+                unitId || "not required"
+            }`
+        );
 
         try {
             initGetDataTable(tableBody, userRole, unitId);
@@ -100,18 +113,18 @@ const initializeTrainingTables = () => {
                 initUpdateJenisPelatihanHandler(tableBody);
             }
         } catch (error) {
-            console.error('Error initializing training table:', error);
+            console.error("Error initializing training table:", error);
             tableBody.innerHTML = `<tr><td colspan="20" class="text-center text-red-500">Error initializing table</td></tr>`;
         }
     });
 };
 
 const initializeTabs = () => {
-    const container = document.querySelector('#dhc-tabs');
+    const container = document.querySelector("#dhc-tabs");
     if (!container) return; // bukan DHC atau tabs belum dirender
 
-    const buttons = container.querySelectorAll('.u-tabs__item');
-    const panels  = document.querySelectorAll('.u-tabs__panel');
+    const buttons = container.querySelectorAll(".u-tabs__item");
+    const panels = document.querySelectorAll(".u-tabs__panel");
 
     if (!buttons.length || !panels.length) return;
 
@@ -120,13 +133,28 @@ const initializeTabs = () => {
             const target = btn.dataset.tab; // 'training' atau 'lna'
             if (!target) return;
 
-            // Toggle active di button
+            // Toggle active di tabs__list
             buttons.forEach((b) => {
                 b.classList.remove(TRAINING_CONFIG.tabs.activeClass);
-                b.classList.add('border-transparent', 'text-slate-500');
+                b.classList.add(
+                    "border-transparent",
+                    "text-slate-500",
+                    "hover:text-slate-800",
+                    "hover:border-blue-600"
+                );
             });
-            btn.classList.remove('border-transparent', 'text-slate-500');
-            btn.classList.add('border-blue-600', 'text-slate-900', 'font-semibold');
+            btn.classList.remove(
+                "border-transparent",
+                "text-slate-500",
+                "hover:text-slate-800",
+                "hover:border-blue-600"
+            );
+
+            btn.classList.add(
+                "border-blue-600",
+                "text-slate-900",
+                "font-semibold"
+            );
 
             // Toggle panel
             panels.forEach((panel) => {
@@ -156,15 +184,25 @@ const initializeModals = () => {
     if (document.querySelector(TRAINING_CONFIG.modals.lnaImport.modal)) {
         console.log("Initializing LNA import modal");
         const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.lnaImport;
-        initDragDropUpload(modal);
         initModalHandler(openBtn, modal, closeBtn);
+        initDragDropUpload(modal);
     }
 
     if (document.querySelector(TRAINING_CONFIG.modals.lnaInput.modal)) {
         console.log("Initializing LNA input modal");
         const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.lnaInput;
-        initDragDropUpload(modal);
         initModalHandler(openBtn, modal, closeBtn);
+        initInputLnaHandler(modal);
+    }
+
+    if (document.querySelector(TRAINING_CONFIG.modals.trainingImport.modal)) {
+        console.log("Initializing training import modal");
+        const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.trainingImport;
+
+        const role = document.querySelector(openBtn)?.dataset?.role || "training";
+        
+        initModalHandler(openBtn, modal, closeBtn);
+        initDragDropUpload(modal, role);
     }
 };
 
@@ -238,19 +276,14 @@ const validateEnvironment = () => {
 
 const initializeTrainingPage = () => {
     console.log("Training page initialization started");
-
-    // Validate required environment
-    // if (!validateEnvironment()) {
-    //     console.error("Required environment variables are missing");
-    //     return;
-    // }
-
+    
     try {
+        const currentUserRole = getGlobalVariable("currentUserRole");
 
-        const currentUserRole = getGlobalVariable('currentUserRole');
-        
         if (!currentUserRole) {
-            console.warn('window.currentUserRole is not defined. Tables must have data-role attribute.');
+            console.warn(
+                "window.currentUserRole is not defined. Tables must have data-role attribute."
+            );
         }
         // Initialize core components in order
         initializeTabs();
