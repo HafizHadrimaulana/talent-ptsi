@@ -2,6 +2,8 @@
 @section('title','Login • Talent PTSI')
 
 @section('content')
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;400;700;900&display=swap" rel="stylesheet">
+
 <div class="auth-root relative min-h-dvh w-screen overflow-hidden">
   <!-- Fullscreen gradient -->
   <div class="bg-canvas fixed inset-0 -z-10 pointer-events-none"></div>
@@ -28,8 +30,8 @@
       <!-- Title + address + people -->
       <div class="relative flex h-full min-h-dvh px-[64px] pt-[60px] pb-[36px] text-white">
         <div class="z-[2] my-auto max-w-[760px]">
-          <h1 class="text-[68px] leading-[1.03] translate-y-[-200px] translate-x-[100px] font-extrabold drop-shadow-[0_12px_28px_rgba(0,0,0,.25)]" style="font-family:Montserrat;">
-            One Platform for All<br/>Human Capital Service
+            <h1 class="text-[50px] leading-[1.03] text-center font-bold drop-shadow-[0_12px_28px_rgba(0,0,0,.25)] transform translate-x-[105px] translate-y-[-200px] font-montserrat">
+            One Platform for All<br />Human Capital Service
           </h1>
 
           <div class="absolute mt-6 flex items-start gap-4  bottom-[0px] left-[180px]">

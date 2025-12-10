@@ -57,7 +57,9 @@ const helpers = window.__DT_HELPERS__ || (() => {
       ],
       details: {
         type: 'column',
-        target: -1,
+        // PENTING: jangan pakai kolom terakhir (actions) buat responsive toggle
+        // Supaya tombol Details/Edit/Sign tidak hilang
+        target: 'td:not(:last-child)',
         renderer: function (api, rowIdx, columns) {
           const hidden = columns.filter(c => c.hidden);
           if (!hidden.length) return false;

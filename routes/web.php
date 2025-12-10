@@ -11,8 +11,8 @@ use App\Http\Controllers\Recruitment\SalaryController;
 Route::middleware('web')->group(function () {
 
     // ====== PUBLIC (NO AUTH) ======
-    Route::get('/careers', [CareersController::class, 'index'])->name('careers.index');
-    Route::post('/careers/apply', [PublicApplicationController::class, 'store'])->name('careers.apply');
+        Route::get('/careers', [CareersController::class, 'index'])->name('careers.index');
+        Route::post('/careers/apply', [PublicApplicationController::class, 'store'])->name('careers.apply');
 
     // ====== GUEST (AUTH) ======
     Route::middleware('guest')->group(function () {

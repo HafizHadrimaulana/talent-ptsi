@@ -370,5 +370,6 @@
   })();
   </script>
   @stack('swal')
+  @stack('scripts')
 </body>
 </html>

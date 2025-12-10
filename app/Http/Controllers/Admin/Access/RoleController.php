@@ -44,14 +44,13 @@ class RoleController extends Controller
         $allPerms = Permission::query()
             ->where('guard_name', 'web')
             ->orderBy('name', 'asc')
-            ->get(['id', 'name']); // untuk tampilan cukup id+name
+            ->get(['id', 'name']);
 
         $groupedPerms = $allPerms->groupBy(function ($p) {
             $parts = explode('.', $p->name, 2);
             return $parts[0];
         });
 
-        // permission-by-role (pakai name) -> untuk checked state
         $permByRole = [];
         foreach ($roles as $r) {
             $names = DB::table('permissions')
@@ -85,7 +84,25 @@ class RoleController extends Controller
         /** @var PermissionRegistrar $reg */
         $reg   = app(PermissionRegistrar::class);
         $guard = $data['guard'] ?? 'web';
-        $teamId = $data['unit_id'] ?? ($reg->getPermissionsTeamId() ?: auth()->user()?->unit_id);
+
+        // --- FIX: penentuan scope role (global vs unit) ---
+        $user      = auth()->user();
+        $isSuper   = $user && $user->hasRole('Superadmin');
+
+        if (array_key_exists('unit_id', $data)) {
+            // kalau nanti ada field unit_id di form:
+            // null => global, angka => scoped ke unit tsb
+            $teamId = $data['unit_id'] ?: null;
+        } else {
+            if ($isSuper) {
+                // Superadmin tanpa unit_id di form => buat role global
+                $teamId = null;
+            } else {
+                // user biasa => ikut context team seperti sebelumnya
+                $teamId = $reg->getPermissionsTeamId() ?: $user?->unit_id;
+            }
+        }
+        // --- END FIX ---
 
         return DB::transaction(function () use ($request, $data, $guard, $teamId) {
             $role = Role::firstOrCreate([
@@ -122,7 +139,6 @@ class RoleController extends Controller
             $role->name = $data['name'];
             $role->save();
 
-            // Pakai guard milik role agar konsisten
             $permModels = $this->resolvePermissions($request, $role->guard_name ?? 'web');
             $role->syncPermissions($permModels);
 
@@ -134,8 +150,6 @@ class RoleController extends Controller
 
     /**
      * Resolve permission input (id atau name) -> koleksi Permission TERPILIH saja.
-     * - Pastikan guard_name terisi (select guard_name).
-     * - Group orWhereIn DI DALAM where(...) agar tidak "nyapu" semua permission.
      */
     protected function resolvePermissions(Request $request, string $guard = 'web')
     {
@@ -154,7 +168,6 @@ class RoleController extends Controller
             }
         }
 
-        // Ambil guard yang benar + hanya yang dipilih; SELECT guard_name agar tidak null di Spatie
         return Permission::query()
             ->where('guard_name', $guard)
             ->where(function ($q) use ($ids, $names) {
@@ -168,9 +181,9 @@ class RoleController extends Controller
                     $hasAny = true;
                 }
                 if (!$hasAny) {
-                    $q->whereRaw('1=0'); // defensif
+                    $q->whereRaw('1=0');
                 }
             })
-            ->get(['id', 'name', 'guard_name']); // <— PENTING: guard_name ikut diambil
+            ->get(['id', 'name', 'guard_name']);
     }
 }

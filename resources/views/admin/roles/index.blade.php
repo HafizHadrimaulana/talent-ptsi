@@ -90,8 +90,6 @@
       </table>
     </div>
   </div>
-
-
 </div>
 
 <!-- Create Role Modal -->
@@ -155,7 +153,6 @@
                   <div class="u-grid u-grid-cols-1 md:u-grid-cols-2 u-gap-sm">
                     @foreach($items as $perm)
                     <label class="u-flex u-items-center u-gap-sm u-p-sm u-rounded-lg u-border u-border-transparent u-hover:border-gray-200">
-                      {{-- kirim name agar controller bisa resolve by name --}}
                       <input type="checkbox" name="permissions[]" value="{{ $perm->name }}" class="u-rounded" data-group="{{ $group }}">
                       <span class="u-text-sm">{{ $perm->name }}</span>
                     </label>
@@ -238,7 +235,6 @@
                   <div class="u-grid u-grid-cols-1 md:u-grid-cols-2 u-gap-sm">
                     @foreach($items as $perm)
                     <label class="u-flex u-items-center u-gap-sm u-p-sm u-rounded-lg u-border u-border-transparent u-hover:border-gray-200">
-                      {{-- konsisten: kirim name --}}
                       <input type="checkbox" name="permissions[]" value="{{ $perm->name }}" class="u-rounded" data-group="{{ $group }}">
                       <span class="u-text-sm">{{ $perm->name }}</span>
                     </label>

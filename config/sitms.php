@@ -1,5 +1,6 @@
 <?php
 // config/sitms.php
+
 return [
     'base_url' => rtrim(env('SITMS_BASE_URL', 'https://sitms.ptsi.co.id/admin/api'), '/'),
     'paths'    => [
@@ -17,6 +18,9 @@ return [
     'retries'    => (int) env('SITMS_RETRIES', 5),
 
     // behavior
-    'pagination' => env('SITMS_PAGINATION', 'offset'), // page|datatables
+    'pagination' => env('SITMS_PAGINATION', 'offset'), // page|datatables|offset
     'per_page'   => (int) env('SITMS_PER_PAGE', 1500),
+
+    // toggle baca SITMS (bisa dimatikan di dev / testing)
+    'read_enabled' => (bool) env('SITMS_READ_ENABLED', true),
 ];
