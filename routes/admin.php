@@ -28,18 +28,11 @@ use App\Http\Controllers\Admin\Org\OrgController;
 
 Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
-    // =========================
-    // DASHBOARD
-    // =========================
     Route::get('/', function () {
         return view('dashboard');
     })->name('dashboard');
 
-    // =========================
-    // SETTINGS · ACCESS
-    // =========================
     Route::prefix('admin/settings/access')->name('admin.')->group(function () {
-        // Users
         Route::get('users',           [UserController::class, 'index'])
             ->middleware('permission:users.view')
             ->name('users.index');
@@ -56,12 +49,10 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->middleware('permission:users.delete')
             ->name('users.destroy');
 
-        // Role options (JSON) untuk modal
         Route::get('roles/options',   [UserController::class, 'roleOptions'])
             ->middleware('permission:users.view')
             ->name('roles.options');
 
-        // Roles (RBAC)
         Route::get('roles',           [RoleController::class, 'index'])
             ->middleware('permission:rbac.view')
             ->name('roles.index');
@@ -78,7 +69,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->middleware('permission:rbac.assign')
             ->name('roles.destroy');
 
-        // Permissions (RBAC)
         Route::get('permissions',              [PermissionController::class, 'index'])
             ->middleware('permission:rbac.view')
             ->name('permissions.index');
@@ -88,9 +78,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('permissions.update');
     });
 
-    // =========================
-    // EMPLOYEES
-    // =========================
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('employees',      [EmployeeController::class, 'index'])
             ->middleware('permission:employees.view')
@@ -99,69 +86,50 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('employees/{id}', [EmployeeController::class, 'show'])
             ->middleware('permission:employees.view')
             ->name('employees.show');
+
+        Route::get('employees/positions/options', [EmployeeController::class, 'positionOptions'])
+            ->middleware('permission:employees.view')
+            ->name('employees.positions.options');
     });
 
-    // =========================
-    // BACK OFFICE · MASTER DATA GROUP (Directorates & Units)
-    // =========================
     Route::prefix('admin/org')
         ->name('admin.org.')
         ->middleware('permission:org.view')
         ->group(function () {
-
-            // Single page
             Route::get('/', [OrgController::class, 'index'])->name('index');
-
-            // Tree JSON
             Route::get('tree', [OrgController::class, 'tree'])->name('tree');
-
-            // Directorates CRUD (AJAX)
             Route::get('directorates',            [OrgController::class, 'directorates'])->name('directorates.list');
             Route::get('directorates/options',    [OrgController::class, 'directorateOptions'])->name('directorates.options');
-
             Route::post('directorates',           [OrgController::class, 'directorateStore'])
                 ->middleware('permission:org.create')
                 ->name('directorates.store');
-
             Route::put('directorates/{id}',       [OrgController::class, 'directorateUpdate'])
                 ->middleware('permission:org.update')
                 ->name('directorates.update');
-
             Route::delete('directorates/{id}',    [OrgController::class, 'directorateDestroy'])
                 ->middleware('permission:org.delete')
                 ->name('directorates.destroy');
 
-            // Units CRUD (AJAX)
             Route::get('units',                   [OrgController::class, 'units'])->name('units.list');
-
             Route::post('units',                  [OrgController::class, 'unitStore'])
                 ->middleware('permission:org.create')
                 ->name('units.store');
-
             Route::put('units/{id}',              [OrgController::class, 'unitUpdate'])
                 ->middleware('permission:org.update')
                 ->name('units.update');
-
             Route::put('units/{id}/reassign',     [OrgController::class, 'unitReassign'])
                 ->middleware('permission:org.update')
                 ->name('units.reassign');
-
             Route::delete('units/{id}',           [OrgController::class, 'unitDestroy'])
                 ->middleware('permission:org.delete')
                 ->name('units.destroy');
         });
 
-    // =========================
-    // RECRUITMENT
-    // =========================
     Route::prefix('recruitment')->name('recruitment.')->group(function () {
-
-        // Monitoring Rekrutmen (Flow dari Izin Prinsip s/d Kontrak)
         Route::get('monitoring', [RecruitmentMonitoringController::class, 'index'])
             ->middleware('permission:recruitment.view')
             ->name('monitoring');
 
-        // Izin Prinsip (principal approval)
         Route::get('principal-approval', [RecruitmentApprovalController::class, 'index'])
             ->middleware('permission:recruitment.view')
             ->name('principal-approval.index');
@@ -170,7 +138,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->middleware('permission:recruitment.update')
             ->name('principal-approval.store');
 
-        // update draft Izin Prinsip (edit)
         Route::put('principal-approval/{req}', [RecruitmentApprovalController::class, 'update'])
             ->middleware('permission:recruitment.update')
             ->name('principal-approval.update');
@@ -187,47 +154,42 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->middleware('permission:recruitment.reject')
             ->name('principal-approval.reject');
 
-        // Penerbitan Kontrak (SPK / PKWT / PB) + e-sign
         Route::get('contracts', [ContractController::class, 'index'])
             ->middleware('permission:contract.view')
             ->name('contracts.index');
 
-        // detail kontrak (JSON untuk modal / inline)
+        Route::get('contracts/base-options', [ContractController::class, 'baseOptions'])
+            ->middleware('permission:contract.view')
+            ->name('contracts.base-options');
+
         Route::get('contracts/{contract}', [ContractController::class, 'show'])
             ->middleware('permission:contract.view')
             ->name('contracts.show');
 
-        // create draft
         Route::post('contracts', [ContractController::class, 'store'])
             ->middleware('permission:contract.create')
             ->name('contracts.store');
 
-        // update draft kontrak
         Route::put('contracts/{contract}', [ContractController::class, 'update'])
             ->middleware('permission:contract.update')
             ->name('contracts.update');
 
-        // submit draft (SDM Unit → kepala unit / approver)
         Route::post('contracts/{contract}/submit',  [ContractController::class, 'submit'])
             ->middleware('permission:contract.update')
             ->name('contracts.submit');
 
-        // approve kontrak (kepala unit / DHC / Dir SDM sesuai flowmap) + e-sign kepala unit
         Route::post('contracts/{contract}/approve', [ContractController::class, 'approve'])
             ->middleware('permission:contract.approve')
             ->name('contracts.approve');
 
-        // reject kontrak (balik ke draft SDM Unit)
         Route::post('contracts/{contract}/reject',  [ContractController::class, 'reject'])
             ->middleware('permission:contract.approve')
             ->name('contracts.reject');
 
-        // e-sign kandidat/pegawai
         Route::post('contracts/{contract}/sign',    [ContractController::class, 'sign'])
             ->middleware('permission:contract.sign')
             ->name('contracts.sign');
 
-        // Publishing lowongan dari Izin Prinsip
         Route::middleware('permission:recruitment.update')->group(function () {
             Route::get('requests/{req}/publish',  [PublishingController::class, 'edit'])
                 ->name('publish.edit');
@@ -240,9 +202,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         });
     });
 
-    // =========================
-    // TRAINING
-    // =========================
     Route::prefix('training')->name('training.')->group(function () {
 
         // Dashboard
