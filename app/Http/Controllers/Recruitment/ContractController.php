@@ -105,7 +105,7 @@ class ContractController extends Controller
             )
             ->where('ph.category', 'job')
             ->whereNotNull('ph.end_date')
-            ->whereDate('ph.end_date', '>=', $today->copy()->subDays(60)) 
+            ->whereDate('ph.end_date', '>=', $today) 
             ->whereDate('ph.end_date', '<=', $until);
 
         if (! $canSeeAll && $meUnit) $expiringQuery->where('e.unit_id', $meUnit);
@@ -244,7 +244,6 @@ class ContractController extends Controller
             }
 
             $contract->position_name = isset($validated['position_name']) ? trim($validated['position_name']) : null;
-            
             if (!empty($contract->position_name)) {
                 $posObj = DB::table('positions')->where('name', $contract->position_name)->first();
                 if ($posObj) {
