@@ -14,7 +14,6 @@ use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -94,7 +93,7 @@ class ContractController extends Controller
             ->select(
                 'ph.id',
                 'ph.person_id',
-                'ph.employee_id',
+                'e.employee_id',
                 'ph.title AS position_name',
                 'ph.organization AS unit_name_raw',
                 'ph.start_date',
@@ -106,7 +105,7 @@ class ContractController extends Controller
             )
             ->where('ph.category', 'job')
             ->whereNotNull('ph.end_date')
-            ->whereDate('ph.end_date', '>=', $today) 
+            ->whereDate('ph.end_date', '>=', $today->copy()->subDays(60)) 
             ->whereDate('ph.end_date', '<=', $until);
 
         if (! $canSeeAll && $meUnit) $expiringQuery->where('e.unit_id', $meUnit);
@@ -134,7 +133,6 @@ class ContractController extends Controller
     {
         $me = $request->user();
 
-        // 1. Force empty strings to NULL to avoid integer/foreign key errors
         $request->merge([
             'source_contract_id' => $request->input('source_contract_id') ?: null,
             'unit_id' => $request->input('unit_id') ?: null,
@@ -142,46 +140,42 @@ class ContractController extends Controller
             'applicant_id' => $request->input('applicant_id') ?: null,
             'employee_id' => $request->input('employee_id') ?: null,
             'person_id' => $request->input('person_id') ?: null,
-            'position_id' => $request->input('position_id') ?: null,
         ]);
 
         $validated = $request->validate([
-            'contract_type'                   => 'required|string',
-            'unit_id'                         => 'required|integer|exists:units,id',
-            'new_unit_id'                     => 'nullable|integer|exists:units,id',
-            'applicant_id'                    => 'nullable|string',
-            'employee_id'                     => 'nullable|string',
-            'person_id'                       => 'nullable|string',
-            'position_name'                   => 'nullable|string|max:191',
-            'new_position_name'               => 'nullable|string|max:191',
-            'employment_type'                 => 'nullable|string|max:60',
-            'start_date'                      => 'nullable|date',
-            'end_date'                        => 'nullable|date|after_or_equal:start_date',
-            'remarks'                         => 'nullable|string|max:2000',
-            // Checkboxes
-            'requires_draw_signature'         => 'nullable',
-            'requires_camera'                 => 'nullable',
-            'requires_geolocation'            => 'nullable',
-            // Remunerasi
-            'salary_amount'                   => 'nullable|string',
-            'salary_amount_words'             => 'nullable|string',
-            'lunch_allowance_daily'           => 'nullable|string',
-            'lunch_allowance_words'           => 'nullable|string',
-            'allowance_special_amount'        => 'nullable|string',
-            'allowance_special_words'         => 'nullable|string',
-            'allowance_position_amount'       => 'nullable|string',
-            'allowance_position_words'        => 'nullable|string',
-            'allowance_communication_amount'  => 'nullable|string',
-            'allowance_communication_words'   => 'nullable|string',
-            'allowance_other_amount'          => 'nullable|string',
-            'allowance_other_words'           => 'nullable|string',
-            'allowance_other_desc'            => 'nullable|string',
-            'other_benefits_desc'             => 'nullable|string',
-            'pb_effective_end'                => 'nullable|date',
-            'pb_compensation_amount'          => 'nullable|string',
-            'pb_compensation_amount_words'    => 'nullable|string',
-            'submit_action'                   => 'required|in:draft,submit',
-            'source_contract_id'              => 'nullable|integer',
+            'contract_type'               => 'required|string',
+            'unit_id'                     => 'required|integer|exists:units,id',
+            'new_unit_id'                 => 'nullable|integer|exists:units,id',
+            'applicant_id'                => 'nullable|string',
+            'employee_id'                 => 'nullable|string',
+            'person_id'                   => 'nullable|string',
+            'position_name'               => 'nullable|string|max:191',
+            'employment_type'             => 'nullable|string|max:60',
+            'start_date'                  => 'nullable|date',
+            'end_date'                    => 'nullable|date|after_or_equal:start_date',
+            'remarks'                     => 'nullable|string|max:2000',
+            'salary_amount'               => 'nullable|string',
+            'salary_amount_words'         => 'nullable|string',
+            'lunch_allowance_daily'       => 'nullable|string',
+            'lunch_allowance_words'       => 'nullable|string',
+            'allowance_special_amount'    => 'nullable|string',
+            'allowance_special_words'     => 'nullable|string',
+            'allowance_position_amount'   => 'nullable|string',
+            'allowance_position_words'    => 'nullable|string',
+            'allowance_communication_amount' => 'nullable|string',
+            'allowance_communication_words'  => 'nullable|string',
+            'allowance_other_amount'      => 'nullable|string',
+            'allowance_other_words'       => 'nullable|string',
+            'allowance_other_desc'        => 'nullable|string',
+            'other_benefits_desc'         => 'nullable|string',
+            'pb_effective_end'            => 'nullable|date',
+            'pb_compensation_amount'      => 'nullable|string',
+            'pb_compensation_amount_words'=> 'nullable|string',
+            'submit_action'               => 'required|in:draft,submit',
+            'source_contract_id'          => 'nullable|integer',
+            'requires_draw_signature'     => 'nullable',
+            'requires_camera'             => 'nullable',
+            'requires_geolocation'        => 'nullable',
         ]);
 
         if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
@@ -193,7 +187,6 @@ class ContractController extends Controller
         $ct = $validated['contract_type'];
         $isNewFromApplicant = in_array($ct, ['SPK','PKWT_BARU'], true);
 
-        // Populate Objects
         $applicant = null;
         if ($isNewFromApplicant && !empty($validated['applicant_id'])) {
             $applicant = Applicant::find($validated['applicant_id']);
@@ -205,61 +198,68 @@ class ContractController extends Controller
             $contract->contract_no = null;
             $contract->contract_type = $ct;
             
-            // Logic Unit: Default to form unit_id (the original unit)
             $finalUnitId = !empty($validated['new_unit_id']) ? $validated['new_unit_id'] : $validated['unit_id'];
-            $contract->unit_id = $finalUnitId; 
+            $contract->unit_id = $finalUnitId;
 
             $meta = $this->collectMeta($validated);
 
             if ($isNewFromApplicant) {
                 if ($applicant) {
                     $contract->applicant_id = $applicant->id;
-                    $contract->person_id = $applicant->person_id ?? null; // Priority 1: Applicant person_id
+                    $contract->person_id = $applicant->person_id ?? null;
                     if (empty($validated['position_name']) && !empty($applicant->position_applied)) {
                         $validated['position_name'] = $applicant->position_applied;
                     }
                 }
             } else {
-                // Existing Employee / Extension
                 $contract->employee_id = $validated['employee_id'] ?? null;
-                $contract->person_id = $validated['person_id'] ?? null; // Priority 1: Input form
+                $contract->person_id = $validated['person_id'] ?? null;
                 
-                // Jika person_id masih kosong, coba cari via employee_id
                 if(empty($contract->person_id) && $contract->employee_id) {
                      $emp = Employee::where('employee_id', $contract->employee_id)->first();
                      if($emp) $contract->person_id = $emp->person_id;
                 }
                 
-                // Foreign Key Check
                 $sourceId = $validated['source_contract_id'] ?? null;
                 if ($sourceId) {
                     $existsInContract = Contract::where('id', $sourceId)->exists();
                     if ($existsInContract) {
                         $contract->parent_contract_id = $sourceId;
                     } else {
-                        // Store legacy ID in meta to avoid FK constraint fail
                         $meta['legacy_source_id'] = $sourceId; 
                         $contract->parent_contract_id = null;
                     }
                 }
             }
             
-            // Fallback: If person_id is still null, try request input again (just in case)
             if(empty($contract->person_id)) {
                  $contract->person_id = $request->input('person_id');
             }
 
+            if (empty($contract->employee_id) && !empty($contract->person_id)) {
+                $emp = Employee::where('person_id', $contract->person_id)->first();
+                if ($emp) {
+                    $contract->employee_id = $emp->employee_id;
+                }
+            }
+
+            $contract->position_name = isset($validated['position_name']) ? trim($validated['position_name']) : null;
+            
+            if (!empty($contract->position_name)) {
+                $posObj = DB::table('positions')->where('name', $contract->position_name)->first();
+                if ($posObj) {
+                    $contract->position_id = $posObj->id;
+                }
+            }
+
             $contract->employment_type = $validated['employment_type'] ?? null;
-            $contract->position_name = $validated['position_name'] ?? null;
             $contract->start_date = $validated['start_date'] ?? null;
             $contract->end_date   = $validated['end_date'] ?? null;
 
-            // Flags (Checkboxes)
             $contract->requires_draw_signature = $request->has('requires_draw_signature');
             $contract->requires_camera = $request->has('requires_camera');
             $contract->requires_geolocation = $request->has('requires_geolocation');
 
-            // Simpan info unit baru di meta
             if (!empty($validated['new_unit_id'])) {
                 $meta['new_unit_id'] = $validated['new_unit_id'];
                 $uObj = Unit::find($validated['new_unit_id']);
@@ -317,43 +317,42 @@ class ContractController extends Controller
             'applicant_id' => $request->input('applicant_id') ?: null,
             'employee_id' => $request->input('employee_id') ?: null,
             'person_id' => $request->input('person_id') ?: null,
-            'position_id' => $request->input('position_id') ?: null,
         ]);
 
         $validated = $request->validate([
-            'contract_type'                   => 'required|string',
-            'unit_id'                         => 'required|integer|exists:units,id',
-            'new_unit_id'                     => 'nullable|integer|exists:units,id',
-            'applicant_id'                    => 'nullable|string',
-            'employee_id'                     => 'nullable|string',
-            'person_id'                       => 'nullable|string',
-            'position_name'                   => 'nullable|string|max:191',
-            'employment_type'                 => 'nullable|string|max:60',
-            'start_date'                      => 'nullable|date',
-            'end_date'                        => 'nullable|date|after_or_equal:start_date',
-            'remarks'                         => 'nullable|string|max:2000',
-            'salary_amount'                   => 'nullable|string',
-            'salary_amount_words'             => 'nullable|string',
-            'lunch_allowance_daily'           => 'nullable|string',
-            'lunch_allowance_words'           => 'nullable|string',
-            'allowance_special_amount'        => 'nullable|string',
-            'allowance_special_words'         => 'nullable|string',
-            'allowance_position_amount'       => 'nullable|string',
-            'allowance_position_words'        => 'nullable|string',
-            'allowance_communication_amount'  => 'nullable|string',
-            'allowance_communication_words'   => 'nullable|string',
-            'allowance_other_amount'          => 'nullable|string',
-            'allowance_other_words'           => 'nullable|string',
-            'allowance_other_desc'            => 'nullable|string',
-            'other_benefits_desc'             => 'nullable|string',
-            'pb_effective_end'                => 'nullable|date',
-            'pb_compensation_amount'          => 'nullable|string',
-            'pb_compensation_amount_words'    => 'nullable|string',
-            'submit_action'                   => 'required|in:draft,submit',
-            'source_contract_id'              => 'nullable|integer',
-            'requires_draw_signature'         => 'nullable',
-            'requires_camera'                 => 'nullable',
-            'requires_geolocation'            => 'nullable',
+            'contract_type'               => 'required|string',
+            'unit_id'                     => 'required|integer|exists:units,id',
+            'new_unit_id'                 => 'nullable|integer|exists:units,id',
+            'applicant_id'                => 'nullable|string',
+            'employee_id'                 => 'nullable|string',
+            'person_id'                   => 'nullable|string',
+            'position_name'               => 'nullable|string|max:191',
+            'employment_type'             => 'nullable|string|max:60',
+            'start_date'                  => 'nullable|date',
+            'end_date'                    => 'nullable|date|after_or_equal:start_date',
+            'remarks'                     => 'nullable|string|max:2000',
+            'salary_amount'               => 'nullable|string',
+            'salary_amount_words'         => 'nullable|string',
+            'lunch_allowance_daily'       => 'nullable|string',
+            'lunch_allowance_words'       => 'nullable|string',
+            'allowance_special_amount'    => 'nullable|string',
+            'allowance_special_words'     => 'nullable|string',
+            'allowance_position_amount'   => 'nullable|string',
+            'allowance_position_words'    => 'nullable|string',
+            'allowance_communication_amount' => 'nullable|string',
+            'allowance_communication_words'  => 'nullable|string',
+            'allowance_other_amount'      => 'nullable|string',
+            'allowance_other_words'       => 'nullable|string',
+            'allowance_other_desc'        => 'nullable|string',
+            'other_benefits_desc'         => 'nullable|string',
+            'pb_effective_end'            => 'nullable|date',
+            'pb_compensation_amount'      => 'nullable|string',
+            'pb_compensation_amount_words'=> 'nullable|string',
+            'submit_action'               => 'required|in:draft,submit',
+            'source_contract_id'          => 'nullable|integer',
+            'requires_draw_signature'     => 'nullable',
+            'requires_camera'             => 'nullable',
+            'requires_geolocation'        => 'nullable',
         ]);
 
         DB::beginTransaction();
@@ -367,7 +366,6 @@ class ContractController extends Controller
             $contract->employee_id = $validated['employee_id'] ?? null;
             $contract->person_id = $validated['person_id'] ?? null;
             
-            // Logic FK Check for Update
             $sourceId = $validated['source_contract_id'] ?? null;
             if ($sourceId) {
                 $exists = Contract::where('id', $sourceId)->exists();
@@ -376,7 +374,21 @@ class ContractController extends Controller
                 }
             }
             
-            $contract->position_name = $validated['position_name'] ?? null;
+            if (empty($contract->employee_id) && !empty($contract->person_id)) {
+                $emp = Employee::where('person_id', $contract->person_id)->first();
+                if ($emp) {
+                    $contract->employee_id = $emp->employee_id;
+                }
+            }
+            
+            $contract->position_name = isset($validated['position_name']) ? trim($validated['position_name']) : null;
+            if (!empty($contract->position_name)) {
+                $posObj = DB::table('positions')->where('name', $contract->position_name)->first();
+                if ($posObj) {
+                    $contract->position_id = $posObj->id;
+                }
+            }
+
             $contract->employment_type = $validated['employment_type'] ?? null;
             $contract->start_date = $validated['start_date'] ?? null;
             $contract->end_date = $validated['end_date'] ?? null;
@@ -437,7 +449,7 @@ class ContractController extends Controller
 
         $needsDraw = (bool) $contract->requires_draw_signature;
         $validated = $request->validate([
-            'note'            => 'nullable|string|max:2000',
+            'note'        => 'nullable|string|max:2000',
             'signature_image' => ($needsDraw ? 'required' : 'nullable') . '|string',
             'camera_image'    => 'nullable|string',
             'geo_lat'         => 'nullable|numeric',
@@ -466,14 +478,17 @@ class ContractController extends Controller
             if (!$contract->document_id) {
                 $doc = new Document();
                 $doc->doc_type = $contract->contract_type;
-                $doc->title = 'Kontrak ' . $contract->contract_type;
                 $doc->storage_disk = 'local';
                 $doc->path = 'contracts/' . $contract->id . '.pdf';
                 $doc->mime = 'application/pdf';
                 $doc->size_bytes = 0;
-                $doc->meta_json = $contract->remuneration_json ?? [];
-                $doc->created_by_user_id = $me->id;
-                $doc->created_by_person_id = $me->person_id;
+                
+                $metaData = $contract->remuneration_json ?? [];
+                $doc->meta = json_encode(is_array($metaData) ? $metaData : []);
+                
+                $doc->person_id = $contract->person_id;
+                $doc->employee_id = $contract->employee_id;
+                
                 $doc->save();
                 
                 $contract->document_id = $doc->id;
@@ -493,6 +508,9 @@ class ContractController extends Controller
             $sig->signature_draw_hash = $imgHash;
             $sig->geo_lat = $validated['geo_lat'] ?? null;
             $sig->geo_lng = $validated['geo_lng'] ?? null;
+            if (isset($validated['geo_accuracy'])) {
+                $sig->geo_accuracy_m = $validated['geo_accuracy'];
+            }
             $sig->signed_at = now();
             $sig->save();
 
@@ -518,7 +536,7 @@ class ContractController extends Controller
             ->first();
         if($approval) {
             $approval->status = 'rejected';
-            $approval->note = $request->note;
+            $approval->note = $request->rejection_note ?? $request->note;
             $approval->decided_at = now();
             $approval->save();
         }
@@ -526,9 +544,80 @@ class ContractController extends Controller
     }
     
     public function sign(Request $request, Contract $contract) {
-        $contract->status = 'signed';
-        $contract->save();
-        return response()->json(['success'=>true, 'message'=>'Kontrak ditandatangani.']);
+        $me = $request->user();
+        if (!$me->can('contract.sign')) abort(403);
+        if ($contract->status !== 'approved') return response()->json(['success'=>false, 'message'=>'Status kontrak tidak valid untuk TTD.'], 422);
+
+        $needsDraw = (bool) $contract->requires_draw_signature;
+        $validated = $request->validate([
+            'note'        => 'nullable|string|max:2000',
+            'signature_image' => ($needsDraw ? 'required' : 'nullable') . '|string',
+            'camera_image'    => 'nullable|string',
+            'geo_lat'         => 'nullable|numeric',
+            'geo_lng'         => 'nullable|numeric',
+            'geo_accuracy'    => 'nullable|numeric',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $approval = Approval::where('approvable_type', 'contract')
+                ->where('approvable_id', $contract->id)
+                ->where('status', 'approved') 
+                ->first();
+
+            if ($approval) {
+                $approval->status = 'completed';
+                $approval->note = $validated['note'] ?? 'Ditandatangani Kandidat';
+                $approval->save();
+            }
+
+            if (!$contract->document_id) {
+                 $doc = new Document();
+                 $doc->doc_type = $contract->contract_type;
+                 $doc->storage_disk = 'local';
+                 $doc->path = 'contracts/' . $contract->id . '.pdf';
+                 $doc->mime = 'application/pdf';
+                 $doc->size_bytes = 0;
+                 
+                 $metaData = $contract->remuneration_json ?? [];
+                 $doc->meta = json_encode(is_array($metaData) ? $metaData : []);
+                 
+                 $doc->person_id = $contract->person_id;
+                 $doc->employee_id = $contract->employee_id;
+                 
+                 $doc->save();
+                 $contract->document_id = $doc->id;
+            }
+            
+            $imgPath = null; $imgHash = null;
+            if (!empty($validated['signature_image'])) {
+                [$imgPath, $imgHash] = $this->storeBase64Image($validated['signature_image'], 'public', 'signatures');
+            }
+
+            $sig = new Signature();
+            $sig->document_id = $contract->document_id;
+            $sig->signer_person_id = $me->person_id;
+            $sig->signer_user_id = $me->id;
+            $sig->signer_role = 'Kandidat';
+            $sig->signature_draw_data = $validated['signature_image'] ?? null;
+            $sig->signature_draw_hash = $imgHash;
+            $sig->geo_lat = $validated['geo_lat'] ?? null;
+            $sig->geo_lng = $validated['geo_lng'] ?? null;
+            if (isset($validated['geo_accuracy'])) {
+                $sig->geo_accuracy_m = $validated['geo_accuracy'];
+            }
+            $sig->signed_at = now();
+            $sig->save();
+
+            $contract->status = 'signed';
+            $contract->save();
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Kontrak ditandatangani.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success'=>false, 'message'=>$e->getMessage()], 500);
+        }
     }
 
     public function show(Contract $contract) {
@@ -536,7 +625,6 @@ class ContractController extends Controller
         $meta = $contract->remuneration_json;
         if(is_string($meta)) $meta = json_decode($meta, true);
 
-        // Name Resolution (Fallback Manual DB)
         $personName = 'Candidate';
         if ($contract->person_id) {
             $p = DB::table('persons')->where('id', $contract->person_id)->first();
@@ -573,8 +661,7 @@ class ContractController extends Controller
                 'start_date' => $contract->start_date?->format('Y-m-d'),
                 'end_date' => $contract->end_date?->format('Y-m-d'),
                 'remuneration_json' => $meta,
-                // Include text for select option in edit mode
-                'new_unit_name' => $meta['new_unit_name'] ?? null,
+                'remarks' => $meta['remarks'] ?? null,
                 'can_approve' => $canApprove,
                 'can_sign' => $canSign,
                 'approve_url' => route('recruitment.contracts.approve', $contract),
@@ -595,8 +682,6 @@ class ContractController extends Controller
         $res = $txt ? strtoupper($txt . ' RUPIAH') : '';
         return response()->json(['success'=>true, 'data'=>['amount'=>$val, 'words'=>$res]]);
     }
-
-    // --- HELPER METHODS ---
 
     protected function generateContractNumber(Contract $contract): string
     {
@@ -683,16 +768,16 @@ class ContractController extends Controller
         $get = fn ($key) => $v[$key] ?? ($edit ? ($old[$key] ?? null) : null);
 
         return [
-            'remarks'                         => $get('remarks'),
-            'position_name'                   => $get('position_name'),
-            'salary_amount'                   => $get('salary_amount'),
-            'salary_amount_words'             => $get('salary_amount_words'),
-            'lunch_allowance_daily'           => $get('lunch_allowance_daily'),
-            'lunch_allowance_words'           => $get('lunch_allowance_words'),
-            'allowance_special_amount'        => $get('allowance_special_amount'),
-            'allowance_special_words'         => $get('allowance_special_words'),
-            'allowance_position_amount'       => $get('allowance_position_amount'),
-            'allowance_position_words'        => $get('allowance_position_words'),
+            'remarks'                     => $get('remarks'),
+            'position_name'               => $get('position_name'),
+            'salary_amount'               => $get('salary_amount'),
+            'salary_amount_words'         => $get('salary_amount_words'),
+            'lunch_allowance_daily'       => $get('lunch_allowance_daily'),
+            'lunch_allowance_words'       => $get('lunch_allowance_words'),
+            'allowance_special_amount'    => $get('allowance_special_amount'),
+            'allowance_special_words'     => $get('allowance_special_words'),
+            'allowance_position_amount'   => $get('allowance_position_amount'),
+            'allowance_position_words'    => $get('allowance_position_words'),
             'allowance_communication_amount'  => $get('allowance_communication_amount'),
             'allowance_communication_words'   => $get('allowance_communication_words'),
             'allowance_other_amount'          => $get('allowance_other_amount'),

@@ -132,7 +132,7 @@
     </div>
 
     @can('contract.create')
-    <div id="createContractModal" class="u-modal" hidden aria-modal="true" role="dialog">
+    <div id="createContractModal" class="u-modal" hidden aria-modal="true" role="dialog" style="display:none;align-items:center;justify-content:center;">
         <div class="u-modal__backdrop" data-modal-close></div>
         <div class="u-modal__card u-modal__card--xl">
             <div class="u-modal__head">
@@ -321,7 +321,7 @@
     </div>
     @endcan
 
-    <div id="editContractModal" class="u-modal" hidden>
+    <div id="editContractModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
         <div class="u-modal__backdrop" data-modal-close></div>
         <div class="u-modal__card u-modal__card--xl">
             <div class="u-modal__head"><div class="u-title">Edit Draft</div><button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button></div>
@@ -423,7 +423,7 @@
         </div>
     </div>
     
-    <div id="detailContractModal" class="u-modal" hidden>
+    <div id="detailContractModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
         <div class="u-modal__backdrop" data-modal-close></div>
         <div class="u-modal__card u-modal__card--xl">
             <div class="u-modal__head"><div class="u-title">Detail Kontrak</div><button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button></div>
@@ -473,7 +473,28 @@
         </div>
     </div>
 
-    <div id="signModal" class="u-modal" hidden>
+    <div id="rejectModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
+        <div class="u-modal__backdrop" data-modal-close></div>
+        <div class="u-modal__card u-modal__card--sm">
+            <div class="u-modal__head">
+                <div class="u-title text-danger">Reject Kontrak</div>
+                <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button>
+            </div>
+            <form id="rejectForm" class="u-modal__body u-p-md u-space-y-md">
+                <p class="u-text-sm u-muted">Mohon berikan alasan penolakan kontrak ini.</p>
+                <div>
+                    <label class="u-text-xs u-font-medium d-block u-mb-xs">Alasan Reject</label>
+                    <textarea name="rejection_note" class="u-input" rows="3" required placeholder="Contoh: Gaji tidak sesuai kesepakatan..."></textarea>
+                </div>
+                <div class="u-flex u-justify-end u-gap-sm">
+                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+                    <button type="submit" class="u-btn u-btn--danger">Konfirmasi Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="signModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
         <div class="u-modal__backdrop" data-modal-close></div>
         <div class="u-modal__card u-modal__card--md">
             <div class="u-modal__head"><div class="u-title">Tanda Tangan</div></div>
@@ -504,8 +525,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const csrf = $('meta[name="csrf-token"]')?.content;
     const money = n => 'Rp. ' + (n||0).toString().replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
     const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-    const show = el => el && (el.hidden = false);
-    const hide = el => el && (el.hidden = true);
+    const show = el => { 
+        if(el) {
+             el.hidden = false; 
+             el.style.display = 'flex'; 
+        }
+    };
+    const hide = el => { 
+        if(el) {
+            el.hidden = true; 
+            el.style.display = 'none';
+        }
+    };
     const text = (el, t) => el && (el.textContent = t || '-');
 
     const safeJSON = (v) => {
@@ -543,7 +574,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // CREATE Logic
     const cm = $('#createContractModal');
     const cForm = $('#createContractForm');
     if(cm && cForm) {
@@ -561,19 +591,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const perIdInp = $('#createPersonIdInput');
 
         const switchSection = (mode) => {
-            $$('[data-mode-section]', cForm).forEach(el => el.hidden = el.dataset.modeSection !== (mode === 'extend' ? 'existing' : mode));
+            $$('[data-mode-section]', cForm).forEach(el => {
+                if(el.dataset.modeSection === (mode === 'extend' ? 'existing' : mode)){
+                     el.hidden = false;
+                     el.style.display = 'block';
+                } else {
+                     el.hidden = true;
+                     el.style.display = 'none';
+                }
+            });
             const remun = $('#createRemun');
             if(remun) remun.hidden = (mode === 'terminate');
             
             const pbSpec = $$('[data-mode-show="terminate"]', cForm);
             pbSpec.forEach(el => el.hidden = (mode !== 'terminate'));
 
-            show(mainSec);
+            mainSec.hidden = false;
+            mainSec.style.display = 'block';
         };
 
         const resetSource = () => {
-             hide($('#createExtendPreview'));
-             hide($('#createTermPreview'));
+             const e = $('#createExtendPreview');
+             if(e) { e.hidden = true; e.style.display = 'none'; }
+             const t = $('#createTermPreview');
+             if(t) { t.hidden = true; t.style.display = 'none'; }
         };
 
         on(famSel, 'change', () => {
@@ -584,9 +625,12 @@ document.addEventListener('DOMContentLoaded', () => {
             resetSource();
             
             if(val === 'PKWT') {
-                show(subWrap); hide(mainSec); typeInp.value = '';
+                if(subWrap) { subWrap.hidden = false; subWrap.style.display = 'block'; }
+                if(mainSec) { mainSec.hidden = true; mainSec.style.display = 'none'; }
+                typeInp.value = '';
             } else {
-                hide(subWrap); typeInp.value = (val === 'SPK') ? 'SPK' : 'PB_PENGAKHIRAN';
+                if(subWrap) { subWrap.hidden = true; subWrap.style.display = 'none'; }
+                typeInp.value = (val === 'SPK') ? 'SPK' : 'PB_PENGAKHIRAN';
                 modeInp.value = opt.dataset.mode;
                 switchSection(opt.dataset.mode);
             }
@@ -598,7 +642,9 @@ document.addEventListener('DOMContentLoaded', () => {
             resetSource();
             if(val) {
                 typeInp.value = val; modeInp.value = opt.dataset.mode; switchSection(opt.dataset.mode);
-            } else hide(mainSec);
+            } else {
+                if(mainSec) { mainSec.hidden = true; mainSec.style.display = 'none'; }
+            }
         });
 
         const filterSource = (uId) => {
@@ -624,8 +670,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 perIdInp.value = o.dataset.personId || '';
                 empIdInp.disabled = false; perIdInp.disabled = false;
                 text($('#capName'), o.dataset.fullname);
-                show(p);
-            } else hide(p);
+                if(p) { p.hidden = false; p.style.display = 'block'; }
+            } else {
+                if(p) { p.hidden = true; p.style.display = 'none'; }
+            }
         });
         
         const updateSrcPreview = (sel, pId, pre) => {
@@ -640,13 +688,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 text($(`#${pre}Name`), o.dataset.person);
                 text($(`#${pre}Pos`), o.dataset.pos);
-                show(p);
-            } else if(!srcIdInp.value) hide(p);
+                if(p) { p.hidden = false; p.style.display = 'block'; }
+            } else if(!srcIdInp.value) {
+                if(p) { p.hidden = true; p.style.display = 'none'; }
+            }
         };
         on($('#createSourceExtendSelect'), 'change', function(){ updateSrcPreview(this, '#createExtendPreview', 'cep'); });
         on($('#createSourceTermSelect'), 'change', function(){ updateSrcPreview(this, '#createTermPreview', 'ctp'); });
 
-        // IMPORTANT FIX: Enable inputs on submit
         cForm.onsubmit = (e) => {
             const mode = modeInp.value;
             if ((mode === 'extend' || mode === 'terminate') && !srcIdInp.value) {
@@ -654,24 +703,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Harap pilih Kontrak Dasar!');
                 return false;
             }
-            // ENABLE INPUTS SO THEY ARE SENT TO SERVER
             if(srcIdInp.value) srcIdInp.disabled = false; 
             if(empIdInp.value) empIdInp.disabled = false;
             if(perIdInp.value) perIdInp.disabled = false;
             
-            // If empty, disable them to send NULL
             if(!srcIdInp.value) srcIdInp.disabled = true;
             if(!empIdInp.value) empIdInp.disabled = true;
             if(!perIdInp.value) perIdInp.disabled = true;
         };
     }
 
-    // DETAIL & EDIT - Optimized with Event Delegation
     let currentContract = null;
     
-    // Single event listener for all buttons
     document.addEventListener('click', async (e) => {
-        // Handle Detail Button
+        if (e.target.closest('[data-modal-close]')) {
+             const m = e.target.closest('.u-modal');
+             if(m) hide(m);
+             document.body.classList.remove('modal-open');
+             return;
+        }
+
         const detailBtn = e.target.closest('[data-contract-detail]');
         if(detailBtn) {
             const url = detailBtn.dataset.showUrl;
@@ -694,46 +745,62 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if(meta.new_unit_name) {
                     text($('#detNewUnit'), meta.new_unit_name);
-                    show($('#detNewUnitBox'));
-                } else hide($('#detNewUnitBox'));
+                    const b = $('#detNewUnitBox');
+                    if(b) { b.hidden = false; b.style.display='block'; }
+                } else {
+                    const b = $('#detNewUnitBox');
+                    if(b) { b.hidden = true; b.style.display='none'; }
+                }
 
                 if(d.contract_type === 'PB_PENGAKHIRAN') {
-                     hide($('#detRemunBox')); show($('#detPbBox'));
-                     text($('#detPbVal'), money(meta.pb_compensation_amount));
-                     text($('#detPbValW'), meta.pb_compensation_amount_words);
-                     text($('#detPbEff'), meta.pb_effective_end);
+                      const r = $('#detRemunBox'); if(r) { r.hidden = true; r.style.display='none'; }
+                      const p = $('#detPbBox'); if(p) { p.hidden = false; p.style.display='block'; }
+                      text($('#detPbVal'), money(meta.pb_compensation_amount));
+                      text($('#detPbValW'), meta.pb_compensation_amount_words);
+                      text($('#detPbEff'), meta.pb_effective_end);
                 } else {
-                     show($('#detRemunBox')); hide($('#detPbBox'));
-                     text($('#detSalary'), money(meta.salary_amount));
-                     text($('#detSalaryW'), meta.salary_amount_words);
-                     text($('#detLunch'), money(meta.lunch_allowance_daily));
-                     text($('#detLunchW'), meta.lunch_allowance_words);
-                     
-                     const allws = [];
-                     if(meta.allowance_position_amount) allws.push(['T. Jabatan', meta.allowance_position_amount]);
-                     if(meta.allowance_communication_amount) allws.push(['T. Komunikasi', meta.allowance_communication_amount]);
-                     if(meta.allowance_special_amount) allws.push(['T. Khusus', meta.allowance_special_amount]);
-                     if(meta.allowance_other_amount) allws.push(['Lainnya', meta.allowance_other_amount]);
-                     $('#detAllowances').innerHTML = allws.map(x => `<div><div class="u-text-xs u-muted">${x[0]}</div><div>${money(x[1])}</div></div>`).join('');
+                      const r = $('#detRemunBox'); if(r) { r.hidden = false; r.style.display='block'; }
+                      const p = $('#detPbBox'); if(p) { p.hidden = true; p.style.display='none'; }
+                      text($('#detSalary'), money(meta.salary_amount));
+                      text($('#detSalaryW'), meta.salary_amount_words);
+                      text($('#detLunch'), money(meta.lunch_allowance_daily));
+                      text($('#detLunchW'), meta.lunch_allowance_words);
+                      
+                      const allws = [];
+                      if(meta.allowance_position_amount) allws.push(['T. Jabatan', meta.allowance_position_amount, meta.allowance_position_words]);
+                      if(meta.allowance_communication_amount) allws.push(['T. Komunikasi', meta.allowance_communication_amount, meta.allowance_communication_words]);
+                      if(meta.allowance_special_amount) allws.push(['T. Khusus', meta.allowance_special_amount, meta.allowance_special_words]);
+                      if(meta.allowance_other_amount) allws.push(['Lainnya', meta.allowance_other_amount, meta.allowance_other_words]);
+                      
+                      $('#detAllowances').innerHTML = allws.map(x => `
+                          <div>
+                              <div class="u-text-xs u-muted">${x[0]}</div>
+                              <div>${money(x[1])}</div>
+                              <div class="u-text-xxs u-muted" style="font-style: italic;">${x[2] || ''}</div>
+                          </div>
+                      `).join('');
                 }
 
                 const appBox = $('#detApprovalInfo');
                 if(d.status === 'approved' || d.status === 'rejected' || d.status === 'signed') {
-                     show(appBox); text($('#detAppStatus'), d.status); 
-                } else hide(appBox);
+                      if(appBox) { appBox.hidden = false; appBox.style.display='block'; }
+                      text($('#detAppStatus'), d.status); 
+                } else {
+                      if(appBox) { appBox.hidden = true; appBox.style.display='none'; }
+                }
 
                 const bApp=$('#btnApprove'), bSign=$('#btnSign'), bRej=$('#btnReject');
                 if(bApp) {
-                     bApp.hidden = !d.can_approve;
-                     bApp.onclick = () => handleSignAction(d.approve_url);
+                      bApp.hidden = !d.can_approve;
+                      bApp.onclick = () => handleSignAction(d.approve_url);
                 }
                 if(bRej) bRej.hidden = !d.can_approve; 
                 if(bSign) {
-                     bSign.hidden = !d.can_sign;
-                     bSign.onclick = () => handleSignAction(d.sign_url);
+                      bSign.hidden = !d.can_sign;
+                      bSign.onclick = () => handleSignAction(d.sign_url);
                 }
                 
-                $('#detailContractModal').hidden = false;
+                show($('#detailContractModal'));
                 document.body.classList.add('modal-open');
             } catch(err) {
                 console.error(err);
@@ -742,7 +809,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Handle Edit Button
         const editBtn = e.target.closest('[data-contract-edit]');
         if(editBtn) {
             const url = editBtn.dataset.showUrl;
@@ -784,11 +850,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('#editRemarks').value = d.remarks || '';
                 
                 if(d.contract_type === 'PB_PENGAKHIRAN') {
-                    show($('#editPbFields')); hide($('#editRemun')); hide($('#editDates'));
+                    const f = $('#editPbFields'); if(f) { f.hidden = false; f.style.display='grid'; }
+                    const r = $('#editRemun'); if(r) { r.hidden = true; r.style.display='none'; }
+                    const dt = $('#editDates'); if(dt) { dt.hidden = true; dt.style.display='none'; }
                     $('#editPbEnd').value = meta.pb_effective_end || '';
                     $('#editPbComp').value = meta.pb_compensation_amount || '';
                 } else {
-                    hide($('#editPbFields')); show($('#editRemun')); show($('#editDates'));
+                    const f = $('#editPbFields'); if(f) { f.hidden = true; f.style.display='none'; }
+                    const r = $('#editRemun'); if(r) { r.hidden = false; r.style.display='block'; }
+                    const dt = $('#editDates'); if(dt) { dt.hidden = false; dt.style.display='grid'; }
                 }
                 
                 $('#editCam').checked = !!d.requires_camera;
@@ -796,20 +866,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('#editDraw').checked = !!d.requires_draw_signature;
 
                 bindRupiahAndTerbilang(frm);
-                $('#editContractModal').hidden = false;
+                show($('#editContractModal'));
                 document.body.classList.add('modal-open');
 
-                // --- Handler Submit Edit ---
                 frm.onsubmit = () => {
                     const srcInp = $('#editSourceIdInput');
-                    // Enable if has value, disable if empty (to send NULL)
                     if(srcInp.value) srcInp.disabled = false; else srcInp.disabled = true;
                     
                     const uInp = $('#editUnitIdInput'); 
                     const uSel = $('#editContractUnitSelect'); 
                     if(uSel && uInp) uInp.disabled = true; 
                     
-                    // Enable hidden IDs if they have values
                     const empInp = $('#editEmployeeId');
                     const perInp = $('#editPersonId');
                     if(empInp.value) empInp.disabled = false; else empInp.disabled = true;
@@ -819,6 +886,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(err);
                 alert('Gagal memuat data: ' + err.message);
             }
+        }
+        
+        if (e.target.closest('[data-modal-open]')) {
+             const id = e.target.closest('[data-modal-open]').dataset.modalOpen;
+             const m = document.getElementById(id);
+             if(m) {
+                 show(m);
+                 document.body.classList.add('modal-open');
+             }
         }
     });
 
@@ -833,14 +909,24 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const getPos = (e) => {
             const r = cvs.getBoundingClientRect();
-            return { x: (e.clientX||e.touches[0].clientX)-r.left, y: (e.clientY||e.touches[0].clientY)-r.top };
+            const scaleX = cvs.width / r.width;
+            const scaleY = cvs.height / r.height;
+
+            const clientX = (e.clientX || (e.touches && e.touches[0].clientX));
+            const clientY = (e.clientY || (e.touches && e.touches[0].clientY));
+
+            return {
+                x: (clientX - r.left) * scaleX,
+                y: (clientY - r.top) * scaleY
+            };
         };
+
         const start = (e) => { isDraw=true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x, p.y); e.preventDefault(); };
         const move = (e) => { if(!isDraw)return; const p=getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
         const end = () => { isDraw=false; };
         
-        ['mousedown','touchstart'].forEach(ev=>cvs.addEventListener(ev, start));
-        ['mousemove','touchmove'].forEach(ev=>cvs.addEventListener(ev, move));
+        ['mousedown','touchstart'].forEach(ev=>cvs.addEventListener(ev, start, {passive: false}));
+        ['mousemove','touchmove'].forEach(ev=>cvs.addEventListener(ev, move, {passive: false}));
         ['mouseup','touchend','mouseleave'].forEach(ev=>cvs.addEventListener(ev, end));
         
         $('#clearSign').onclick = () => ctx.clearRect(0,0,cvs.width,cvs.height);
@@ -889,7 +975,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.disabled = false; btn.innerHTML = orig;
             }
         };
-        sm.hidden = false; document.body.classList.add('modal-open');
+        show(sm);
+        document.body.classList.add('modal-open');
     };
     
     on($('#btnReject'), 'click', () => {
@@ -910,7 +997,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => location.reload(), 1000);
             } else alert('Gagal reject: ' + (j.message || 'Unknown error'));
         };
-        rm.hidden = false; document.body.classList.add('modal-open');
+        show(rm);
+        document.body.classList.add('modal-open');
     });
 });
 </script>
