@@ -42,7 +42,7 @@ class ContractController extends Controller
         $searchFilter = $request->input('q');
 
         $contractsQuery = Contract::query()
-            ->with(['unit', 'employee']) 
+            ->with(['unit', 'employee', 'document']) 
             ->when($selectedUnitId, fn ($q) => $q->where('unit_id', $selectedUnitId))
             ->when($isDhc && ! $isSuperadmin, fn ($q) => $q->whereHas('unit', fn ($u) => $u->where('category', 'ENABLER')))
             ->when($isSuperadmin, fn ($q) => $q->whereHas('unit', fn ($u) => $u->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI'])))
@@ -478,11 +478,14 @@ class ContractController extends Controller
                 $doc = new Document();
                 $doc->doc_type = $contract->contract_type;
                 $doc->storage_disk = 'local';
-                $doc->path = 'contracts/' . $contract->id . '.pdf';
+                // FIX: Unique filename with pattern
+                $fileName = ($contract->employee_id ?? 'NA') . '-' . date('Ymd') . '-' . Str::random(5) . '.pdf';
+                $doc->path = 'contracts/' . $fileName;
                 $doc->mime = 'application/pdf';
                 $doc->size_bytes = 0;
                 
                 $metaData = $contract->remuneration_json ?? [];
+                // FIX: Json encode meta
                 $doc->meta = json_encode(is_array($metaData) ? $metaData : []);
                 
                 $doc->person_id = $contract->person_id;
@@ -574,11 +577,14 @@ class ContractController extends Controller
                  $doc = new Document();
                  $doc->doc_type = $contract->contract_type;
                  $doc->storage_disk = 'local';
-                 $doc->path = 'contracts/' . $contract->id . '.pdf';
+                 // FIX: Unique filename with pattern
+                 $fileName = ($contract->employee_id ?? 'NA') . '-' . date('Ymd') . '-' . Str::random(5) . '.pdf';
+                 $doc->path = 'contracts/' . $fileName;
                  $doc->mime = 'application/pdf';
                  $doc->size_bytes = 0;
                  
                  $metaData = $contract->remuneration_json ?? [];
+                 // FIX: Json encode meta
                  $doc->meta = json_encode(is_array($metaData) ? $metaData : []);
                  
                  $doc->person_id = $contract->person_id;
@@ -620,7 +626,7 @@ class ContractController extends Controller
     }
 
     public function show(Contract $contract) {
-        $contract->load('unit');
+        $contract->load(['unit', 'document']);
         $meta = $contract->remuneration_json;
         if(is_string($meta)) $meta = json_decode($meta, true);
 
@@ -639,6 +645,13 @@ class ContractController extends Controller
 
         $canApprove = auth()->user()->can('contract.approve') && $contract->status === 'review';
         $canSign = auth()->user()->can('contract.sign') && $contract->status === 'approved';
+
+        $docUrl = null;
+        if ($contract->document_id && $contract->document) {
+             // Assuming public storage link. If protected, use route to download.
+             // Using basic storage URL for now.
+             $docUrl = Storage::disk($contract->document->storage_disk)->url($contract->document->path);
+        }
 
         return response()->json([
             'success' => true,
@@ -666,6 +679,7 @@ class ContractController extends Controller
                 'approve_url' => route('recruitment.contracts.approve', $contract),
                 'sign_url' => route('recruitment.contracts.sign', $contract),
                 'reject_url' => route('recruitment.contracts.reject', $contract),
+                'doc_url' => $docUrl,
                 'requires_draw_signature' => $contract->requires_draw_signature,
                 'requires_camera' => $contract->requires_camera,
                 'requires_geolocation' => $contract->requires_geolocation,
@@ -802,7 +816,7 @@ class ContractController extends Controller
         if ($n < 2000) return 'seribu ' . $this->terbilangIndonesia($n - 1000);
         if ($n < 1000000) return $this->terbilangIndonesia((int) ($n / 1000)) . ' ribu ' . $this->terbilangIndonesia($n % 1000);
         if ($n < 1000000000) return $this->terbilangIndonesia((int) ($n / 1000000)) . ' juta ' . $this->terbilangIndonesia($n % 1000000);
-        if ($n < 1000000000000) return $this->terbilangIndonesia((int) ($n / 1000000000)) . ' miliar ' . $this->terbilangIndonesia($n % 1000000000);
+        if ($n < 1000000000000) return $this->terbilangIndonesia((int) ($n / 1000000)) . ' miliar ' . $this->terbilangIndonesia($n % 1000000000);
         return (string) $n;
     }
 

@@ -469,6 +469,11 @@
                 <button type="button" id="btnReject" class="u-btn u-btn--danger" hidden>Reject</button>
                 <button type="button" id="btnApprove" class="u-btn u-btn--brand" hidden>Approve</button>
                 <button type="button" id="btnSign" class="u-btn u-btn--primary" hidden>Sign</button>
+                
+                {{-- Tombol Lihat Dokumen (Preview) --}}
+                <a href="#" id="btnPreviewDoc" target="_blank" class="u-btn u-btn--info" hidden>
+                    <i class="fas fa-file-pdf u-mr-xxs"></i> Lihat Dokumen
+                </a>
             </div>
         </div>
     </div>
@@ -696,6 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
         on($('#createSourceExtendSelect'), 'change', function(){ updateSrcPreview(this, '#createExtendPreview', 'cep'); });
         on($('#createSourceTermSelect'), 'change', function(){ updateSrcPreview(this, '#createTermPreview', 'ctp'); });
 
+        // IMPORTANT FIX: Enable inputs on submit
         cForm.onsubmit = (e) => {
             const mode = modeInp.value;
             if ((mode === 'extend' || mode === 'terminate') && !srcIdInp.value) {
@@ -703,19 +709,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Harap pilih Kontrak Dasar!');
                 return false;
             }
+            // ENABLE INPUTS SO THEY ARE SENT TO SERVER
             if(srcIdInp.value) srcIdInp.disabled = false; 
             if(empIdInp.value) empIdInp.disabled = false;
             if(perIdInp.value) perIdInp.disabled = false;
             
+            // If empty, disable them to send NULL
             if(!srcIdInp.value) srcIdInp.disabled = true;
             if(!empIdInp.value) empIdInp.disabled = true;
             if(!perIdInp.value) perIdInp.disabled = true;
         };
     }
 
+    // DETAIL & EDIT - Optimized with Event Delegation
     let currentContract = null;
     
+    // Single event listener for all buttons
     document.addEventListener('click', async (e) => {
+        // Modal Close Button
         if (e.target.closest('[data-modal-close]')) {
              const m = e.target.closest('.u-modal');
              if(m) hide(m);
@@ -723,6 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
 
+        // Handle Detail Button
         const detailBtn = e.target.closest('[data-contract-detail]');
         if(detailBtn) {
             const url = detailBtn.dataset.showUrl;
@@ -789,6 +801,18 @@ document.addEventListener('DOMContentLoaded', () => {
                       if(appBox) { appBox.hidden = true; appBox.style.display='none'; }
                 }
 
+                // Handle Preview Button
+                const btnPreview = $('#btnPreviewDoc');
+                if (btnPreview) {
+                    if (d.doc_url) {
+                        btnPreview.hidden = false;
+                        btnPreview.href = d.doc_url;
+                    } else {
+                        btnPreview.hidden = true;
+                        btnPreview.href = '#';
+                    }
+                }
+
                 const bApp=$('#btnApprove'), bSign=$('#btnSign'), bRej=$('#btnReject');
                 if(bApp) {
                       bApp.hidden = !d.can_approve;
@@ -809,6 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Handle Edit Button
         const editBtn = e.target.closest('[data-contract-edit]');
         if(editBtn) {
             const url = editBtn.dataset.showUrl;
@@ -869,14 +894,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 show($('#editContractModal'));
                 document.body.classList.add('modal-open');
 
+                // --- Handler Submit Edit ---
                 frm.onsubmit = () => {
                     const srcInp = $('#editSourceIdInput');
+                    // Enable if has value, disable if empty (to send NULL)
                     if(srcInp.value) srcInp.disabled = false; else srcInp.disabled = true;
                     
                     const uInp = $('#editUnitIdInput'); 
                     const uSel = $('#editContractUnitSelect'); 
                     if(uSel && uInp) uInp.disabled = true; 
                     
+                    // Enable hidden IDs if they have values
                     const empInp = $('#editEmployeeId');
                     const perInp = $('#editPersonId');
                     if(empInp.value) empInp.disabled = false; else empInp.disabled = true;
@@ -888,6 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
+        // Handle Modal Open Button
         if (e.target.closest('[data-modal-open]')) {
              const id = e.target.closest('[data-modal-open]').dataset.modalOpen;
              const m = document.getElementById(id);
@@ -907,8 +936,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.lineWidth = 2; ctx.strokeStyle = '#000';
         let isDraw = false;
         
+        // --- FIX POINTER ACCURACY ---
         const getPos = (e) => {
             const r = cvs.getBoundingClientRect();
+            // Scale based on visual vs intrinsic size
             const scaleX = cvs.width / r.width;
             const scaleY = cvs.height / r.height;
 
