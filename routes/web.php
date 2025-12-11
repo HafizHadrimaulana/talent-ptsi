@@ -37,6 +37,9 @@ Route::middleware('web')->group(function () {
     Route::post('/ajax/calculate-salary', [SalaryController::class, 'calculate'])
     ->name('api.calculate.salary');
 
+    Route::post('recruitment/project/store', [PrincipalApprovalController::class, 'storeProject'])
+    ->name('recruitment.project.store');
+
     // ====== LOAD INTERNAL / ADMIN ROUTES ======
     require __DIR__ . '/admin.php';
 });

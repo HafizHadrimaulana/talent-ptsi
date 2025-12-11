@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Recruitment;
 
+use App\Models\Project; 
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Models\RecruitmentRequest;
 use Illuminate\Http\Request;
@@ -10,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-// Tambahkan Library Excel
 use App\Exports\RecruitmentRequestExport;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -59,10 +60,6 @@ class PrincipalApprovalController extends Controller
         }
     }
 
-    // =========================================================================
-    //  CORE LOGIC (Refactoring)
-    //  Logika filter asli Anda dipindahkan ke sini agar bisa dipakai Index & Export
-    // =========================================================================
     protected function getBaseQuery($me, $canSeeAll, $selectedUnitId)
     {
         $query = RecruitmentRequest::query();
@@ -105,9 +102,6 @@ class PrincipalApprovalController extends Controller
         return $query;
     }
 
-    // =========================================================================
-    //  METHOD TAMPILAN WEB (INDEX)
-    // =========================================================================
     public function index(Request $r)
     {
         $me = Auth::user();
@@ -121,26 +115,60 @@ class PrincipalApprovalController extends Controller
             ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
             : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
 
-        // Panggil Logic Utama (getBaseQuery)
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
 
-        // Lanjutkan proses tampilan web
         $list = $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc')])
                       ->latest()
                       ->paginate(50)
                       ->withQueryString();
+
+        $projects = Project::orderBy('project_code', 'asc')->get();
+        $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
 
         return view('recruitment.principal-approval.index', [
             'list'           => $list,
             'units'          => $units,
             'canSeeAll'      => $canSeeAll,
             'selectedUnitId' => $selectedUnitId,
+            'projects'       => $projects,  
+            'locations'      => $locations, 
         ]);
     }
 
-    // =========================================================================
-    //  METHOD EXPORT EXCEL (BARU)
-    // =========================================================================
+    public function storeProject(Request $request)
+    {
+        $request->validate([
+            'project_code' => 'required|unique:projects,project_code',
+            'project_name' => 'required|string',
+            'location_id'  => 'required|exists:locations,id',
+            'document'     => 'required|file|mimes:pdf,doc,docx|max:5120', // Max 5MB
+        ]);
+
+        try {
+            $path = null;
+            if ($request->hasFile('document')) {
+                // Simpan di folder 'project_docs' di storage public
+                $path = $request->file('document')->store('project_docs', 'public');
+            }
+
+            $project = Project::create([
+                'project_code'  => $request->project_code,
+                'project_name'  => $request->project_name,
+                'location_id'   => $request->location_id,
+                'document_path' => $path
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $project,
+                'message'=> 'Project berhasil dibuat!'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function exportExcel(Request $r)
     {
         $me = Auth::user();
