@@ -2281,6 +2281,35 @@ document.addEventListener('DOMContentLoaded', function() {
     bindExternalSearch() { /* ... */ }
   };
   page.init();
+
+  const urlParams = new URLSearchParams(window.location.search);
+    const ticketId = urlParams.get('open_ticket_id');
+
+    if (ticketId) {
+        setTimeout(() => {
+            const detailBtn = document.querySelector(`.js-open-detail[data-id="${ticketId}"]`);
+            
+            if (detailBtn) {
+                // Scroll
+                detailBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // efek highlight sejenak (kuning tipis)
+                const row = detailBtn.closest('tr');
+                if(row) {
+                    const originalBg = row.style.backgroundColor;
+                    row.style.transition = "background-color 0.5s ease";
+                    row.style.backgroundColor = "#fef3c7"; // Highlight kuning
+                    setTimeout(() => { row.style.backgroundColor = originalBg; }, 2000);
+                }
+
+                // Klik tombol detail secara otomatis untuk membuka modal
+                detailBtn.click();
+            }
+
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: newUrl}, '', newUrl);
+        }, 800); // Delay 800ms
+    }
 });
 </script>
 @endsection 

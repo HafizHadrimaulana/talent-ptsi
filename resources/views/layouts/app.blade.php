@@ -108,6 +108,69 @@
     <div class="top-actions">
       <div class="dropdown-wrap">
         @auth
+        {{-- Notifikasi Izin Prinsip --}}
+
+        @if(isset($approvalNotifs) && $approvalNotifs->count() > 0)
+          <button id="ipNotifBtn" class="top-btn" type="button" aria-expanded="false" title="Persetujuan Izin Prinsip" style="position: relative;">
+            {{-- Ikon Clipboard/File --}}
+            <i class="fa-solid fa-file-signature" style="font-size: 1.1rem; color: #4f46e5;"></i>
+            {{-- jlh notif --}}
+            <span class="badge" style="color: red;">{{ $approvalNotifs->count() }}</span>
+          </button>
+
+          {{-- Dropdown Content --}}
+          <div id="ipNotifDropdown" class="dropdown" hidden style="width: 320px; right: 0; left: auto;">
+            <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Approval Izin Prinsip</span>
+              <button class="close-btn" type="button" onclick="document.getElementById('ipNotifDropdown').hidden=true">✖</button>
+            </div>
+            
+            <ul class="notif-list" style="max-height: 350px; overflow-y: auto;">
+              @foreach($approvalNotifs as $notif)
+                <li class="notif-item" style="padding: 0;">
+                  <a href="{{ route('recruitment.principal-approval.index', ['open_ticket_id' => $notif->id]) }}" 
+                    style="display: block; padding: 12px 16px; text-decoration: none; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;">
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="font-size: 0.75rem; font-weight: 700; color: #4f46e5; text-transform: uppercase;">
+                          {{ $notif->unit->name ?? 'Unit' }}
+                        </span>
+                        <span style="font-size: 0.7rem; color: #9ca3af;">{{ $notif->created_at->diffForHumans() }}</span>
+                    </div>
+                    
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #1f2937; margin-bottom: 4px; line-height: 1.3;">
+                      {{ $notif->title }}
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                      <span class="u-badge u-badge--xs u-badge--subtle">{{ $notif->request_type }}</span>
+                      <span class="u-badge u-badge--xs u-badge--subtle">{{ $notif->headcount }} Orang</span>
+                    </div>
+                  </a>
+                </li>
+              @endforeach
+            </ul>
+          </div>
+          
+          {{-- Script kecil inline untuk toggle dropdown --}}
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              const btn = document.getElementById('ipNotifBtn');
+              const dd = document.getElementById('ipNotifDropdown');
+              if(btn && dd) {
+                btn.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  // Tutup dropdown lain
+                  document.querySelectorAll('.dropdown').forEach(d => d.hidden = true);
+                  dd.hidden = !dd.hidden;
+                });
+              }
+            });
+          </script>
+        @endif
+      @endauth
+
+      @auth
           @php
             $unreadCount = 0;
             $siteNotifs = collect();
