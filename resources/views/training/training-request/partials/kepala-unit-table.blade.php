@@ -6,7 +6,7 @@
 </div>
 
 <table id="training-table"
-    class="u-table u-table-mobile training-table" data-role="Kepala Unit" data-dt>
+    class="u-table u-table-mobile training-table" data-role="{{ Auth::user()->getRoleNames()->first() }}" data-dt>
     <thead>
         <tr>
             <th>

@@ -99,11 +99,12 @@ class TrainingImportServices
             $this->upsertTrainingReferences($batch);
         }
 
+        $message = "Import selesai. {$processed} baris data unik berhasil diproses "
+         . "dari total {$rowsCount} baris file.";
+
         return [
             "status"         => "success",
             "message"        => $message,
-            "imported_rows"  => $rowsCount,
-            "processed_rows" => $processed,
         ];
     }
 

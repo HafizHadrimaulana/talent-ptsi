@@ -239,9 +239,9 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'delete-lna'])
             ->name('training-request.delete-lna');
         Route::post('training-request/lna/store', [TrainingRequestController::class, 'lnaStore'])
-            ->name('training.lna.store');
-        Route::get('training/get-data-units', [TrainingRequestController::class, 'getDataUnits'])
-            ->name('training.get-data-units');
+            ->name('training-request.lna.store');
+        Route::get('training-request/get-data-units', [TrainingRequestController::class, 'getDataUnits'])
+            ->name('training-request.get-data-units');
 
         //// sdm unit
         Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
@@ -265,21 +265,21 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.reject-training-request');
 
         // Monitoring
-        Route::get('monitoring', fn () => view('training.monitoring.monitoring'))
-            ->middleware('permission:training.view')->name('monitoring');
-        Route::post('import', [TrainingMonitoringController::class,'import'])
-            ->name('import');
+        // Route::get('monitoring', fn () => view('training.monitoring.monitoring'))
+        //     ->middleware('permission:training.view')->name('monitoring');
+        // Route::post('import', [TrainingMonitoringController::class,'import'])
+        //     ->name('import');
         
-        Route::get('list', [TrainingMonitoringController::class,'list'])
-            ->name('list');
-        Route::post('input', [TrainingMonitoringController::class,'input'])
-            ->name('input');
-        Route::get('edit/{id}/get-data', [TrainingMonitoringController::class,'getEditData'])
-            ->name('get-data');
-        Route::post('edit/{id}', [TrainingMonitoringController::class,'update'])
-            ->name('update');
-        Route::delete('delete/{id}', [TrainingMonitoringController::class,'destroy'])
-            ->name('delete');
+        // Route::get('list', [TrainingMonitoringController::class,'list'])
+        //     ->name('list');
+        // Route::post('input', [TrainingMonitoringController::class,'input'])
+        //     ->name('input');
+        // Route::get('edit/{id}/get-data', [TrainingMonitoringController::class,'getEditData'])
+        //     ->name('get-data');
+        // Route::post('edit/{id}', [TrainingMonitoringController::class,'update'])
+        //     ->name('update');
+        // Route::delete('delete/{id}', [TrainingMonitoringController::class,'destroy'])
+        //     ->name('delete');
 
         Route::post('monitoring/{id}/approve', [TrainingMonitoringController::class,'approveStatus'])
             ->name('monitoring.approveStatus');

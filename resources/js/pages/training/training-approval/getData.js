@@ -22,7 +22,7 @@ const TABLE_CONFIGS = {
             
             return data.data.map(item => ({
                 id: item.id,
-                judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
+                // judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
                 nama_peserta: item.employee?.person?.full_name || "-",
                 nik: item.employee?.employee_id || "-",
                 tanggal_mulai: item.start_date,
@@ -39,7 +39,7 @@ const TABLE_CONFIGS = {
     },
     [ROLES.DHC]: {
         apiEndpoint: () => "/training/training-request/get-data-lna",
-        columns: ['no', 'judul_sertifikasi', 'unit_id', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
+        columns: ['no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
         dataMapper: (data) => data.data || [],
         actions: ['edit', 'delete']
     },
@@ -52,7 +52,7 @@ const TABLE_CONFIGS = {
             
             return data.data.map(item => ({
                 id: item.id,
-                judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
+                // judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
                 nama_peserta: item.employee?.person?.full_name || "-",
                 nik: item.employee?.employee_id || "-",
                 tanggal_mulai: item.start_date,
@@ -82,10 +82,10 @@ const TABLE_CONFIGS = {
 };
 
 const DEFAULT_CONFIG = {
-    apiEndpoint: () => "/training/list",
-    columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'status_approval', 'actions'],
+    apiEndpoint: () => "/training/training-request/get-data-lna",
+    columns: ['no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
     dataMapper: (data) => data.data || [],
-    actions: ['details']
+    actions: ['edit', 'delete']
 };
 
 const ACTION_BUTTONS = {
@@ -162,7 +162,7 @@ const COLUMN_RENDERERS = {
         </td>
     `,
 
-    judul_sertifikasi: (item, index, config) => `<td>${item.judul_sertifikasi ?? "-"}</td>`,
+    // judul_sertifikasi: (item, index, config) => `<td>${item.judul_sertifikasi ?? "-"}</td>`,
 
     peserta: (item, index, config) => `
     <td>
@@ -174,11 +174,8 @@ const COLUMN_RENDERERS = {
     `,
 
     tanggal_mulai: (item, index, config) => `<td>${formatDate(item.tanggal_mulai) ?? "-"}</td>`,
-
     tanggal_berakhir: (item, index, config) => `<td>${formatDate(item.tanggal_berakhir) ?? "-"}</td>`,
-
     realisasi_biaya_pelatihan: (item, index, config) => `<td>${formatRupiah(item.realisasi_biaya_pelatihan)}</td>`,
-
     estimasi_total_biaya: (item, index, config) => `<td>${formatRupiah(item.estimasi_total_biaya)}</td>`,
 
     lampiran_penawaran: (item, index, config) => {
@@ -223,7 +220,7 @@ const COLUMN_RENDERERS = {
     status_pegawai: (item, index, config) => `<td>${item.status_pegawai ?? "-"}</td>`,
     jabatan_saat_ini: (item, index, config) => `<td>${item.jabatan_saat_ini ?? "-"}</td>`,
     unit_kerja: (item, index, config) => `<td>${item.unit_kerja ?? "-"}</td>`,
-    judul_sertifikasi: (item, index, config) => `<td>${item.judul_sertifikasi ?? "-"}</td>`,
+    // judul_sertifikasi: (item, index, config) => `<td>${item.judul_sertifikasi ?? "-"}</td>`,
     penyelenggara: (item, index, config) => `<td>${item.penyelenggara ?? "-"}</td>`,
     jumlah_jam: (item, index, config) => `<td>${item.jumlah_jam ?? "-"}</td>`,
     waktu_pelaksanaan: (item, index, config) => `<td>${item.waktu_pelaksanaan ?? "-"}</td>`,
@@ -254,7 +251,12 @@ let perPage = 12;
 let lastUsedConfig = null;
 let lastUsedTableBody = null;
 
-const getTableConfig = (userRole, unitId) => {
+const getTableConfig = (userRole, unitId, tableId) => {
+    console.log('1role', userRole);
+    console.log('1unit', unitId);
+    console.log('1table', TABLE_CONFIGS[userRole]);
+    console.log('tableId', tableId);
+
     const config = TABLE_CONFIGS[userRole] || DEFAULT_CONFIG;
     return {
         ...config,
@@ -339,7 +341,6 @@ function renderPagination(p) {
     });
 }
 
-
 const loadTableData = async (config, tableBody) => {
     try {
         window.lastUsedConfig = config;
@@ -385,9 +386,12 @@ export function initGetDataTable(tableBody, options = {}) {
     }
 
     const userRole = options.userRole || window.currentUserRole;
+    console.log("userRole", userRole);
     const unitId = options.unitId || window.userUnitId;
+    const tableId  = options.tableId  || window.userUnitId;
+    console.log('table id ', tableId);
     
-    const config = getTableConfig(userRole, unitId);
+    const config = getTableConfig(userRole, unitId, tableId);
 
     lastUsedConfig = config;
     lastUsedTableBody = tableBody;
@@ -399,17 +403,4 @@ export function initGetDataTable(tableBody, options = {}) {
     
     // Initialize event handlers
     initializeEventHandlers(tableBody, reloadData);
-}
-
-export function initSDMUnitTable(tableBody) {
-    return initGetDataTable(tableBody, {
-        userRole: "SDM Unit",
-        unitId: window.userUnitId
-    });
-}
-
-export function initDHCTable(tableBody) {
-    return initGetDataTable(tableBody, {
-        userRole: "DHC"
-    });
 }

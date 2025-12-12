@@ -23,20 +23,67 @@ class TrainingRequestController extends Controller
         $this->importService = $importService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         $role = $user->getRoleNames()->first();
+
+        Log::info('user', $user->toArray());
     
+        // ======================================
+        // Privilege "lihat semua unit"
+        // ======================================
+        $hasRoleAll = $user?->hasRole('Superadmin') || $user?->hasRole('DHC');
+
+        // Deteksi Head Office (fleksibel by code/name)
+        $hoUnitId = DB::table('units')
+            ->select('id')
+            ->where(function ($q) {
+                $q->where('code', 'HO')
+                  ->orWhere('code', 'HEADOFFICE')
+                  ->orWhere('name', 'SI Head Office')
+                  ->orWhere('name', 'Head Office')
+                  ->orWhere('name', 'LIKE', '%Head Office%');
+            })
+            ->value('id');
+
+        $isHeadOfficeUser = $hoUnitId && $user?->unit_id == $hoUnitId;
+        $canSeeAll = $hasRoleAll || $isHeadOfficeUser;
+
+        // ======================================
+        // Resolve selected unit (query ?unit_id= )
+        // ======================================
+        $selectedUnitId = null;
+        if ($canSeeAll) {
+            $selectedUnitId = $request->filled('unit_id')
+                ? (int) $request->integer('unit_id')
+                : null; // null = all units
+        } else {
+            $selectedUnitId = (int) ($user?->unit_id);
+        }
+
+        // ======================================
+        // Unit options untuk dropdown
+        // ======================================
+        $unitsQ = DB::table('units')->select('id', 'name')->orderBy('name');
+        $units  = $canSeeAll
+            ? $unitsQ->get()
+            : $unitsQ->where('id', $user?->unit_id)->get();
+        
+            
+        Log::info("Unit ID: " . $selectedUnitId);
+        Log::info("Unit: " . $units);
+
         // mapping role ke table-name
         $tableMap = [
             'DHC'     => 'dhc-unit-table',
             'SDM Unit'     => 'sdm-unit-table',
             'Kepala Unit'  => 'kepala-unit-table',
+            'Superadmin'  => 'kepala-unit-table',
         ];
 
-        Log::info("Role: " . $role);
-        Log::info("Table: " . $tableMap[$role]);
+        Log::info("Role index: " . $role);
+        Log::info("Table index: " . $tableMap[$role]);
     
         // fallback jika role tidak ada dalam map
         $tableView = $tableMap[$role] ?? 'default-table';
@@ -130,8 +177,6 @@ class TrainingRequestController extends Controller
             return response()->json([
                 "status"         => "success",
                 "message"        => $result['message'] ?? 'Import selesai',
-                "imported_rows"  => $result['imported_rows'] ?? 0,
-                "processed_rows" => $result['processed_rows'] ?? 0,
                 "data"           => $result
             ]);
     
@@ -149,13 +194,39 @@ class TrainingRequestController extends Controller
         try {
             $perPage = $request->input('per_page', 12);
             $page = $request->input('page', 1);
-    
-            $data = TrainingReference::orderBy('created_at', 'desc')
+
+            $data = TrainingReference::with('unit') // eager load unit
+                ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
+
+            Log::info("Fetch data training references berhasil.", ["total" => $data->total()]);
+
+            // 👉 mapping supaya unit_name dikirim
+            $mappedItems = $data->items();
+            $mappedItems = array_map(function ($item) {
+                return [
+                    "id" => $item->id,
+                    "judul_sertifikasi" => $item->judul_sertifikasi,
+                    "unit_id" => $item->unit_id,
+                    "unit_kerja" => $item->unit->name ?? "-",
+                    "penyelenggara" => $item->penyelenggara,
+                    "jumlah_jam" => $item->jumlah_jam,
+                    "waktu_pelaksanaan" => $item->waktu_pelaksanaan,
+                    "biaya_pelatihan" => $item->biaya_pelatihan,
+                    "uhpd" => $item->uhpd,
+                    "biaya_akomodasi" => $item->biaya_akomodasi,
+                    "estimasi_total_biaya" => $item->estimasi_total_biaya,
+                    "nama_proyek" => $item->nama_proyek,
+                    "jenis_portofolio" => $item->jenis_portofolio,
+                    "fungsi" => $item->fungsi,
+                    "kuota" => $item->kuota,
+                    "created_at" => $item->created_at,
+                ];
+            }, $mappedItems);
 
             return response()->json([
                 "status" => "success",
-                "data" => $data->items(),
+                "data" => $mappedItems,
                 "pagination" => [
                     "current_page" => $data->currentPage(),
                     "last_page" => $data->lastPage(),
@@ -393,7 +464,14 @@ class TrainingRequestController extends Controller
     public function lnaStore(Request $request) 
     {
         Log::info("Mulai input training request:", $request->all());
-        
+
+        $request->merge([
+            'biaya_pelatihan'      => $this->cleanRupiah($request->biaya_pelatihan),
+            'uhpd'                 => $this->cleanRupiah($request->uhpd),
+            'biaya_akomodasi'      => $this->cleanRupiah($request->biaya_akomodasi),
+            'estimasi_total_biaya' => $this->cleanRupiah($request->estimasi_total_biaya),
+        ]);
+
         try {
             // Validasi sederhana
             $request->validate([
@@ -415,7 +493,7 @@ class TrainingRequestController extends Controller
             // Simpan ke tabel training_reference
             $data = TrainingReference::create([
                 'judul_sertifikasi'      => $request->judul_sertifikasi,
-                'unit'                   => 11,
+                'unit_id'                => $request->unit_id,
                 'penyelenggara'          => $request->penyelenggara,
                 'jumlah_jam'             => $request->jumlah_jam,
                 'waktu_pelaksanaan'      => $request->waktu_pelaksanaan,
@@ -432,7 +510,7 @@ class TrainingRequestController extends Controller
             Log::info("Data training berhasil disimpan.", $data->toArray());
     
             return response()->json([
-                'success' => true,
+                "status" => "success",
                 'message' => 'Data training berhasil disimpan.',
                 'data'    => $data
             ]);
@@ -448,7 +526,12 @@ class TrainingRequestController extends Controller
 
     public function getDataUnits(Request $request) {
         try {
-            $units = Unit::select('id', 'name')->orderBy('name')->get();
+            // Units for selector (label=name, value=id)
+            $units = DB::table('units')
+                ->select('id', 'name')
+                ->orderBy('name', 'asc')
+                ->get();
+            Log::info("Data units:", $units->toArray());
             return response()->json([
                 "status" => "success",
                 "data" => $units
@@ -530,6 +613,8 @@ class TrainingRequestController extends Controller
             ], 500);
         }
     }
+
+    // PRIVATE FUNCTION //
 
     private function saveChunkFile($chunk, $index, $total, $filename)
     {
@@ -656,6 +741,12 @@ class TrainingRequestController extends Controller
 
         Log::info("TrainingRequest {$trainingRequest->id} approved");
 
+    }
+
+    private function cleanRupiah($value)
+    {
+        if (!$value) return 0;
+        return (int) preg_replace('/[^\d]/', '', $value);
     }
 
 }

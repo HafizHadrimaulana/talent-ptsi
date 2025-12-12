@@ -123,7 +123,7 @@ export function initDragDropUpload(modalSelector, role) {
             Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
-                text: res.message ?? "Upload selesai!",
+                text: res.data.message ?? "Upload selesai!",
                 // timer: 2000,
                 // timerProgressBar: true,
                 showConfirmButton: true,

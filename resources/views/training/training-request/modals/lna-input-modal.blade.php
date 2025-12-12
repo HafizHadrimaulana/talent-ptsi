@@ -17,7 +17,7 @@
 
     {{-- Modal Body --}}
     <div class="u-modal__body u-p-md u-space-y-lg">
-      <form id="lna-input-form" method="POST" action="{{ route('training.training.lna.store') }}">
+      <form id="lna-input-form" method="POST" action="{{ route('training.training-request.lna.store') }}">
         @csrf
 
         {{-- Section Title --}}
@@ -39,10 +39,9 @@
             {{-- DROPDOWN UNIT --}}
             <div>
               <label class="font-medium">Unit</label>
-              <select name="unit" class="u-input" >
-                  <option value="">-- Pilih Unit --</option>
-
-              </select>
+                <select name="unit_id" id="select-unit" class="u-input">
+                    <option value="">-- Pilih Unit --</option>
+                </select>
             </div>
 
             {{-- Penyelenggara --}}
@@ -84,7 +83,7 @@
             {{-- Kuota --}}
             <div>
               <label class="font-medium">Kuota</label>
-              <input type="text" name="kuota" class="u-input">
+              <input type="number" name="kuota" class="u-input">
             </div>
 
           </div>

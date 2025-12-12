@@ -33,10 +33,10 @@ export async function initImportHandler(file, role) {
 
             console.log("response import", res);
 
-            if (!res || res.status !== "success") {
-                console.error("Chunk gagal:", res);
-                throw new Error(`Upload gagal pada chunk ${i}`);
-            }
+            // if (!res || res.status !== "success") {
+            //     console.error("Chunk gagal:", res);
+            //     throw new Error(`Upload gagal pada chunk ${i}`);
+            // }
 
             console.log(`Chunk ${i + 1}/${totalChunks} berhasil`);
         }

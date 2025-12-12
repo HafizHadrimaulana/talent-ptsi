@@ -5,52 +5,31 @@ export function initInputHandler(modalSelector) {
     const inputForm = document.querySelector("#add-form");
 
     const biayaHelper = initBiayaHandler(inputForm);
-
-    const judulSelect = inputForm.querySelector(
-        "select[name='judul_sertifikasi']"
-    );
-    const penyelenggara = inputForm.querySelector(
-        "input[name='penyelenggara']"
-    );
+    const judulSelect = inputForm.querySelector( "select[name='judul_sertifikasi']");
+    const penyelenggara = inputForm.querySelector("input[name='penyelenggara']");
     const jumlahJam = inputForm.querySelector("input[name='jumlah_jam']");
-    const jenisPelatihan = inputForm.querySelector(
-        "input[name='jenis_pelatihan']"
-    );
-    const jenisPortofolio = inputForm.querySelector(
-        "input[name='jenis_portofolio']"
-    );
-    const waktuPelaksanaan = inputForm.querySelector(
-        "input[name='waktu_pelaksanaan']"
-    );
+    const jenisPelatihan = inputForm.querySelector("input[name='jenis_pelatihan']");
+    const jenisPortofolio = inputForm.querySelector("input[name='jenis_portofolio']");
+    const waktuPelaksanaan = inputForm.querySelector("input[name='waktu_pelaksanaan']");
     const namaProyek = inputForm.querySelector("input[name='nama_proyek']");
-
-    const biayaPelatihan = inputForm.querySelector(
-        "input[name='biaya_pelatihan']"
-    );
-    const realisasiBiayaPelatihan = inputForm.querySelector(
-        "input[name='realisasi_biaya_pelatihan']"
-    );
+    const biayaPelatihan = inputForm.querySelector("input[name='biaya_pelatihan']");
     const uhpd = inputForm.querySelector("input[name='uhpd']");
-    const biayaAkomodasi = inputForm.querySelector(
-        "input[name='biaya_akomodasi']"
-    );
-    const estimasiTotalBiaya = inputForm.querySelector(
-        "input[name='estimasi_total_biaya']"
-    );
-
-    initBiayaHandler(inputForm);
-
+    const biayaAkomodasi = inputForm.querySelector("input[name='biaya_akomodasi']");
+    const estimasiTotalBiaya = inputForm.querySelector("input[name='estimasi_total_biaya']");
     // const alasan = inputForm.querySelector("input[name='alasan']");
     const startDate = inputForm.querySelector("input[name='start_date']");
     const endDate = inputForm.querySelector("input[name='end_date']");
-
-    let sertifikasiList = [];
-    let pesertaData = [];
 
     const searchInput = document.getElementById("peserta-search");
     const dropdown = document.getElementById("peserta-dropdown");
     const selectedContainer = document.getElementById("peserta-selected");
     const hiddenInput = document.getElementById("peserta-list-hidden");
+
+    initBiayaHandler(inputForm);
+
+    let sertifikasiList = [];
+    let pesertaData = [];
+
 
     let selectedPeserta = [];
 
@@ -148,7 +127,7 @@ export function initInputHandler(modalSelector) {
         dropdown.style.display = "none";
     }
 
-    // ==== UPDATE CHIP & HIDDEN INPUT ====
+    // UPDATE CHIP & HIDDEN INPUT
     function updateSelectedChips() {
         selectedContainer.innerHTML = "";
 
@@ -190,8 +169,7 @@ export function initInputHandler(modalSelector) {
         }
         updateSelectedChips();
     }
-
-    /// END ADD PESERTA
+    // ==== END FUNGSI MEMILIH PESERTA ====
 
     async function loadTrainingReference() {
         const unitId = window.userUnitId;
@@ -442,22 +420,12 @@ export function initInputHandler(modalSelector) {
     }
 
     function initBiayaHandler(inputForm) {
-        console.log("Initializing biaya handler", inputForm);
-        const biayaPelatihan = inputForm.querySelector(
-            "input[name='biaya_pelatihan']"
-        );
+        const biayaPelatihan = inputForm.querySelector("input[name='biaya_pelatihan']");
         const toggleRealisasi = inputForm.querySelector("#toggle-realisasi");
-        const realisasiBiaya = inputForm.querySelector(
-            "input[name='realisasi_biaya_pelatihan']"
-        );
-
+        const realisasiBiaya = inputForm.querySelector("input[name='realisasi_biaya_pelatihan']");
         const uhpd = inputForm.querySelector("input[name='uhpd']");
-        const akomodasi = inputForm.querySelector(
-            "input[name='biaya_akomodasi']"
-        );
-        const total = inputForm.querySelector(
-            "input[name='estimasi_total_biaya']"
-        );
+        const akomodasi = inputForm.querySelector("input[name='biaya_akomodasi']");
+        const total = inputForm.querySelector("input[name='estimasi_total_biaya']");
 
         realisasiBiaya.readOnly = true;
         realisasiBiaya.classList.add("u-input--disabled");

@@ -6,7 +6,7 @@
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
         <div>
           <div class="u-title" id="ip-modal-title">Import Data Excel</div>
-          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Import data pelatihan</div>
+          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Import data</div>
         </div>
       </div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">

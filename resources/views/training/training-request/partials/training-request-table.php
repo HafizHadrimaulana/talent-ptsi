@@ -1,5 +1,5 @@
 <table id="training-request"
-    class="u-table u-table-mobile training-table" data-role="SDM Unit" data-dt>
+    class="u-table u-table-mobile training-table-training" data-role="{{ Auth::user()->getRoleNames()->first() }}" data-dt>
     <thead>
         <tr>
             <th>No</th>
@@ -10,7 +10,7 @@
             <th>Biaya Pelatihan</th>
             <th>Estimasi Total Biaya</th>
             <th>Lampiran Penawaran</th>
-            <th>Status</th>
+            <th>Status</th> 
             <th class="cell-actions">Aksi</th>
         </tr>
     </thead>
