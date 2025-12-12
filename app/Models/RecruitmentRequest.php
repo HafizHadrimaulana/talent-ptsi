@@ -58,7 +58,6 @@ class RecruitmentRequest extends Model
             }
         }
 
-        // fallback: pakai uniqid tambahan JIKA masih collision
         $this->ticket_number = TicketNumberGenerator::generate($unitCode, $createdAt instanceof \DateTimeInterface ? $createdAt : \Carbon\Carbon::parse($createdAt)) . '-' . substr(uniqid(), -6);
         $this->save();
     }
@@ -87,7 +86,6 @@ class RecruitmentRequest extends Model
             return $q->where('unit_id', $user->unit_id);
         }
 
-       
         return $q->whereRaw('1=0');
     }
 }

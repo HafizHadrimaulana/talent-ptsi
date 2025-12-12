@@ -7,19 +7,18 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithEvents; // Tambahkan ini
-use Maatwebsite\Excel\Events\AfterSheet;   // Tambahkan ini
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment; // Tambahkan ini
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithEvents
 {
     protected $query;
     protected $positionsMap;
     
-    // Variabel untuk melacak merge
     protected $mergeData = [];
-    protected $currentRow = 2; // Mulai dari baris 2 (karena baris 1 adalah Header)
+    protected $currentRow = 2;
 
     public function __construct($query, $positionsMap)
     {
@@ -58,10 +57,8 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
         
         $details = $meta['recruitment_details'] ?? [];
 
-        // Hitung berapa baris yang akan digenerate untuk record ini
         $count = (!empty($details) && is_array($details) && count($details) > 0) ? count($details) : 1;
 
-        // Simpan info merge: [baris_mulai, baris_selesai]
         if ($count > 1) {
             $this->mergeData[] = [
                 'start' => $this->currentRow,
@@ -69,7 +66,6 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
             ];
         }
 
-        // Update counter baris saat ini
         $this->currentRow += $count;
 
         // --- GENERATE ROWS ---
@@ -130,14 +126,12 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
                     $start = $range['start'];
                     $end   = $range['end'];
 
-                    // Kolom yang ingin di-merge (A=No Ticket, C=Unit, D=Jenis Permintaan, F=Headcount, G=Jenis Kontrak, H=Status, I=Tanggal)
-                    // Kolom B (Judul) dan E (Posisi) TIDAK di-merge karena isinya beda-beda tiap baris
+                    // setting merge
                     $columnsToMerge = ['A', 'C', 'D', 'H', 'I']; 
 
                     foreach ($columnsToMerge as $col) {
                         $sheet->mergeCells("{$col}{$start}:{$col}{$end}");
                         
-                        // Set alignment ke tengah (vertikal center) agar rapi
                         $sheet->getStyle("{$col}{$start}:{$col}{$end}")
                               ->getAlignment()
                               ->setVertical(Alignment::VERTICAL_CENTER);
