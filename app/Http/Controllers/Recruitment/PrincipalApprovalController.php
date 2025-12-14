@@ -17,24 +17,49 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PrincipalApprovalController extends Controller
 {
+    // Tambahkan method ini di dalam class PrincipalApprovalController
+    protected function getUserJobTitle($userId)
+    {
+        // Ambil data user dulu untuk mendapatkan person_id
+        $user = DB::table('users')->where('id', $userId)->first();
+        
+        if (!$user || empty($user->person_id)) {
+            return null;
+        }
+
+        // Cari Jabatan di tabel employees berdasarkan person_id
+        $jobTitle = DB::table('employees')
+            ->join('positions', 'employees.position_id', '=', 'positions.id')
+            ->where('employees.person_id', $user->person_id) // Gunakan person_id, bukan user_id
+            ->value('positions.name');
+            
+        return $jobTitle;
+    }
     protected function stages(): array
     {
         return [
             ['key' => 'kepala_unit', 'roles' => ['Kepala Unit']],
             ['key' => 'dhc_checker', 'roles' => ['DHC']],
-            ['key' => 'svp_dhc',     'roles' => ['SVP DHC']],
-            ['key' => 'vp_dhc',      'roles' => ['VP DHC']],
+            ['key' => 'avp_hc_ops',  'roles' => ['AVP Human Capital Operation']], 
+            ['key' => 'vp_hc',       'roles' => ['VP Human Capital']],
             ['key' => 'dir_sdm',     'roles' => ['Dir SDM']],
         ];
     }
 
     protected function canSeeAll($user): bool
     {
-        return $user?->hasRole('Superadmin')
-            || $user?->hasRole('DHC')
-            || $user?->hasRole('SVP DHC')
-            || $user?->hasRole('VP DHC')
-            || $user?->hasRole('Dir SDM');
+        if (!$user) return false;
+        
+        // Cek Role & Job Title agar menu muncul
+        $jobTitle = $this->getUserJobTitle($user->id);
+        
+        return $user->hasRole('Superadmin') 
+            || $user->hasRole('DHC') 
+            || $user->hasRole('Dir SDM')
+            || $user->hasRole('AVP Human Capital Operation')
+            || $user->hasRole('VP Human Capital')
+            || $jobTitle === 'AVP Human Capital Operation'
+            || $jobTitle === 'VP Human Capital';
     }
 
     protected function dhcUnitId(): ?int
@@ -65,7 +90,6 @@ class PrincipalApprovalController extends Controller
         $query = RecruitmentRequest::query();
         $tbl = (new RecruitmentRequest())->getTable();
 
-        // Logika Filter Asli Anda (Tidak ada yang dihapus)
         if (!$canSeeAll && $me) {
             $isKepalaUnit = $me->hasRole('Kepala Unit');
 
@@ -177,13 +201,8 @@ class PrincipalApprovalController extends Controller
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null) 
             : (int) ($me?->unit_id);
 
-        // Panggil Logic Utama yang SAMA dengan Index
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
-        
-        // Urutkan data terbaru
-        $query->latest(); 
-
-        // Ambil Map Posisi untuk translate ID -> Nama di Excel
+        $query->latest();     
         $positionsMap = DB::table('positions')->pluck('name', 'id')->toArray();
 
         return Excel::download(
@@ -191,10 +210,6 @@ class PrincipalApprovalController extends Controller
             'Daftar_Izin_Prinsip_' . date('Y-m-d_H-i') . '.xlsx'
         );
     }
-
-    // =========================================================================
-    //  METHOD CRUD LAINNYA (TETAP SAMA)
-    // =========================================================================
 
     public function store(Request $r)
     {
@@ -480,6 +495,7 @@ class PrincipalApprovalController extends Controller
         $stage = $this->stages()[$stageIdx] ?? null;
         if (!$stage) return false;
 
+        // Cek Permission via Role (Spatie)
         $allowed = false;
         foreach ($stage['roles'] as $r) {
             if ($user->hasRole($r)) {
@@ -488,19 +504,32 @@ class PrincipalApprovalController extends Controller
             }
         }
 
+        // Ambil Jabatan User Realtime (Fallback jika Role tidak assigned)
+        $jobTitle = $this->getUserJobTitle($user->id);
+        $cleanJobTitle = trim(strtoupper($jobTitle));
+
+        // --- LOGIC PER STAGE ---
+
+        // Stage 1: Kepala Unit
         if ($stage['key'] === 'kepala_unit') {
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
 
-        if (in_array($stage['key'], ['dhc_checker', 'svp_dhc', 'vp_dhc'])) {
+        // Stage 2: DHC Checker
+        if ($stage['key'] === 'dhc_checker') {
             if ($allowed) return true;
-            
             $isKepalaUnit = $user->hasRole('Kepala Unit');
-            $isKepalaUnitDhc = $isKepalaUnit
-                && $this->dhcUnitId()
-                && ((string) $user->unit_id === (string) $this->dhcUnitId());
-                
-            return $isKepalaUnitDhc;
+            return $isKepalaUnit && $this->dhcUnitId() && ((string) $user->unit_id === (string) $this->dhcUnitId());
+        }
+
+        // Stage 3: AVP Human Capital Operation
+        if ($stage['key'] === 'avp_hc_ops') {
+            return $allowed || ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
+        }
+
+        // Stage 4: VP Human Capital
+        if ($stage['key'] === 'vp_hc') {
+            return $allowed || ($cleanJobTitle === 'VP HUMAN CAPITAL');
         }
         
         return $allowed;
@@ -510,12 +539,16 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         if (!$me) abort(401);
+        
+        $jobTitle = $this->getUserJobTitle($me->id);
 
         if ($me->hasRole('Superadmin') 
             || $me->hasRole('DHC') 
-            || $me->hasRole('SVP DHC') 
-            || $me->hasRole('VP DHC') 
-            || $me->hasRole('Dir SDM')) {
+            || $me->hasRole('Dir SDM')
+            || $me->hasRole('AVP Human Capital Operation') 
+            || $me->hasRole('VP Human Capital')
+            || $jobTitle === 'AVP Human Capital Operation'
+            || $jobTitle === 'VP Human Capital') {
             return;
         }
 

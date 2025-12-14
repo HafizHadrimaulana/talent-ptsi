@@ -153,7 +153,7 @@
 
             // --- 1. LOGIC APPROVAL HISTORY & NOTES ---
             $approvalHistory = [];
-            $roleTitles = ['Kepala Unit', 'DHC', 'SVP DHC', 'VP DHC', 'Dir SDM'];
+            $roleTitles = ['Kepala Unit', 'DHC', 'AVP HC Ops', 'VP Human Capital', 'Dir SDM'];
             
             if ($r->relationLoaded('approvals')) {
                 foreach ($r->approvals as $index => $app) {
@@ -170,15 +170,24 @@
                 }
             }
 
+            $myJobTitle = null;
+            if ($me->person_id) {
+                $myJobTitle = DB::table('employees')
+                    ->join('positions', 'employees.position_id', '=', 'positions.id')
+                    ->where('employees.person_id', $me->person_id)
+                    ->value('positions.name');
+            }
+                
+
             // --- 2. LOGIC VISIBILITY CATATAN ---
             $isRequester = $me->id === $r->created_by || $me->id === $r->requested_by;
             $isApprover = $me->hasRole('Kepala Unit') 
                        || $me->hasRole('DHC') 
-                       || $me->hasRole('SVP DHC') 
-                       || $me->hasRole('VP DHC') 
                        || $me->hasRole('Dir SDM')
                        || $me->hasRole('Superadmin')
-                       || $me->hasRole('SDM Unit');
+                       || $me->hasRole('SDM Unit')
+                       || ($me->hasRole('AVP Human Capital Operation') || $myJobTitle === 'AVP Human Capital Operation')
+                       || ($me->hasRole('VP Human Capital') || $myJobTitle === 'VP Human Capital');
             
             $canViewNotes = $isRequester || $isApprover;
             
@@ -198,8 +207,8 @@
                 'Superadmin'  => $me && $me->hasRole('Superadmin'), 
                 'Kepala Unit' => $me && $me->hasRole('Kepala Unit'), 
                 'DHC'         => $me && $me->hasRole('DHC'), 
-                'SVP DHC'     => $me && $me->hasRole('SVP DHC'),
-                'VP DHC'      => $me && $me->hasRole('VP DHC'),
+                'AVP HC Ops'  => $me && $me->hasRole('AVP Human Capital Operation'), 
+                'VP HC'       => $me && $me->hasRole('VP Human Capital'),
                 'Dir SDM'     => $me && $me->hasRole('Dir SDM') 
             ];
             
@@ -220,8 +229,8 @@
             elseif ($status === 'approved') { $progressText = 'Selesai (Approved Dir SDM)'; $progressStep = $totalStages; }
             elseif ($stageIndex === 0) { $progressText = 'Menunggu Kepala Unit'; $progressStep = 1; }
             elseif ($stageIndex === 1) { $progressText = 'Menunggu DHC';         $progressStep = 2; }
-            elseif ($stageIndex === 2) { $progressText = 'Menunggu SVP DHC';     $progressStep = 3; }
-            elseif ($stageIndex === 3) { $progressText = 'Menunggu VP DHC';      $progressStep = 4; }
+            elseif ($stageIndex === 2) { $progressText = 'Menunggu AVP HC Ops';     $progressStep = 3; }
+            elseif ($stageIndex === 3) { $progressText = 'Menunggu VP HC';      $progressStep = 4; }
             elseif ($stageIndex === 4) { $progressText = 'Menunggu Dir SDM';     $progressStep = 5; }
             else { $progressText = 'In Review'; }
 
@@ -232,11 +241,24 @@
             if(in_array($status, ['in_review','submitted']) && $stageIndex !== null) {
                 if ($meRoles['Superadmin']) { $canStage = true; } 
                 else {
-                    if ($stageIndex === 0) { $canStage = $meRoles['Kepala Unit'] && $sameUnit; } 
-                    elseif ($stageIndex === 1) { $canStage = $meRoles['DHC'] || $isKepalaUnitDHC; } 
-                    elseif ($stageIndex === 2) { $canStage = $meRoles['SVP DHC'] || $isKepalaUnitDHC; } 
-                    elseif ($stageIndex === 3) { $canStage = $meRoles['VP DHC'] || $isKepalaUnitDHC; } 
-                    elseif ($stageIndex === 4) { $canStage = $meRoles['Dir SDM']; }
+                    if ($stageIndex === 0) { 
+                        $canStage = $meRoles['Kepala Unit'] && $sameUnit; 
+                    } 
+                    elseif ($stageIndex === 1) { 
+                        $canStage = $meRoles['DHC'] || $isKepalaUnitDHC; 
+                    } 
+                    elseif ($stageIndex === 2) { 
+                        // Stage 3: AVP HC Ops
+                        $isAvp = $me->hasRole('AVP Human Capital Operation') || ($myJobTitle === 'AVP Human Capital Operation');
+                        $canStage = $isAvp || $isKepalaUnitDHC; 
+                    }
+                    elseif ($stageIndex === 3) { 
+                        // Stage 4: VP Human Capital
+                        $canStage = $meRoles['VP HC'] || $isKepalaUnitDHC; 
+                    } 
+                    elseif ($stageIndex === 4) { 
+                        $canStage = $meRoles['Dir SDM']; 
+                    }
                 }
             }
             
@@ -938,7 +960,6 @@
             // Toggle display antara none dan block
             if (el.style.display === "none" || el.style.display === "") {
                 el.style.display = "block";
-                // Ubah text indikator (opsional, visual saja)
                 const icon = document.getElementById('icon-' + id);
                 if(icon) icon.className = "fas fa-chevron-up u-mr-xs";
             } else {
@@ -956,10 +977,10 @@
         const modal = document.getElementById('confirmationModal');
         const titleEl = document.getElementById('conf-title');
         
-        // 1. Simpan form yang akan di-submit
+        // Simpan form yang akan di-submit
         formToSubmit = btn.closest('form');
 
-        // 2. Sinkronisasi Catatan (PENTING AGAR CATATAN TIDAK HILANG)
+        // Sinkronisasi Catatan agar tidak hilang
         // Ambil nilai dari editor catatan (yang tersimpan di hidden_extended_note)
         const noteEditorValue = document.getElementById('hidden_extended_note').value;
         
@@ -972,37 +993,31 @@
             titleEl.textContent = "Apakah Anda yakin menolak izin prinsip ini?";
         } else {
             // Untuk approve, inputnya adalah hidden_extended_note itu sendiri, jadi aman.
-            // Ubah Teks Judul Popup
             titleEl.textContent = "Apakah Anda yakin menyetujui izin prinsip ini?";
         }
-
-        // 3. Tampilkan Modal
         modal.style.display = 'flex';
     }
 
     // Event Listener untuk Tombol YA dan TIDAK di dalam Popup
     document.addEventListener('DOMContentLoaded', function() {
-        // Tombol YA -> Submit Form
         const btnYes = document.getElementById('btn-conf-yes');
         if(btnYes) {
             btnYes.addEventListener('click', function() {
                 if(formToSubmit) {
-                    formToSubmit.submit(); // Lanjutkan proses asli
+                    formToSubmit.submit();
                 }
                 document.getElementById('confirmationModal').style.display = 'none';
             });
         }
 
-        // Tombol TIDAK -> Tutup Popup saja
         const btnNo = document.getElementById('btn-conf-no');
         if(btnNo) {
             btnNo.addEventListener('click', function() {
                 document.getElementById('confirmationModal').style.display = 'none';
-                formToSubmit = null; // Reset form
+                formToSubmit = null;
             });
         }
     });
-    // -------------------------------
 
   function terbilang(nilai) {
     nilai = Math.floor(Math.abs(nilai));
@@ -1085,11 +1100,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (projectSelect) {
             projectSelect.addEventListener('change', function() {
                 if (this.value === 'NEW') {
-                    // Reset dropdown ke default dulu agar tidak stuck di 'NEW'
                     this.value = ""; 
                     if(projectNameInput) projectNameInput.value = "";
                     
-                    // Buka Modal Project
                     projectForm.reset();
                     if(locSearchInput) locSearchInput.value = "";
                     if(locHiddenInput) locHiddenInput.value = "";
@@ -1098,14 +1111,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // 2. Tombol Close Modal Project
         document.querySelectorAll('.js-close-project-modal').forEach(btn => {
             btn.addEventListener('click', () => {
                 projectModal.style.display = 'none';
             });
         });
 
-        // 3. Handle Submit Form Project via AJAX
         if (projectForm) {
             projectForm.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -1127,18 +1138,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // a. Tutup Modal
                         projectModal.style.display = 'none';
                         
-                        // b. Tambahkan opsi baru ke Dropdown & Pilih otomatis
                         const newOption = document.createElement('option');
                         newOption.value = data.data.project_code;
-                        newOption.text = data.data.project_code + ' - ' + data.data.project_name; // Format tampilan
+                        newOption.text = data.data.project_code + ' - ' + data.data.project_name;
                         newOption.setAttribute('data-nama', data.data.project_name);
                         newOption.selected = true;
 
                         // Masukkan setelah opsi "Buat Project Baru" (index 1) atau di akhir
-                        // Kita masukkan setelah opsi NEW agar rapi
                         const newIdx = 2; 
                         if(projectSelect.options.length >= 2) {
                             projectSelect.add(newOption, 2);
@@ -1146,11 +1154,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             projectSelect.add(newOption);
                         }
 
-                        // c. Trigger event change manual untuk mengisi Nama Project otomatis
                         projectSelect.value = data.data.project_code;
                         if(projectNameInput) projectNameInput.value = data.data.project_name;
-
-                        // d. Alert Sukses (Opsional, pakai library toast Anda jika ada)
                         alert('Project berhasil dibuat!'); 
                     } else {
                         alert('Gagal menyimpan: ' + data.message);
@@ -1498,9 +1503,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
               const type = getActiveContractType();
               const textStatus = (status === 'Final') ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
-              
-              if(type === 'Organik') { if(uraianStatus) uraianStatus.textContent = textStatus; } 
-              else { if(uraianStatusProject) uraianStatusProject.textContent = textStatus; }
+
+              const currentBudget = budgetSourceSelect ? budgetSourceSelect.value : '';
+              if(currentBudget === 'RKAP') { 
+                if(uraianStatus) uraianStatus.textContent = textStatus; 
+              } 
+              else { 
+                if(uraianStatusProject) uraianStatusProject.textContent = textStatus; 
+              }
 
               if(status === 'Final') {
                   btnPreviewPdf.dataset.json = JSON.stringify(dataObj);
@@ -1597,14 +1607,14 @@ document.addEventListener('DOMContentLoaded', function() {
           }
 
           // --- LOGIKA BARU: Tentukan tipe data berdasarkan SECTION YANG VISIBLE ---
-          // Kita cek apakah section RKAP atau Project sedang tampil (berdasarkan Budget Source)
+          // cek apakah section RKAP atau Project sedang tampil (berdasarkan Budget Source)
           const isRkapVisible = rkapSection && rkapSection.style.display !== 'none';
           const isProjectVisible = projectSection && projectSection.style.display !== 'none';
 
           if (isRkapVisible) {
               const selectedRow = form.querySelector('.js-rkap-select.selected');
               const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
-              multiDataStore[idx].type = 'Organik'; // Default logic RKAP biasanya Organik
+              multiDataStore[idx].type = 'Organik';
               multiDataStore[idx].rkap_job = rkapJob;
               multiDataStore[idx].pic_id = picOrganikInput.value;
               multiDataStore[idx].pic_text = picOrganikSearchInput.value;
@@ -1612,7 +1622,7 @@ document.addEventListener('DOMContentLoaded', function() {
               multiDataStore[idx].position_text = positionOrganikSearchInput.value;
           } 
           else if (isProjectVisible) {
-              multiDataStore[idx].type = getActiveContractType(); // Simpan tipe kontrak asli yg dipilih user
+              multiDataStore[idx].type = getActiveContractType();
               multiDataStore[idx].project_code = kodeProjectSelect.value;
               multiDataStore[idx].project_name = namaProjectInput.value;
               multiDataStore[idx].position = positionInput.value; 
@@ -1652,7 +1662,6 @@ document.addEventListener('DOMContentLoaded', function() {
                text = text.charAt(0).toUpperCase() + text.slice(1);
                dynInputs.terbilang.value = text;
           } else if (dynInputs.terbilang) {
-               // Jika data salary kosong, ambil dari data.terbilang jika ada, atau kosongkan
                dynInputs.terbilang.value = data.terbilang || '';
           }
           if(data.cv_filename && dynInputs.cv_preview) {
@@ -1666,7 +1675,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
           const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
 
-          if (type === 'Organik' && data.type === 'Organik') {
+          if (data.rkap_job || (type === 'Organik' && data.type === 'Organik') || (budgetSourceSelect && budgetSourceSelect.value === 'RKAP')) {
               if (data.rkap_job) {
                    const rows = form.querySelectorAll('#rkap-table tbody tr');
                    rows.forEach(tr => {
@@ -1981,7 +1990,7 @@ document.addEventListener('DOMContentLoaded', function() {
                       let styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
                       let borderStyle = 'border-bottom: 1px solid #f3f4f6;';
                       if (isGrand) {
-                          styleVal = 'font-weight: 900; color: #059669; font-size: 1.1em;'; // Warna Hijau Emerald
+                          styleVal = 'font-weight: 900; color: #059669; font-size: 1.1em;'; 
                           styleLbl = 'font-weight: 800; color: #065f46; font-size: 1.0em;';
                           borderStyle = 'border-top: 2px solid #059669; padding-top: 8px; margin-top: 8px;';
                       }
@@ -2272,6 +2281,35 @@ document.addEventListener('DOMContentLoaded', function() {
     bindExternalSearch() { /* ... */ }
   };
   page.init();
+
+  const urlParams = new URLSearchParams(window.location.search);
+    const ticketId = urlParams.get('open_ticket_id');
+
+    if (ticketId) {
+        setTimeout(() => {
+            const detailBtn = document.querySelector(`.js-open-detail[data-id="${ticketId}"]`);
+            
+            if (detailBtn) {
+                // Scroll
+                detailBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // efek highlight sejenak (kuning tipis)
+                const row = detailBtn.closest('tr');
+                if(row) {
+                    const originalBg = row.style.backgroundColor;
+                    row.style.transition = "background-color 0.5s ease";
+                    row.style.backgroundColor = "#fef3c7"; // Highlight kuning
+                    setTimeout(() => { row.style.backgroundColor = originalBg; }, 2000);
+                }
+
+                // Klik tombol detail secara otomatis untuk membuka modal
+                detailBtn.click();
+            }
+
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: newUrl}, '', newUrl);
+        }, 800); // Delay 800ms
+    }
 });
 </script>
 @endsection 
