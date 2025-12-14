@@ -19,6 +19,13 @@
         $currentUnitId = $selectedUnitId ?? $meUnit;
     @endphp
 
+    <style>
+        .modal-card-wide { width: 95% !important; max-width: 900px !important; }
+        .u-grid-2-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 768px) { .u-grid-2-custom { grid-template-columns: 1fr; } }
+        .u-bg-light-soft { background-color: #f9fafb; }
+    </style>
+
     <div class="u-card u-card--glass u-hover-lift">
         <div class="u-flex u-items-center u-justify-between u-mb-md u-stack-mobile">
             <div>
@@ -423,56 +430,75 @@
         </div>
     </div>
     
+    {{-- MODAL DETAIL KONTRAK (Clean Layout) --}}
     <div id="detailContractModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
         <div class="u-modal__backdrop" data-modal-close></div>
-        <div class="u-modal__card u-modal__card--xl">
+        <div class="u-modal__card u-modal__card--xl modal-card-wide">
             <div class="u-modal__head"><div class="u-title">Detail Kontrak</div><button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button></div>
-            <div class="u-modal__body u-p-md u-space-y-md">
-                <div class="u-card u-card--border u-p-sm u-grid-2 u-gap-sm">
-                     <div><div class="u-text-xs u-muted">Nomor</div><div id="detNo">-</div></div>
-                     <div><div class="u-text-xs u-muted">Status</div><div id="detStatus">-</div></div>
-                     <div><div class="u-text-xs u-muted">Unit</div><div id="detUnit">-</div></div>
-                     <div><div class="u-text-xs u-muted">Jenis</div><div id="detType">-</div></div>
+            <div class="u-modal__body u-p-md u-space-y-md u-bg-light-soft">
+                <div class="u-grid-2-custom">
+                    <div class="u-card u-p-md">
+                        <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Info Utama</div>
+                        <div class="u-space-y-xs">
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Nomor</span><span id="detNo" class="u-font-medium">-</span></div>
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Status</span><span id="detStatus">-</span></div>
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Unit</span><span id="detUnit">-</span></div>
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Jenis</span><span id="detType">-</span></div>
+                        </div>
+                    </div>
+                    <div class="u-card u-p-md">
+                         <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Detail Personil</div>
+                         <div class="u-space-y-xs">
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Nama</span><span id="detName" class="u-font-medium">-</span></div>
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Jabatan</span><span id="detPos">-</span></div>
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Periode</span><span id="detPeriod">-</span></div>
+                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Hubungan Kerja</span><span id="detEmpType">-</span></div>
+                         </div>
+                    </div>
                 </div>
-                <div class="u-card u-card--border u-p-sm u-grid-2 u-gap-sm">
-                     <div><div class="u-text-xs u-muted">Nama</div><div id="detName">-</div></div>
-                     <div><div class="u-text-xs u-muted">Jabatan</div><div id="detPos">-</div></div>
-                     <div><div class="u-text-xs u-muted">Periode</div><div id="detPeriod">-</div></div>
-                     <div><div class="u-text-xs u-muted">Hubungan Kerja</div><div id="detEmpType">-</div></div>
-                </div>
-                <div class="u-card u-card--glass u-p-sm u-mt-xs" id="detNewUnitBox" hidden>
+
+                <div class="u-card u-card--glass u-p-sm" id="detNewUnitBox" hidden>
                      <div class="u-text-xs u-muted">Unit Baru: <span id="detNewUnit" class="u-text-dark font-bold">-</span></div>
                 </div>
-                <div id="detRemunBox" class="u-card u-card--soft u-p-sm u-space-y-sm">
-                     <div class="u-text-sm u-font-semibold">Remunerasi</div>
-                     <div class="u-grid-2 u-gap-sm">
-                        <div><div class="u-text-xs u-muted">Gaji Pokok</div><div id="detSalary">-</div><div class="u-text-xxs u-muted" id="detSalaryW"></div></div>
-                        <div><div class="u-text-xs u-muted">Uang Makan</div><div id="detLunch">-</div><div class="u-text-xxs u-muted" id="detLunchW"></div></div>
-                     </div>
-                     <div id="detAllowances" class="u-grid-2 u-gap-sm u-border-t u-pt-sm"></div>
-                </div>
-                <div id="detPbBox" class="u-card u-card--soft u-p-sm u-space-y-sm" hidden>
-                     <div class="u-text-sm u-font-semibold">Kompensasi PB</div>
-                     <div class="u-grid-2 u-gap-sm">
-                         <div><div class="u-text-xs u-muted">Nilai</div><div id="detPbVal">-</div><div class="u-text-xxs u-muted" id="detPbValW"></div></div>
-                         <div><div class="u-text-xs u-muted">Efektif</div><div id="detPbEff">-</div></div>
+
+                <div id="detRemunBox" class="u-card u-p-md">
+                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Rincian Remunerasi</div>
+                     <div class="u-grid-2-custom u-gap-md">
+                        <div class="u-space-y-xs">
+                            <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Gaji Pokok</span><span id="detSalary" class="u-font-medium">-</span></div>
+                            <div class="u-text-xxs u-muted u-text-right" id="detSalaryW"></div>
+                            <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Uang Makan</span><span id="detLunch" class="u-font-medium">-</span></div>
+                            <div class="u-text-xxs u-muted u-text-right" id="detLunchW"></div>
+                        </div>
+                        <div id="detAllowances" class="u-space-y-xs"></div>
                      </div>
                 </div>
+
+                <div id="detPbBox" class="u-card u-p-md" hidden>
+                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Kompensasi Pengakhiran</div>
+                     <div class="u-grid-2 u-gap-md">
+                         <div><div class="u-text-xs u-muted">Nilai Kompensasi</div><div id="detPbVal" class="u-text-lg u-font-bold">-</div><div class="u-text-xxs u-muted" id="detPbValW"></div></div>
+                         <div><div class="u-text-xs u-muted">Efektif Tanggal</div><div id="detPbEff">-</div></div>
+                     </div>
+                </div>
+
                 <div id="detApprovalInfo" class="u-card u-card--glass u-p-sm" hidden>
-                     <div class="u-text-xs u-font-semibold">Approval</div>
-                     <div id="detAppStatus" class="u-text-sm">-</div>
-                     <div id="detAppNote" class="u-text-xs u-muted">-</div>
+                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Status Approval</div>
+                     <div id="detAppStatus" class="u-text-sm u-font-medium">-</div>
+                     <div id="detAppNote" class="u-text-xs u-muted u-mt-xxs">-</div>
                 </div>
             </div>
             <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
                 <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+                
+                {{-- Secure Document Preview Link (FIXED ROUTE) --}}
+                <a href="#" id="btnPreviewDoc" target="_blank" class="u-btn u-btn--outline u-text-brand" hidden>
+                    <i class="fas fa-file-pdf u-mr-xxs"></i> Lihat Dokumen
+                </a>
+
                 <button type="button" id="btnReject" class="u-btn u-btn--danger" hidden>Reject</button>
                 <button type="button" id="btnApprove" class="u-btn u-btn--brand" hidden>Approve</button>
                 <button type="button" id="btnSign" class="u-btn u-btn--primary" hidden>Sign</button>
-                {{-- Secure Document Preview Link --}}
-                <a href="#" id="btnPreviewDoc" target="_blank" class="u-btn u-btn--info" hidden>
-                    <i class="fas fa-file-pdf u-mr-xxs"></i> Lihat Dokumen
-                </a>
             </div>
         </div>
     </div>
@@ -578,6 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // CREATE Logic
     const cm = $('#createContractModal');
     const cForm = $('#createContractForm');
     if(cm && cForm) {
@@ -731,7 +758,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if(detailBtn) {
             const url = detailBtn.dataset.showUrl;
             try {
-                const res = await fetch(url).then(r=>r.json());
+                // FIXED: Better Error Handling (JSON vs HTML)
+                const resRaw = await fetch(url);
+                if (!resRaw.ok) {
+                     const errText = await resRaw.text();
+                     throw new Error(`Server Error (${resRaw.status}): ${errText.substring(0, 100)}...`);
+                }
+                const res = await resRaw.json();
+                
                 if(!res.success) throw new Error(res.message);
                 const d = res.data;
                 currentContract = d;
@@ -777,10 +811,12 @@ document.addEventListener('DOMContentLoaded', () => {
                       if(meta.allowance_other_amount) allws.push(['Lainnya', meta.allowance_other_amount, meta.allowance_other_words]);
                       
                       $('#detAllowances').innerHTML = allws.map(x => `
-                          <div>
-                              <div class="u-text-xs u-muted">${x[0]}</div>
-                              <div>${money(x[1])}</div>
-                              <div class="u-text-xxs u-muted" style="font-style: italic;">${x[2] || ''}</div>
+                          <div class="u-flex u-justify-between u-items-center">
+                              <div>
+                                  <div class="u-text-xs u-muted">${x[0]}</div>
+                                  <div class="u-text-xxs u-muted" style="font-style: italic;">${x[2] || ''}</div>
+                              </div>
+                              <div class="u-font-medium">${money(x[1])}</div>
                           </div>
                       `).join('');
                 }
@@ -793,11 +829,12 @@ document.addEventListener('DOMContentLoaded', () => {
                       if(appBox) { appBox.hidden = true; appBox.style.display='none'; }
                 }
 
+                // --- TOMBOL LIHAT DOKUMEN ---
                 const btnPreview = $('#btnPreviewDoc');
                 if (btnPreview) {
                     if (d.doc_url) {
                         btnPreview.hidden = false;
-                        btnPreview.href = d.doc_url;
+                        btnPreview.href = d.doc_url; // Link aman dari controller
                     } else {
                         btnPreview.hidden = true;
                         btnPreview.href = '#';
@@ -828,7 +865,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if(editBtn) {
             const url = editBtn.dataset.showUrl;
             try {
-                const res = await fetch(url).then(r=>r.json());
+                const resRaw = await fetch(url);
+                if (!resRaw.ok) throw new Error(`Server Error (${resRaw.status})`);
+                const res = await resRaw.json();
+                
                 if(!res.success) throw new Error(res.message);
                 const d = res.data;
                 const meta = safeJSON(d.remuneration_json);

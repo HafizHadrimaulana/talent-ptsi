@@ -4,12 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Database\Factories\ContractFactory;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\User;
 
 class Contract extends Model
 {
@@ -54,62 +52,67 @@ class Contract extends Model
         'requires_geolocation'    => 'boolean',
     ];
 
-    protected static function newFactory()
+    // --- DEFINISI RELASI (WAJIB ADA) ---
+    public function person(): BelongsTo
     {
-        return ContractFactory::new();
+        return $this->belongsTo(\App\Models\Person::class, 'person_id');
     }
 
     public function unit(): BelongsTo
     {
-        return $this->belongsTo(Unit::class, 'unit_id');
+        return $this->belongsTo(\App\Models\Unit::class, 'unit_id');
     }
 
     public function applicant(): BelongsTo
     {
-        return $this->belongsTo(Applicant::class, 'applicant_id');
+        return $this->belongsTo(\App\Models\Applicant::class, 'applicant_id');
     }
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
+        return $this->belongsTo(\App\Models\Employee::class, 'employee_id', 'employee_id');
     }
 
     public function document(): BelongsTo
     {
-        return $this->belongsTo(Document::class, 'document_id');
+        return $this->belongsTo(\App\Models\Document::class, 'document_id');
     }
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(Contract::class, 'parent_contract_id');
+        return $this->belongsTo(\App\Models\Contract::class, 'parent_contract_id');
     }
 
     public function children(): HasMany
     {
-        return $this->hasMany(Contract::class, 'parent_contract_id');
+        return $this->hasMany(\App\Models\Contract::class, 'parent_contract_id');
     }
 
     public function approvals(): MorphMany
     {
-        return $this->morphMany(Approval::class, 'approvable');
+        return $this->morphMany(\App\Models\Approval::class, 'approvable');
     }
 
     public function signatures(): HasMany
     {
-        return $this->hasMany(Signature::class, 'document_id', 'document_id');
+        return $this->hasMany(\App\Models\Signature::class, 'document_id', 'document_id');
     }
 
+    // --- SCOPE UNTUK PERMISSION ---
     public function scopeForViewer(Builder $q, User $user): Builder
     {
         if ($user->hasRole('Superadmin')) {
             return $q;
         }
         if ($user->can('contract.approve')) {
-            return $q->where('unit_id', $user->unit_id)->whereIn('status', ['review', 'approved', 'signed']);
+            // Approver bisa melihat kontrak di unitnya yang statusnya sudah jalan
+            return $q->where('unit_id', $user->unit_id)
+                     ->whereIn('status', ['review', 'approved', 'signed']);
         }
         if ($user->can('contract.view')) {
+            // Staff biasa hanya unit sendiri
             return $q->where('unit_id', $user->unit_id);
         }
-        return $q->whereRaw('1 = 0');
+        return $q->whereRaw('1 = 0'); // Default deny
     }
 }
