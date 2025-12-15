@@ -11,6 +11,7 @@ use App\Models\Signature;
 use App\Models\Approval;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Person;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -43,7 +44,7 @@ class ContractController extends Controller
         $searchFilter = $request->input('q');
 
         $contractsQuery = Contract::query()
-            ->with(['unit', 'employee', 'document']) 
+            ->with(['unit', 'employee', 'document', 'person', 'applicant'])
             ->when($selectedUnitId, fn ($q) => $q->where('unit_id', $selectedUnitId))
             ->when($isDhc && ! $isSuperadmin, fn ($q) => $q->whereHas('unit', fn ($u) => $u->where('category', 'ENABLER')))
             ->when($isSuperadmin, fn ($q) => $q->whereHas('unit', fn ($u) => $u->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI'])))
@@ -106,7 +107,7 @@ class ContractController extends Controller
             )
             ->where('ph.category', 'job')
             ->whereNotNull('ph.end_date')
-            ->whereDate('ph.end_date', '>=', $today) 
+            ->whereDate('ph.end_date', '>=', $today)
             ->whereDate('ph.end_date', '<=', $until);
 
         if (! $canSeeAll && $meUnit) $expiringQuery->where('e.unit_id', $meUnit);
@@ -134,7 +135,7 @@ class ContractController extends Controller
     {
         $me = $request->user();
         abort_unless($me && $me->can('contract.view'), 403);
-        return response()->json(['success' => true, 'data' => []]); 
+        return response()->json(['success' => true, 'data' => []]);
     }
 
     public function store(Request $request)
@@ -152,8 +153,8 @@ class ContractController extends Controller
 
         $validated = $request->validate([
             'contract_type'               => 'required|string',
-            'unit_id'                     => 'required|integer|exists:units,id',
-            'new_unit_id'                 => 'nullable|integer|exists:units,id',
+            'unit_id'                     => 'required|integer',
+            'new_unit_id'                 => 'nullable|integer',
             'applicant_id'                => 'nullable|string',
             'employee_id'                 => 'nullable|string',
             'person_id'                   => 'nullable|string',
@@ -186,7 +187,7 @@ class ContractController extends Controller
             'requires_geolocation'        => 'nullable',
         ]);
 
-        if (! $me->hasRole('Superadmin') && ! $me->hasRole('DHC')) {
+        if (!$me->hasRole('Superadmin') && !$me->hasRole('DHC')) {
             if ((int) $validated['unit_id'] !== (int) $me->unit_id) {
                 return back()->withErrors(['unit_id' => 'Tidak boleh membuat kontrak di luar unit Anda.'])->withInput();
             }
@@ -194,7 +195,6 @@ class ContractController extends Controller
 
         $ct = $validated['contract_type'];
         $isNewFromApplicant = in_array($ct, ['SPK','PKWT_BARU'], true);
-
         $applicant = null;
         if ($isNewFromApplicant && !empty($validated['applicant_id'])) {
             $applicant = Applicant::find($validated['applicant_id']);
@@ -205,10 +205,8 @@ class ContractController extends Controller
             $contract = new Contract();
             $contract->contract_no = null;
             $contract->contract_type = $ct;
-            
             $finalUnitId = !empty($validated['new_unit_id']) ? $validated['new_unit_id'] : $validated['unit_id'];
             $contract->unit_id = $finalUnitId;
-
             $meta = $this->collectMeta($validated);
 
             if ($isNewFromApplicant) {
@@ -222,50 +220,43 @@ class ContractController extends Controller
             } else {
                 $contract->employee_id = $validated['employee_id'] ?? null;
                 $contract->person_id = $validated['person_id'] ?? null;
-                
                 if(empty($contract->person_id) && $contract->employee_id) {
                      $emp = Employee::where('employee_id', $contract->employee_id)->first();
                      if($emp) $contract->person_id = $emp->person_id;
                 }
-                
                 $sourceId = $validated['source_contract_id'] ?? null;
                 if ($sourceId) {
                     $existsInContract = Contract::where('id', $sourceId)->exists();
                     if ($existsInContract) {
                         $contract->parent_contract_id = $sourceId;
                     } else {
-                        $meta['legacy_source_id'] = $sourceId; 
+                        $meta['legacy_source_id'] = $sourceId;
                         $contract->parent_contract_id = null;
                     }
                 }
             }
-            
             if(empty($contract->person_id)) {
                  $contract->person_id = $request->input('person_id');
             }
-
             if (empty($contract->employee_id) && !empty($contract->person_id)) {
                 $emp = Employee::where('person_id', $contract->person_id)->first();
-                if ($emp) {
-                    $contract->employee_id = $emp->employee_id;
-                }
+                if ($emp) $contract->employee_id = $emp->employee_id;
             }
-
             $contract->position_name = isset($validated['position_name']) ? trim($validated['position_name']) : null;
             if (!empty($contract->position_name)) {
                 $posObj = DB::table('positions')->where('name', $contract->position_name)->first();
-                if ($posObj) {
-                    $contract->position_id = $posObj->id;
-                }
+                if ($posObj) $contract->position_id = $posObj->id;
             }
 
             $contract->employment_type = $validated['employment_type'] ?? null;
             $contract->start_date = $validated['start_date'] ?? null;
             $contract->end_date   = $validated['end_date'] ?? null;
-
             $contract->requires_draw_signature = $request->has('requires_draw_signature');
             $contract->requires_camera = $request->has('requires_camera');
             $contract->requires_geolocation = $request->has('requires_geolocation');
+
+            $realName = $this->resolvePersonName($contract);
+            $meta['person_name'] = $realName;
 
             if (!empty($validated['new_unit_id'])) {
                 $meta['new_unit_id'] = $validated['new_unit_id'];
@@ -316,7 +307,6 @@ class ContractController extends Controller
         if ($contract->status !== 'draft') {
             return back()->withErrors('Hanya draft yang bisa diedit.')->withInput();
         }
-
         $request->merge([
             'source_contract_id' => $request->input('source_contract_id') ?: null,
             'unit_id' => $request->input('unit_id') ?: null,
@@ -325,19 +315,18 @@ class ContractController extends Controller
             'employee_id' => $request->input('employee_id') ?: null,
             'person_id' => $request->input('person_id') ?: null,
         ]);
-
         $validated = $request->validate([
             'contract_type'               => 'required|string',
-            'unit_id'                     => 'required|integer|exists:units,id',
-            'new_unit_id'                 => 'nullable|integer|exists:units,id',
+            'unit_id'                     => 'required|integer',
+            'new_unit_id'                 => 'nullable|integer',
             'applicant_id'                => 'nullable|string',
             'employee_id'                 => 'nullable|string',
             'person_id'                   => 'nullable|string',
-            'position_name'               => 'nullable|string|max:191',
-            'employment_type'             => 'nullable|string|max:60',
+            'position_name'               => 'nullable|string',
+            'employment_type'             => 'nullable|string',
             'start_date'                  => 'nullable|date',
-            'end_date'                    => 'nullable|date|after_or_equal:start_date',
-            'remarks'                     => 'nullable|string|max:2000',
+            'end_date'                    => 'nullable|date',
+            'remarks'                     => 'nullable|string',
             'salary_amount'               => 'nullable|string',
             'salary_amount_words'         => 'nullable|string',
             'lunch_allowance_daily'       => 'nullable|string',
@@ -361,14 +350,11 @@ class ContractController extends Controller
             'requires_camera'             => 'nullable',
             'requires_geolocation'        => 'nullable',
         ]);
-
+        
         DB::beginTransaction();
         try {
             $contract->contract_type = $validated['contract_type'];
-            
-            $finalUnitId = !empty($validated['new_unit_id']) ? $validated['new_unit_id'] : $validated['unit_id'];
-            $contract->unit_id = $finalUnitId;
-            
+            $contract->unit_id = !empty($validated['new_unit_id']) ? $validated['new_unit_id'] : $validated['unit_id'];
             $contract->applicant_id = $validated['applicant_id'] ?? null;
             $contract->employee_id = $validated['employee_id'] ?? null;
             $contract->person_id = $validated['person_id'] ?? null;
@@ -377,18 +363,15 @@ class ContractController extends Controller
             if ($sourceId && Contract::where('id', $sourceId)->exists()) {
                 $contract->parent_contract_id = $sourceId;
             }
-            
             if (empty($contract->employee_id) && !empty($contract->person_id)) {
                 $emp = Employee::where('person_id', $contract->person_id)->first();
                 if ($emp) $contract->employee_id = $emp->employee_id;
             }
-            
             $contract->position_name = $validated['position_name'] ?? null;
             if (!empty($contract->position_name)) {
                 $posObj = DB::table('positions')->where('name', $contract->position_name)->first();
                 if ($posObj) $contract->position_id = $posObj->id;
             }
-
             $contract->employment_type = $validated['employment_type'] ?? null;
             $contract->start_date = $validated['start_date'] ?? null;
             $contract->end_date = $validated['end_date'] ?? null;
@@ -397,6 +380,9 @@ class ContractController extends Controller
             $contract->requires_geolocation = $request->has('requires_geolocation');
 
             $meta = $this->collectMeta($validated);
+            $realName = $this->resolvePersonName($contract);
+            $meta['person_name'] = $realName;
+
             if ($sourceId && !Contract::where('id', $sourceId)->exists()) $meta['legacy_source_id'] = $sourceId;
             if (!empty($validated['new_unit_id'])) {
                 $meta['new_unit_id'] = $validated['new_unit_id'];
@@ -421,12 +407,9 @@ class ContractController extends Controller
                     $approval->save();
                 }
             }
-
             $contract->save();
             DB::commit();
-
             return back()->with('success', $validated['submit_action'] === 'submit' ? 'Kontrak disubmit ke Kepala Unit.' : 'Draft diperbarui.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Update Contract Error: ' . $e->getMessage());
@@ -438,18 +421,15 @@ class ContractController extends Controller
     {
         $me = $request->user();
         if (!$me->can('contract.approve')) abort(403);
-
         $needsDraw = (bool) $contract->requires_draw_signature;
         $validated = $request->validate([
-            'note'        => 'nullable|string|max:2000',
+            'note' => 'nullable|string|max:2000',
             'signature_image' => ($needsDraw ? 'required' : 'nullable') . '|string',
         ]);
-
         DB::beginTransaction();
         try {
             $approval = Approval::where('approvable_type', 'contract')
                 ->where('approvable_id', $contract->id)->where('status', 'pending')->first();
-
             if ($approval) {
                 $approval->approver_person_id = $me->person_id;
                 $approval->approver_user_id = $me->id;
@@ -458,36 +438,20 @@ class ContractController extends Controller
                 $approval->decided_at = now();
                 $approval->save();
             }
-
             if (!$contract->contract_no) $contract->contract_no = $this->generateContractNumber($contract);
-            
-            // Generate PDF fisik jika belum ada
             $this->ensureDocumentExists($contract);
-
-            $imgPath = null; $imgHash = null;
-            if (!empty($validated['signature_image'])) {
-                [$imgPath, $imgHash] = $this->storeBase64Image($validated['signature_image'], 'public', 'signatures');
-            }
-            
             $sig = new Signature();
             $sig->document_id = $contract->document_id;
             $sig->signer_person_id = $me->person_id;
             $sig->signer_user_id = $me->id;
             $sig->signer_role = 'Kepala Unit';
             $sig->signature_draw_data = $validated['signature_image'] ?? null;
-            $sig->signature_draw_hash = $imgHash;
-            $sig->geo_lat = $validated['geo_lat'] ?? null;
-            $sig->geo_lng = $validated['geo_lng'] ?? null;
-            if (isset($validated['geo_accuracy'])) $sig->geo_accuracy_m = $validated['geo_accuracy'];
             $sig->signed_at = now();
             $sig->save();
-
             $contract->status = 'approved';
             $contract->save();
-
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Kontrak disetujui.']);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -497,7 +461,6 @@ class ContractController extends Controller
     public function reject(Request $request, Contract $contract) {
         $contract->status = 'draft';
         $contract->save();
-        
         $approval = Approval::where('approvable_type', 'contract')
             ->where('approvable_id', $contract->id)->where('status', 'pending')->first();
         if($approval) {
@@ -513,47 +476,31 @@ class ContractController extends Controller
         $me = $request->user();
         if (!$me->can('contract.sign')) abort(403);
         if ($contract->status !== 'approved') return response()->json(['success'=>false, 'message'=>'Status kontrak tidak valid untuk TTD.'], 422);
-
         $needsDraw = (bool) $contract->requires_draw_signature;
         $validated = $request->validate([
-            'note'        => 'nullable|string|max:2000',
+            'note' => 'nullable|string|max:2000',
             'signature_image' => ($needsDraw ? 'required' : 'nullable') . '|string',
         ]);
-
         DB::beginTransaction();
         try {
             $approval = Approval::where('approvable_type', 'contract')
                 ->where('approvable_id', $contract->id)->where('status', 'approved')->first();
-
             if ($approval) {
                 $approval->status = 'completed';
                 $approval->note = $validated['note'] ?? 'Ditandatangani Kandidat';
                 $approval->save();
             }
-
             $this->ensureDocumentExists($contract);
-            
-            $imgPath = null; $imgHash = null;
-            if (!empty($validated['signature_image'])) {
-                [$imgPath, $imgHash] = $this->storeBase64Image($validated['signature_image'], 'public', 'signatures');
-            }
-
             $sig = new Signature();
             $sig->document_id = $contract->document_id;
             $sig->signer_person_id = $me->person_id;
             $sig->signer_user_id = $me->id;
             $sig->signer_role = 'Kandidat';
             $sig->signature_draw_data = $validated['signature_image'] ?? null;
-            $sig->signature_draw_hash = $imgHash;
-            $sig->geo_lat = $validated['geo_lat'] ?? null;
-            $sig->geo_lng = $validated['geo_lng'] ?? null;
-            if (isset($validated['geo_accuracy'])) $sig->geo_accuracy_m = $validated['geo_accuracy'];
             $sig->signed_at = now();
             $sig->save();
-
             $contract->status = 'signed';
             $contract->save();
-
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Kontrak ditandatangani.']);
         } catch (\Exception $e) {
@@ -566,20 +513,16 @@ class ContractController extends Controller
     {
         $me = $request->user();
         abort_unless($me && $me->can('contract.update'), 403);
-
         if ($contract->status !== 'draft') {
             return response()->json(['success' => false, 'message' => 'Hanya draft yang bisa disubmit.'], 422);
         }
-
         DB::beginTransaction();
         try {
             $contract->status = 'review';
             if (!$contract->contract_no) $contract->contract_no = $this->generateContractNumber($contract);
             $contract->save();
-
             $approval = Approval::where('approvable_type', 'contract')
                 ->where('approvable_id', $contract->id)->where('status', 'pending')->first();
-
             if (!$approval) {
                 $approval = new Approval();
                 $approval->approvable_type = 'contract';
@@ -590,7 +533,6 @@ class ContractController extends Controller
                 $approval->note = 'Kontrak dikirim untuk review dan e-sign Kepala Unit';
                 $approval->save();
             }
-
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Kontrak disubmit ke review.']);
         } catch (\Exception $e) {
@@ -603,153 +545,13 @@ class ContractController extends Controller
     {
         $me = $request->user();
         abort_unless($me && $me->can('contract.view'), 403);
-        
         $this->ensureDocumentExists($contract);
         $doc = $contract->document;
         $filename = basename($doc->path);
-
         return Storage::disk('local')->response($doc->path, $filename, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
-    }
-
-    protected function ensureDocumentExists(Contract $contract) 
-    {
-        $contract->loadMissing(['person', 'applicant', 'unit', 'employee']);
-        $doc = $contract->document;
-
-        $empId = $contract->employee_id ?? 'NA';
-        $ymd   = date('Ymd');
-        $type  = $contract->contract_type;
-        $fileName = "{$type}-{$empId}-{$ymd}.pdf";
-        $path = 'contracts/' . $fileName;
-
-        if (!$doc) {
-            $doc = new Document();
-            $doc->doc_type = $contract->contract_type;
-            $doc->storage_disk = 'local';
-            $doc->person_id = $contract->person_id;
-            $doc->employee_id = $contract->employee_id;
-            $doc->meta = json_encode($contract->remuneration_json ?? []);
-            $doc->path = $path; 
-            $doc->mime = 'application/pdf';
-            $doc->size_bytes = 0;
-            $doc->save();
-            
-            $contract->document_id = $doc->id;
-            $contract->save();
-            $contract->refresh(); 
-        }
-
-        if (basename($doc->path) !== $fileName) {
-             $doc->path = $path;
-             $doc->save();
-        }
-
-        if (!Storage::disk('local')->exists($path)) {
-            if(!Storage::disk('local')->exists('contracts')) {
-                Storage::disk('local')->makeDirectory('contracts');
-            }
-
-            $html = $this->generatePdfHtml($contract);
-            $pdf = Pdf::loadHTML($html);
-            $content = $pdf->output();
-            
-            Storage::disk('local')->put($path, $content);
-            
-            $doc->size_bytes = strlen($content);
-            $doc->mime = 'application/pdf';
-            $doc->save();
-        }
-    }
-
-    protected function generatePdfHtml(Contract $contract)
-    {
-        $meta = $contract->remuneration_json ?? [];
-        if(is_string($meta)) $meta = json_decode($meta, true);
-
-        // Fix Nama: Prioritas Person > Applicant > Meta
-        $namaLengkap = $contract->person->full_name 
-            ?? $contract->applicant->full_name 
-            ?? $contract->person_id 
-            ?? 'Nama Tidak Ditemukan';
-
-        $jabatan = $contract->position_name ?? '-';
-        $unit = $contract->unit->name ?? '-';
-        $gaji = $meta['salary_amount'] ?? '-';
-        $tglMulai = $contract->start_date ? $contract->start_date->format('d M Y') : '-';
-        $tglAkhir = $contract->end_date ? $contract->end_date->format('d M Y') : '-';
-        $noKontrak = $contract->contract_no ?? 'DRAFT';
-
-        // Auto Populate Template Sederhana
-        $title = "PERJANJIAN KERJA";
-        $body = "";
-
-        if ($contract->contract_type === 'SPK') {
-            $title = "SURAT PENAWARAN KERJA (OFFERING LETTER)";
-            $body = "
-                <p>Kepada Yth. <br> <strong>{$namaLengkap}</strong></p>
-                <p>Perihal: Penawaran Kerja</p>
-                <p>Kami menawarkan posisi sebagai berikut:</p>
-                <table border='0' cellpadding='5'>
-                    <tr><td>Jabatan</td><td>: {$jabatan}</td></tr>
-                    <tr><td>Unit Kerja</td><td>: {$unit}</td></tr>
-                    <tr><td>Gaji Pokok</td><td>: {$gaji}</td></tr>
-                    <tr><td>Periode</td><td>: {$tglMulai} s/d {$tglAkhir}</td></tr>
-                </table>
-            ";
-        } elseif ($contract->contract_type === 'PB_PENGAKHIRAN') {
-            $title = "PERJANJIAN BERSAMA (PB)";
-            $body = "
-                <p>Antara PT Surveyor Indonesia dengan <strong>{$namaLengkap}</strong>.</p>
-                <p>Sepakat untuk mengakhiri hubungan kerja terhitung mulai tanggal {$tglAkhir}.</p>
-                <p>Kompensasi Pengakhiran: " . ($meta['pb_compensation_amount'] ?? '-') . "</p>
-            ";
-        } else {
-            $title = "PERJANJIAN KERJA WAKTU TERTENTU (PKWT)";
-            $body = "
-                <p>Nomor: {$noKontrak}</p>
-                <p>Pada hari ini, kami yang bertanda tangan di bawah ini:</p>
-                <ol>
-                    <li>PT Surveyor Indonesia (Pihak Pertama)</li>
-                    <li><strong>{$namaLengkap}</strong> (Pihak Kedua)</li>
-                </ol>
-                <p>Sepakat mengikatkan diri dalam Perjanjian Kerja dengan ketentuan:</p>
-                <table border='0' cellpadding='5'>
-                    <tr><td>Jabatan</td><td>: {$jabatan}</td></tr>
-                    <tr><td>Penempatan</td><td>: {$unit}</td></tr>
-                    <tr><td>Masa Kontrak</td><td>: {$tglMulai} s/d {$tglAkhir}</td></tr>
-                    <tr><td>Gaji</td><td>: {$gaji}</td></tr>
-                </table>
-            ";
-        }
-
-        return "
-            <html>
-            <head>
-                <style>
-                    body { font-family: sans-serif; font-size: 12px; line-height: 1.5; }
-                    h2 { text-align: center; text-decoration: underline; margin-bottom: 20px; }
-                    table { width: 100%; margin-bottom: 20px; }
-                    .footer { margin-top: 50px; text-align: center; }
-                </style>
-            </head>
-            <body>
-                <div style='text-align:right;'>Ref: {$contract->contract_type}</div>
-                <h2>{$title}</h2>
-                {$body}
-                <div class='footer'>
-                    <table width='100%'>
-                        <tr>
-                            <td width='50%' align='center'>PIHAK PERTAMA<br><br><br><br><u>(Tanda Tangan)</u></td>
-                            <td width='50%' align='center'>PIHAK KEDUA<br><br><br><br><u>{$namaLengkap}</u></td>
-                        </tr>
-                    </table>
-                </div>
-            </body>
-            </html>
-        ";
     }
 
     public function show(Contract $contract) {
@@ -757,22 +559,17 @@ class ContractController extends Controller
         $meta = $contract->remuneration_json;
         if(is_string($meta)) $meta = json_decode($meta, true);
 
-        // Fix Nama
-        $personName = 'Candidate';
-        if ($contract->person) {
-            $personName = $contract->person->full_name;
-        } elseif ($contract->applicant) {
-            $personName = $contract->applicant->full_name;
-        } elseif (!empty($meta['person_name'])) {
-            $personName = $meta['person_name'];
+        // LOGIC UTAMA: AMBIL NAMA ASLI
+        $personName = $this->resolvePersonName($contract);
+
+        $docUrl = null;
+        if ($contract->document_id || in_array($contract->status, ['approved', 'signed'])) {
+             $docUrl = route('recruitment.contracts.document', $contract);
         }
         
         $typeCfg = collect(config('recruitment.contract_types', []))->firstWhere('code', $contract->contract_type) ?? [];
-
         $canApprove = auth()->user()->can('contract.approve') && $contract->status === 'review';
         $canSign = auth()->user()->can('contract.sign') && $contract->status === 'approved';
-
-        $docUrl = route('recruitment.contracts.document', $contract);
 
         return response()->json([
             'success' => true,
@@ -784,28 +581,46 @@ class ContractController extends Controller
                 'status' => $contract->status,
                 'unit' => $contract->unit,
                 'unit_id' => $contract->unit_id,
-                'source_contract_id' => $contract->parent_contract_id,
                 'person_name' => $personName, 
                 'person_id' => $contract->person_id,
                 'employee_id' => $contract->employee_id,
                 'applicant_id' => $contract->applicant_id,
                 'position_name' => $contract->position_name,
                 'employment_type' => $contract->employment_type,
-                'start_date' => $contract->start_date?->format('Y-m-d'),
-                'end_date' => $contract->end_date?->format('Y-m-d'),
+                'start_date' => $contract->start_date?->format('d M Y'),
+                'end_date' => $contract->end_date?->format('d M Y'),
                 'remuneration_json' => $meta,
                 'remarks' => $meta['remarks'] ?? null,
                 'can_approve' => $canApprove,
                 'can_sign' => $canSign,
+                'doc_url' => $docUrl,
                 'approve_url' => route('recruitment.contracts.approve', $contract),
                 'sign_url' => route('recruitment.contracts.sign', $contract),
                 'reject_url' => route('recruitment.contracts.reject', $contract),
-                'doc_url' => $docUrl,
                 'requires_draw_signature' => $contract->requires_draw_signature,
                 'requires_camera' => $contract->requires_camera,
                 'requires_geolocation' => $contract->requires_geolocation,
             ]
         ]);
+    }
+    
+    // --- HELPER RESOLVE NAME ---
+    protected function resolvePersonName(Contract $contract) {
+        if ($contract->person && $contract->person->full_name) {
+            return $contract->person->full_name;
+        }
+        if ($contract->applicant && $contract->applicant->full_name) {
+            return $contract->applicant->full_name;
+        }
+        if ($contract->employee && $contract->employee->person && $contract->employee->person->full_name) {
+            return $contract->employee->person->full_name;
+        }
+        $meta = $contract->remuneration_json;
+        if(is_string($meta)) $meta = json_decode($meta, true);
+        if(is_array($meta) && !empty($meta['person_name'])) {
+            return $meta['person_name'];
+        }
+        return 'Nama Tidak Ditemukan';
     }
     
     public function terbilang(Request $request) {
@@ -831,9 +646,7 @@ class ContractController extends Controller
         $year   = $now->format('Y');
         $month = $now->format('m');
         $headCode = $this->resolveHeadCodeForUnit($unit) ?: $defaultHead;
-
         $like = sprintf('%s-%%/%s-%s/%s/%s', $docCode, $unitCode, $month, $headCode, $year);
-
         $last = Contract::where('contract_type', $contract->contract_type)
             ->where('unit_id', $contract->unit_id)
             ->whereYear('created_at', $year)
@@ -842,7 +655,6 @@ class ContractController extends Controller
             ->where('contract_no', 'like', $like)
             ->orderByDesc('contract_no')
             ->value('contract_no');
-
         $seq = 1;
         if ($last) {
             $segments = explode('/', $last);
@@ -851,7 +663,6 @@ class ContractController extends Controller
             $num      = $parts[1] ?? 0;
             $seq      = ((int) $num) + 1;
         }
-
         return sprintf('%s-%03d/%s-%s/%s/%s', $docCode, $seq, $unitCode, $month, $headCode, $year);
     }
 
@@ -859,9 +670,7 @@ class ContractController extends Controller
     {
         $default = config('recruitment.numbering.default_head_code', 'XX');
         if (! $unit) return $default;
-
         $headRoles = config('recruitment.numbering.head_role_names', ['Kepala Unit']);
-
         $user = User::query()
             ->join('model_has_roles as mhr', function ($join) use ($unit) {
                 $join->on('mhr.model_id', '=', 'users.id')
@@ -876,7 +685,6 @@ class ContractController extends Controller
             ->where('users.unit_id', $unit->id)
             ->select('users.*')
             ->first();
-
         $full = null;
         if ($user) {
             if ($user->person_id) {
@@ -887,20 +695,16 @@ class ContractController extends Controller
             }
         }
         if (! $full) return $default;
-
         $parts = preg_split('/\s+/', trim($full));
         if (count($parts) < 1) return $default;
-
         $first = mb_substr($parts[0], 0, 1, 'UTF-8');
         $last  = mb_substr($parts[count($parts) - 1], 0, 1, 'UTF-8');
-
         return mb_strtoupper($first . $last, 'UTF-8');
     }
 
     protected function collectMeta(array $v, bool $edit = false, array $old = []): array
     {
         $get = fn ($key) => $v[$key] ?? ($edit ? ($old[$key] ?? null) : null);
-
         return [
             'remarks'                     => $get('remarks'),
             'position_name'               => $get('position_name'),
@@ -953,5 +757,159 @@ class ContractController extends Controller
         Storage::disk($disk)->put($path, $imageData);
         $hash = hash('sha256', $imageData);
         return [$path, $hash];
+    }
+    
+    // --- TEMPLATE GENERATOR ---
+    protected function ensureDocumentExists(Contract $contract) 
+    {
+        $contract->loadMissing(['person', 'applicant', 'unit', 'employee']);
+        $doc = $contract->document;
+
+        $empId = $contract->employee_id ?? 'NA';
+        $ymd   = date('Ymd');
+        $type  = $contract->contract_type;
+        $fileName = "{$type}-{$empId}-{$ymd}-".uniqid().".pdf";
+        $path = 'contracts/' . $fileName;
+
+        if (!$doc) {
+            $doc = new Document();
+            $doc->doc_type = $contract->contract_type;
+            $doc->storage_disk = 'local';
+            $doc->person_id = $contract->person_id;
+            $doc->employee_id = $contract->employee_id;
+            $doc->meta = json_encode($contract->remuneration_json ?? []);
+            $doc->path = $path; 
+            $doc->mime = 'application/pdf';
+            $doc->size_bytes = 0;
+            $doc->save();
+            
+            $contract->document_id = $doc->id;
+            $contract->save();
+            $contract->refresh(); 
+        }
+
+        if (basename($doc->path) !== $fileName) {
+             $doc->path = $path;
+             $doc->save();
+        }
+
+        if (!Storage::disk('local')->exists($path)) {
+            if(!Storage::disk('local')->exists('contracts')) {
+                Storage::disk('local')->makeDirectory('contracts');
+            }
+
+            $html = $this->generatePdfHtml($contract);
+            $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
+            $content = $pdf->output();
+            
+            Storage::disk('local')->put($path, $content);
+            
+            $doc->size_bytes = strlen($content);
+            $doc->mime = 'application/pdf';
+            $doc->save();
+        }
+    }
+
+    protected function generatePdfHtml(Contract $contract)
+    {
+        $meta = $contract->remuneration_json ?? [];
+        if(is_string($meta)) $meta = json_decode($meta, true);
+        if(!is_array($meta)) $meta = [];
+
+        $namaLengkap = $this->resolvePersonName($contract);
+        $jabatan = $contract->position_name ?? '-';
+        $unit = $contract->unit->name ?? '-';
+        
+        $gaji = $meta['salary_amount'] ? 'Rp ' . number_format((float)preg_replace('/\D/', '', $meta['salary_amount']),0,',','.') : '-';
+        $terbilangGaji = $meta['salary_amount_words'] ?? '';
+
+        Carbon::setLocale('id');
+        $tglMulai = $contract->start_date ? $contract->start_date->translatedFormat('d F Y') : '-';
+        $tglAkhir = $contract->end_date ? $contract->end_date->translatedFormat('d F Y') : '-';
+        $today = Carbon::now()->translatedFormat('d F Y');
+        $hari = Carbon::now()->translatedFormat('l');
+        $noKontrak = $contract->contract_no ?? 'DRAFT';
+
+        $pejabat = 'Lussy Ariani Seba';
+        $jabatanPejabat = 'Direktur Sumber Daya Manusia';
+
+        $css = "<style>body{font-family:'Times New Roman',serif;font-size:11pt;line-height:1.3} .center{text-align:center} .justify{text-align:justify} .bold{font-weight:bold} .upper{text-transform:uppercase} table{width:100%;border-collapse:collapse;margin-bottom:10px} td{vertical-align:top;padding:2px} .ttd-area{margin-top:50px}</style>";
+
+        if ($contract->contract_type === 'SPK') {
+            return "<html><head>$css</head><body>
+            <div style='text-align:right'>Nomor: $noKontrak</div>
+            <div style='text-align:right'>Jakarta, $today</div>
+            <br>
+            <p>Kepada Yth.<br><strong>Sdr/i. $namaLengkap</strong><br>di Tempat</p>
+            <p class='bold'>Perihal: Surat Penawaran Kerja</p>
+            <p class='justify'>Bersama ini kami sampaikan penawaran kerja sebagai pegawai PT Surveyor Indonesia dengan ketentuan:</p>
+            <table>
+                <tr><td width='160'>Jabatan</td><td>: $jabatan</td></tr>
+                <tr><td>Unit Kerja</td><td>: $unit</td></tr>
+                <tr><td>Status</td><td>: Pegawai PKWT</td></tr>
+                <tr><td>Periode</td><td>: $tglMulai s/d $tglAkhir</td></tr>
+                <tr><td>Gaji Pokok</td><td>: <strong>$gaji</strong> ($terbilangGaji) per bulan</td></tr>
+            </table>
+            <p class='justify'>Fasilitas lain: THR, BPJS, dll sesuai ketentuan.</p>
+            <table class='ttd-area'>
+                <tr><td width='50%' class='center'>PT Surveyor Indonesia<br><br><br><br><u><strong>$pejabat</strong></u><br>$jabatanPejabat</td>
+                <td width='50%' class='center'>Penerima<br><br><br><br><u><strong>$namaLengkap</strong></u></td></tr>
+            </table>
+            </body></html>";
+
+        } elseif ($contract->contract_type === 'PB_PENGAKHIRAN') {
+            $kompensasi = $meta['pb_compensation_amount'] ? 'Rp ' . number_format((float)preg_replace('/\D/', '', $meta['pb_compensation_amount']),0,',','.') : '0';
+            $eff = $meta['pb_effective_end'] ? Carbon::parse($meta['pb_effective_end'])->translatedFormat('d F Y') : '-';
+
+            return "<html><head>$css</head><body>
+            <div class='center bold upper'>PERJANJIAN BERSAMA (PB)</div>
+            <div class='center'>NOMOR: $noKontrak</div>
+            <br>
+            <p class='justify'>Pada hari ini, $hari tanggal $today, bertempat di Jakarta, telah dibuat PB antara:</p>
+            <table>
+                <tr><td width='20'>1.</td><td width='120'>Nama</td><td>: $pejabat</td></tr>
+                <tr><td></td><td>Jabatan</td><td>: $jabatanPejabat</td></tr>
+                <tr><td></td><td colspan='2'>Bertindak untuk PT Surveyor Indonesia (PIHAK PERTAMA).</td></tr>
+                <tr><td colspan='3'>&nbsp;</td></tr>
+                <tr><td>2.</td><td>Nama</td><td>: $namaLengkap</td></tr>
+                <tr><td></td><td>Alamat</td><td>: -</td></tr>
+                <tr><td></td><td colspan='2'>Bertindak untuk diri sendiri (PIHAK KEDUA).</td></tr>
+            </table>
+            <p class='justify'>PARA PIHAK sepakat mengakhiri hubungan kerja mulai tanggal <strong>$eff</strong> dengan kompensasi sebesar <strong>$kompensasi</strong>.</p>
+            <table class='ttd-area'>
+                <tr><td width='50%' class='center'>PIHAK PERTAMA<br><br><br><br><u><strong>$pejabat</strong></u></td>
+                <td width='50%' class='center'>PIHAK KEDUA<br><br><br><br><u><strong>$namaLengkap</strong></u></td></tr>
+            </table>
+            </body></html>";
+        } else {
+            // PKWT
+            return "<html><head>$css</head><body>
+            <div class='center bold upper'>PERJANJIAN KERJA WAKTU TERTENTU</div>
+            <div class='center'>NOMOR: $noKontrak</div>
+            <br>
+            <p class='justify'>Pada hari ini, $hari tanggal $today, di Jakarta, yang bertanda tangan di bawah ini:</p>
+            <table>
+                <tr><td width='20'>I.</td><td width='120'>Nama</td><td>: $pejabat</td></tr>
+                <tr><td></td><td>Jabatan</td><td>: $jabatanPejabat</td></tr>
+                <tr><td></td><td colspan='2'>Bertindak untuk PT Surveyor Indonesia (PIHAK PERTAMA).</td></tr>
+                <tr><td colspan='3'>&nbsp;</td></tr>
+                <tr><td>II.</td><td>Nama</td><td>: $namaLengkap</td></tr>
+                <tr><td></td><td>Alamat</td><td>: -</td></tr>
+                <tr><td></td><td colspan='2'>Bertindak untuk diri sendiri (PIHAK KEDUA).</td></tr>
+            </table>
+            <p class='justify'>Sepakat mengikatkan diri dalam PKWT dengan ketentuan:</p>
+            <p class='bold center'>PASAL 1 <br> TUGAS DAN PENEMPATAN</p>
+            <p class='justify'>PIHAK KEDUA bekerja sebagai <strong>$jabatan</strong> di <strong>$unit</strong>.</p>
+            <p class='bold center'>PASAL 2 <br> JANGKA WAKTU</p>
+            <p class='justify'>Mulai tanggal <strong>$tglMulai</strong> sampai dengan <strong>$tglAkhir</strong>.</p>
+            <p class='bold center'>PASAL 3 <br> UPAH</p>
+            <p class='justify'>Gaji pokok sebesar <strong>$gaji</strong> per bulan.</p>
+            
+            <table class='ttd-area'>
+                <tr><td width='50%' class='center'>PIHAK PERTAMA<br><br><br><br><u><strong>$pejabat</strong></u></td>
+                <td width='50%' class='center'>PIHAK KEDUA<br><br><br><br><u><strong>$namaLengkap</strong></u></td></tr>
+            </table>
+            </body></html>";
+        }
     }
 }

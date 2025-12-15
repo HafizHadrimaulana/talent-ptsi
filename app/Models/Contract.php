@@ -52,67 +52,62 @@ class Contract extends Model
         'requires_geolocation'    => 'boolean',
     ];
 
-    // --- DEFINISI RELASI (WAJIB ADA) ---
     public function person(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Person::class, 'person_id');
+        return $this->belongsTo(Person::class, 'person_id');
     }
 
     public function unit(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Unit::class, 'unit_id');
+        return $this->belongsTo(Unit::class, 'unit_id');
     }
 
     public function applicant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Applicant::class, 'applicant_id');
+        return $this->belongsTo(Applicant::class, 'applicant_id');
     }
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Employee::class, 'employee_id', 'employee_id');
+        return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 
     public function document(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Document::class, 'document_id');
+        return $this->belongsTo(Document::class, 'document_id');
     }
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Contract::class, 'parent_contract_id');
+        return $this->belongsTo(Contract::class, 'parent_contract_id');
     }
 
     public function children(): HasMany
     {
-        return $this->hasMany(\App\Models\Contract::class, 'parent_contract_id');
+        return $this->hasMany(Contract::class, 'parent_contract_id');
     }
 
     public function approvals(): MorphMany
     {
-        return $this->morphMany(\App\Models\Approval::class, 'approvable');
+        return $this->morphMany(Approval::class, 'approvable');
     }
 
     public function signatures(): HasMany
     {
-        return $this->hasMany(\App\Models\Signature::class, 'document_id', 'document_id');
+        return $this->hasMany(Signature::class, 'document_id', 'document_id');
     }
 
-    // --- SCOPE UNTUK PERMISSION ---
-    public function scopeForViewer(Builder $q, User $user): Builder
+    public function scopeForViewer(Builder $q, $user): Builder
     {
         if ($user->hasRole('Superadmin')) {
             return $q;
         }
         if ($user->can('contract.approve')) {
-            // Approver bisa melihat kontrak di unitnya yang statusnya sudah jalan
-            return $q->where('unit_id', $user->unit_id)
-                     ->whereIn('status', ['review', 'approved', 'signed']);
+            return $q->where('unit_id', $user->unit_id)->whereIn('status', ['review', 'approved', 'signed']);
         }
         if ($user->can('contract.view')) {
-            // Staff biasa hanya unit sendiri
             return $q->where('unit_id', $user->unit_id);
         }
-        return $q->whereRaw('1 = 0'); // Default deny
+        return $q->whereRaw('1 = 0');
     }
 }
