@@ -141,6 +141,11 @@ class PrincipalApprovalController extends Controller
 
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
 
+        if ($r->filled('open_ticket_id')) {
+            $ticketId = $r->input('open_ticket_id');
+            $query->where('id', $ticketId);
+        }
+
         $list = $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc')])
                       ->latest()
                       ->paginate(50)

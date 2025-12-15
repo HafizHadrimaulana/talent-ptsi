@@ -28,29 +28,22 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // --- LOGIC NOTIFIKASI IZIN PRINSIP (GLOBAL) ---
+        // --- NOTIFIKASI GLOBAL (IZIN PRINSIP, TRAINING, DLL) ---
         View::composer('layouts.app', function ($view) {
-            $pendingNotifications = collect();
+            $allNotifications = collect();
 
             if (Auth::check()) {
                 try {
                     $me = Auth::user();
                     
-                    // 1. Ambil Role User
-                    $isKepalaUnit = $me->hasRole('Kepala Unit');
-                    $isDHC = $me->hasRole('DHC');
-                    $isAVP = $me->hasRole('AVP Human Capital Operation');
-                    $isVP = $me->hasRole('VP Human Capital');
-                    $isDir = $me->hasRole('Dir SDM');
-                    $isSuper = $me->hasRole('Superadmin');
-
-                    // Jika user tidak punya role approval, skip query berat
-                    if ($isKepalaUnit || $isDHC || $isAVP || $isVP || $isDir || $isSuper) {
-
+                    // --- NOTIFIKASI IZIN PRINSIP ---
+                    $approverRoles = ['Kepala Unit', 'DHC', 'AVP Human Capital Operation', 'VP Human Capital', 'Dir SDM', 'Superadmin'];
+                    
+                    if ($me->hasAnyRole($approverRoles)) {
                         $query = RecruitmentRequest::with(['approvals', 'unit'])
                             ->whereIn('status', ['submitted', 'in_review']);
 
-                        if ($isKepalaUnit && !$isSuper) {
+                        if ($me->hasRole('Kepala Unit') && !$me->hasRole('Superadmin')) {
                             $query->where('unit_id', $me->unit_id);
                         }
 
@@ -60,47 +53,66 @@ class AppServiceProvider extends ServiceProvider
 
                             if ($currentApproval) {
                                 $allApprovals = $req->approvals->sortBy('id')->values();
-                                $stageIndex = $allApprovals->search(function($item) use ($currentApproval) {
-                                    return $item->id === $currentApproval->id;
-                                });
-
+                                $stageIndex = $allApprovals->search(fn($item) => $item->id === $currentApproval->id);
                                 $shouldShow = false;
 
-                                if ($isSuper) {
-                                    $shouldShow = true;
-                                } else {
-                                    // Stage 0: Kepala Unit
-                                    if ($stageIndex === 0 && $isKepalaUnit) {
-                                        if ((string)$me->unit_id === (string)$req->unit_id) $shouldShow = true;
-                                    }
-                                    // Stage 1: DHC
-                                    elseif ($stageIndex === 1 && $isDHC) {
-                                        $shouldShow = true;
-                                    }
-                                    // Stage 2: AVP
-                                    elseif ($stageIndex === 2 && $isAVP) {
-                                        $shouldShow = true;
-                                    }
-                                    // Stage 3: VP
-                                    elseif ($stageIndex === 3 && $isVP) {
-                                        $shouldShow = true;
-                                    }
-                                    // Stage 4: Dir SDM
-                                    elseif ($stageIndex === 4 && $isDir) {
-                                        $shouldShow = true;
-                                    }
-                                }
+                                if ($me->hasRole('Superadmin')) $shouldShow = true;
+                                else if ($stageIndex === 0 && $me->hasRole('Kepala Unit') && (string)$me->unit_id === (string)$req->unit_id) $shouldShow = true;
+                                else if ($stageIndex === 1 && $me->hasRole('DHC')) $shouldShow = true;
+                                else if ($stageIndex === 2 && ($me->hasRole('AVP Human Capital Operation') || $me->job_title == 'AVP Human Capital Operation')) $shouldShow = true;
+                                else if ($stageIndex === 3 && ($me->hasRole('VP Human Capital') || $me->job_title == 'VP Human Capital')) $shouldShow = true;
+                                else if ($stageIndex === 4 && $me->hasRole('Dir SDM')) $shouldShow = true;
 
                                 if ($shouldShow) {
-                                    $pendingNotifications->push($req);
+                                    // struktur data notifikasi
+                                    $allNotifications->push((object)[
+                                        'id' => $req->id,
+                                        'type' => 'izin_prinsip',
+                                        'title' => $req->title,
+                                        'subtitle' => $req->unit->name ?? 'Unit',
+                                        'desc' => $req->headcount . ' Orang',
+                                        'status' => 'pending',
+                                        'url' => route('recruitment.principal-approval.index', ['open_ticket_id' => $req->id]),
+                                        'time' => $req->updated_at,
+                                        'icon' => 'fa-file-signature',
+                                        'color_class' => 'text-blue-600'
+                                    ]);
                                 }
                             }
                         }
                     }
-                } catch (\Exception $e) {}
+
+                    // --- 2. NOTIFIKASI TRAINING (CONTOH) ---
+                    // Contoh:
+                    /*
+                    if ($me->hasRole('Training Manager')) {
+                        $trainings = TrainingRequest::where('status', 'pending')->get();
+                        foreach($trainings as $train) {
+                             $allNotifications->push((object)[
+                                'id' => $train->id,
+                                'type' => 'training',
+                                'title' => $train->topic,
+                                'subtitle' => 'Training Request',
+                                'desc' => $train->participant_count . ' Peserta',
+                                'status' => 'pending',
+                                'url' => route('training.approval.index', ['id' => $train->id]),
+                                'time' => $train->created_at,
+                                'icon' => 'fa-chalkboard-user',
+                                'color_class' => 'text-green-600'
+                            ]);
+                        }
+                    }
+                    */
+
+                } catch (\Exception $e) {
+                }
             }
 
-            $view->with('approvalNotifs', $pendingNotifications);
+            // Urutkan notifikasi berdasarkan waktu terbaru
+            $sortedNotifications = $allNotifications->sortByDesc('time');
+
+            // Kirim variabel $globalNotifications ke view layout
+            $view->with('globalNotifications', $sortedNotifications);
         });
     }
 }

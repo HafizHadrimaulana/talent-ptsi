@@ -83,12 +83,6 @@
     (object)['name' => 'Inspektor', 'rkap' => 4, 'existing' => 4],
   ]);
 
-  $projectList = [
-    ['kode' => 'PRJ001', 'nama' => 'Proyek A (Pembangunan X)'],
-    ['kode' => 'PRJ002', 'nama' => 'Proyek B (Maintenance Y)'],
-    ['kode' => 'PRJ003', 'nama' => 'Proyek C (Consulting Z)'],
-  ];
-
   $positions = DB::table('positions')->select('id', 'name')->where('is_active',1)->orderBy('name')->get();
 
   try {
