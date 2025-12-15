@@ -1,4 +1,4 @@
-<table id="training-table"
+<table id="data-lna-table"
     class="u-table u-table-mobile training-table training-table-lna" data-role="{{ Auth::user()->getRoleNames()->first() }}" data-dt>
     <thead>
         <tr>

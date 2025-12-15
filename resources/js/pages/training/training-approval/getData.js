@@ -9,77 +9,114 @@ const ROLES = {
     SDM_UNIT: "SDM Unit",
     DHC: "DHC",
     KEPALA_UNIT: "Kepala Unit",
+    AVP: "AVP",
     VP_DHC: "VP DHC",
     DBS_UNIT: "DBS Unit",
 };
 
 const TABLE_CONFIGS = {
-    [ROLES.SDM_UNIT]: {
-        apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
-        columns: ['checkbox', 'no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'],
-        dataMapper: (data) => {
-            if (data.status !== "success") return [];
-            
-            return data.data.map(item => ({
-                id: item.id,
-                // judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
-                nama_peserta: item.employee?.person?.full_name || "-",
-                nik: item.employee?.employee_id || "-",
-                tanggal_mulai: item.start_date,
-                tanggal_berakhir: item.end_date,
-                realisasi_biaya_pelatihan: item.realisasi_biaya_pelatihan,
-                estimasi_total_biaya: item.estimasi_total_biaya || item.training_reference?.estimasi_total_biaya || "0.00",
-                lampiran_penawaran: item.lampiran_penawaran,
-                status_approval_training: item.status_approval_training,
-                training_reference: item.training_reference,
-                employee: item.employee
-            }));
-        },
-        actions: ['details', 'edit', 'delete']
-    },
-    [ROLES.DHC]: {
+    'data-lna-table': {
         apiEndpoint: () => "/training/training-request/get-data-lna",
-        columns: ['no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
+        columns: [
+            'no','judul_sertifikasi','unit_kerja','penyelenggara',
+            'jumlah_jam','waktu_pelaksanaan','biaya_pelatihan',
+            'uhpd','biaya_akomodasi','estimasi_total_biaya',
+            'nama_proyek','jenis_portofolio','fungsi','kuota','actions'
+        ],
         dataMapper: (data) => data.data || [],
-        actions: ['edit', 'delete']
+        actions: {
+            default: ['details'],
+
+            rules: [
+                {
+                    roles: ['DHC'],
+                    allow: ['edit', 'delete']
+                },
+            ]
+        }
     },
-    [ROLES.KEPALA_UNIT]: {
-        apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
+
+    // 'training-request-table': {
+    //     apiEndpoint: (unitId) =>
+    //         `/training/training-request/${unitId}/get-training-request-list`,
+    //     columns: [
+    //         'checkbox','no','peserta','tanggal_mulai','tanggal_berakhir',
+    //         'realisasi_biaya_pelatihan','estimasi_total_biaya',
+    //         'lampiran_penawaran','status_approval_training','actions'
+    //     ],
+    //     dataMapper: (data) => {
+    //         if (data.status !== "success") return [];
+    //         return data.data.map(item => ({
+    //             id: item.id,
+    //             nama_peserta: item.employee?.person?.full_name,
+    //             nik: item.employee?.employee_id,
+    //             tanggal_mulai: item.start_date,
+    //             tanggal_berakhir: item.end_date,
+    //             estimasi_total_biaya: item.estimasi_total_biaya,
+    //             lampiran_penawaran: item.lampiran_penawaran,
+    //             status_approval_training: item.status_approval_training,
+    //         }));
+    //     },
+    //     actions: {
+    //         default: ['details'],
+    //         rules: [
+    //             {
+    //                 when: status => status === 'in_review_gmvp',
+    //                 allow: ['edit', 'delete']
+    //             }
+    //         ]
+    //     }
+    // },
+
+    'training-request-table': {
+        apiEndpoint: (unitId) =>
+            `/training/training-request/${unitId}/get-training-request-list`,
         columns: ['checkbox', 'no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'],
-        
         dataMapper: (data) => {
             if (data.status !== "success") return [];
-            
-            return data.data.map(item => ({
+            return data.data.map((item) => ({
                 id: item.id,
-                // judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
+                judul_sertifikasi:
+                    item.training_reference?.judul_sertifikasi || "-",
                 nama_peserta: item.employee?.person?.full_name || "-",
                 nik: item.employee?.employee_id || "-",
                 tanggal_mulai: item.start_date,
                 tanggal_berakhir: item.end_date,
                 realisasi_biaya_pelatihan: item.realisasi_biaya_pelatihan,
-                estimasi_total_biaya: item.estimasi_total_biaya || item.training_reference?.estimasi_total_biaya || "0.00",
+                estimasi_total_biaya:
+                    item.estimasi_total_biaya ||
+                    item.training_reference?.estimasi_total_biaya ||
+                    "0.00",
                 lampiran_penawaran: item.lampiran_penawaran,
                 status_approval_training: item.status_approval_training,
                 training_reference: item.training_reference,
-                employee: item.employee
+                employee: item.employee,
             }));
         },
-        actions: ['approve', 'reject']
-    },
-    [ROLES.VP_DHC]: {
-        apiEndpoint: () => "/training/list-approval", 
-        columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'estimasi_total_biaya', 'status_approval_training', 'actions'],
-        dataMapper: (data) => data.data || [],
-        actions: ['approve', 'reject']
-    },
-    [ROLES.DBS_UNIT]: {
-        apiEndpoint: () => "/training/list-approval",
-        columns: ['checkbox', 'no', 'jenis_pelatihan', 'nik', 'nama_peserta', 'unit_kerja', 'judul_sertifikasi', 'penyelenggara', 'estimasi_total_biaya', 'status_approval_training', 'actions'],
-        dataMapper: (data) => data.data || [],
-        actions: ['approve', 'reject']
+        actions: {
+            default: ['details'],
+
+            rules: [
+                {
+                    roles: ['DHC'],
+                    when: status => status === 'in_review_dhc',
+                    allow: ['approve', 'reject']
+                },
+                {
+                    roles: ['SDM Unit'],
+                    when: status => status === 'in_review_gmvp',
+                    allow: ['edit', 'delete']
+                },
+                {
+                    roles: ['Kepala Unit'],
+                    when: status => status === 'in_review_gmvp',
+                    allow: ['approve', 'reject']
+                },
+
+            ]
+        }
     }
-};
+}
 
 const DEFAULT_CONFIG = {
     apiEndpoint: () => "/training/training-request/get-data-lna",
@@ -197,24 +234,6 @@ const COLUMN_RENDERERS = {
         `;
     },
 
-    status_approval: (item, index, config) => {
-        const status = item.status_approval_training;
-        let badgeClass = "u-badge";
-        
-        if (status === "created") badgeClass = "u-badge u-badge--success";
-        if (status === "Ditolak") badgeClass = "u-badge u-badge--danger";
-        if (status === "Menunggu") badgeClass = "u-badge u-badge--warning";
-        if (status === "Draft") badgeClass = "u-badge u-badge--secondary";
-        
-        return `
-            <td>
-                <div class="${badgeClass}">
-                    ${status ?? "-"}
-                </div>
-            </td>
-        `;
-    },
-    
     nik: (item, index, config) => `<td>${item.nik ?? "-"}</td>`,
     nama_peserta: (item, index, config) => `<td>${item.nama_peserta ?? "-"}</td>`,
     status_pegawai: (item, index, config) => `<td>${item.status_pegawai ?? "-"}</td>`,
@@ -231,18 +250,96 @@ const COLUMN_RENDERERS = {
     nama_proyek: (item, index, config) => `<td>${item.nama_proyek ?? "-"}</td>`,
     jenis_portofolio: (item, index, config) => `<td>${item.jenis_portofolio ?? "-"}</td>`,
     fungsi: (item, index, config) => `<td>${item.fungsi ?? "-"}</td>`,
-    
+
+    status_approval_training: (item, index, config) => {
+        const status = item.status_approval_training;
+
+        const STATUS_STYLE = {
+            created: {
+                label: "Created",
+                style: "background:#E5E7EB;color:#374151;"
+            },
+            in_review_dhc: {
+                label: "In Review DHC",
+                style: "background:#DBEAFE;color:#1E40AF;"
+            },
+            in_review_gmvp: {
+                label: "In Review GM/VP",
+                style: "background:#FEF3C7;color:#92400E;"
+            },
+            in_review_avpdhc: {
+                label: "In Review AVP DHC",
+                style: "background:#FWE7F3;color:#9D174D;"
+            },
+            in_review_vpdhc: {
+                label: "In Review VP DHC",
+                style: "background:#FCE7F3;color:#9D174D;"
+            },
+        };
+
+        if (!status || !STATUS_STYLE[status]) {
+            return `<td class="text-center">-</td>`;
+        }
+
+        const { label, style } = STATUS_STYLE[status];
+
+        return `
+            <td class="text-center">
+                <span
+                    style="
+                        display:inline-block;
+                        padding:4px 10px;
+                        border-radius:9999px;
+                        font-size:12px;
+                        font-weight:600;
+                        white-space:nowrap;
+                        ${style}
+                    "
+                >
+                    ${label}
+                </span>
+            </td>
+        `;
+    },
+
     actions: (item, index, config) => {
-        const buttons = config.actions.map(action => {
-            const buttonConfig = ACTION_BUTTONS[action];
-            return buttonConfig ? 
-                `<button class="${buttonConfig.class}" data-action="${action}" data-id="${item.id}">
-                    ${buttonConfig.text}
-                </button>` : '';
-        }).filter(Boolean).join('');
-        
-        return `<td class="cell-actions text-center">${buttons}</td>`;
+        const actions = resolveActions(config, item);
+
+        const finalActions = actions.length ? actions : ['details'];
+
+
+        const buttons = finalActions
+            .map(action => {
+                const buttonConfig = ACTION_BUTTONS[action];
+                if (!buttonConfig) {
+                    return null;
+                }
+
+                return `
+                    <button
+                        class="${buttonConfig.class}"
+                        data-action="${action}"
+                        data-id="${item.id}"
+                    >
+                        ${buttonConfig.text}
+                    </button>
+                `;
+            })
+            .join('');
+
+        if (!buttons) {
+            return `<td class="cell-actions text-center">-</td>`;
+        }
+
+        return `
+            <td class="cell-actions text-center">
+                <div class="u-flex u-justify-center u-gap-sm">
+                    ${buttons}
+                </div>
+            </td>
+        `;
     }
+
 };
 
 let currentPage = 1;
@@ -251,17 +348,50 @@ let perPage = 12;
 let lastUsedConfig = null;
 let lastUsedTableBody = null;
 
-const getTableConfig = (userRole, unitId, tableId) => {
-    console.log('1role', userRole);
-    console.log('1unit', unitId);
-    console.log('1table', TABLE_CONFIGS[userRole]);
-    console.log('tableId', tableId);
-
+const getTableConfig = (userRole, unitId) => {
     const config = TABLE_CONFIGS[userRole] || DEFAULT_CONFIG;
     return {
         ...config,
         apiUrl: (currentPage, perPage) => config.apiEndpoint(unitId) + `?page=${currentPage}&per_page=${perPage}`
     };
+};
+
+const resolveActions = (config, item) => {
+    const role = window.currentUserRole;
+
+    // legacy
+    if (Array.isArray(config.actions)) {
+        return config.actions;
+    }
+
+    if (typeof config.actions === 'object') {
+        let actions = config.actions.default || [];
+
+        if (Array.isArray(config.actions.rules)) {
+            for (const rule of config.actions.rules) {
+
+                // === CHECK ROLE (jika ada) ===
+                if (Array.isArray(rule.roles) && !rule.roles.includes(role)) {
+                    continue;
+                }
+
+                // === CHECK STATUS (jika ada) ===
+                if (typeof rule.when === 'function') {
+                    if (!rule.when(item.status_approval_training)) {
+                        continue;
+                    }
+                }
+
+                // RULE MATCH → OVERRIDE
+                actions = rule.allow;
+                break;
+            }
+        }
+
+        return actions;
+    }
+
+    return [];
 };
 
 const renderEmptyState = (colspan) => {
@@ -380,22 +510,23 @@ const initializeEventHandlers = (tableBody, reloadFunction) => {
 };
 
 export function initGetDataTable(tableBody, options = {}) {
-    if (!tableBody) {
-        console.error("Table body element is required");
+    const tableId = options.tableId || tableBody.closest('table')?.id;
+    
+    if (!tableId || !TABLE_CONFIGS[tableId]) {
+        console.error("Table config not found for:", tableId);
         return;
     }
 
-    const userRole = options.userRole || window.currentUserRole;
-    console.log("userRole", userRole);
-    const unitId = options.unitId || window.userUnitId;
-    const tableId  = options.tableId  || window.userUnitId;
-    console.log('table id ', tableId);
-    
-    const config = getTableConfig(userRole, unitId, tableId);
+    const unitId = options.unitId || window.currentUnitId;
 
-    lastUsedConfig = config;
-    lastUsedTableBody = tableBody;
-    
+    const baseConfig = TABLE_CONFIGS[tableId];
+
+    const config = {
+        ...baseConfig,
+        apiUrl: (page, perPage) =>
+            baseConfig.apiEndpoint(unitId) + `?page=${page}&per_page=${perPage}`
+    };
+
     const reloadData = () => loadTableData(config, tableBody);
     
     // Initial load

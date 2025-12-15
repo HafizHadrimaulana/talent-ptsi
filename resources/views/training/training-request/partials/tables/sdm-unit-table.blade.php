@@ -1,16 +1,19 @@
-<table id="training-request"
-    class="u-table u-table-mobile training-table-training" data-role="{{ Auth::user()->getRoleNames()->first() }}" data-dt>
+<table id="training-request-table"
+    class="u-table u-table-mobile training-table" data-role="SDM Unit" data-dt>
     <thead>
         <tr>
+            <th>
+                <input type="checkbox" id="select-all">
+            </th>
             <th>No</th>
+            <th>Judul Sertifikasi</th>
             <th>Peserta</th>
-            <th>Nama Pelatihan</th>
             <th>Tanggal Mulai</th>
             <th>Tanggal Berakhir</th>
-            <th>Biaya Pelatihan</th>
+            <th>Realisasi Biaya Pelatihan</th>
             <th>Estimasi Total Biaya</th>
-            <th>Lampiran Penawaran</th>
-            <th>Status</th> 
+            <th>Status Lampiran Penawaran</th>
+            <th>Status Approval</th>
             <th class="cell-actions">Aksi</th>
         </tr>
     </thead>

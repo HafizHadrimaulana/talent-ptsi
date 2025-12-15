@@ -319,8 +319,7 @@ export function initInputHandler(modalSelector) {
                     showConfirmButton: false,
                 });
 
-                // inputForm.reset();
-                // window.location.reload();
+                window.location.reload();
                 return;
             }
             await Swal.fire({

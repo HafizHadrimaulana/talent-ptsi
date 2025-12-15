@@ -29,11 +29,12 @@ class TrainingRequestController extends Controller
         $role = $user->getRoleNames()->first();
 
         Log::info('user', $user->toArray());
+        Log::info('training.index.role', ['role' => $role]);
     
         // ======================================
         // Privilege "lihat semua unit"
         // ======================================
-        $hasRoleAll = $user?->hasRole('Superadmin') || $user?->hasRole('DHC');
+        $hasRoleAll = $user->hasRole(['Superadmin', 'DHC']);
 
         // Deteksi Head Office (fleksibel by code/name)
         $hoUnitId = DB::table('units')
@@ -74,21 +75,136 @@ class TrainingRequestController extends Controller
         Log::info("Unit ID: " . $selectedUnitId);
         Log::info("Unit: " . $units);
 
-        // mapping role ke table-name
-        $tableMap = [
-            'DHC'     => 'dhc-unit-table',
-            'SDM Unit'     => 'sdm-unit-table',
-            'Kepala Unit'  => 'kepala-unit-table',
-            'Superadmin'  => 'kepala-unit-table',
+        // |--------------------------------------------------------------------------
+        // |  UI CONFIG
+        // |--------------------------------------------------------------------------
+        $uiMap = [
+
+            'DHC' => [
+                'tabs' => ['data-lna', 'training-request'],
+                'default_tab' => 'data-lna',
+
+                'tab_configs' => [
+
+                    'data-lna' => [
+                        'buttons' => [
+                            'import',
+                            'lna-input',
+                        ],
+                        'tables' => [
+                            'data-lna-table',
+                        ],
+                    ],
+
+                    'training-request' => [
+                        'buttons' => [],
+                        'tables' => [
+                            'sdm-unit-table',
+                        ],
+                    ],
+                ],
+            ],
+
+            'SDM Unit' => [
+                'tabs' => ['training-request', 'daftar-lna'],
+                'default_tab' => 'training-request',
+
+                'tab_configs' => [
+
+                    'daftar-lna' => [
+                        'buttons' => [],
+                        'tables' => [
+                            'data-lna-table',
+                        ],
+                    ],
+
+                    'training-request' => [
+                        'buttons' => [
+                            'import',
+                            'training-input'
+                        ],
+                        'tables' => [
+                            'sdm-unit-table',
+                        ],
+                    ]
+                ],
+            ],
+
+            'Kepala Unit' => [
+                'tabs' => ['training-request'],
+                'default_tab' => 'training-request',
+
+                'tab_configs' => [
+
+                    'training-request' => [
+                        'buttons' => [],
+                        'tables' => [
+                            'sdm-unit-table',
+                        ],
+                    ]
+                ],
+            ],
+
+            'AVP' => [
+                'tabs' => ['training-request'],
+                'default_tab' => 'training-request',
+
+                'tab_configs' => [
+
+                    'training-request' => [
+                        'buttons' => [],
+                        'tables' => [
+                            'sdm-unit-table',
+                        ],
+                    ]
+                ],
+            ],
+
+            'Superadmin' => [
+                'tabs' => ['lna', 'training'],
+                'default_tab' => 'training',
+
+                'buttons' => [
+                    'training_import',
+                ],
+
+                'tables' => [
+                    'lna' => 'training-request-table',
+                    'training' => 'training-table',
+                ],
+            ],
         ];
 
-        Log::info("Role index: " . $role);
-        Log::info("Table index: " . $tableMap[$role]);
-    
-        // fallback jika role tidak ada dalam map
-        $tableView = $tableMap[$role] ?? 'default-table';
+        /*
+        |--------------------------------------------------------------------------
+        | 5. Fallback jika role tidak dikenali
+        |--------------------------------------------------------------------------
+        */
+        $ui = $uiMap[$role] ?? [
+            'tabs' => [],
+            'buttons' => [],
+            'tables' => [
+                'default-table',
+            ],
+        ];
 
-        return view('training.training-request.index', compact('tableView'));
+        $activeTab = $request->get('tab', $ui['default_tab'] ?? null);
+
+        Log::info('training.index.ui', [
+            'role' => $role,
+            'activeTab' => $activeTab,
+            'canSeeAll' => $canSeeAll,
+            'selectedUnitId' => $selectedUnitId,
+        ]);
+
+        Log::info("Role index: " . $role);
+    
+        return view('training.training-request.index', [
+            'ui' => $ui,
+            'activeTab' => $activeTab,
+            'units' => $units,
+            'selectedUnitId' => $selectedUnitId,
+        ]);
     }
     
     public function importLna(Request $request)
@@ -425,35 +541,44 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function getTrainingRequestList(Request $request, $unitId)
+    public function getTrainingRequestList(Request $request, $unitId = null)
     {
         try {
-            $perPage = $request->input('per_page', 12);
-            $page = $request->input('page', 1);
+            $user    = auth()->user();
+            $role    = $user->getRoleNames()->first();
 
-            $trainingRequest = TrainingRequest::with([
-                    'trainingReference',
-                    'employee.person',
-                    'employee.unit'
-                ])
-                ->whereHas('employee', function ($q) use ($unitId) {
-                    $q->where('unit_id', $unitId);
-                })
+            $perPage = $request->input('per_page', 12);
+            $page    = $request->input('page', 1);
+
+            $query = TrainingRequest::with([
+                'trainingReference',
+                'employee.person',
+                'employee.unit'
+            ]);
+
+            // BATASI UNIT JIKA BUKAN DHC
+            if (!$user->hasRole('DHC')) {
+                $query->whereHas('employee', function ($q) use ($unitId, $user) {
+                    $q->where('unit_id', $unitId ?? $user->unit_id);
+                });
+            }
+
+            $trainingRequest = $query
                 ->orderBy('id', 'asc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
             return response()->json([
                 "status" => "success",
-                "data" => $trainingRequest->items(), // selalu array, termasuk jika kosong
+                "data" => $trainingRequest->items(),
                 "pagination" => [
                     "current_page" => $trainingRequest->currentPage(),
-                    "last_page" => $trainingRequest->lastPage(),
-                    "per_page" => $trainingRequest->perPage(),
-                    "total" => $trainingRequest->total()
+                    "last_page"    => $trainingRequest->lastPage(),
+                    "per_page"     => $trainingRequest->perPage(),
+                    "total"        => $trainingRequest->total()
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 "status" => "error",
                 "message" => $e->getMessage()
@@ -681,7 +806,8 @@ class TrainingRequestController extends Controller
         // Status transition map
         $approvalFlow = [
             'in_review_gmvp'  => ['in_review_dhc', 'Kepala Unit'],
-            'in_review_dhc'   => ['in_review_vpdhc', 'DHC'],
+            'in_review_dhc'   => ['in_review_avpdhc', 'DHC'],
+            'in_review_avpdhc'   => ['in_review_vpdhc', 'AVP'],
             'in_review_vpdhc' => ['approve', 'Kepala Unit DHC'],
         ];
 
