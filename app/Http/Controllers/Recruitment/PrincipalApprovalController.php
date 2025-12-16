@@ -202,6 +202,8 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         $canSeeAll = $this->canSeeAll($me);
+        
+        // Ambil filter unit jika ada
         $selectedUnitId = $canSeeAll 
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null) 
             : (int) ($me?->unit_id);
@@ -210,6 +212,7 @@ class PrincipalApprovalController extends Controller
         $query->latest();     
         $positionsMap = DB::table('positions')->pluck('name', 'id')->toArray();
 
+        // Download Excel
         return Excel::download(
             new RecruitmentRequestExport($query, $positionsMap), 
             'Daftar_Izin_Prinsip_' . date('Y-m-d_H-i') . '.xlsx'

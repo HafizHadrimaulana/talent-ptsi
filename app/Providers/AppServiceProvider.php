@@ -64,6 +64,15 @@ class AppServiceProvider extends ServiceProvider
                                 else if ($stageIndex === 4 && $me->hasRole('Dir SDM')) $shouldShow = true;
 
                                 if ($shouldShow) {
+
+                                    $slaTime = $req->created_at;
+
+                                    $kaUnitApproval = $req->approvals->sortBy('id')->first();
+
+                                    // Jika Kepala Unit SUDAH approve
+                                    if ($kaUnitApproval && $kaUnitApproval->status === 'approved' && $kaUnitApproval->decided_at) {
+                                        $slaTime = \Illuminate\Support\Carbon::parse($kaUnitApproval->decided_at);
+                                    }
                                     // struktur data notifikasi
                                     $allNotifications->push((object)[
                                         'id' => $req->id,
@@ -73,7 +82,7 @@ class AppServiceProvider extends ServiceProvider
                                         'desc' => $req->headcount . ' Orang',
                                         'status' => 'pending',
                                         'url' => route('recruitment.principal-approval.index', ['open_ticket_id' => $req->id]),
-                                        'time' => $req->updated_at,
+                                        'time' => $slaTime,
                                         'icon' => 'fa-file-signature',
                                         'color_class' => 'text-blue-600'
                                     ]);

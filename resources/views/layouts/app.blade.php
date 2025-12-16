@@ -141,10 +141,10 @@
           @endphp
 
           <button id="globalNotifBtn" class="top-btn" type="button" aria-expanded="false" title="Notifications" style="position: relative;">
-            <i class="fa-solid fa-bell" style="font-size: 1.1rem; color: #4f46e5;"></i>
+            <i class="fa-solid fa-bell" style="font-size: 1.1rem; color: #5951f3ff;"></i>
             
             @if($totalCount > 0)
-              <span class="badge" style="background-color: #ef4444; color: white;">{{ $totalCount }}</span>
+              <span class="badge" style="color: red;">{{ $totalCount }}</span>
             @endif
           </button>
 

@@ -136,7 +136,7 @@
     <div class="u-scroll-x">
       <table id="ip-table" class="u-table" data-dt>
         <thead>
-          <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progress</th><th class="cell-actions">Aksi</th></tr>
+          <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progress</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
         </thead>
         <tbody>
           @foreach($list as $r)
@@ -260,6 +260,48 @@
             $hasMultiData = $recruitmentDetails->count() > 1;
             $posObj = $positions->firstWhere('id', $r->position);
             $positionDisplay = $posObj ? $posObj->name : $r->position;
+
+            $slaBadgeClass = '';
+            $slaText = '-';
+            
+            $kaUnitApp = $r->approvals->sortBy('id')->first();
+            $isApprovedByKaUnit = ($kaUnitApp && $kaUnitApp->status === 'approved' && $kaUnitApp->decided_at);
+            // Hanya hitung SLA jika status masih berjalan (submitted/in_review)
+            if (in_array($status, ['submitted', 'in_review']) && $isApprovedByKaUnit) {
+                
+                // Waktu Mulai = Waktu saat Kepala Unit klik Approve
+                $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
+
+                // A. Hitung Selisih Hari (Khusus untuk menentukan WARNA Merah/Kuning)
+                $daysDiff = $slaTimeBase->diffInDays(now());
+
+                // B. Hitung Teks Tampilan (Human Readable: Jam, Menit)
+                // syntax DIFF_RELATIVE_TO_NOW membuat output seperti "4 jam setelahnya" (tanpa 'ago')
+                $rawText = $slaTimeBase->locale('id')->diffForHumans([
+                    'parts' => 2,        // Batasi 2 bagian (misal: 1 jam, 30 menit)
+                    'join' => true,      // Gabungkan dengan kata sambung
+                    'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW, 
+                ]);
+
+                // C. Bersihkan Teks (Hapus 'yang', 'setelahnya', ganti 'dan' jadi ',')
+                // Menghapus kata-kata tidak perlu agar singkat
+                $cleanText = str_replace(
+                    ['yang ', 'setelahnya', 'sebelumnya', ' dan '], 
+                    ['', '', '', ', '], 
+                    $rawText
+                );
+                
+                $slaText = trim($cleanText);
+
+                // D. Tentukan Warna Badge
+                if ($daysDiff >= 5) {
+                    $slaBadgeClass = 'u-badge--danger'; // Merah
+                } elseif ($daysDiff >= 3) {
+                    $slaBadgeClass = 'u-badge--warning'; // Kuning
+                } else {
+                    $slaBadgeClass = 'u-badge--info'; // Biru
+                }
+            }
           @endphp
           <tr class="recruitment-main-row u-align-top" data-recruitment-id="{{ $r->id }}">
             <td>@if(!empty($r->ticket_number)) <span class="u-badge u-badge--primary u-text-2xs">{{ $r->ticket_number }}</span> @else <span class="u-text-2xs u-text-muted">-</span> @endif</td>
@@ -292,6 +334,15 @@
             <td><span class="u-badge u-badge--glass">{{ $r->headcount }} Orang</span></td>
             <td>@if($employmentType) <span class="u-badge u-badge--glass">{{ $employmentType }}</span> @else - @endif</td>
             <td><div class="u-text-2xs"><span class="u-badge u-badge--glass">{{ $progressText }}</span></div></td>
+            <td>
+                @if($slaText !== '-')
+                    <span class="u-badge {{ $slaBadgeClass }} u-text-2xs" title="Dihitung sejak approval Kepala Unit">
+                        <i class="far fa-clock u-mr-xs"></i> {{ $slaText }}
+                    </span>
+                @else
+                    <span class="u-text-muted u-text-2xs" title="Menunggu approval Kepala Unit">-</span>
+                @endif
+            </td>
             <td class="cell-actions">
               <div class="cell-actions__group">
                 @if($status === 'draft' && ($sameUnit || $meRoles['Superadmin']))
