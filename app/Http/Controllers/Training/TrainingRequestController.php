@@ -219,9 +219,10 @@ class TrainingRequestController extends Controller
 
         try {
             $chunk = $request->file('chunk');
-            $index    = (int) $request->index;
-            $total    = (int) $request->total;
-            $safeName = md5($request->filename . auth()->id());
+            $index = (int) $request->index;
+            $total = (int) $request->total;
+            
+            $safeName = pathinfo($request->filename, PATHINFO_FILENAME);
 
             // Simpan chunk
             $tempDir = $this->saveChunkFile($chunk, $index, $safeName);
@@ -235,7 +236,7 @@ class TrainingRequestController extends Controller
                 ]);
             }
 
-                // Gabungkan chunks
+            // Gabungkan chunks
             [$finalPath, $fullPath] = $this->mergeChunks($tempDir, $safeName, $total);
 
             if (!file_exists($fullPath)) {
@@ -746,7 +747,8 @@ class TrainingRequestController extends Controller
         
     }
 
-    public function getDataUnits(Request $request) {
+    public function getDataUnits(Request $request) 
+    {
         try {
             // Units for selector (label=name, value=id)
             $units = DB::table('units')
@@ -820,7 +822,6 @@ class TrainingRequestController extends Controller
             ]);
 
         } catch (\Exception $e) {
-
             Log::error("Reject failed", [
                 'id' => $id,
                 'role' => $role ?? null,
@@ -836,18 +837,13 @@ class TrainingRequestController extends Controller
     }
 
     // PRIVATE FUNCTION //
-
     private function saveChunkFile($chunk, int $index, string $safeName): string
     {
-        $tempDir = storage_path("app/chunks/{$safeName}");
+        $hashDir = md5($safeName); // 🔥 CEGAH TABRAKAN FILE
+        $tempDir = storage_path("app/chunks/{$hashDir}");
 
         if (!is_dir($tempDir)) {
-            @mkdir($tempDir, 0777, true);
-            clearstatcache(true, $tempDir);
-
-            if (!is_dir($tempDir)) {
-                throw new \Exception("Gagal membuat direktori chunk");
-            }
+            mkdir($tempDir, 0777, true);
         }
 
         $chunk->move($tempDir, "chunk_{$index}");
@@ -857,15 +853,15 @@ class TrainingRequestController extends Controller
 
     private function mergeChunks(string $tempDir, string $safeName, int $total): array
     {
-        $relativePath = "uploads/{$safeName}.xlsx";
+        $relativePath = "uploads/{$safeName}";
         $fullPath     = storage_path("app/{$relativePath}");
 
-        $uploadDir = storage_path('app/uploads');
+        $uploadDir = dirname($fullPath);
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0777, true);
         }
         
-        $output = fopen($fullPath, 'wb');
+        $output = fopen($fullPath, 'ab');
 
         for ($i = 0; $i < $total; $i++) {
             $chunkPath = "{$tempDir}/chunk_{$i}";
@@ -882,9 +878,8 @@ class TrainingRequestController extends Controller
 
         fclose($output);
 
-        for ($i = 0; $i < $total; $i++) {
-            @unlink("{$tempDir}/chunk_{$i}");
-        }
+        array_map('unlink', glob("{$tempDir}/chunk_*"));
+        @rmdir($tempDir);
 
         return [$relativePath, $fullPath];
     }

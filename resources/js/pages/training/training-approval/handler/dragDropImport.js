@@ -9,8 +9,6 @@ export function initDragDropUpload(modalSelector, role) {
 
     const modal = document.querySelector(modalSelector);
 
-    console.log('role', role)
-
     let selectedFile = null;
 
     if (!wrapper || !area || !input || !uploadForm) return;
@@ -20,13 +18,13 @@ export function initDragDropUpload(modalSelector, role) {
         if (selectedFile) return;
         if (suppressClickAfterDialog) return;
         suppressClickAfterDialog = true;
-    
+
         const onFocus = () => {
             suppressClickAfterDialog = false;
             window.removeEventListener("focus", onFocus);
         };
         window.addEventListener("focus", onFocus);
-    
+
         input.click();
     });
 
@@ -111,29 +109,31 @@ export function initDragDropUpload(modalSelector, role) {
             didOpen: () => Swal.showLoading(),
         });
 
-        console.log("selected file in dragdop", selectedFile);
-
         try {
             const res = await initImportHandler(selectedFile, role);
 
-            console.log("response import", res);
+            // if (modal) modal.classList.add("hidden");
+            Swal.close();
 
-            if (modal) modal.classList.add("hidden");
+            console.log("res data import", res.data);
 
             Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
-                text: res.data ?? "Upload selesai!",
-                // timer: 2000,
-                // timerProgressBar: true,
-                showConfirmButton: true,
-            }).then(() => {
-                // location.reload();
-                console.log('import end')
+                text: res.message || "Import selesai!",
+                timer: 2000,
+                showConfirmButton: false,
             });
+            console.log("reload");
+            window.location.reload();
         } catch (err) {
-            console.error(err);
-            Swal.fire("Error", "Gagal mengupload file!", "error");
+            Swal.close();
+
+            Swal.fire({
+                icon: "error",
+                title: "Gagal Import",
+                text: err.message || "Terjadi kesalahan",
+            });
         }
     });
 }
