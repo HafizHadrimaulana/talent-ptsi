@@ -61,7 +61,7 @@ export function initDragDropUpload(modalSelector, role) {
                     <p class="text-green-700 font-medium">File Terpilih:</p>
                     <p class="text-green-800">${selectedFile.name}</p>
                 </div>
-                <div id="change-file-btn" class="u-btn u-btn--brand u-hover-lift">
+                <div id="change-file-btn" class="u-btn u-btn--outline u-hover-lift">
                     Ganti File
                 </div>
             </div>
@@ -123,7 +123,7 @@ export function initDragDropUpload(modalSelector, role) {
             Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
-                text: res.data.message ?? "Upload selesai!",
+                text: res.data ?? "Upload selesai!",
                 // timer: 2000,
                 // timerProgressBar: true,
                 showConfirmButton: true,

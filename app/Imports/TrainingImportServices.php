@@ -82,7 +82,6 @@ class TrainingImportServices
                 "nama_proyek"           => $row->nama_proyek ?? null,
                 "jenis_portofolio"      => $row->jenis_portofolio ?? null,
                 "fungsi"                => $row->fungsi ?? null,
-                "kuota"                 => 10,
                 "created_at"            => now(),
                 "updated_at"            => now(),
             ];

@@ -35,7 +35,7 @@
     @endif
 
     {{-- ===== TAB PANELS (BUTTON + TABLE ADA DI DALAM) ===== --}}
-    <div class="u-scroll-x">
+    <div class="dt-wrapper mb-4">
         <div class="u-tabs__panels">
             @foreach ($ui['tabs'] as $tab)
                 @php
@@ -48,24 +48,23 @@
                 >
 
                     {{-- ===== ACTION BUTTONS PER TAB ===== --}}
-                    <div class="dt-wrapper mb-4">
-                        <div class="flex gap-4 justify-between u-py-sm">
-                            @if (!empty($tabConfig['buttons']))
-                                <div class="flex gap-2">
-                                    @foreach ($tabConfig['buttons'] as $button)
-                                        @includeIf('training.training-request.partials.buttons.' . $button)
-                                    @endforeach
-                                </div>
-                                
-                                <button
-                                    type="button"
-                                    class="btn-download-template u-btn u-btn--outline u-hover-lift"
-                                    >
-                                    Download Template Excel
-                                </button>
-                            @endif
-                        </div>
-
+                    <div class="flex gap-4 justify-between u-py-sm">
+                        @if (!empty($tabConfig['buttons']))
+                            <div class="flex gap-2">
+                                @foreach ($tabConfig['buttons'] as $button)
+                                    @includeIf('training.training-request.partials.buttons.' . $button)
+                                @endforeach
+                            </div>
+                            
+                            <button
+                                type="button"
+                                class="btn-download-template u-btn u-btn--outline u-hover-lift"
+                                >
+                                Download Template Excel
+                            </button>
+                        @endif
+                    </div>
+                    <div class="u-scroll-x">
                         {{-- ===== TABLES ===== --}}
                         @foreach ($tabConfig['tables'] ?? [] as $table)
                             @include('training.training-request.partials.tables.' . $table)

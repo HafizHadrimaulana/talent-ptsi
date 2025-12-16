@@ -29,7 +29,6 @@ return new class extends Migration
             $table->string('nama_proyek')->nullable();
             $table->string('jenis_portofolio')->nullable();
             $table->string('fungsi')->nullable();
-            $table->integer('kuota')->nullable();
 
             $table->timestamps();
             

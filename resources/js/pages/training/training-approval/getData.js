@@ -21,7 +21,7 @@ const TABLE_CONFIGS = {
             'no','judul_sertifikasi','unit_kerja','penyelenggara',
             'jumlah_jam','waktu_pelaksanaan','biaya_pelatihan',
             'uhpd','biaya_akomodasi','estimasi_total_biaya',
-            'nama_proyek','jenis_portofolio','fungsi','kuota','actions'
+            'nama_proyek','jenis_portofolio','fungsi', 'actions'
         ],
         dataMapper: (data) => data.data || [],
         actions: {
@@ -98,21 +98,25 @@ const TABLE_CONFIGS = {
 
             rules: [
                 {
-                    roles: ['DHC'],
-                    when: status => status === 'in_review_dhc',
-                    allow: ['approve', 'reject']
-                },
-                {
                     roles: ['SDM Unit'],
                     when: status => status === 'in_review_gmvp',
                     allow: ['edit', 'delete']
                 },
                 {
-                    roles: ['Kepala Unit'],
-                    when: status => status === 'in_review_gmvp',
+                    roles: ['DHC'],
+                    when: status => status === 'in_review_dhc',
                     allow: ['approve', 'reject']
                 },
-
+                {
+                    roles: ['AVP'],
+                    when: status => status === 'in_review_avpdhc',
+                    allow: ['approve', 'reject']
+                },
+                {
+                    roles: ['Kepala Unit'],
+                    // when: status => status === 'in_review_vpdhc',
+                    allow: ['approve', 'reject']
+                },
             ]
         }
     }
@@ -120,7 +124,7 @@ const TABLE_CONFIGS = {
 
 const DEFAULT_CONFIG = {
     apiEndpoint: () => "/training/training-request/get-data-lna",
-    columns: ['no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'kuota','actions'],
+    columns: ['no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'actions'],
     dataMapper: (data) => data.data || [],
     actions: ['edit', 'delete']
 };
@@ -257,23 +261,37 @@ const COLUMN_RENDERERS = {
         const STATUS_STYLE = {
             created: {
                 label: "Created",
-                style: "background:#E5E7EB;color:#374151;"
+                style: "background:#E5E7EB;color:#374151;" // abu netral
             },
+
+            in_review_gmvp: {
+                label: "In Review GM / VP",
+                style: "background:#FEF3C7;color:#92400E;" // kuning → awal approval
+            },
+
             in_review_dhc: {
                 label: "In Review DHC",
-                style: "background:#DBEAFE;color:#1E40AF;"
+                style: "background:#DBEAFE;color:#1E40AF;" // biru → middle approval
             },
-            in_review_gmvp: {
-                label: "In Review GM/VP",
-                style: "background:#FEF3C7;color:#92400E;"
-            },
+
             in_review_avpdhc: {
                 label: "In Review AVP DHC",
-                style: "background:#FWE7F3;color:#9D174D;"
+                style: "background:#EDE9FE;color:#5B21B6;" // ungu → senior approval
             },
+
             in_review_vpdhc: {
                 label: "In Review VP DHC",
-                style: "background:#FCE7F3;color:#9D174D;"
+                style: "background:#FCE7F3;color:#9D174D;" // pink → final approval
+            },
+
+            approved: {
+                label: "Approved",
+                style: "background:#DCFCE7;color:#166534;" // hijau → selesai
+            },
+
+            rejected: {
+                label: "Rejected",
+                style: "background:#FEE2E2;color:#991B1B;" // merah → ditolak
             },
         };
 

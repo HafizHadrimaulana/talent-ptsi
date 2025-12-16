@@ -31,59 +31,53 @@
           {{-- Judul Sertifikasi --}}
           <div class="u-space-y-sm u-mb-sm">
             <label class="w-48 font-medium after:content-['*'] after:text-red-500">Judul Sertifikasi</label>
-            <input type="text" name="judul_sertifikasi" class="u-input"  />
+            <input type="text" name="judul_sertifikasi" class="u-input u-font-semibold" placeholder="Masukkan judul sertifikasi" required/>
           </div>
 
           <div class="grid grid-cols-2 gap-x-10 gap-y-4 u-mb-xl">
 
             {{-- DROPDOWN UNIT --}}
             <div>
-              <label class="font-medium">Unit</label>
-                <select name="unit_id" id="select-unit" class="u-input">
+              <label class="font-medium after:content-['*'] after:text-red-500">Unit</label>
+                <select name="unit_id" id="select-unit" class="u-input u-font-semibold" required>
                     <option value="">-- Pilih Unit --</option>
                 </select>
             </div>
 
             {{-- Penyelenggara --}}
             <div>
-              <label class="font-medium">Penyelenggara</label>
-              <input type="text" name="penyelenggara" class="u-input">
+              <label class="font-medium after:content-['*'] after:text-red-500">Penyelenggara</label>
+              <input type="text" name="penyelenggara" class="u-input u-font-semibold" placeholder="Masukkan nama penyelenggara" required>
             </div>
 
             {{-- Jumlah Jam --}}
             <div>
-              <label class="font-medium">Jumlah Jam</label>
-              <input type="text" name="jumlah_jam" class="u-input">
+              <label class="font-medium after:content-['*'] after:text-red-500">Jumlah Jam</label>
+              <input type="text" name="jumlah_jam" class="u-input u-font-semibold" placeholder="Contoh: 40 Jam" required>
             </div>
 
             {{-- Waktu Pelaksanaan --}}
             <div>
-              <label class="font-medium">Waktu Pelaksanaan</label>
-              <input type="text" name="waktu_pelaksanaan" class="u-input">
+              <label class="font-medium after:content-['*'] after:text-red-500">Waktu Pelaksanaan</label>
+              <input type="text" name="waktu_pelaksanaan" class="u-input u-font-semibold" placeholder="Contoh: 1 Januari - 30 Maret 2025" required>
             </div>
 
             {{-- Nama Proyek --}}
             <div>
-              <label class="font-medium">Nama Proyek</label>
-              <input type="text" name="nama_proyek" class="u-input">
+              <label class="font-medium after:content-['*'] after:text-red-500">Nama Proyek</label>
+              <input type="text" name="nama_proyek" class="u-input u-font-semibold" placeholder="Masukkan nama proyek" required>
             </div>
 
             {{-- Jenis Portofolio --}}
             <div>
-              <label class="font-medium">Jenis Portofolio</label>
-              <input type="text" name="jenis_portofolio" class="u-input">
+              <label class="font-medium after:content-['*'] after:text-red-500">Jenis Portofolio</label>
+              <input type="text" name="jenis_portofolio" class="u-input u-font-semibold" placeholder="Masukkan jenis portofolio" required>
             </div>
 
             {{-- Fungsi --}}
             <div>
-              <label class="font-medium">Fungsi</label>
-              <input type="text" name="fungsi" class="u-input">
-            </div>
-
-            {{-- Kuota --}}
-            <div>
-              <label class="font-medium">Kuota</label>
-              <input type="number" name="kuota" class="u-input">
+              <label class="font-medium after:content-['*'] after:text-red-500">Fungsi</label>
+              <input type="text" name="fungsi" class="u-input u-font-semibold" placeholder="Masukkan fungsi pekerjaan" required>
             </div>
 
           </div>
@@ -98,23 +92,23 @@
         <div class="grid grid-cols-2 gap-x-10 gap-y-4 u-mb-xl">
 
           <div>
-            <label class="font-medium">Biaya Pelatihan (Rp)</label>
-            <input type="text" name="biaya_pelatihan" class="u-input">
+            <label class="font-medium after:content-['*'] after:text-red-500">Biaya Pelatihan (Rp)</label>
+            <input type="text" name="biaya_pelatihan" class="u-input u-font-semibold" placeholder="Masukkan angka" required>
           </div>
 
           <div>
-            <label class="font-medium">UHPD (Rp)</label>
-            <input type="text" name="uhpd" class="u-input">
+            <label class="font-medium after:content-['*'] after:text-red-500">UHPD (Rp)</label>
+            <input type="text" name="uhpd" class="u-input u-font-semibold" placeholder="Masukkan angka" required>
           </div>
 
           <div>
-            <label class="font-medium">Biaya Akomodasi (Rp)</label>
-            <input type="text" name="biaya_akomodasi" class="u-input">
+            <label class="font-medium after:content-['*'] after:text-red-500">Biaya Akomodasi (Rp)</label>
+            <input type="text" name="biaya_akomodasi" class="u-input u-font-semibold" placeholder="Masukkan angka" required>
           </div>
 
           <div>
             <label class="font-medium">Estimasi Total Biaya (Rp)</label>
-            <input type="text" name="estimasi_total_biaya" class="u-input">
+            <input type="text" name="estimasi_total_biaya" class="u-input u-font-semibold bg-gray-700" disabled>
           </div>
 
         </div>

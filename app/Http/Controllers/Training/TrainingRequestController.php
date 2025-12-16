@@ -10,6 +10,7 @@ use App\Models\TrainingReference;
 use App\Models\Employee;
 use App\Models\TrainingRequest;
 use App\Models\Unit;
+use App\Models\User;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -112,7 +113,7 @@ class TrainingRequestController extends Controller
                 'tab_configs' => [
 
                     'daftar-lna' => [
-                        'buttons' => [],
+                        'buttons' => ['lna-input'],
                         'tables' => [
                             'data-lna-table',
                         ],
@@ -220,9 +221,12 @@ class TrainingRequestController extends Controller
             $chunk = $request->file('chunk');
             $index    = (int) $request->index;
             $total    = (int) $request->total;
-            $filename = trim($request->filename);
+            $safeName = md5($request->filename . auth()->id());
 
-            $tempDir = $this->saveChunkFile($chunk, $index, $total, $filename);
+            // Simpan chunk
+            $tempDir = $this->saveChunkFile($chunk, $index, $safeName);
+
+            Log::info("Temp dir: " . $tempDir);
             
             if ($index + 1 < $total) {
                 return response()->json([
@@ -232,8 +236,14 @@ class TrainingRequestController extends Controller
             }
 
                 // Gabungkan chunks
-            [$finalPath, $fullPath] = $this->mergeChunks($tempDir, $filename, $total);
+            [$finalPath, $fullPath] = $this->mergeChunks($tempDir, $safeName, $total);
 
+            if (!file_exists($fullPath)) {
+                throw new \Exception("File gabungan tidak ditemukan");
+            }
+
+            Log::info("File gabungan: " . $fullPath);
+            
             // Import sesuai LNA
             $result = $this->processImport($fullPath);
 
@@ -308,18 +318,49 @@ class TrainingRequestController extends Controller
     public function getDataLna(Request $request)
     {
         try {
+            $user = auth()->user();
+
             $perPage = $request->input('per_page', 12);
             $page = $request->input('page', 1);
 
-            $data = TrainingReference::with('unit') // eager load unit
-                ->orderBy('created_at', 'desc')
-                ->paginate($perPage, ['*'], 'page', $page);
+            /**
+             * ======================================
+             * BASE QUERY
+             * ======================================
+             */
+            $query = TrainingReference::with('unit')
+                ->orderBy('created_at', 'desc');
 
-            Log::info("Fetch data training references berhasil.", ["total" => $data->total()]);
+            /**
+             * ======================================
+             * AKSES BERDASARKAN ROLE
+             * ======================================
+             */
+            if (!$user->hasRole('DHC')) {
+                // 🔒 Selain DHC → hanya unit sendiri
+                $query->where('unit_id', $user->unit_id);
+            }
 
-            // 👉 mapping supaya unit_name dikirim
-            $mappedItems = $data->items();
-            $mappedItems = array_map(function ($item) {
+            /**
+             * ======================================
+             * PAGINATION
+             * ======================================
+             */
+            $data = $query->paginate($perPage, ['*'], 'page', $page);
+
+            Log::info("Fetch data LNA berhasil.", [
+                "user_id" => $user->id,
+                "roles"   => $user->getRoleNames()->toArray(),
+                "unit_id" => $user->unit_id,
+                "total"   => $data->total()
+            ]);
+
+            /**
+             * ======================================
+             * MAPPING RESPONSE
+             * ======================================
+             */
+            $mappedItems = collect($data->items())->map(function ($item) {
                 return [
                     "id" => $item->id,
                     "judul_sertifikasi" => $item->judul_sertifikasi,
@@ -335,10 +376,9 @@ class TrainingRequestController extends Controller
                     "nama_proyek" => $item->nama_proyek,
                     "jenis_portofolio" => $item->jenis_portofolio,
                     "fungsi" => $item->fungsi,
-                    "kuota" => $item->kuota,
                     "created_at" => $item->created_at,
                 ];
-            }, $mappedItems);
+            });
 
             return response()->json([
                 "status" => "success",
@@ -544,8 +584,14 @@ class TrainingRequestController extends Controller
     public function getTrainingRequestList(Request $request, $unitId = null)
     {
         try {
-            $user    = auth()->user();
-            $role    = $user->getRoleNames()->first();
+            $user  = auth()->user();
+            $roles = $user->getRoleNames()->toArray();
+
+            Log::info('training.getTrainingRequestList.user', [
+                'user_id' => $user->id,
+                'roles'   => $roles,
+                'unit_id' => $user->unit_id,
+            ]);
 
             $perPage = $request->input('per_page', 12);
             $page    = $request->input('page', 1);
@@ -556,16 +602,65 @@ class TrainingRequestController extends Controller
                 'employee.unit'
             ]);
 
-            // BATASI UNIT JIKA BUKAN DHC
-            if (!$user->hasRole('DHC')) {
-                $query->whereHas('employee', function ($q) use ($unitId, $user) {
-                    $q->where('unit_id', $unitId ?? $user->unit_id);
+            /**
+             * ==================================================
+             * RULE AKSES UNIT
+             * ==================================================
+             */
+            $isDHC              = $user->hasRole('DHC');
+            $isAvpOrKepalaUnit  = $user->hasAnyRole(['AVP', 'Kepala Unit']);
+            $isHumanCapital     = $this->isHumanCapital($user);
+
+            $canSeeAllUnit =
+                $isDHC ||
+                ($isAvpOrKepalaUnit && $isHumanCapital);
+
+            if (!$canSeeAllUnit) {
+                $query->whereHas('employee', function ($q) use ($user) {
+                    $q->where('unit_id', $user->unit_id);
                 });
             }
 
+            /**
+             * ==================================================
+             * RULE AKSES STATUS
+             * ==================================================
+             */
+            $allowedStatuses = [];
+
+            if (!in_array('SDM Unit', $roles)) {
+
+                if (in_array('Kepala Unit', $roles) && !$isHumanCapital) {
+                    $allowedStatuses = ['in_review_gmvp'];
+                }
+                elseif (in_array('DHC', $roles)) {
+                    $allowedStatuses = ['in_review_dhc'];
+                }
+                elseif (in_array('AVP', $roles) && $isHumanCapital) {
+                    $allowedStatuses = ['in_review_avpdhc'];
+                }
+                elseif (in_array('Kepala Unit', $roles) && $isHumanCapital) {
+                    $allowedStatuses = ['in_review_vpdhc'];
+                }
+            }
+
+            // Terapkan filter status jika ada
+            if (!empty($allowedStatuses)) {
+                $query->whereIn('status_approval_training', $allowedStatuses);
+            }
+
+            /**
+             * ==================================================
+             * FETCH DATA
+             * ==================================================
+             */
             $trainingRequest = $query
                 ->orderBy('id', 'asc')
                 ->paginate($perPage, ['*'], 'page', $page);
+
+            Log::info("Fetch data training request berhasil.", [
+                "total" => $trainingRequest->total()
+            ]);
 
             return response()->json([
                 "status" => "success",
@@ -579,6 +674,10 @@ class TrainingRequestController extends Controller
             ]);
 
         } catch (\Throwable $e) {
+            Log::error('getTrainingRequestList error', [
+                'message' => $e->getMessage()
+            ]);
+
             return response()->json([
                 "status" => "error",
                 "message" => $e->getMessage()
@@ -612,7 +711,6 @@ class TrainingRequestController extends Controller
                 'nama_proyek'           => 'nullable|string|max:255',
                 'jenis_portofolio'      => 'nullable|string|max:255',
                 'fungsi'                => 'nullable|string|max:255',
-                'kuota'                 => 'nullable|integer|min:0',
             ]);
     
             // Simpan ke tabel training_reference
@@ -625,7 +723,6 @@ class TrainingRequestController extends Controller
                 'nama_proyek'            => $request->nama_proyek,
                 'jenis_portofolio'       => $request->jenis_portofolio,
                 'fungsi'                 => $request->fungsi,
-                'kuota'                  => $request->kuota,
                 'biaya_pelatihan'        => $request->biaya_pelatihan,
                 'uhpd'                   => $request->uhpd,
                 'biaya_akomodasi'        => $request->biaya_akomodasi,
@@ -682,13 +779,12 @@ class TrainingRequestController extends Controller
         }
 
         $user = auth()->user();
-        $role = $user->getRoleNames()->first();
 
         try {
-            $this->processApproval($trainingRequest, $role, 'approve');
+            $this->processApproval($trainingRequest, $user, 'approve');
             return response()->json([
                 'status' => 'success',
-                'message' => "Data ID {$id} berhasil di-approve oleh {$role}.",
+                'message' => "Data ID {$id} berhasil di-approve oleh {$user->name}.",
             ]);
         } catch (\Exception $e) {
             Log::error('Approve error', ['error' => $e->getMessage()]);
@@ -741,47 +837,56 @@ class TrainingRequestController extends Controller
 
     // PRIVATE FUNCTION //
 
-    private function saveChunkFile($chunk, $index, $total, $filename)
+    private function saveChunkFile($chunk, int $index, string $safeName): string
     {
-        $safeFilename = basename($filename);
-        $tempDir = "chunks/{$safeFilename}";
+        $tempDir = storage_path("app/chunks/{$safeName}");
 
-        if (!Storage::exists($tempDir)) {
-            Storage::makeDirectory($tempDir);
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0777, true);
+            clearstatcache(true, $tempDir);
+
+            if (!is_dir($tempDir)) {
+                throw new \Exception("Gagal membuat direktori chunk");
+            }
         }
 
-        $chunkPath = "{$tempDir}/chunk_{$index}.part";
-        Storage::put($chunkPath, file_get_contents($chunk));
+        $chunk->move($tempDir, "chunk_{$index}");
 
         return $tempDir;
     }
 
-    private function mergeChunks($tempDir, $filename, $total)
+    private function mergeChunks(string $tempDir, string $safeName, int $total): array
     {
-        $uploadsDir = 'uploads';
+        $relativePath = "uploads/{$safeName}.xlsx";
+        $fullPath     = storage_path("app/{$relativePath}");
 
-        if (!Storage::exists($uploadsDir)) {
-            Storage::makeDirectory($uploadsDir);
+        $uploadDir = storage_path('app/uploads');
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
         }
-
-        $finalName = time() . "_" . basename($filename);
-        $finalPath = "{$uploadsDir}/{$finalName}";
-        $fullPath  = storage_path("app/{$finalPath}");
-
-        $output = fopen($fullPath, "ab");
+        
+        $output = fopen($fullPath, 'wb');
 
         for ($i = 0; $i < $total; $i++) {
-            $cPath = "{$tempDir}/chunk_{$i}.part";
-            $content = Storage::get($cPath);
-            fwrite($output, $content);
+            $chunkPath = "{$tempDir}/chunk_{$i}";
+
+            if (!file_exists($chunkPath)) {
+                fclose($output);
+                throw new \Exception("Chunk {$i} tidak ditemukan");
+            }
+
+            $input = fopen($chunkPath, 'rb');
+            stream_copy_to_stream($input, $output);
+            fclose($input);
         }
 
         fclose($output);
 
-        // Hapus chunk
-        Storage::deleteDirectory($tempDir);
+        for ($i = 0; $i < $total; $i++) {
+            @unlink("{$tempDir}/chunk_{$i}");
+        }
 
-        return [$finalPath, $fullPath, $finalName];
+        return [$relativePath, $fullPath];
     }
 
     private function processImport($fullPath)
@@ -794,85 +899,122 @@ class TrainingRequestController extends Controller
         return $result;
     }
 
-    private function processApproval(TrainingRequest $trainingRequest, string $role, string $action): void
+    private function processApproval(TrainingRequest $trainingRequest, User $user, string $action): void 
     {
+        $currentStatus = $trainingRequest->status_approval_training;
+        $roleNames     = $user->getRoleNames()->toArray();
+        $isHumanCapital = $this->isHumanCapital($user);
+
         Log::info('Process approval', [
             'training_id' => $trainingRequest->id,
-            'current_status' => $trainingRequest->status_approval_training,
-            'role' => $role,
+            'current_status' => $currentStatus,
+            'roles' => $roleNames,
+            'isHumanCapital' => $isHumanCapital,
             'action' => $action,
         ]);
-        
-        // Status transition map
+
+        /**
+         * =========================================
+         * APPROVAL FLOW CONFIG (SINGLE SOURCE)
+         * =========================================
+         */
         $approvalFlow = [
-            'in_review_gmvp'  => ['in_review_dhc', 'Kepala Unit'],
-            'in_review_dhc'   => ['in_review_avpdhc', 'DHC'],
-            'in_review_avpdhc'   => ['in_review_vpdhc', 'AVP'],
-            'in_review_vpdhc' => ['approve', 'Kepala Unit DHC'],
+            'in_review_gmvp' => [
+                'next' => 'in_review_dhc',
+                'canApprove' => fn () =>
+                    in_array('Kepala Unit', $roleNames) && !$isHumanCapital,
+            ],
+
+            'in_review_dhc' => [
+                'next' => 'in_review_avpdhc',
+                'canApprove' => fn () =>
+                    in_array('DHC', $roleNames),
+            ],
+
+            'in_review_avpdhc' => [
+                'next' => 'in_review_vpdhc',
+                'canApprove' => fn () =>
+                    in_array('AVP', $roleNames) && $isHumanCapital,
+            ],
+
+            'in_review_vpdhc' => [
+                'next' => 'approved',
+                'canApprove' => fn () =>
+                    in_array('Kepala Unit', $roleNames) && $isHumanCapital, // VP DHC
+            ],
         ];
 
-        $currentStatus = $trainingRequest->status_approval_training;
-
-        // === HANDLE REJECT ===
+        /**
+         * =========================================
+         * REJECT
+         * =========================================
+         */
         if ($action === 'reject') {
-
-            // Status yang boleh direject
-            $rejectableStatus = ['in_review_gmvp', 'in_review_dhc'];
-
-            if (!in_array($trainingRequest->status_approval, $rejectableStatus)) {
-                throw new \Exception(
-                    "Data pada status {$trainingRequest->status_approval} tidak bisa direject."
-                );
-            }
-
             $trainingRequest->update([
-                'status_approval' => 'reject',
+                'status_approval_training' => 'rejected',
                 'updated_at' => now()
             ]);
 
-            Log::warning("TrainingRequest {$trainingRequest->id} rejected", [
-                'role' => $role,
-                'status_before' => $trainingRequest->status_approval,
+            Log::warning('Training rejected', [
+                'training_id' => $trainingRequest->id,
             ]);
-
             return;
         }
 
-        // === HANDLE APPROVE ===
+        /**
+         * =========================================
+         * APPROVE
+         * =========================================
+         */
         if (!isset($approvalFlow[$currentStatus])) {
-            throw new \Exception("Status {$currentStatus} tidak bisa di-approve.");
+            throw new \Exception("Status {$currentStatus} tidak valid.");
         }
 
-        [$nextStatus, $allowedRole] = $approvalFlow[$currentStatus];
+        $step = $approvalFlow[$currentStatus];
 
-        if ($allowedRole !== $role) {
-            throw new \Exception("Role {$role} tidak diperbolehkan approve pada status {$currentStatus}.");
+        if (!$step['canApprove']()) {
+            throw new \Exception("User tidak berhak approve status {$currentStatus}");
         }
 
         $trainingRequest->update([
-            'status_approval_training' => $nextStatus,
+            'status_approval_training' => $step['next'],
             'updated_at' => now()
         ]);
 
-        Log::info("TrainingRequest {$trainingRequest->id} updated", [
+        Log::info('Training approved', [
             'from' => $currentStatus,
-            'to'   => $nextStatus,
-            'role' => $role,
+            'to'   => $step['next'],
         ]);
-
-        // Jika final approve → insert ke tabel training
-        if ($nextStatus === 'approve') {
-            $this->insertToTraining($trainingRequest);
-        }
-
-        Log::info("TrainingRequest {$trainingRequest->id} approved");
-
     }
 
     private function cleanRupiah($value)
     {
         if (!$value) return 0;
         return (int) preg_replace('/[^\d]/', '', $value);
+    }
+
+    protected function isHumanCapital($user): bool
+    {
+        if (!$user->unit_id) {
+            Log::warning('isHumanCapital: unit_id null');
+            return false;
+        }
+
+        $exists = DB::table('units')
+            ->where('id', $user->unit_id)
+            ->where(function ($q) {
+                $q->where('code', 'HC')
+                ->orWhere('name', 'LIKE', '%Human Capital%')
+                ->orWhere('name', 'LIKE', '%Human Capital Division%');
+            })
+            ->exists();
+
+        Log::info('isHumanCapital check result', [
+            'unit_id' => $user->unit_id,
+            'exists'  => $exists
+        ]);
+
+        return $exists;
     }
 
 }

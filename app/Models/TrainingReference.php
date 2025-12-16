@@ -25,7 +25,6 @@ class TrainingReference extends Model
         'nama_proyek',
         'jenis_portofolio',
         'fungsi',
-        'kuota',
     ];
 
     protected $casts = [
