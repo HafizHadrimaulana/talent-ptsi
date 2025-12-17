@@ -36,38 +36,6 @@ const TABLE_CONFIGS = {
         }
     },
 
-    // 'training-request-table': {
-    //     apiEndpoint: (unitId) =>
-    //         `/training/training-request/${unitId}/get-training-request-list`,
-    //     columns: [
-    //         'checkbox','no','peserta','tanggal_mulai','tanggal_berakhir',
-    //         'realisasi_biaya_pelatihan','estimasi_total_biaya',
-    //         'lampiran_penawaran','status_approval_training','actions'
-    //     ],
-    //     dataMapper: (data) => {
-    //         if (data.status !== "success") return [];
-    //         return data.data.map(item => ({
-    //             id: item.id,
-    //             nama_peserta: item.employee?.person?.full_name,
-    //             nik: item.employee?.employee_id,
-    //             tanggal_mulai: item.start_date,
-    //             tanggal_berakhir: item.end_date,
-    //             estimasi_total_biaya: item.estimasi_total_biaya,
-    //             lampiran_penawaran: item.lampiran_penawaran,
-    //             status_approval_training: item.status_approval_training,
-    //         }));
-    //     },
-    //     actions: {
-    //         default: ['details'],
-    //         rules: [
-    //             {
-    //                 when: status => status === 'in_review_gmvp',
-    //                 allow: ['edit', 'delete']
-    //             }
-    //         ]
-    //     }
-    // },
-
     'training-request-table': {
         apiEndpoint: (unitId) =>
             `/training/training-request/${unitId}/get-training-request-list`,
@@ -324,8 +292,7 @@ const COLUMN_RENDERERS = {
         const actions = resolveActions(config, item);
 
         const finalActions = actions.length ? actions : ['details'];
-
-
+        
         const buttons = finalActions
             .map(action => {
                 const buttonConfig = ACTION_BUTTONS[action];
@@ -363,16 +330,16 @@ const COLUMN_RENDERERS = {
 let currentPage = 1;
 let perPage = 12;
 
-let lastUsedConfig = null;
-let lastUsedTableBody = null;
+// let lastUsedConfig = null;
+// let lastUsedTableBody = null;
 
-const getTableConfig = (userRole, unitId) => {
-    const config = TABLE_CONFIGS[userRole] || DEFAULT_CONFIG;
-    return {
-        ...config,
-        apiUrl: (currentPage, perPage) => config.apiEndpoint(unitId) + `?page=${currentPage}&per_page=${perPage}`
-    };
-};
+// const getTableConfig = (userRole, unitId) => {
+//     const config = TABLE_CONFIGS[userRole] || DEFAULT_CONFIG;
+//     return {
+//         ...config,
+//         apiUrl: (currentPage, perPage) => config.apiEndpoint(unitId) + `?page=${currentPage}&per_page=${perPage}`
+//     };
+// };
 
 const resolveActions = (config, item) => {
     const role = window.currentUserRole;

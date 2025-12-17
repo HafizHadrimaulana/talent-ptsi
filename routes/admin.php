@@ -234,10 +234,15 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.import-lna');
         Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])
             ->name('training-request.get-data-lna');
-        Route::post('training-request/{id}/edit-lna', [TrainingRequestController::class, 'edit-lna'])
-            ->name('training-request.edit-lna');
-        Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'delete-lna'])
+
+        Route::get('training-request/{id}/get-lna-by-id', [TrainingRequestController::class, 'getLnaById'])
+            ->name('training-request.edit-data-lna');
+        Route::post('training-request/{id}/edit-data-lna', [TrainingRequestController::class, 'editDataLna'])
+            ->name('training-request.update-data-lna');
+
+        Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'destroyLna'])
             ->name('training-request.delete-lna');
+
         Route::post('training-request/lna/store', [TrainingRequestController::class, 'lnaStore'])
             ->name('training-request.lna.store');
         Route::get('training-request/get-data-units', [TrainingRequestController::class, 'getDataUnits'])

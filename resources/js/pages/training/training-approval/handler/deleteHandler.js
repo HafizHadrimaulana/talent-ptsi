@@ -32,7 +32,8 @@ export function initDeleteHandler(tableBody, reloadCallback) {
                 didOpen: () => Swal.showLoading(),
             });
 
-            const res = await deleteJSON(`/training/delete/${id}`);
+            const res = await deleteJSON(`/training/training-request/${id}/delete-lna`);
+            console.log('res delete lna', res);
             Swal.close();
 
             if (res.status === "success") {

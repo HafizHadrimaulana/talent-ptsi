@@ -30,7 +30,6 @@ export function initInputHandler(modalSelector) {
     let sertifikasiList = [];
     let pesertaData = [];
 
-
     let selectedPeserta = [];
 
     function getName(item) {
