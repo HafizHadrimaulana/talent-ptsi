@@ -4,7 +4,7 @@ return [
     'company_name' => 'PT Surveyor Indonesia',
     'company_address' => 'Gedung Surveyor Indonesia, Jl. Jend. Gatot Subroto Kav. 56, Jakarta 12950',
     'company_city' => 'Jakarta',
-    'company_rep_name' => 'Lussy Ariani Seba', // Fallback
+    'company_rep_name' => 'Lussy Ariani Seba',
     'company_rep_title' => 'Direktur Sumber Daya Manusia',
 
     'contract_statuses' => [
@@ -21,8 +21,8 @@ return [
         'Kontrak Organik' => 'Kontrak Organik', 'Kontrak-Project Based' => 'Kontrak-Project Based',
     ],
     'numbering' => [
-        'default_head_code' => 'DN', // Default jika initials tidak ditemukan
-        'doc_codes' => ['SPK' => 'SPK', 'PKWT_BARU' => 'PKWT', 'PKWT_PERPANJANGAN' => 'PKWT', 'PB_PENGAKHIRAN' => 'PB'],
+        'default_head_code' => 'DN',
+        'doc_codes' => ['SPK' => 'SPK', 'PKWT_BARU' => 'PERJ', 'PKWT_PERPANJANGAN' => 'PERJ', 'PB_PENGAKHIRAN' => 'PB'],
         'head_role_names' => ['Kepala Unit', 'GM/VP Unit'],
     ],
 ];
