@@ -4,15 +4,16 @@ import { initEditHandler } from "./handler/editHandler";
 import { initApproveHandler } from "./handler/approveHandler";
 import { initRejectHandler } from "./handler/rejectHandler";
 import { initDragDropUpload } from "./handler/dragDropImport";
+import { initDetailHandler } from "./handler/initDetailHandler";
 
-const ROLES = {
-    SDM_UNIT: "SDM Unit",
-    DHC: "DHC",
-    KEPALA_UNIT: "Kepala Unit",
-    AVP: "AVP",
-    VP_DHC: "VP DHC",
-    DBS_UNIT: "DBS Unit",
-};
+// const ROLES = {
+//     SDM_UNIT: "SDM Unit",
+//     DHC: "DHC",
+//     KEPALA_UNIT: "Kepala Unit",
+//     AVP: "AVP",
+//     VP_DHC: "VP DHC",
+//     DBS_UNIT: "DBS Unit",
+// };
 
 const TABLE_CONFIGS = {
     'data-lna-table': {
@@ -39,7 +40,7 @@ const TABLE_CONFIGS = {
     'training-request-table': {
         apiEndpoint: (unitId) =>
             `/training/training-request/${unitId}/get-training-request-list`,
-        columns: ['checkbox', 'no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'],
+        columns: ['no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'],
         dataMapper: (data) => {
             if (data.status !== "success") return [];
             return data.data.map((item) => ({
@@ -68,7 +69,7 @@ const TABLE_CONFIGS = {
                 {
                     roles: ['SDM Unit'],
                     when: status => status === 'in_review_gmvp',
-                    allow: ['edit', 'delete']
+                    allow: ['delete']
                 },
                 {
                     roles: ['DHC'],
@@ -90,12 +91,12 @@ const TABLE_CONFIGS = {
     }
 }
 
-const DEFAULT_CONFIG = {
-    apiEndpoint: () => "/training/training-request/get-data-lna",
-    columns: ['no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'actions'],
-    dataMapper: (data) => data.data || [],
-    actions: ['edit', 'delete']
-};
+// const DEFAULT_CONFIG = {
+//     apiEndpoint: () => "/training/training-request/get-data-lna",
+//     columns: ['no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 'nama_proyek', 'jenis_portofolio', 'fungsi', 'actions'],
+//     dataMapper: (data) => data.data || [],
+//     actions: ['edit', 'delete']
+// };
 
 const ACTION_BUTTONS = {
     edit: { class: "u-btn u-btn--brand u-hover-lift", text: "Edit" },
@@ -293,6 +294,8 @@ const COLUMN_RENDERERS = {
 
         const finalActions = actions.length ? actions : ['details'];
         
+        const tableId = config.tableId;
+
         const buttons = finalActions
             .map(action => {
                 const buttonConfig = ACTION_BUTTONS[action];
@@ -305,6 +308,7 @@ const COLUMN_RENDERERS = {
                         class="${buttonConfig.class}"
                         data-action="${action}"
                         data-id="${item.id}"
+                        data-table="${tableId}"
                     >
                         ${buttonConfig.text}
                     </button>
@@ -488,6 +492,7 @@ const loadTableData = async (config, tableBody) => {
 
 const initializeEventHandlers = (tableBody, reloadFunction) => {
     initEditHandler(tableBody, reloadFunction);
+    initDetailHandler(tableBody);
     initDeleteHandler(tableBody, reloadFunction);
     initApproveHandler(tableBody);
     initRejectHandler(tableBody);
@@ -508,6 +513,7 @@ export function initGetDataTable(tableBody, options = {}) {
 
     const config = {
         ...baseConfig,
+        tableId,
         apiUrl: (page, perPage) =>
             baseConfig.apiEndpoint(unitId) + `?page=${page}&per_page=${perPage}`
     };

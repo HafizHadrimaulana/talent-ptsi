@@ -1,5 +1,3 @@
-import { initAllApprovalHandler } from "./training-approval/handler/allApproveHandler";
-import { initBulkApprovalHandler } from "./training-approval/handler/bulkApprovalHandler";
 import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
 import { initGetDataTable } from "./training-approval/getData";
 import { initInputHandler } from "./training-approval/handler/inputHandler";
@@ -7,6 +5,7 @@ import { initUpdateJenisPelatihanHandler } from "./training-approval/handler/upd
 import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
 import { initModalHandler } from "../../utils/modal";
 import { initInputLnaHandler } from "./training-approval/handler/inputLnaHandler";
+import { initAllApprovalHandler, initBulkApprovalHandler } from "./training-approval/handler/approveHandler";
 
 const TRAINING_CONFIG = {
     tables: {

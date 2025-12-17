@@ -2,9 +2,6 @@
     class="u-table u-table-mobile training-table" data-role="SDM Unit" data-dt>
     <thead>
         <tr>
-            <th>
-                <input type="checkbox" id="select-all">
-            </th>
             <th>No</th>
             <th>Judul Sertifikasi</th>
             <th>Peserta</th>

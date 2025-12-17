@@ -242,6 +242,8 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
         Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'destroyLna'])
             ->name('training-request.delete-lna');
+        Route::delete('training-request/{id}/delete-training-request', [TrainingRequestController::class, 'destroyTrainingRequest'])
+            ->name('training-request.delete-training-request');
 
         Route::post('training-request/lna/store', [TrainingRequestController::class, 'lnaStore'])
             ->name('training-request.lna.store');

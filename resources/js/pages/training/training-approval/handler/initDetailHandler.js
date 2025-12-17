@@ -4,29 +4,29 @@ import { getDetailLnaHandler } from "./detailLnaHandler";
 /**
  * Inisialisasi event handler untuk tombol Edit
  * @param {Element} tableBody - elemen tbody dari tabel
- * @param {Function} reloadCallback - fungsi untuk reload data setelah update
  */
 
-export function initEditHandler(tableBody, reloadCallback) {
-    const modal = document.querySelector("#edit-lna-modal");
-    const form = document.querySelector("#edit-lna-form");
-    const closeBtn = document.querySelector("#lna-edit-close-modal");
+export function initDetailHandler(tableBody) {
+    console.log('init detail handler');
+    const modal = document.querySelector("#lna-detail-modal");
+    const form = document.querySelector("#lna-detail-form");
+    const closeBtn = document.querySelector("#lna-detail-close-modal");
 
     tableBody.addEventListener("click", async (e) => {
-        const button = e.target.closest("button[data-action='edit']");
+        console.log('click detail');
+        const button = e.target.closest("button[data-action='details']");
         if (!button) return;
 
-        initBiayaHandler(form);
 
         const id = button.dataset.id;
 
         try {
+            modal.classList.remove("hidden");
             const res = await getDetailLnaHandler(id);
 
             console.log("res get edit data", res);
 
             fillEditForm(res);
-            modal.classList.remove("hidden");
             modal.hidden = false;
 
         } catch (error) {
@@ -42,65 +42,6 @@ export function initEditHandler(tableBody, reloadCallback) {
         closeBtn.addEventListener("click", () => {
             modal.classList.add("hidden");
             modal.hidden = true;
-        });
-
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-
-            const formData = new FormData(form);
-            modal.classList.add("hidden");
-
-            const confirm = await Swal.fire({
-                title: "Simpan Perubahan?",
-                text: "Pastikan semua data sudah benar.",
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonText: "Ya, Simpan",
-                cancelButtonText: "Batal",
-            });
-
-            if (!confirm.isConfirmed) return;
-
-            Swal.fire({
-                title: "Menyimpan Data...",
-                text: "Sedang memperbarui data.",
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-            });
-
-            try {
-                const res = await postJSON(`/training/training-request/${id}/edit-data-lna`, formData);
-                Swal.close();
-
-                console.log('res edit', res)
-                if (res.status === "success") {
-                    
-
-                    await Swal.fire({
-                        icon: "success",
-                        title: "Berhasil",
-                        text: res.message,
-                        timer: 2000,
-                        showConfirmButton: false,
-                    });
-
-                    reloadCallback();
-                } else {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Gagal",
-                        text: res.message || "Gagal memperbarui data.",
-                    });
-                }
-            } catch (error) {
-                Swal.close();
-                console.error(error);
-                Swal.fire({
-                    icon: "error",
-                    title: "Kesalahan Server",
-                    text: "Terjadi kesalahan saat memperbarui data.",
-                });
-            }
         });
     });
 

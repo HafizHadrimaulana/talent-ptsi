@@ -56,12 +56,17 @@
                                 @endforeach
                             </div>
                             
-                            <button
-                                type="button"
-                                class="btn-download-template u-btn u-btn--outline u-hover-lift"
+                            @if (
+                                in_array('import', $tabConfig['buttons']) &&
+                                ($tabConfig['show_download_template'] ?? false)
+                            )
+                                <button
+                                    type="button"
+                                    class="btn-download-template u-btn u-btn--outline u-hover-lift"
                                 >
-                                Download Template Excel
-                            </button>
+                                    Download Template Excel
+                                </button>
+                            @endif
                         @endif
                     </div>
                     <div class="u-scroll-x">
@@ -81,6 +86,7 @@
 {{-- ===== MODALS ===== --}}
 @include('training.training-request.modals.input-modal')
 @include('training.training-request.modals.lna-input-modal')
+@include('training.training-request.modals.lna-detail-modal')
 @include('training.training-request.modals.import-modal')
 @include('training.training-request.modals.edit-modal')
 

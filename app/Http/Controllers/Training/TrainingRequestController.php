@@ -93,6 +93,7 @@ class TrainingRequestController extends Controller
                             'import',
                             'lna-input',
                         ],
+                        'show_download_template' => true,
                         'tables' => [
                             'data-lna-table',
                         ],
@@ -125,6 +126,7 @@ class TrainingRequestController extends Controller
                             'import',
                             'training-input'
                         ],
+                        'show_download_template' => true,
                         'tables' => [
                             'sdm-unit-table',
                         ],
@@ -179,7 +181,7 @@ class TrainingRequestController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | 5. Fallback jika role tidak dikenali
+        | Fallback jika role tidak dikenali
         |--------------------------------------------------------------------------
         */
         $ui = $uiMap[$role] ?? [
@@ -942,6 +944,25 @@ class TrainingRequestController extends Controller
     
         Log::info('Data training berhasil dihapus', ['id' => $id]);
     
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Data berhasil dihapus!',
+        ], 200);
+    }
+
+    public function destroyTrainingRequest($id)
+    {
+        $trainingRequest = TrainingRequest::find($id);
+        
+        if (!$trainingRequest) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak ditemukan.',
+            ], 404);
+        }
+
+        $trainingRequest->delete();
+
         return response()->json([
             'status' => 'success',
             'message' => 'Data berhasil dihapus!',

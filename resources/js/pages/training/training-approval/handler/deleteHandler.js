@@ -11,6 +11,7 @@ export function initDeleteHandler(tableBody, reloadCallback) {
         if (!button) return;
 
         const id = button.dataset.id;
+        const table = button.dataset.table;
 
         const confirmResult = await Swal.fire({
             title: "Yakin ingin menghapus data ini?",
@@ -32,7 +33,24 @@ export function initDeleteHandler(tableBody, reloadCallback) {
                 didOpen: () => Swal.showLoading(),
             });
 
-            const res = await deleteJSON(`/training/training-request/${id}/delete-lna`);
+            let deleteUrl = ""
+
+            console.log('table aaa', table);
+
+            if (table === "data-lna-table") {
+                deleteUrl = `/training/training-request/${id}/delete-lna`;
+            }
+
+            if (table === "training-request-table") {
+                deleteUrl = `/training/training-request/${id}/delete-training-request`;
+            }
+
+            if (!deleteUrl) {
+                console.error("Delete route not defined");
+                return;
+            }
+
+            const res = await deleteJSON(deleteUrl);
             console.log('res delete lna', res);
             Swal.close();
 
