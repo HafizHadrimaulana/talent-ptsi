@@ -10,22 +10,27 @@ class Person extends Model
     use HasFactory;
 
     protected $table = 'persons';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
-        'nik', 
-        'name', 
-        'full_name', 
-        'email', 
-        'phone', 
-        'address', 
-        'gender', 
-        'birth_place', 
-        'birth_date'
+        'full_name',
+        'gender',
+        'date_of_birth',
+        'place_of_birth',
+        'address',
+        'city',
+        'phone',
+        'email',
+        'nik_hash',
+        'nik_last4',
     ];
 
-    protected $casts = [
-        'birth_date' => 'date',
-    ];
+    protected $hidden = ['nik_hash'];
+
+    protected $appends = ['nik_masked','has_nik'];
+
+    protected $casts = ['date_of_birth' => 'date'];
 
     public function employee()
     {
@@ -35,5 +40,17 @@ class Person extends Model
     public function user()
     {
         return $this->hasOne(User::class, 'person_id');
+    }
+
+    public function getNikMaskedAttribute(): ?string
+    {
+        $last4 = $this->attributes['nik_last4'] ?? null;
+        if (!$last4) return null;
+        return str_repeat('*', 12) . $last4;
+    }
+
+    public function getHasNikAttribute(): bool
+    {
+        return !empty($this->attributes['nik_hash']);
     }
 }
