@@ -830,16 +830,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // --- TOMBOL LIHAT DOKUMEN ---
-                const btnPreview = $('#btnPreviewDoc');
-                if (btnPreview) {
-                    if (d.doc_url) {
-                        btnPreview.hidden = false;
-                        btnPreview.href = d.doc_url; // Link aman dari controller
-                    } else {
-                        btnPreview.hidden = true;
-                        btnPreview.href = '#';
-                    }
-                }
+const btnPreview = $('#btnPreviewDoc');
+if (btnPreview) {
+  if (d.doc_url) {
+    btnPreview.hidden = false;
+    btnPreview.href = d.doc_url;
+    btnPreview.onclick = (ev) => { ev.preventDefault(); window.open(d.doc_url, '_blank', 'noopener'); };
+  } else {
+    btnPreview.hidden = true;
+    btnPreview.href = '#';
+    btnPreview.onclick = null;
+  }
+}
+
 
                 const bApp=$('#btnApprove'), bSign=$('#btnSign'), bRej=$('#btnReject');
                 if(bApp) {
