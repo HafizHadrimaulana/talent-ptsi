@@ -78,7 +78,7 @@
                                 {{ $displayPosition }}
                             </div>
                             
-                            <div class="u-text-2xs u-muted">Approved: {{ $row->updated_at->format('d M Y') }}</div>
+                            <!-- <div class="u-text-2xs u-muted">Approved: {{ $row->updated_at->format('d M Y') }}</div> -->
                         </td>
                         <td>{{ $row->unit->name ?? '-' }}</td>
                         <td>{{ $row->headcount }} Orang</td>
