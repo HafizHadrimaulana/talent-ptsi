@@ -30,6 +30,8 @@ return new class extends Migration
             $table->string('jenis_portofolio')->nullable();
             $table->string('fungsi')->nullable();
 
+            $table->string('status_training_reference')->default('active');
+
             $table->timestamps();
             
             $table->foreign('unit_id')

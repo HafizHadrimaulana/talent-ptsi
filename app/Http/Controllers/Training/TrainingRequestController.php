@@ -29,9 +29,6 @@ class TrainingRequestController extends Controller
     {
         $user = auth()->user();
         $role = $user->getRoleNames()->first();
-
-        Log::info('user', $user->toArray());
-        Log::info('training.index.role', ['role' => $role]);
     
         // ======================================
         // Privilege "lihat semua unit"
@@ -381,6 +378,7 @@ class TrainingRequestController extends Controller
                     "nama_proyek" => $item->nama_proyek,
                     "jenis_portofolio" => $item->jenis_portofolio,
                     "fungsi" => $item->fungsi,
+                    "status_training_reference" => $item->status_training_reference,
                     "created_at" => $item->created_at,
                 ];
             });
@@ -958,8 +956,23 @@ class TrainingRequestController extends Controller
                 'message' => 'Data tidak ditemukan.',
             ], 404);
         }
-    
-        $item->delete();
+
+        Log::info('status_training_reference', ['status_training_reference' => $item->status_training_reference]);
+
+        if ($item->status_training_reference === 'cancelled') {
+            Log::info('Percobaan nonaktifkan data LNA yang sudah tidak aktif', [
+                'id' => $id
+            ]);
+
+            return response()->json([
+                'status' => 'warning',
+                'message' => 'Data sudah tidak aktif.',
+            ], 409);
+        }
+        
+        $item->update([
+            'status_training_reference' => 'cancelled'
+        ]);
     
         Log::info('Data training berhasil dihapus', ['id' => $id]);
     

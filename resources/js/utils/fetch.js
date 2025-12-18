@@ -1,5 +1,7 @@
 export async function getJSON(url) {
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+    });
     if (!response.ok) {
         throw new Error(`GET ${url} failed with status ${response.status}`);
     }
@@ -34,28 +36,42 @@ export async function postJSON(url, formData = null) {
 }
 
 export async function postFormData(url, formData) {
-    console.log('post form data', formData);
+    console.log("post form data", formData);
     const res = await fetch(url, {
         method: "POST",
         body: formData,
         headers: {
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+                .content,
         },
     });
-    console.log('res in post form data', res);
+    console.log("res in post form data", res);
     return res.json();
 }
 
-export async function deleteJSON(url) {
+export async function deleteJSON(url, options = {}) {
     const res = await fetch(url, {
         method: "DELETE",
         headers: {
             "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
-                .content,
+                ?.content,
             Accept: "application/json",
         },
+        ...options,
     });
 
-    if (!res.ok) throw new Error("Gagal menghapus data");
-    return res.json();
+    let data = null;
+
+    try {
+        data = await res.json();
+    } catch (e) {
+        // response bukan JSON
+        data = null;
+    }
+
+    return {
+        ok: res.ok, // true / false (HTTP level)
+        statusCode: res.status, // 200, 404, 409, 500, dll
+        data, // body response
+    };
 }

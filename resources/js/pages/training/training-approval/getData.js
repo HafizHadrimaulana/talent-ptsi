@@ -22,7 +22,7 @@ const TABLE_CONFIGS = {
             'no','judul_sertifikasi','unit_kerja','penyelenggara',
             'jumlah_jam','waktu_pelaksanaan','biaya_pelatihan',
             'uhpd','biaya_akomodasi','estimasi_total_biaya',
-            'nama_proyek','jenis_portofolio','fungsi', 'actions'
+            'nama_proyek','jenis_portofolio','fungsi', 'status_training_reference', 'actions'
         ],
         dataMapper: (data) => data.data || [],
         actions: {
@@ -284,6 +284,38 @@ const COLUMN_RENDERERS = {
                     "
                 >
                     ${label}
+                </span>
+            </td>
+        `;
+    },
+
+    status_training_reference: (item) => {
+        const STATUS_MAP = {
+            active: {
+                label: "Aktif",
+                class: "u-badge u-badge--success",
+            },
+            cancelled: {
+                label: "Dibatalkan",
+                class: "u-badge u-badge--danger",
+            },
+            pending: {
+                label: "Pending",
+                class: "u-badge u-badge--warning",
+            },
+        };
+
+        const status = item.status_training_reference;
+        const config = STATUS_MAP[status];
+
+        if (!config) {
+            return `<td class="text-center">-</td>`;
+        }
+
+        return `
+            <td class="text-center">
+                <span class="${config.class}">
+                    ${config.label}
                 </span>
             </td>
         `;

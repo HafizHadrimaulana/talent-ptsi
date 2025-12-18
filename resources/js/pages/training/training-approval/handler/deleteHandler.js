@@ -14,11 +14,11 @@ export function initDeleteHandler(tableBody, reloadCallback) {
         const table = button.dataset.table;
 
         const confirmResult = await Swal.fire({
-            title: "Yakin ingin menghapus data ini?",
-            text: "Data yang sudah dihapus tidak dapat dikembalikan!",
+            title: "Yakin ingin membatalkan data ini?",
+            text: "Data yang sudah dibatalkan tidak dapat dikembalikan!",
             icon: "warning",
             showCancelButton: true,
-            confirmButtonText: "Ya, hapus",
+            confirmButtonText: "Ya",
             cancelButtonText: "Batal",
             reverseButtons: true,
         });
@@ -35,8 +35,6 @@ export function initDeleteHandler(tableBody, reloadCallback) {
 
             let deleteUrl = ""
 
-            console.log('table aaa', table);
-
             if (table === "data-lna-table") {
                 deleteUrl = `/training/training-request/${id}/delete-lna`;
             }
@@ -51,24 +49,44 @@ export function initDeleteHandler(tableBody, reloadCallback) {
             }
 
             const res = await deleteJSON(deleteUrl);
-            console.log('res delete lna', res);
             Swal.close();
 
-            if (res.status === "success") {
+            const { ok, statusCode, data } = res;
+
+            if (ok && data?.status === "success") {
                 await Swal.fire({
                     icon: "success",
                     title: "Berhasil!",
-                    text: res.message,
+                    text: data.message,
                     timer: 2000,
                     showConfirmButton: false,
                 });
 
                 reloadCallback();
-            } else {
-                Swal.fire({
+
+            } else if (statusCode === 409 && data?.status === "warning") {
+                await Swal.fire({
+                    icon: "info",
+                    title: "Informasi",
+                    text: data.message || "Data sudah tidak aktif.",
+                    timer: 2500,
+                    showConfirmButton: false,
+                });
+
+                reloadCallback();
+
+            } else if (statusCode === 404) {
+                await Swal.fire({
                     icon: "error",
-                    title: "Gagal Menghapus",
-                    text: res.message || "Gagal menghapus data.",
+                    title: "Data Tidak Ditemukan",
+                    text: data?.message || "Data tidak ditemukan.",
+                });
+
+            } else {
+                await Swal.fire({
+                    icon: "error",
+                    title: "Gagal",
+                    text: data?.message || "Terjadi kesalahan sistem.",
                 });
             }
         } catch (error) {

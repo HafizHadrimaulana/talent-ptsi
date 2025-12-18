@@ -15,6 +15,7 @@
             <th>Nama Proyek</th>
             <th>Jenis Portofolio</th>
             <th>Fungsi</th>
+            <th>Status</th>
             <th class="cell-actions">Aksi</th>
         </tr>
     </thead>
