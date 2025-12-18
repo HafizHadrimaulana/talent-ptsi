@@ -17,7 +17,7 @@
 
     {{-- Modal Body --}}
     <div class="u-modal__body u-p-md u-space-y-lg">
-      <form id="lna-input-form" method="POST" action="{{ route('training.training-request.lna.store') }}">
+      <form id="lna-input-form" method="POST">
         @csrf
 
         {{-- Section Title --}}
@@ -131,5 +131,7 @@
 </div>
 
 <script>
-  window.userUnitId = "{{ auth()->user()->unit_id }}";
+  window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
+  window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+  window.currentUnitName = "{{ optional(optional(Auth::user()->employee)->unit)->name ?? optional(optional(Auth::user()->person)->unit)->name ?? '' }}";
 </script>

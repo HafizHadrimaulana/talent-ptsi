@@ -325,7 +325,7 @@ class TrainingRequestController extends Controller
         try {
             $user = auth()->user();
 
-            $perPage = $request->input('per_page', 12);
+            $perPage = $request->input('per_page', 20);
             $page = $request->input('page', 1);
 
             /**
@@ -690,9 +690,28 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function lnaStore(Request $request) 
+    public function inputLna(Request $request) 
     {
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
         Log::info("Mulai input training request:", $request->all());
+
+        if ($role === 'SDM Unit') {
+            $unitId = optional($user->employee)->unit_id 
+                ?? optional($user->person)->unit_id;
+
+            if (!$unitId) {
+                return response()->json([
+                    "status" => "error",
+                    "message" => "Unit kerja SDM Unit tidak ditemukan"
+                ], 422);
+            }
+
+            // ⬅️ Paksa unit_id dari backend
+            $request->merge([
+                'unit_id' => $unitId
+            ]);
+        };
 
         $request->merge([
             'biaya_pelatihan'      => $this->cleanRupiah($request->biaya_pelatihan),

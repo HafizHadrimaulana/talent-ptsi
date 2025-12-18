@@ -30,7 +30,7 @@ export function initInputLnaHandler(modalSelector) {
             });
 
             const res = await postFormData(
-                "/training/training-request/lna/store",
+                "/training/training-request/input-lna",
                 fd
             );
 
@@ -135,15 +135,32 @@ async function loadUnits() {
     const select = document.getElementById("select-unit");
     if (!select) return;
 
+    const role = window.currentUserRole;
+    const userUnitId = window.currentUnitId;
+    const userUnitName = window.currentUnitName;
+
+    // ==============================
+    // SDM UNIT → AUTO SET UNIT
+    // ==============================
+    if (role === "SDM Unit" && userUnitId) {
+        select.innerHTML = `
+            <option value="${userUnitId}" selected>
+                ${userUnitName ?? "Tidak ada unit"}
+            </option>
+        `;
+
+        select.disabled = true;
+        return;
+    }
+
     try {
         const response = await getJSON(
             "/training/training-request/get-data-units"
         );
         console.log("units", response);
-        const result = await response;
 
-        if (result.status === "success") {
-            renderUnitOptions(select, result.data);
+        if (response.status === "success") {
+            renderUnitOptions(select, response.data);
         } else {
             console.warn("Gagal mendapatkan data unit");
         }

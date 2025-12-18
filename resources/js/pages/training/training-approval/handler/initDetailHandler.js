@@ -17,12 +17,13 @@ export function initDetailHandler(tableBody) {
         const button = e.target.closest("button[data-action='details']");
         if (!button) return;
 
+        initBiayaHandler(form);
 
         const id = button.dataset.id;
 
         try {
             modal.classList.remove("hidden");
-            const res = await getDetailLnaHandler(id);
+            const res = await getJSON(`/training/training-request/${id}/get-lna-by-id`);
 
             console.log("res get edit data", res);
 

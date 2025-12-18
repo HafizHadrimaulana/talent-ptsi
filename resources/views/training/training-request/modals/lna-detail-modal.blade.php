@@ -6,8 +6,8 @@
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
         <div>
-          <div class="u-title" id="ip-modal-title">Tambah Pelatihan Baru</div>
-          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Tambah pelatihan</div>
+          <div class="u-title" id="ip-modal-title">Detail Pelatihan</div>
+          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Data pelatihan</div>
         </div>
       </div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
@@ -17,7 +17,7 @@
 
     {{-- Modal Body --}}
     <div class="u-modal__body u-p-md u-space-y-lg">
-      <form id="lna-detail-form" method="POST" action="{{ route('training.training-request.lna.store') }}">
+      <form id="lna-detail-form">
         @csrf
 
         {{-- Section Title --}}
@@ -39,7 +39,7 @@
             {{-- DROPDOWN UNIT --}}
             <div>
               <label class="font-medium after:content-['*'] after:text-red-500">Unit</label>
-                <select name="unit_id" id="select-unit" class="u-input u-font-semibold" required>
+                <select name="unit_id" id="detail-select-unit" class="u-input u-font-semibold" required>
                     <option value="">-- Pilih Unit --</option>
                 </select>
             </div>
@@ -131,5 +131,7 @@
 </div>
 
 <script>
-  window.userUnitId = "{{ auth()->user()->unit_id }}";
+  window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
+  window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+  window.currentUnitName = "{{ optional(optional(Auth::user()->employee)->unit)->name ?? optional(optional(Auth::user()->person)->unit)->name ?? '' }}";
 </script>

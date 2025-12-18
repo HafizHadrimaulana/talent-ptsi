@@ -1,4 +1,4 @@
-<div id="edit-lna-modal"
+<div id="lna-edit-modal"
      class="u-modal hidden">
     <div class="u-modal__card">
 
@@ -17,7 +17,7 @@
         </div>
 
         <div class="u-modal__body u-p-md u-space-y-lg">
-            <form id="edit-lna-form"  method="POST">
+            <form id="lna-edit-form"  method="POST">
                 @csrf
 
                 <input type="hidden" id="edit-id" name="id">
@@ -117,7 +117,7 @@
                 <button type="button" id="lna-edit-close-modal" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
                 
                 {{-- FIXED: gunakan ID FORM YANG BENAR --}}
-                <button type="submit" form="edit-lna-form" class="u-btn u-btn--brand u-hover-lift">Simpan</button>
+                <button type="submit" form="lna-edit-form" class="u-btn u-btn--brand u-hover-lift">Simpan</button>
             </div>
         </div>
     </div>

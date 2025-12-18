@@ -8,8 +8,8 @@ import { getDetailLnaHandler } from "./detailLnaHandler";
  */
 
 export function initEditHandler(tableBody, reloadCallback) {
-    const modal = document.querySelector("#edit-lna-modal");
-    const form = document.querySelector("#edit-lna-form");
+    const modal = document.querySelector("#lna-edit-modal");
+    const form = document.querySelector("#lna-edit-form");
     const closeBtn = document.querySelector("#lna-edit-close-modal");
 
     tableBody.addEventListener("click", async (e) => {
@@ -108,7 +108,7 @@ export function initEditHandler(tableBody, reloadCallback) {
         document.querySelector("#edit-id").value = data.id;
         document.querySelector("#edit-judul_sertifikasi").value = data.judul_sertifikasi ?? "-";
 
-        loadUnits(data.unit_id);
+        loadUnits(data.unit_id, data.unit_kerja);
 
         document.querySelector("#edit-penyelenggara").value = data.penyelenggara ?? "-";
         document.querySelector("#edit-jumlah_jam").value = data.jumlah_jam ?? "-";
@@ -136,11 +136,15 @@ export function initEditHandler(tableBody, reloadCallback) {
  *   HELPERS
  * =============================== */
 
-async function loadUnits(selectedUnitId = null) {
+async function loadUnits(selectedUnitId, selectedUnitName) {
     const select = document.getElementById("edit-unit_kerja");
     if (!select) return;
 
-    select.innerHTML = `<option value="">-- Pilih Unit --</option>`;
+    select.innerHTML = `
+        <option value="${selectedUnitId}" selected>
+            ${selectedUnitName ?? "Unit tidak diketahui"}
+        </option>
+    `;
 
     try {
         const res = await getJSON(
@@ -151,14 +155,11 @@ async function loadUnits(selectedUnitId = null) {
         if (res.status !== "success") return;
 
         res.data.forEach(unit => {
+            if (String(unit.id) === String(selectedUnitId)) return;
+
             const option = document.createElement("option");
             option.value = unit.id;
             option.textContent = unit.name;
-
-            if (String(unit.id) === String(selectedUnitId)) {
-                option.selected = true;
-            }
-
             select.appendChild(option);
         });
 
