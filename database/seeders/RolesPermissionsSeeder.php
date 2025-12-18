@@ -89,7 +89,7 @@ class RolesPermissionsSeeder extends Seeder
             // ============================================================
             // D) Pastikan role FINAL ada & terkonsolidasi (tanpa VP DHC)
             // ============================================================
-            $finalRoles = ['Superadmin','DHC','Dir SDM','SDM Unit','Kepala Unit','Karyawan'];
+            $finalRoles = ['Superadmin','DHC','Dir SDM','SDM Unit','Kepala Unit','Karyawan','Pelamar'];
             $role = [];
             foreach ($finalRoles as $rn) {
                 $role[$rn] = $keepRole($rn);
@@ -111,8 +111,7 @@ class RolesPermissionsSeeder extends Seeder
             // ============================================================
             $perms = [
                 // Users / RBAC
-                'users.view','users.create','users.update','users.delete',
-                'rbac.view','rbac.assign',
+                'users.view','users.create','users.update','users.delete','rbac.view','rbac.assign',
 
                 // Directory / Employees
                 'employees.view',
@@ -121,8 +120,10 @@ class RolesPermissionsSeeder extends Seeder
                 'org.view','org.create','org.update','org.delete',
 
                 // Recruitment
-                'recruitment.view','recruitment.create','recruitment.update',
-                'recruitment.submit','recruitment.approve','recruitment.reject',
+                'recruitment.view','recruitment.create','recruitment.update','recruitment.submit','recruitment.approve','recruitment.reject',
+
+                //External Recruitment
+                'recruitment.external.view','recruitment.external.apply','recruitment.external.manage',
 
                 // Contracts
                 'contract.view','contract.create','contract.update','contract.approve','contract.sign',
@@ -151,7 +152,7 @@ class RolesPermissionsSeeder extends Seeder
                 'org.view','org.create','org.update','org.delete',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.approve','recruitment.reject',
                 'contract.view','contract.create','contract.update','contract.approve',
-                'training.view','reports.export',
+                'training.view','reports.export','recruitment.external.view','recruitment.external.manage',
             ]);
 
             // Dir SDM — approver final
@@ -170,7 +171,7 @@ class RolesPermissionsSeeder extends Seeder
                 'org.view','org.create','org.update',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit',
                 'contract.view','contract.create','contract.update',
-                'training.view','reports.export',
+                'training.view','reports.export','recruitment.external.view','recruitment.external.manage',
             ]);
 
             // Kepala Unit — approver tahap 1 (unit-scoped)
@@ -185,6 +186,12 @@ class RolesPermissionsSeeder extends Seeder
             // Karyawan — minimal
             $role['Karyawan']->syncPermissions([
                 'employees.view','training.view',
+            ]);
+
+            $rolePelamar = Role::firstOrCreate(['name' => 'Pelamar', 'guard_name' => 'web']);
+            $rolePelamar->syncPermissions([
+                'recruitment.external.view',
+                'recruitment.external.apply',
             ]);
         });
 

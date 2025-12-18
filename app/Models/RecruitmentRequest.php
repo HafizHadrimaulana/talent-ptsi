@@ -69,6 +69,10 @@ class RecruitmentRequest extends Model
     {
         return $this->belongsTo(Unit::class);
     }
+    public function applicants()
+    {
+        return $this->hasMany(RecruitmentApplicant::class, 'recruitment_request_id');
+    }
  
     public function scopeForViewer($q, \App\Models\User $user)
     {
@@ -87,5 +91,10 @@ class RecruitmentRequest extends Model
         }
 
         return $q->whereRaw('1=0');
+    }
+
+    public function positionObj()
+    {        
+        return $this->belongsTo(\App\Models\Position::class, 'position_id');
     }
 }

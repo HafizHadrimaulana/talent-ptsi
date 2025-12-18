@@ -7,6 +7,7 @@ use App\Http\Controllers\Public\ApplicationController as PublicApplicationContro
 use App\Http\Controllers\Account\AccountController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController;
 use App\Http\Controllers\Recruitment\SalaryController;
+use App\Http\Controllers\Recruitment\ExternalRecruitmentController;
 
 Route::middleware('web')->group(function () {
 
@@ -29,6 +30,21 @@ Route::middleware('web')->group(function () {
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
         Route::post('/recruitment/uraian-jabatan/preview-pdf', [PrincipalApprovalController::class, 'previewUraianPdf'])
         ->name('recruitment.uraian-jabatan.preview-pdf');
+        Route::group(['prefix' => 'recruitment/external', 'as' => 'recruitment.external.', 'middleware' => ['auth']], function () {
+    
+            // 1. Halaman Utama (Daftar Lowongan)
+            Route::get('/', [ExternalRecruitmentController::class, 'index'])->name('index');
+
+            // 2. Proses Submit Lamaran (Ini yang menyebabkan error Anda)
+            Route::post('/apply', [ExternalRecruitmentController::class, 'apply'])->name('apply');
+
+            // 3. API: Ambil Data Pelamar (Untuk Modal DHC)
+            Route::get('/{id}/applicants', [ExternalRecruitmentController::class, 'getApplicants'])->name('getApplicants');
+
+            // 4. Proses Update Status Pelamar (Terima/Tolak oleh DHC)
+            Route::post('/applicant/{id}/update', [ExternalRecruitmentController::class, 'updateApplicantStatus'])->name('updateApplicantStatus');
+
+        });
     });
 
     Route::get('recruitment/principal-approval/export', [App\Http\Controllers\Recruitment\PrincipalApprovalController::class, 'exportExcel'])

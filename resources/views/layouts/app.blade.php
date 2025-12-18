@@ -107,106 +107,153 @@
 
     <div class="top-actions">
       <div class="dropdown-wrap">
+        {{-- === GLOBAL NOTIFICATION CENTER === --}}
         @auth
-        {{-- Notifikasi Izin Prinsip --}}
+          @php
+             // Gabung notifikasi dari View Composer
+             $appNotifs = $globalNotifications ?? collect();
+            
+             $sysNotifs = collect();
+             $unreadSysCount = 0;
+             if (method_exists(auth()->user(), 'notificationsSite')) {
+                 try {
+                     $unreadSysCount = auth()->user()->notificationsSite()->whereNull('read_at')->count();
+                     $rawSys = auth()->user()->notificationsSite()->latest()->limit(5)->get();
+                     foreach($rawSys as $n) {
+                         $sysNotifs->push((object)[
+                             'type' => 'system',
+                             'title' => 'System Notification',
+                             'subtitle' => '',
+                             'desc' => $n->message,
+                             'status' => 'info',
+                             'url' => '#', // Atau link detail notif sistem
+                             'time' => $n->created_at,
+                             'icon' => 'fa-bell',
+                             'color_class' => 'text-gray-500'
+                         ]);
+                     }
+                 } catch (\Throwable $e) {}
+             }
 
-        @if(isset($approvalNotifs) && $approvalNotifs->count() > 0)
-          <button id="ipNotifBtn" class="top-btn" type="button" aria-expanded="false" title="Persetujuan Izin Prinsip" style="position: relative;">
-            {{-- Ikon Clipboard/File --}}
-            <i class="fa-solid fa-file-signature" style="font-size: 1.1rem; color: #4f46e5;"></i>
-            {{-- jlh notif --}}
-            <span class="badge" style="color: red;">{{ $approvalNotifs->count() }}</span>
+             // Gabungkan semua
+             $allNotifs = $appNotifs->merge($sysNotifs)->sortByDesc('time');
+             $totalCount = $appNotifs->count() + $unreadSysCount;
+          @endphp
+
+          <button id="globalNotifBtn" class="top-btn" type="button" aria-expanded="false" title="Notifications" style="position: relative;">
+            <i class="fa-solid fa-bell" style="font-size: 1.1rem; color: #5951f3ff;"></i>
+            
+            @if($totalCount > 0)
+              <span class="badge" style="color: red;">{{ $totalCount }}</span>
+            @endif
           </button>
 
-          {{-- Dropdown Content --}}
-          <div id="ipNotifDropdown" class="dropdown" hidden style="width: 320px; right: 0; left: auto;">
-            <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center;">
-              <span>Approval Izin Prinsip</span>
-              <button class="close-btn" type="button" onclick="document.getElementById('ipNotifDropdown').hidden=true">✖</button>
+          <div id="globalNotifDropdown" class="dropdown" hidden style="width: 340px; right: 0; left: auto;">
+            <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f3f4f6; padding: 12px 16px;">
+               <span style="font-weight: 600; color: #1f2937;">Notifikasi</span>
+               <button class="close-btn" type="button" style="background:none; border:none; cursor:pointer;" onclick="document.getElementById('globalNotifDropdown').hidden=true">✖</button>
             </div>
             
-            <ul class="notif-list" style="max-height: 350px; overflow-y: auto;">
-              @foreach($approvalNotifs as $notif)
-                <li class="notif-item" style="padding: 0;">
-                  <a href="{{ route('recruitment.principal-approval.index', ['open_ticket_id' => $notif->id]) }}" 
-                    style="display: block; padding: 12px 16px; text-decoration: none; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;">
-                    
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span style="font-size: 0.75rem; font-weight: 700; color: #4f46e5; text-transform: uppercase;">
-                          {{ $notif->unit->name ?? 'Unit' }}
-                        </span>
-                        <span style="font-size: 0.7rem; color: #9ca3af;">{{ $notif->created_at->diffForHumans() }}</span>
-                    </div>
-                    
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #1f2937; margin-bottom: 4px; line-height: 1.3;">
-                      {{ $notif->title }}
-                    </div>
-                    
-                    <div style="display: flex; gap: 8px;">
-                      <span class="u-badge u-badge--xs u-badge--subtle">{{ $notif->request_type }}</span>
-                      <span class="u-badge u-badge--xs u-badge--subtle">{{ $notif->headcount }} Orang</span>
-                    </div>
-                  </a>
-                </li>
-              @endforeach
+            <ul class="notif-list" style="max-height: 400px; overflow-y: auto; padding: 0; margin: 0; list-style: none;">
+              @if($allNotifs->isEmpty())
+                 <li style="padding: 20px; text-align: center; color: #6b7280; font-size: 0.875rem;">
+                    Tidak ada notifikasi.
+                 </li>
+              @else
+                 @foreach($allNotifs as $notif)
+                   @php
+                       $bgItem = '#fff';
+                       $borderLeft = '4px solid transparent';
+                       
+                       // Warna border kiri berdasarkan tipe notifikasi
+                       if ($notif->type === 'izin_prinsip') {
+                           $borderLeft = '4px solid #4f46e5'; 
+                       } elseif ($notif->type === 'training') {
+                           $borderLeft = '4px solid #10b981';
+                       } else {
+                           $borderLeft = '4px solid #9ca3af';
+                       }
+
+                       // Warna SLA
+                       $daysDiff = $notif->time ? $notif->time->diffInDays(now()) : 0;
+                       $timeColor = '#2563eb';
+                       $extraLabel = '';
+                       
+                       if ($daysDiff >= 5) {
+                           $timeColor = '#dc2626';
+                           $extraLabel = '🔺';
+                       } elseif ($daysDiff >= 3) {
+                           $timeColor = '#d97706';
+                           $extraLabel = '⚠️';
+                       }
+                   @endphp
+
+                   <li class="notif-item" style="padding: 0;">
+                     <a href="{{ $notif->url }}" 
+                        style="display: block; padding: 12px 16px; text-decoration: none; border-bottom: 1px solid #f3f4f6; background-color: {{ $bgItem }}; border-left: {{ $borderLeft }}; transition: background-color 0.2s;">
+                        
+                        {{-- Tipe & Waktu --}}
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center;">
+                           <div style="display: flex; align-items: center; gap: 6px;">
+                               <i class="fa-solid {{ $notif->icon }}" style="font-size: 0.7rem; color: #6b7280;"></i>
+                               <span style="font-size: 0.7rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">
+                                 {{ str_replace('_', ' ', $notif->type) }}
+                               </span>
+                           </div>
+                           
+                           <span style="font-size: 0.7rem; font-weight: 700; color: {{ $timeColor }};">
+                             {{ $notif->time ? str_replace('yang ', '', $notif->time->locale('id')->diffForHumans()) : '' }}
+                             @if($extraLabel) <span style="margin-left: 2px;">{{ $extraLabel }}</span> @endif
+                           </span>
+                        </div>
+                        {{-- Title --}}
+                        <div style="font-size: 0.9rem; font-weight: 600; color: #1f2937; margin-bottom: 4px; line-height: 1.3;">
+                          {{ $notif->title }}
+                        </div>
+                        
+                        {{-- Subtitle / Deskripsi --}}
+                        @if($notif->subtitle || $notif->desc)
+                        <div style="display: flex; gap: 8px; align-items: center; font-size: 0.75rem; color: #4b5563;">
+                          @if($notif->subtitle) <span>{{ $notif->subtitle }}</span> @endif
+                          @if($notif->subtitle && $notif->desc) <span>•</span> @endif
+                          @if($notif->desc) <span>{{ $notif->desc }}</span> @endif
+                        </div>
+                        @endif
+                     </a>
+                   </li>
+                 @endforeach
+              @endif
             </ul>
+            
+            {{-- Footer Dropdown --}}
+            {{-- <div style="padding: 8px; text-align: center; border-top: 1px solid #eee;">
+                <a href="#" style="font-size: 0.75rem; font-weight: 600; text-decoration: none; color: #4f46e5;">Lihat Semua</a>
+            </div> --}}
           </div>
-          
-          {{-- Script kecil inline untuk toggle dropdown --}}
+
           <script>
             document.addEventListener('DOMContentLoaded', function() {
-              const btn = document.getElementById('ipNotifBtn');
-              const dd = document.getElementById('ipNotifDropdown');
+              const btn = document.getElementById('globalNotifBtn');
+              const dd = document.getElementById('globalNotifDropdown');
+              
               if(btn && dd) {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
-                  // Tutup dropdown lain
-                  document.querySelectorAll('.dropdown').forEach(d => d.hidden = true);
+                  document.querySelectorAll('.dropdown').forEach(d => {
+                      if(d !== dd) d.hidden = true;
+                  });
                   dd.hidden = !dd.hidden;
+                });
+
+                // Tutup saat klik di luar area notifikasi
+                document.addEventListener('click', (e) => {
+                  if (!btn.contains(e.target) && !dd.contains(e.target)) {
+                    dd.hidden = true;
+                  }
                 });
               }
             });
           </script>
-        @endif
-      @endauth
-
-      @auth
-          @php
-            $unreadCount = 0;
-            $siteNotifs = collect();
-            $hasNotificationsApi = method_exists(auth()->user() ?? new \stdClass(), 'notificationsSite');
-            if ($hasNotificationsApi) {
-                try {
-                    $unreadCount = auth()->user()->notificationsSite()->whereNull('read_at')->count();
-                    $siteNotifs = auth()->user()->notificationsSite()->latest()->limit(8)->get();
-                } catch (\Throwable $e) {
-                    $unreadCount = 0; $siteNotifs = collect();
-                }
-            }
-          @endphp
-          @if($hasNotificationsApi)
-            <button id="notifBtn" class="top-btn" type="button" aria-expanded="false" aria-haspopup="true" title="Notifications">
-              <i class="fa-solid fa-bell bell-icon"></i>
-              @if($unreadCount)
-                <span class="badge">{{ $unreadCount }}</span>
-              @endif
-            </button>
-            <div id="notifDropdown" class="dropdown" hidden>
-              <div class="dropdown-header">
-                Notifications
-                <button class="close-btn" type="button" data-close="#notifDropdown">✖</button>
-              </div>
-              @if($siteNotifs->isEmpty())
-                <div class="muted text-sm">No notifications yet.</div>
-              @else
-                <ul class="notif-list">
-                  @foreach($siteNotifs as $n)
-                    <li class="notif-item">{{ $n->message ?? 'Notification' }}</li>
-                  @endforeach
-                </ul>
-              @endif
-            </div>
-          @endif
         @endauth
       </div>
 
