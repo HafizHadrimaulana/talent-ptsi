@@ -15,6 +15,7 @@ class ContractController extends Controller
         $user=$request->user();$isSuperadmin=$user->hasRole('Superadmin');$isDhc=$user->hasRole('DHC');$canSeeAll=$isSuperadmin||$isDhc;$userUnitId=(int)($user->unit_id??0);
         $isApproverOnly=$user->can('contract.approve')&&!$user->can('contract.update');
         $selectedUnitId=$canSeeAll?($request->filled('unit_id')?(int)$request->integer('unit_id'):null):$userUnitId;
+
         $query=Contract::with(['unit','employee','document','person','applicant'])->orderByDesc('created_at');
         if($selectedUnitId){$query->where('unit_id',$selectedUnitId);}
         elseif($isDhc&&!$isSuperadmin){$query->whereHas('unit',fn($q)=>$q->where('category','ENABLER'));}
@@ -29,10 +30,12 @@ class ContractController extends Controller
             });
         }
         $contracts=$query->paginate(25)->withQueryString();
+
         $unitsQuery=Unit::query();
         if($isSuperadmin){$unitsQuery->whereIn('category',['ENABLER','CABANG','OPERASI']);}
         elseif($isDhc){$unitsQuery->where('category','ENABLER');}
         $units=$canSeeAll?$unitsQuery->orderBy('name')->get(['id','name']):Unit::where('id',$selectedUnitId)->get(['id','name']);
+
         $expiringQuery=DB::table('portfolio_histories AS ph')
             ->leftJoin('employees AS e','e.person_id','=','ph.person_id')
             ->leftJoin('units AS u','u.id','=','e.unit_id')
@@ -40,6 +43,7 @@ class ContractController extends Controller
             ->where('ph.category','job')->whereNotNull('ph.end_date')->whereDate('ph.end_date','>=',now())->whereDate('ph.end_date','<=',now()->addDays(30));
         if(!$canSeeAll&&$userUnitId){$expiringQuery->where('e.unit_id',$userUnitId);}
         $expiringContracts=$expiringQuery->orderBy('ph.end_date','asc')->get();
+
         return view('recruitment.contracts.index',[
             'contracts'=>$contracts,'units'=>$units,'positions'=>DB::table('positions')->select('id','name')->orderBy('name')->get(),
             'selectedUnitId'=>$selectedUnitId,'statusFilter'=>$request->input('status'),'searchFilter'=>$request->input('q'),
@@ -255,32 +259,107 @@ class ContractController extends Controller
     }
 
     protected function generatePdfFile($contract){
-        $template=ContractTemplate::where('code',config("recruitment.contract_types.{$contract->contract_type}.document_type")??'PKWT')->first();
-        if(!$template)return;
-        $vars=$this->getTemplateVars($contract);
-        $html=$this->renderPdfHtml($contract,$template,$vars);
-        $pdf=Pdf::loadHTML($html)->setPaper('a4','portrait');
-        Storage::disk('local')->put($contract->document->path,$pdf->output());
-        $contract->document->update(['size_bytes'=>strlen($pdf->output())]);
+        $doc=config("recruitment.contract_types.{$contract->contract_type}.document_type");if(!$doc)throw new \RuntimeException("document_type missing: {$contract->contract_type}");
+        $template=ContractTemplate::where('code',$doc)->firstOrFail();$vars=$this->getTemplateVars($contract);$html=$this->renderPdfHtml($contract,$template,$vars);
+
+        $pdf=Pdf::loadHTML($html);
+        $paper=(string)(data_get(config('recruitment.pdf',[]),'page.paper','a4')??'a4');
+        $orientation=(string)(data_get(config('recruitment.pdf',[]),'page.orientation','portrait')??'portrait');
+        $pdf->setPaper($paper,$orientation);
+
+        $dom=$pdf->getDomPDF();
+        $opt=(array)(data_get(config('recruitment.pdf',[]),'dompdf',[])??[]);
+        foreach($opt as $k=>$v){try{$dom->set_option($k,$v);}catch(\Exception $e){}}
+        $ff=(string)(data_get(config('recruitment.pdf',[]),'font.family','Tahoma')??'Tahoma');
+        try{$dom->set_option('defaultFont',$ff);}catch(\Exception $e){}
+
+        $out=$pdf->output();
+        Storage::disk('local')->put($contract->document->path,$out);
+        $contract->document->update(['size_bytes'=>strlen($out)]);
     }
 
-    protected function renderPdfHtml($contract,$template=null,$vars=[]){
-        if(!$template)$template=ContractTemplate::where('code',config("recruitment.contract_types.{$contract->contract_type}.document_type")??'PKWT')->first();
-        if(empty($vars))$vars=$this->getTemplateVars($contract);
-        $html=$template->body??'';
-        foreach($vars as $k=>$v){$html=str_replace("{{{$k}}}",$v,$html);}
-        $cfg=config('recruitment.pdf',[]);
-        $pad=$cfg['padding_cm']??['top'=>4.2,'right'=>2.0,'bottom'=>3.0,'left'=>2.0];
-        $font=$cfg['font']??'Times New Roman';$fs=(float)($cfg['font_size_pt']??11);$lh=(float)($cfg['line_height']??1.35);
-        $lhImg='';
-        $disk=$cfg['letterhead_disk']??null;$path=$cfg['letterhead_path']??null;
-        if($disk&&$path&&Storage::disk($disk)->exists($path)){
-            $bin=Storage::disk($disk)->get($path);$mime='image/jpeg';if(preg_match('/\.(png)$/i',$path))$mime='image/png';
-            $lhImg='<img class="letterhead" src="data:'.$mime.';base64,'.base64_encode($bin).'" alt="kop">';
-        }
-        $baseCss="@page{margin:0;}html,body{margin:0;padding:0;}body{font-family:{$font};font-size:{$fs}pt;line-height:{$lh};} .letterhead{position:fixed;top:0;left:0;width:100%;height:auto;z-index:0;} .page{position:relative;z-index:1;padding:{$pad['top']}cm {$pad['right']}cm {$pad['bottom']}cm {$pad['left']}cm;} table{width:100%;} ";
-        $css=($template->css??'').$baseCss;
-        return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body>{$lhImg}<div class='page'>{$html}</div></body></html>";
+protected function renderPdfHtml($contract,$template=null,$vars=[]){
+    $doc=config("recruitment.contract_types.{$contract->contract_type}.document_type");if(!$doc)throw new \RuntimeException("document_type missing: {$contract->contract_type}");
+    if(!$template)$template=\App\Models\ContractTemplate::where('code',$doc)->firstOrFail();if(empty($vars))$vars=$this->getTemplateVars($contract);
+
+    $body=(string)($template->body??'');foreach($vars as $k=>$v){$body=str_replace("{{{$k}}}",(string)$v,$body);}
+    $body=preg_replace('~<!doctype[^>]*>~i','',$body);$body=preg_replace('~</?(html|head|body)[^>]*>~i','',$body);
+    $body=preg_replace('~<style\b[^>]*>.*?</style>~is','',$body);$body=preg_replace('~<header\b[^>]*>.*?</header>~is','',$body);$body=preg_replace('~<footer\b[^>]*>.*?</footer>~is','',$body);
+    $body=preg_replace('~<div\b[^>]*style=["\'][^"\']*position\s*:\s*(fixed|absolute)[^"\']*["\'][^>]*>.*?</div>~is','',$body);
+
+    $cfg=(array)(config('recruitment.pdf',[])??[]);
+    $m=(array)($cfg['margin_cm']??[]);$mt=(float)($m['top']??3.5);$mr=(float)($m['right']??2.54);$mb=(float)($m['bottom']??3.25);$ml=(float)($m['left']??2.54);
+    $font=(array)($cfg['font']??[]);$ff=(string)($font['family']??'Tahoma');$fs=(float)($font['size_pt']??11);$fts=(float)($font['title_size_pt']??14);$lh=(float)($font['line_height']??1.15);$pAfter=(float)($font['paragraph_after_pt']??3);
+
+    $disk=(string)($cfg['letterhead_disk']??'public');$path=(string)($cfg['letterhead_path']??'');
+    if(!$disk||!$path)throw new \RuntimeException("PDF letterhead config missing: recruitment.pdf.letterhead_disk/path");
+    $lh=$this->pdfDataUri($disk,$path);
+    if(!$lh)throw new \RuntimeException("PDF letterhead not found: disk={$disk}, path={$path} (expected under storage/app/public when disk=public)");
+
+    $regular=(string)($font['regular_file']??'');$bold=(string)($font['bold_file']??'');
+    $fr=$this->pdfFontPath($regular);$fb=$this->pdfFontPath($bold);
+    if(!$fr)throw new \RuntimeException("PDF font regular not found: {$regular}");
+    if(!$fb)throw new \RuntimeException("PDF font bold not found: {$bold}");
+    $fr64=base64_encode(file_get_contents($fr));$fb64=base64_encode(file_get_contents($fb));
+    $fontCss="@font-face{font-family:'{$ff}';font-style:normal;font-weight:400;src:url(data:font/truetype;base64,{$fr64}) format('truetype');}@font-face{font-family:'{$ff}';font-style:normal;font-weight:700;src:url(data:font/truetype;base64,{$fb64}) format('truetype');}";
+
+    $tplCss=(string)($template->css??'');
+    $tplCss=preg_replace('~@page\s*[^{]*\{.*?\}~is','',$tplCss);
+    $tplCss=preg_replace('~\b(html|body)\b\s*\{.*?\}~is','',$tplCss);
+    $tplCss=preg_replace('~header\s*\{.*?\}~is','',$tplCss);
+    $tplCss=preg_replace('~footer\s*\{.*?\}~is','',$tplCss);
+
+    $pageRule="@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}";
+    $letterheadCss=".letterhead-img{position:fixed;left:0;top:0;width:21cm;height:29.7cm;z-index:0;}";
+    $baseCss="html,body{margin:0!important;padding:0!important;}body,div,p,span,td,th,li{font-family:'{$ff}'!important;font-size:{$fs}pt!important;line-height:{$lh}!important;color:#000;}
+    .doc-wrap{position:relative;z-index:10;margin:0!important;padding:0!important;}
+    p{margin:0 0 {$pAfter}pt 0!important;text-align:justify!important;}
+    h1,h2,h3,.title,.doc-title{font-size:{$fts}pt!important;font-weight:700!important;text-align:center!important;margin:0 0 {$pAfter}pt 0!important;}
+    table{width:100%!important;border-collapse:collapse!important;}
+    ol,ul{margin:0 0 {$pAfter}pt 0!important;padding-left:0.9cm!important;}
+    li{margin:0 0 {$pAfter}pt 0!important;text-align:justify!important;}";
+
+    $css=$fontCss.$tplCss.$pageRule.$letterheadCss.$baseCss;
+    return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body><img class='letterhead-img' src='{$lh}'><div class='doc-wrap'>{$body}</div></body></html>";
+}
+
+protected function pdfDataUri($disk,$path){
+    if(!Storage::disk($disk)->exists($path))return null;
+    $bin=Storage::disk($disk)->get($path);$mime=Storage::disk($disk)->mimeType($path)?:'image/jpeg';
+    return "data:{$mime};base64,".base64_encode($bin);
+}
+
+protected function pdfFontPath($rel){
+    $rel=trim((string)$rel);if($rel==='')return null;
+    $cands=[
+        storage_path($rel),storage_path('app/'.$rel),storage_path('app/public/'.$rel),
+        public_path($rel),public_path(ltrim($rel,'/')),
+        base_path($rel),resource_path($rel),
+        storage_path('fonts/'.basename($rel)),storage_path('app/fonts/'.basename($rel)),storage_path('app/public/fonts/'.basename($rel)),
+        public_path('fonts/'.basename($rel)),
+    ];
+    foreach($cands as $p){if($p&&is_file($p))return $p;}
+    return null;
+}
+
+
+    protected function findTahomaFiles(){
+        $candidatesRegular=[
+            storage_path('fonts/tahoma.ttf'),storage_path('fonts/Tahoma.ttf'),
+            storage_path('app/fonts/tahoma.ttf'),storage_path('app/fonts/Tahoma.ttf'),
+            public_path('fonts/tahoma.ttf'),public_path('fonts/Tahoma.ttf'),
+            resource_path('fonts/tahoma.ttf'),resource_path('fonts/Tahoma.ttf'),
+        ];
+        $candidatesBold=[
+            storage_path('fonts/tahomabd.ttf'),storage_path('fonts/TahomaBold.ttf'),storage_path('fonts/tahoma-bold.ttf'),
+            storage_path('app/fonts/tahomabd.ttf'),storage_path('app/fonts/TahomaBold.ttf'),storage_path('app/fonts/tahoma-bold.ttf'),
+            public_path('fonts/tahomabd.ttf'),public_path('fonts/TahomaBold.ttf'),public_path('fonts/tahoma-bold.ttf'),
+            resource_path('fonts/tahomabd.ttf'),resource_path('fonts/TahomaBold.ttf'),resource_path('fonts/tahoma-bold.ttf'),
+        ];
+        $r=null;$b=null;
+        foreach($candidatesRegular as $p){if($p&&is_file($p)){$r=$p;break;}}
+        foreach($candidatesBold as $p){if($p&&is_file($p)){$b=$p;break;}}
+        return [$r,$b];
     }
 
     protected function getTemplateVars(Contract $c){
