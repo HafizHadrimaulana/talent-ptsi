@@ -3,17 +3,14 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Contract, ContractTemplate, Applicant, Unit, Document, Signature, Approval, User, Employee, Person};
+use App\Models\{Contract,ContractTemplate,Applicant,Unit,Document,Signature,Approval,User,Employee,Person};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{DB, Storage};
+use Illuminate\Support\Facades\{DB,Storage};
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ContractController extends Controller
 {
-    // --- FUNGSI UTAMA (INDEX, STORE, DLL) SAMA SEPERTI SEBELUMNYA ---
-    // (Langsung ke bagian generatePdfFile dan renderPdfHtml yang diperbaiki)
-
     public function index(Request $request){
         $user=$request->user();$isSuperadmin=$user->hasRole('Superadmin');$isDhc=$user->hasRole('DHC');$canSeeAll=$isSuperadmin||$isDhc;$userUnitId=(int)($user->unit_id??0);
         $isApproverOnly=$user->can('contract.approve')&&!$user->can('contract.update');
@@ -52,7 +49,9 @@ class ContractController extends Controller
             'expiringContracts'=>$expiringContracts,'canSeeAll'=>$canSeeAll,'currentUser'=>$user,
         ]);
     }
+
     public function baseOptions(Request $request){abort_unless($request->user()&&$request->user()->can('contract.view'),403);return response()->json(['success'=>true,'data'=>[]]);}
+
     public function store(Request $request){
         set_time_limit(300);ini_set('memory_limit','512M');
         $v=$request->validate([
@@ -87,6 +86,7 @@ class ContractController extends Controller
             DB::commit();return redirect()->route('recruitment.contracts.index',['unit_id'=>$c->unit_id])->with('success','Berhasil disimpan.');
         }catch(\Exception $e){DB::rollBack();return back()->withErrors(['error'=>$e->getMessage()])->withInput();}
     }
+
     public function update(Request $request, Contract $contract){
         if($contract->status!=='draft'){return back()->withErrors('Hanya draft yang bisa diedit.');}
         $v=$request->validate([
@@ -114,8 +114,10 @@ class ContractController extends Controller
             $contract->save();DB::commit();return back()->with('success','Update berhasil.');
         }catch(\Exception $e){DB::rollBack();return back()->withErrors(['error'=>$e->getMessage()]);}
     }
+
     public function approve(Request $request, Contract $contract){return $this->processSignAction($request,$contract,'approved','Kepala Unit');}
     public function sign(Request $request, Contract $contract){return $this->processSignAction($request,$contract,'signed','Kandidat');}
+
     private function processSignAction($request,$contract,$status,$role){
         set_time_limit(600);ini_set('memory_limit','512M');
         $needsDraw=($contract->requires_draw_signature==1||$contract->requires_draw_signature===true);
@@ -136,31 +138,35 @@ class ContractController extends Controller
                 'signer_role'=>$role,'signature_draw_data'=>$data['signature_image']??null,'signed_at'=>now()
             ]);
             $contract->update(['status'=>$status]);
+            $contract->loadMissing('document');
             if($contract->document&&Storage::disk('local')->exists($contract->document->path)){Storage::disk('local')->delete($contract->document->path);}
             $this->generatePdfFile($contract);
             DB::commit();return response()->json(['success'=>true]);
         }catch(\Exception $e){DB::rollBack();return response()->json(['success'=>false,'message'=>'Gagal: '.$e->getMessage()],500);}
     }
+
     public function reject(Request $request, Contract $contract){
         $contract->update(['status'=>'draft']);
         Approval::where('approvable_id',$contract->id)->where('status','pending')->update(['status'=>'rejected','note'=>$request->note??$request->rejection_note,'decided_at'=>now()]);
         return response()->json(['success'=>true]);
     }
+
     public function submit(Request $request, Contract $contract){
         if($contract->status!=='draft'){return response()->json(['success'=>false],422);}
         $contract->update(['status'=>'review','contract_no'=>$contract->contract_no?:$this->generateContractNumber($contract)]);
         $this->createApproval($contract,$request->user());
         return response()->json(['success'=>true]);
     }
+
     public function document(Request $request, Contract $contract){
-        set_time_limit(300);$this->ensureDocumentRecord($contract);$contract->refresh();
-        if(!Storage::disk('local')->exists($contract->document->path)){$this->generatePdfFile($contract);$contract->refresh();}
+        set_time_limit(300);$this->ensureDocumentRecord($contract);$contract->refresh();$contract->loadMissing('document');
+        if(!Storage::disk('local')->exists($contract->document->path)){$this->generatePdfFile($contract);$contract->refresh();$contract->loadMissing('document');}
         $filename=basename($contract->document->path);
         return Storage::disk('local')->response($contract->document->path,$filename,[
-            'Content-Type'=>'application/pdf',
-            'Content-Disposition'=>'inline; filename="'.$filename.'"',
+            'Content-Type'=>'application/pdf','Content-Disposition'=>'inline; filename="'.$filename.'"',
         ]);
     }
+
     public function show(Contract $contract){
         $contract->load(['unit','document','person','applicant']);
         $meta=$contract->remuneration_json??[];$cand=$this->resolveCandidate($contract);
@@ -175,6 +181,7 @@ class ContractController extends Controller
             'reject_url'=>route('recruitment.contracts.reject',$contract)
         ])]);
     }
+
     protected function resolveCandidate(Contract $c){
         $p=$c->person??($c->person_id?Person::find($c->person_id):($c->applicant??($c->applicant_id?Applicant::find($c->applicant_id):null)));
         $d=['name'=>'Kandidat','address'=>'-','nik'=>'-','pob'=>'-','dob'=>'-','gender'=>'-'];
@@ -188,6 +195,7 @@ class ContractController extends Controller
         }
         return $d;
     }
+
     protected function resolveSigner(Contract $c,$meta){
         if(in_array($c->status,['approved','signed'])){
             $ap=Approval::where('approvable_id',$c->id)->whereIn('status',['approved','completed'])->orderByDesc('decided_at')->first();
@@ -198,11 +206,13 @@ class ContractController extends Controller
         if($head&&$head->person&&($head->person->full_name??null))return ['name'=>$head->person->full_name,'position'=>$this->guessHeadTitle($head)];
         return ['name'=>'Nama Kepala Unit','position'=>'Kepala Unit'];
     }
+
     protected function guessHeadTitle(User $u){
         $names=config('recruitment.numbering.head_role_names',[]);
         $role=$u->roles?->firstWhere('name',$names[1]??'');if($role)return $role->name;
         return 'Kepala Unit';
     }
+
     protected function generateContractNumber(Contract $c): string{
         $c->loadMissing('unit');
         $code=config("recruitment.numbering.doc_codes.{$c->contract_type}")??'PERJ';
@@ -221,12 +231,14 @@ class ContractController extends Controller
         $seq=1;if($last){$parts=explode('/',$last);$nums=explode('-', $parts[0]??'');$seq=((int)end($nums))+1;}
         return sprintf("%s-%03d%s",$code,$seq,$base);
     }
+
     protected function initialsFromName($name){
         $n=trim(preg_replace('/\s+/',' ',(string)$name));if($n==='')return null;
         $parts=explode(' ',$n);$first=$parts[0]??'';$last=end($parts)?:'';
         $a=mb_strtoupper(mb_substr($first,0,1));$b=mb_strtoupper(mb_substr($last,0,1));
         $ini=trim($a.$b);return $ini!==''?$ini:null;
     }
+
     protected function resolveHeadUnit(?Unit $unit){
         if(!$unit)return null;
         $rules=config('recruitment.numbering.head_unit_rules',[]);
@@ -242,168 +254,100 @@ class ContractController extends Controller
         return $unit;
     }
 
-    // ------------------------------------------------------------------------------------------------
-    // PDF GENERATION SECTIONS - FINAL LAYOUT FIXES
-    // ------------------------------------------------------------------------------------------------
-
-    protected function generatePdfFile($contract)
-    {
-        $doc = config("recruitment.contract_types.{$contract->contract_type}.document_type");
-        if (!$doc) throw new \RuntimeException("document_type missing: {$contract->contract_type}");
-        $template = ContractTemplate::where('code', $doc)->firstOrFail();
-        $vars = $this->getTemplateVars($contract);
-        $html = $this->renderPdfHtml($contract, $template, $vars);
-
-        $pdf = Pdf::loadHTML($html);
-        
-        // Margin 0 di sini, kita handle manual di CSS body agar kop surat aman
-        $pdf->setPaper('a4', 'portrait'); 
-        $dom = $pdf->getDomPDF();
-        $dom->set_option('isRemoteEnabled', true); 
-        $dom->set_option('isHtml5ParserEnabled', true);
-        
-        $out = $pdf->output();
-        Storage::disk('local')->put($contract->document->path, $out);
-        $contract->document->update(['size_bytes' => strlen($out)]);
+    protected function generatePdfFile($contract){
+        $contract->loadMissing(['unit','document']);
+        $doc=config("recruitment.contract_types.{$contract->contract_type}.document_type");
+        if(!$doc)throw new \RuntimeException("document_type missing: {$contract->contract_type}");
+        $template=ContractTemplate::where('code',$doc)->firstOrFail();
+        $vars=$this->getTemplateVars($contract);
+        $html=$this->renderPdfHtml($contract,$template,$vars);
+        $cfg=(array)(config('recruitment.pdf',[])??[]);
+        $page=(array)($cfg['page']??[]);
+        $paper=(string)($page['paper']??'a4');
+        $orientation=(string)($page['orientation']??'portrait');
+        $dompdf=(array)($cfg['dompdf']??[]);
+        $dpi=(int)($dompdf['dpi']??96);
+        $pdf=Pdf::loadHTML($html)->setPaper($paper,$orientation);
+        $dom=$pdf->getDomPDF();
+        $dom->set_option('dpi',$dpi);
+        $dom->set_option('isRemoteEnabled',(bool)($dompdf['isRemoteEnabled']??true));
+        $dom->set_option('isHtml5ParserEnabled',(bool)($dompdf['isHtml5ParserEnabled']??true));
+        $out=$pdf->output();
+        Storage::disk('local')->put($contract->document->path,$out);
+        $contract->document->update(['size_bytes'=>strlen($out)]);
     }
 
-    protected function renderPdfHtml($contract, $template = null, $vars = [])
-    {
-        if (!$template) {
-            $doc = config("recruitment.contract_types.{$contract->contract_type}.document_type");
-            $template = \App\Models\ContractTemplate::where('code', $doc)->firstOrFail();
+    protected function renderPdfHtml($contract,$template=null,$vars=[]){
+        if(!$template){
+            $doc=config("recruitment.contract_types.{$contract->contract_type}.document_type");
+            $template=ContractTemplate::where('code',$doc)->firstOrFail();
         }
-        if (empty($vars)) $vars = $this->getTemplateVars($contract);
+        if(empty($vars))$vars=$this->getTemplateVars($contract);
+        $body=(string)($template->body??'');
+        foreach($vars as $k=>$v){$body=str_replace("{{{$k}}}",(string)$v,$body);}
+        $body=preg_replace('~<!doctype[^>]*>~i','',$body);
+        $body=preg_replace('~</?(html|head|body)[^>]*>~i','',$body);
+        $body=preg_replace('~<style\b[^>]*>.*?</style>~is','',$body);
 
-        $body = (string)($template->body ?? '');
-        foreach ($vars as $k => $v) {
-            $body = str_replace("{{{$k}}}", (string)$v, $body);
-        }
+        $cfg=(array)(config('recruitment.pdf',[])??[]);
+        $tplKey=(string)($template->code??'');
+        $m=(array)(data_get($cfg,"templates.{$tplKey}.margin_cm")??data_get($cfg,'margin_cm')??[]);
+        $mt=(float)($m['top']??3.5);$mr=(float)($m['right']??2.54);$mb=(float)($m['bottom']??3.25);$ml=(float)($m['left']??2.54);
 
-        // --- 1. AUTO-FORMAT PASAL (CENTER & BOLD) ---
-        // Mendeteksi baris yang HANYA berisi "Pasal X" atau "PASAL X" dan membungkusnya dengan div class="pasal"
-        $body = preg_replace('/^[\s]*(PASAL\s+\d+|Pasal\s+\d+)[\s]*$/m', '<div class="pasal-title">$1</div>', $body);
-        
-        // --- 2. AUTO-FORMAT IDENTITAS (TABEL RAPI) ---
-        // Mencari pola list identitas (Nama: ..., Alamat: ...) dan mengubahnya menjadi tabel agar titik dua lurus
-        // Pola: Baris diawali kata, diikuti titik dua, lalu isi.
-        // Contoh: "Nama : Budi" -> <tr><td width="120">Nama</td><td width="10">:</td><td>Budi</td></tr>
-        // Kita bungkus blok identitas ini jika berturut-turut.
-        
-        // (Opsional: Jika user inputnya sudah pakai tabel di editor, regex ini tidak perlu. 
-        // Tapi jika inputnya teks biasa, ini membantu merapikan).
-        
-        // 3. CLEANUP HTML
-        $body = preg_replace('~<!doctype[^>]*>~i', '', $body);
-        $body = preg_replace('~</?(html|head|body)[^>]*>~i', '', $body);
-        $body = preg_replace('~<style\b[^>]*>.*?</style>~is', '', $body);
+        $page=(array)($cfg['page']??[]);
+        $pw=(float)($page['width_cm']??21);$ph=(float)($page['height_cm']??29.7);
 
-        // 4. CONFIG
-        $cfg = (array)(config('recruitment.pdf', []) ?? []);
-        // Margin Top diperbesar agar tidak nabrak logo (4.5cm aman untuk kop standar)
-        $mt = 4.5; 
-        $mr = 2.54; 
-        $mb = 3.0; 
-        $ml = 2.54;
+        $font=(array)(data_get($cfg,"templates.{$tplKey}.font")??data_get($cfg,'font')??[]);
+        $ff=(string)($font['family']??'Tahoma');
+        $fs=(float)($font['size_pt']??11);
+        $lh=(float)($font['line_height']??1.15);
+        $titleSize=(float)($font['title_size_pt']??14);
+        $pa=(float)($font['paragraph_after_pt']??3);
 
-        $disk = (string)($cfg['letterhead_disk'] ?? 'public');
-        $path = (string)($cfg['letterhead_path'] ?? '');
-        $lhImg = $this->pdfDataUri($disk, $path);
+        $disk=(string)($cfg['letterhead_disk']??'public');
+        $path=(string)($cfg['letterhead_path']??'');
+        $lhImg=$this->pdfDataUri($disk,$path);
 
-        // 5. FONT TAHOMA
-        $pathRegular = storage_path('app/fonts/tahoma.ttf');
-        $pathBold    = storage_path('app/fonts/tahomabd.ttf');
-        
-        $fontFaceCss = "";
-        $ff = 'sans-serif'; // Fallback
-        
-        if (file_exists($pathRegular)) {
-            $ff = 'Tahoma';
-            $fr64 = base64_encode(file_get_contents($pathRegular));
-            $fb64 = file_exists($pathBold) ? base64_encode(file_get_contents($pathBold)) : $fr64;
-
-            $fontFaceCss = "
-                @font-face { font-family: 'Tahoma'; font-style: normal; font-weight: normal; src: url(data:font/truetype;base64,{$fr64}) format('truetype'); }
-                @font-face { font-family: 'Tahoma'; font-style: normal; font-weight: bold; src: url(data:font/truetype;base64,{$fb64}) format('truetype'); }
-                @font-face { font-family: 'Tahoma'; font-style: normal; font-weight: 700; src: url(data:font/truetype;base64,{$fb64}) format('truetype'); }
-            ";
+        $pathRegular=storage_path((string)($font['regular_file']??'app/fonts/tahoma.ttf'));
+        $pathBold=storage_path((string)($font['bold_file']??'app/fonts/tahomabd.ttf'));
+        $fontFaceCss='';$finalFamily='sans-serif';
+        if(file_exists($pathRegular)){
+            $finalFamily='Tahoma';
+            $fr64=base64_encode(file_get_contents($pathRegular));
+            $fb64=file_exists($pathBold)?base64_encode(file_get_contents($pathBold)):$fr64;
+            $fontFaceCss="@font-face{font-family:'Tahoma';font-style:normal;font-weight:400;src:url(data:font/truetype;base64,{$fr64}) format('truetype');}@font-face{font-family:'Tahoma';font-style:normal;font-weight:700;src:url(data:font/truetype;base64,{$fb64}) format('truetype');}";
         }
 
-        $tplCss = (string)($template->css ?? '');
-        $tplCss = preg_replace('~@page\s*[^{]*\{.*?\}~is', '', $tplCss);
-        $tplCss = preg_replace('~\b(html|body)\b\s*\{.*?\}~is', '', $tplCss);
+        $tplCss=(string)($template->css??'');
+        $tplCss=preg_replace('~@page\s*[^{]*\{.*?\}~is','',$tplCss);
+        $tplCss=preg_replace('~\b(html|body)\b\s*\{.*?\}~is','',$tplCss);
 
-        $css = "
-            @page { margin: {$mt}cm {$mr}cm {$mb}cm {$ml}cm; }
-            
-            body { 
-                margin: 0; 
-                padding: 0; 
-                font-family: '{$ff}', sans-serif; 
-                font-size: 11pt; 
-                line-height: 1.4; /* Line height agak renggang biar enak dibaca */
-                color: #000; 
-            }
+        $css="@page{margin:0;}{$fontFaceCss}
+        body{margin:0;padding:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;font-family:'{$finalFamily}',{$ff},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;}
+        .letterhead-img{position:fixed;top:0;left:0;width:{$pw}cm;height:{$ph}cm;z-index:-9999;}
+        .content{margin:0!important;padding:0!important;}
+        p{margin:0 0 {$pa}pt 0;text-align:justify;text-justify:inter-word;}
+        .justify{text-align:justify;text-justify:inter-word;}
+        strong,b{font-weight:700;}
+        table{width:100%;border-collapse:collapse;}
+        table.info{width:100%;border-collapse:collapse;margin:0 0 {$pa}pt 0;}
+        table.info td{vertical-align:top;padding:0;}
+        ol,ul{margin:0 0 {$pa}pt 0;padding-left:20pt;}
+        li{margin:0 0 {$pa}pt 0;text-align:justify;text-justify:inter-word;}
+        .title{text-align:center;font-weight:700;text-transform:uppercase;font-size:{$titleSize}pt;margin:0 0 5pt 0;text-decoration:underline;}
+        .subtitle{text-align:center;font-weight:700;font-size:{$fs}pt;margin:0 0 12pt 0;}
+        .pasal-title{text-align:center!important;font-weight:700!important;text-transform:uppercase;line-height:{$lh};margin:14pt 0 6pt 0;font-size:{$fs}pt;page-break-after:avoid;}
+        table.ttd{width:100%;margin-top:24pt;page-break-inside:avoid;table-layout:fixed;}
+        table.ttd td{text-align:center;vertical-align:bottom;}
+        .sig-box{height:70px;}
+        {$tplCss}";
 
-            /* KOP SURAT FIXED (Background) */
-            .letterhead-img { 
-                position: fixed; 
-                top: -{$mt}cm; /* Tarik ke atas sesuai margin */
-                left: -{$ml}cm; /* Tarik ke kiri sesuai margin */
-                width: 21cm; 
-                height: 29.7cm; 
-                z-index: -9999; 
-            }
-
-            .doc-wrap { 
-                position: relative; 
-                width: 100%; 
-                z-index: 1;
-            }
-
-            p { 
-                margin-top: 0; 
-                margin-bottom: 8pt; 
-                text-align: justify; 
-                text-justify: inter-word; /* Agar justify tidak bolong-bolong parah */
-            }
-
-            /* TABEL DATA (Nama : ...) */
-            table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; }
-            td { padding: 2px; vertical-align: top; }
-            
-            /* Class khusus untuk tabel identitas biar rapi */
-            .identity-table td:first-child { width: 140px; font-weight: normal; } 
-            .identity-table td:nth-child(2) { width: 15px; text-align: center; }
-
-            ul, ol { margin-top: 0; margin-bottom: 8pt; padding-left: 25px; }
-            li { margin-bottom: 4pt; text-align: justify; }
-
-            /* JUDUL PASAL (CENTER & BOLD) */
-            .pasal-title, h1, h2, h3 { 
-                text-align: center !important; 
-                font-weight: bold !important; 
-                text-transform: uppercase; 
-                margin-top: 16pt; 
-                margin-bottom: 8pt; 
-                font-size: 11pt; 
-                display: block;
-                page-break-after: avoid; /* Jangan putus setelah judul */
-            }
-
-            .text-center { text-align: center; }
-            .font-bold { font-weight: bold; }
-            .uppercase { text-transform: uppercase; }
-            
-            {$fontFaceCss}
-            {$tplCss}
-        ";
-
-        return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body><img class='letterhead-img' src='{$lhImg}'><div class='doc-wrap'>{$body}</div></body></html>";
+        $bg=$lhImg?("<img class='letterhead-img' src='{$lhImg}'>"):'';
+        return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body>{$bg}{$body}</body></html>";
     }
 
-    protected function pdfDataUri($disk, $path){
-        if(!Storage::disk($disk)->exists($path))return null;
+    protected function pdfDataUri($disk,$path){
+        if(!$path||!Storage::disk($disk)->exists($path))return null;
         $bin=Storage::disk($disk)->get($path);$mime=Storage::disk($disk)->mimeType($path)?:'image/jpeg';
         return "data:{$mime};base64,".base64_encode($bin);
     }
@@ -457,6 +401,7 @@ class ContractController extends Controller
             'pb_words'=>ucwords($meta['pb_compensation_amount_words']??'')
         ];
     }
+
     private function ensureDocumentRecord($c){
         if(!$c->document_id){
             $path="contracts/{$c->contract_type}-{$c->id}-".time().".pdf";
@@ -465,6 +410,7 @@ class ContractController extends Controller
         }
         if(!Storage::disk('local')->exists('contracts')){Storage::disk('local')->makeDirectory('contracts');}
     }
+
     private function formatAllowances($m,$fmt){
         $list=[];
         if(($v=$m['allowance_position_amount']??0))$list[]="T.Jabatan ".$fmt($v);
@@ -473,12 +419,15 @@ class ContractController extends Controller
         if(($v=$m['allowance_other_amount']??0))$list[]="Lainnya ".$fmt($v);
         return implode(', ',$list)?:'-';
     }
+
     private function collectMeta($v){return collect($v)->except(['contract_type','unit_id','_token'])->toArray();}
+
     private function createApproval($c,$u){
         if(!Approval::where('approvable_id',$c->id)->where('status','pending')->exists()){
             Approval::create(['approvable_type'=>'contract','approvable_id'=>$c->id,'requester_person_id'=>$u->person_id,'requester_user_id'=>$u->id,'status'=>'pending','note'=>'Review Kepala Unit']);
         }
     }
+
     private function terbilang($x){
         $a=["","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"];
         if($x<12)return $a[$x];
@@ -490,8 +439,10 @@ class ContractController extends Controller
         if($x<1000000)return $this->terbilang($x/1000)." ribu ".$this->terbilang($x%1000);
         return $this->terbilang($x/1000000)." juta ".$this->terbilang($x%1000000);
     }
+
     public function terbilangApi(Request $request){return response()->json(['success'=>true,'data'=>['words'=>strtoupper($this->terbilang((int)$request->amount).' RUPIAH')]]);}
     private function getRomanMonth($m){return ['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'][$m]??'';}
+
     protected function getUnitHeadUser(?Unit $unit){
         if(!$unit)return null;
         $roleNames=(array)config('recruitment.numbering.head_role_names',[]);
@@ -501,7 +452,7 @@ class ContractController extends Controller
         $ids=null;
         try{
             $q=DB::table('model_has_roles as mhr')->join('roles as r','r.id','=','mhr.role_id')
-                ->where('mhr.model_type',User::class)->whereIn('r.name',$roleNames);
+              ->where('mhr.model_type',User::class)->whereIn('r.name',$roleNames);
             if($hasTeamCol)$q->where("mhr.{$teamKey}",$unit->id);
             $ids=$q->pluck('mhr.model_id')->unique()->values()->all();
         }catch(\Exception $e){$ids=null;}

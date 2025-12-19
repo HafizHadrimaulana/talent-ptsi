@@ -9,41 +9,34 @@ class ContractTemplateSeeder extends Seeder
 {
     public function run()
     {
-        // Styling CSS dengan Kop Surat Placeholder (Base64)
-        $css = "
-            @page { margin: 0px; }
-            body { font-family: 'Tahoma', sans-serif; font-size: 11pt; line-height: 1.3; color: #000; margin: 0; padding: 0; }
-            header {
-                position: fixed; top: 0; left: 0; right: 0; height: 140px;
-                /* Background Kop Surat */
-                background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
-                background-size: cover; border-bottom: 2px double #000; margin: 0 2cm;
-            }
-            .content { margin-top: 150px; margin-left: 2.5cm; margin-right: 2.5cm; margin-bottom: 2cm; }
-            .title { text-align: center; font-weight: bold; text-transform: uppercase; font-size: 14pt; margin-bottom: 5px; text-decoration: underline; }
-            .subtitle { text-align: center; font-weight: bold; font-size: 11pt; margin-bottom: 20px; }
-            .justify { text-align: justify; } .center { text-align: center; } .bold { font-weight: bold; }
-            table.info { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-            table.info td { vertical-align: top; padding: 2px; }
-            .pasal-title { text-align: center; font-weight: bold; text-transform: uppercase; margin-top: 15px; margin-bottom: 5px; font-size: 11pt; }
-            table.ttd { width: 100%; margin-top: 30px; page-break-inside: avoid; }
-            table.ttd td { text-align: center; vertical-align: bottom; height: 100px; }
-            ol { margin: 0; padding-left: 20px; } li { margin-bottom: 5px; text-align: justify; }
-            ul { list-style-type: disc; margin: 0; padding-left: 20px; }
+        $css="
+        header{position:fixed;top:0;left:0;right:0;height:140px;background:url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');background-size:cover;border-bottom:2px double #000;margin:0 2cm;}
+        .title{text-align:center;font-weight:bold;text-transform:uppercase;font-size:14pt;margin-bottom:5px;text-decoration:underline;}
+        .subtitle{text-align:center;font-weight:bold;font-size:11pt;margin-bottom:20px;}
+        .justify{text-align:justify;}
+        .center{text-align:center;}
+        .bold{font-weight:bold;}
+        table.info{width:100%;border-collapse:collapse;margin-bottom:5px;}
+        table.info td{vertical-align:top;padding:2px;}
+        .pasal-title{text-align:center;font-weight:bold;text-transform:uppercase;margin-top:15px;margin-bottom:5px;font-size:11pt;}
+        table.ttd{width:100%;margin-top:30px;page-break-inside:avoid;}
+        table.ttd td{text-align:center;vertical-align:bottom;height:100px;}
+        ol{margin:0;padding-left:20px;}
+        li{margin-bottom:5px;text-align:justify;}
+        ul{list-style-type:disc;margin:0;padding-left:20px;}
         ";
 
-        // HTML Header (Kop Surat Text)
-        $header = '<header><div style="position:fixed; top:30px; right:2.5cm; text-align:right; font-size:10pt; font-weight:bold; color:#1a3c70;">PT SURVEYOR INDONESIA<br>Graha Surveyor Indonesia<br>Jl. Jend. Gatot Subroto Kav. 56<br>Jakarta 12950</div></header>';
+        $header='<header><div style="position:fixed;top:30px;right:2.5cm;text-align:right;font-size:10pt;font-weight:bold;color:#1a3c70;">PT SURVEYOR INDONESIA<br>Graha Surveyor Indonesia<br>Jl. Jend. Gatot Subroto Kav. 56<br>Jakarta 12950</div></header>';
 
-        ContractTemplate::updateOrCreate(['code' => 'PKWT'], [
-            'name' => 'PKWT Rev 2025', 'css' => $css,
-            'body' => $header . '
+        ContractTemplate::updateOrCreate(['code'=>'PKWT'],[
+            'name'=>'PKWT Rev 2025','css'=>$css,
+            'body'=>$header.'
             <div class="content">
                 <div class="title">PERJANJIAN KERJA WAKTU TERTENTU</div>
                 <div class="subtitle">NOMOR: {{contract_no}}</div>
-                
+
                 <p class="justify">Pada hari ini, <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date}}), bertempat di Jakarta:</p>
-                
+
                 <table class="info">
                     <tr>
                         <td width="20">I.</td>
@@ -57,7 +50,7 @@ class ContractTemplateSeeder extends Seeder
                         <td>: Lahir di {{pob}}, pada tanggal {{dob}}, Warga Negara Indonesia, {{gender}}, bertempat tinggal di {{candidate_address}}, pemegang Kartu Tanda Penduduk Nomor {{candidate_nik}}, selanjutnya disebut <strong>PIHAK KEDUA</strong>.</td>
                     </tr>
                 </table>
-                
+
                 <p class="justify">PIHAK PERTAMA dan PIHAK KEDUA yang selanjutnya secara bersama-sama disebut ”PARA PIHAK” dan secara masing-masing disebut ”PIHAK” dengan ini menerangkan terlebih dahulu hal-hal sebagai berikut:</p>
                 <ol>
                     <li>Bahwa dengan mempertimbangkan kebutuhan operasional Perusahaan PIHAK PERTAMA, termasuk namun tidak terbatas pada purchase order/permintaan/project baru/pekerjaan waktu tertentu, dan hasil seleksi terhadap PIHAK KEDUA, maka PIHAK PERTAMA setuju dan sepakat untuk mengikatkan diri dalam hubungan kerja waktu tertentu melalui Perjanjian Kerja Waktu Tertentu yang selanjutnya disebut ”Perjanjian Kerja”.</li>
@@ -282,12 +275,9 @@ class ContractTemplateSeeder extends Seeder
             </div>'
         ]);
 
-        // ... (SPK and PB Templates - Same structure with fixed CSS and Table Layout)
-        // I will include them to be complete
-        
-        ContractTemplate::updateOrCreate(['code' => 'SPK'], [
-            'name' => 'Surat Penawaran Kerja', 'css' => $css,
-            'body' => $header . '
+        ContractTemplate::updateOrCreate(['code'=>'SPK'],[
+            'name'=>'Surat Penawaran Kerja','css'=>$css,
+            'body'=>$header.'
             <div class="content">
                 <table class="info">
                     <tr><td width="100">Nomor</td><td>: {{contract_no}}</td></tr>
@@ -295,7 +285,7 @@ class ContractTemplateSeeder extends Seeder
                 </table>
                 <br>
                 <p>Kepada Yth.<br><strong>Sdr/i. {{candidate_name}}</strong><br>{{candidate_address}}</p>
-                <div class="title" style="text-align:left; font-size:12pt; margin-top:10px;">Perihal: Surat Penawaran Kerja</div>
+                <div class="title" style="text-align:left;font-size:12pt;margin-top:10px;">Perihal: Surat Penawaran Kerja</div>
                 <p class="justify">Bersama ini kami sampaikan penawaran kerja sebagai pegawai PT Surveyor Indonesia dengan hak dan fasilitas serta kewajiban yang harus dilaksanakan sebagai Pegawai PTSI:</p>
                 <table class="info">
                     <tr><td width="160">1. Jabatan</td><td>: <strong>{{position_name}}</strong></td></tr>
@@ -342,9 +332,9 @@ class ContractTemplateSeeder extends Seeder
             </div>'
         ]);
 
-        ContractTemplate::updateOrCreate(['code' => 'PB'], [
-            'name' => 'Perjanjian Bersama', 'css' => $css,
-            'body' => $header . '
+        ContractTemplate::updateOrCreate(['code'=>'PB'],[
+            'name'=>'Perjanjian Bersama','css'=>$css,
+            'body'=>$header.'
             <div class="content">
                 <div class="title">PERJANJIAN BERSAMA (PB)<br>PENGAKHIRAN HUBUNGAN KERJA</div>
                 <div class="subtitle">NOMOR: {{contract_no}}</div>

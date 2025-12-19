@@ -1,4 +1,5 @@
 <?php
+
 return [
 'company_name'=>'PT Surveyor Indonesia',
 'company_address'=>'Gedung Surveyor Indonesia, Jl. Jend. Gatot Subroto Kav. 56, Jakarta 12950',
@@ -30,7 +31,12 @@ return [
 'letterhead_fit'=>'cover',
 'page'=>['width_cm'=>21,'height_cm'=>29.7,'paper'=>'a4','orientation'=>'portrait'],
 'margin_cm'=>['top'=>3.5,'right'=>2.54,'bottom'=>3.25,'left'=>2.54],
-'font'=>['family'=>'Tahoma','size_pt'=>11,'title_size_pt'=>14,'line_height'=>1.15,'paragraph_after_pt'=>3,'regular_file'=>'fonts/tahoma.ttf','bold_file'=>'fonts/tahomabd.ttf'],
+'templates'=>[
+'SPK'=>['margin_cm'=>['top'=>3.5013,'right'=>2.54,'bottom'=>3.2508,'left'=>2.54]],
+'PKWT'=>['margin_cm'=>['top'=>3.5560,'right'=>2.3107,'bottom'=>3.3020,'left'=>2.3107]],
+'PB'=>['margin_cm'=>['top'=>2.7005,'right'=>2.5012,'bottom'=>2.7005,'left'=>2.5012]],
+],
+'font'=>['family'=>'Tahoma','size_pt'=>11,'title_size_pt'=>14,'line_height'=>1.15,'paragraph_after_pt'=>3,'regular_file'=>'app/fonts/tahoma.ttf','bold_file'=>'app/fonts/tahomabd.ttf'],
 'dompdf'=>['dpi'=>96,'isRemoteEnabled'=>true,'isHtml5ParserEnabled'=>true],
 ],
 ];
