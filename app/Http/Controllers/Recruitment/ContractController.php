@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Contract,ContractTemplate,Applicant,Unit,Document,Signature,Approval,User,Employee,Person};
+use App\Models\{Contract, ContractTemplate, Applicant, Unit, Document, Signature, Approval, User, Employee, Person};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{DB,Storage};
+use Illuminate\Support\Facades\{DB, Storage};
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ContractController extends Controller
 {
+    // ... (Function index, store, update, dll SAMA SEPERTI SEBELUMNYA - Tidak berubah)
+    // ... Langsung fokus ke bagian PDF Rendering di bawah ini.
+
     public function index(Request $request){
         $user=$request->user();$isSuperadmin=$user->hasRole('Superadmin');$isDhc=$user->hasRole('DHC');$canSeeAll=$isSuperadmin||$isDhc;$userUnitId=(int)($user->unit_id??0);
         $isApproverOnly=$user->can('contract.approve')&&!$user->can('contract.update');
@@ -258,108 +261,219 @@ class ContractController extends Controller
         return $unit;
     }
 
-    protected function generatePdfFile($contract){
-        $doc=config("recruitment.contract_types.{$contract->contract_type}.document_type");if(!$doc)throw new \RuntimeException("document_type missing: {$contract->contract_type}");
-        $template=ContractTemplate::where('code',$doc)->firstOrFail();$vars=$this->getTemplateVars($contract);$html=$this->renderPdfHtml($contract,$template,$vars);
+    // ------------------------------------------------------------------------------------------------
+    // PDF GENERATION SECTIONS - UPDATED FOR LAYOUT, KOP SURAT, PARAGRAPH TITLES & TAHOMA FONT
+    // ------------------------------------------------------------------------------------------------
 
-        $pdf=Pdf::loadHTML($html);
-        $paper=(string)(data_get(config('recruitment.pdf',[]),'page.paper','a4')??'a4');
-        $orientation=(string)(data_get(config('recruitment.pdf',[]),'page.orientation','portrait')??'portrait');
-        $pdf->setPaper($paper,$orientation);
+    protected function generatePdfFile($contract)
+    {
+        $doc = config("recruitment.contract_types.{$contract->contract_type}.document_type");
+        if (!$doc) throw new \RuntimeException("document_type missing: {$contract->contract_type}");
+        $template = ContractTemplate::where('code', $doc)->firstOrFail();
+        $vars = $this->getTemplateVars($contract);
+        $html = $this->renderPdfHtml($contract, $template, $vars);
 
-        $dom=$pdf->getDomPDF();
-        $opt=(array)(data_get(config('recruitment.pdf',[]),'dompdf',[])??[]);
-        foreach($opt as $k=>$v){try{$dom->set_option($k,$v);}catch(\Exception $e){}}
-        $ff=(string)(data_get(config('recruitment.pdf',[]),'font.family','Tahoma')??'Tahoma');
-        try{$dom->set_option('defaultFont',$ff);}catch(\Exception $e){}
+        // Load PDF with DomPDF
+        $pdf = Pdf::loadHTML($html);
+        
+        // Configure paper size
+        $paper = (string)(data_get(config('recruitment.pdf', []), 'page.paper', 'a4') ?? 'a4');
+        $orientation = (string)(data_get(config('recruitment.pdf', []), 'page.orientation', 'portrait') ?? 'portrait');
+        $pdf->setPaper($paper, $orientation);
 
-        $out=$pdf->output();
-        Storage::disk('local')->put($contract->document->path,$out);
-        $contract->document->update(['size_bytes'=>strlen($out)]);
+        // Configure DomPDF Options
+        $dom = $pdf->getDomPDF();
+        $opt = (array)(data_get(config('recruitment.pdf', []), 'dompdf', []) ?? []);
+        // Enable remote is crucial for base64 fonts/images sometimes
+        $dom->set_option('isRemoteEnabled', true); 
+        $dom->set_option('isHtml5ParserEnabled', true);
+        
+        foreach ($opt as $k => $v) {
+            try { $dom->set_option($k, $v); } catch (\Exception $e) {}
+        }
+
+        // Output file
+        $out = $pdf->output();
+        Storage::disk('local')->put($contract->document->path, $out);
+        $contract->document->update(['size_bytes' => strlen($out)]);
     }
 
-protected function renderPdfHtml($contract,$template=null,$vars=[]){
-    $doc=config("recruitment.contract_types.{$contract->contract_type}.document_type");if(!$doc)throw new \RuntimeException("document_type missing: {$contract->contract_type}");
-    if(!$template)$template=\App\Models\ContractTemplate::where('code',$doc)->firstOrFail();if(empty($vars))$vars=$this->getTemplateVars($contract);
+    protected function renderPdfHtml($contract, $template = null, $vars = [])
+    {
+        // 1. Prepare Template & Vars
+        $doc = config("recruitment.contract_types.{$contract->contract_type}.document_type");
+        if (!$doc) throw new \RuntimeException("document_type missing: {$contract->contract_type}");
+        if (!$template) $template = \App\Models\ContractTemplate::where('code', $doc)->firstOrFail();
+        if (empty($vars)) $vars = $this->getTemplateVars($contract);
 
-    $body=(string)($template->body??'');foreach($vars as $k=>$v){$body=str_replace("{{{$k}}}",(string)$v,$body);}
-    $body=preg_replace('~<!doctype[^>]*>~i','',$body);$body=preg_replace('~</?(html|head|body)[^>]*>~i','',$body);
-    $body=preg_replace('~<style\b[^>]*>.*?</style>~is','',$body);$body=preg_replace('~<header\b[^>]*>.*?</header>~is','',$body);$body=preg_replace('~<footer\b[^>]*>.*?</footer>~is','',$body);
-    $body=preg_replace('~<div\b[^>]*style=["\'][^"\']*position\s*:\s*(fixed|absolute)[^"\']*["\'][^>]*>.*?</div>~is','',$body);
+        // 2. Replace Variables
+        $body = (string)($template->body ?? '');
+        foreach ($vars as $k => $v) {
+            $body = str_replace("{{{$k}}}", (string)$v, $body);
+        }
 
-    $cfg=(array)(config('recruitment.pdf',[])??[]);
-    $m=(array)($cfg['margin_cm']??[]);$mt=(float)($m['top']??3.5);$mr=(float)($m['right']??2.54);$mb=(float)($m['bottom']??3.25);$ml=(float)($m['left']??2.54);
-    $font=(array)($cfg['font']??[]);$ff=(string)($font['family']??'Tahoma');$fs=(float)($font['size_pt']??11);$fts=(float)($font['title_size_pt']??14);$lh=(float)($font['line_height']??1.15);$pAfter=(float)($font['paragraph_after_pt']??3);
+        // 3. Clean up HTML clutter that ruins PDF layout
+        $body = preg_replace('~<!doctype[^>]*>~i', '', $body);
+        $body = preg_replace('~</?(html|head|body)[^>]*>~i', '', $body);
+        // Remove existing styles to avoid conflicts
+        $body = preg_replace('~<style\b[^>]*>.*?</style>~is', '', $body);
+        $body = preg_replace('~<header\b[^>]*>.*?</header>~is', '', $body);
+        $body = preg_replace('~<footer\b[^>]*>.*?</footer>~is', '', $body);
+        // Remove old fixed positioning divs
+        $body = preg_replace('~<div\b[^>]*style=["\'][^"\']*position\s*:\s*(fixed|absolute)[^"\']*["\'][^>]*>.*?</div>~is', '', $body);
 
-    $disk=(string)($cfg['letterhead_disk']??'public');$path=(string)($cfg['letterhead_path']??'');
-    if(!$disk||!$path)throw new \RuntimeException("PDF letterhead config missing: recruitment.pdf.letterhead_disk/path");
-    $lh=$this->pdfDataUri($disk,$path);
-    if(!$lh)throw new \RuntimeException("PDF letterhead not found: disk={$disk}, path={$path} (expected under storage/app/public when disk=public)");
+        // 4. Configuration (Margins & Fonts)
+        $cfg = (array)(config('recruitment.pdf', []) ?? []);
+        $m = (array)($cfg['margin_cm'] ?? []);
+        $mt = (float)($m['top'] ?? 3.5);
+        $mr = (float)($m['right'] ?? 2.54);
+        $mb = (float)($m['bottom'] ?? 3.25);
+        $ml = (float)($m['left'] ?? 2.54);
 
-    $regular=(string)($font['regular_file']??'');$bold=(string)($font['bold_file']??'');
-    $fr=$this->pdfFontPath($regular);$fb=$this->pdfFontPath($bold);
-    if(!$fr)throw new \RuntimeException("PDF font regular not found: {$regular}");
-    if(!$fb)throw new \RuntimeException("PDF font bold not found: {$bold}");
-    $fr64=base64_encode(file_get_contents($fr));$fb64=base64_encode(file_get_contents($fb));
-    $fontCss="@font-face{font-family:'{$ff}';font-style:normal;font-weight:400;src:url(data:font/truetype;base64,{$fr64}) format('truetype');}@font-face{font-family:'{$ff}';font-style:normal;font-weight:700;src:url(data:font/truetype;base64,{$fb64}) format('truetype');}";
+        $font = (array)($cfg['font'] ?? []);
+        // FORCE Tahoma as requested
+        $ff = 'Tahoma'; 
+        $fs = (float)($font['size_pt'] ?? 11);
+        $lh = 1.35; // Line height comfortable for reading
+        $pAfter = (float)($font['paragraph_after_pt'] ?? 6);
 
-    $tplCss=(string)($template->css??'');
-    $tplCss=preg_replace('~@page\s*[^{]*\{.*?\}~is','',$tplCss);
-    $tplCss=preg_replace('~\b(html|body)\b\s*\{.*?\}~is','',$tplCss);
-    $tplCss=preg_replace('~header\s*\{.*?\}~is','',$tplCss);
-    $tplCss=preg_replace('~footer\s*\{.*?\}~is','',$tplCss);
+        // 5. Letterhead Logic (Negative Margins for Full Bleed)
+        $disk = (string)($cfg['letterhead_disk'] ?? 'public');
+        $path = (string)($cfg['letterhead_path'] ?? '');
+        if (!$disk || !$path) throw new \RuntimeException("PDF letterhead config missing");
+        $lhImg = $this->pdfDataUri($disk, $path);
 
-    $pageRule="@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}";
-    $letterheadCss=".letterhead-img{position:fixed;left:0;top:0;width:21cm;height:29.7cm;z-index:0;}";
-    $baseCss="html,body{margin:0!important;padding:0!important;}body,div,p,span,td,th,li{font-family:'{$ff}'!important;font-size:{$fs}pt!important;line-height:{$lh}!important;color:#000;}
-    .doc-wrap{position:relative;z-index:10;margin:0!important;padding:0!important;}
-    p{margin:0 0 {$pAfter}pt 0!important;text-align:justify!important;}
-    h1,h2,h3,.title,.doc-title{font-size:{$fts}pt!important;font-weight:700!important;text-align:center!important;margin:0 0 {$pAfter}pt 0!important;}
-    table{width:100%!important;border-collapse:collapse!important;}
-    ol,ul{margin:0 0 {$pAfter}pt 0!important;padding-left:0.9cm!important;}
-    li{margin:0 0 {$pAfter}pt 0!important;text-align:justify!important;}";
+        // 6. Font Loading (Tahoma from Storage)
+        // We look for tahoma.ttf and tahomabd.ttf in likely storage paths
+        $fr = $this->findFontFile('tahoma.ttf');
+        $fb = $this->findFontFile('tahomabd.ttf') ?? $this->findFontFile('tahoma-bold.ttf');
+        
+        $fontFaceCss = "";
+        if ($fr) {
+            $fr64 = base64_encode(file_get_contents($fr));
+            $fontFaceCss .= "@font-face { font-family: 'Tahoma'; font-style: normal; font-weight: normal; src: url(data:font/truetype;base64,{$fr64}) format('truetype'); }";
+        }
+        if ($fb) {
+            $fb64 = base64_encode(file_get_contents($fb));
+            $fontFaceCss .= "@font-face { font-family: 'Tahoma'; font-style: normal; font-weight: bold; src: url(data:font/truetype;base64,{$fb64}) format('truetype'); }";
+        }
+        // Fallback if bold not found, use regular for bold (browser synthesis)
+        if ($fr && !$fb) {
+             $fontFaceCss .= "@font-face { font-family: 'Tahoma'; font-style: normal; font-weight: bold; src: url(data:font/truetype;base64,{$fr64}) format('truetype'); }";
+        }
 
-    $css=$fontCss.$tplCss.$pageRule.$letterheadCss.$baseCss;
-    return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body><img class='letterhead-img' src='{$lh}'><div class='doc-wrap'>{$body}</div></body></html>";
-}
+        // 7. Custom Template CSS (Cleaned)
+        $tplCss = (string)($template->css ?? '');
+        $tplCss = preg_replace('~@page\s*[^{]*\{.*?\}~is', '', $tplCss);
+        $tplCss = preg_replace('~\b(html|body)\b\s*\{.*?\}~is', '', $tplCss);
 
-protected function pdfDataUri($disk,$path){
-    if(!Storage::disk($disk)->exists($path))return null;
-    $bin=Storage::disk($disk)->get($path);$mime=Storage::disk($disk)->mimeType($path)?:'image/jpeg';
-    return "data:{$mime};base64,".base64_encode($bin);
-}
+        // 8. Construct Final CSS
+        // Note: .letterhead-img uses negative margins ($mt, $ml) to position at (0,0) of the physical paper
+        $css = "
+            @page { margin: {$mt}cm {$mr}cm {$mb}cm {$ml}cm; }
+            
+            body { 
+                margin: 0; 
+                padding: 0; 
+                font-family: 'Tahoma', sans-serif; 
+                font-size: {$fs}pt; 
+                line-height: {$lh}; 
+                color: #000; 
+            }
 
-protected function pdfFontPath($rel){
-    $rel=trim((string)$rel);if($rel==='')return null;
-    $cands=[
-        storage_path($rel),storage_path('app/'.$rel),storage_path('app/public/'.$rel),
-        public_path($rel),public_path(ltrim($rel,'/')),
-        base_path($rel),resource_path($rel),
-        storage_path('fonts/'.basename($rel)),storage_path('app/fonts/'.basename($rel)),storage_path('app/public/fonts/'.basename($rel)),
-        public_path('fonts/'.basename($rel)),
-    ];
-    foreach($cands as $p){if($p&&is_file($p))return $p;}
-    return null;
-}
+            .letterhead-img { 
+                position: fixed; 
+                top: -{$mt}cm; 
+                left: -{$ml}cm; 
+                width: 21cm; 
+                height: 29.7cm; 
+                z-index: -9999; 
+            }
 
+            .doc-wrap { 
+                position: relative; 
+                z-index: 1; 
+                width: 100%; 
+            }
 
-    protected function findTahomaFiles(){
-        $candidatesRegular=[
-            storage_path('fonts/tahoma.ttf'),storage_path('fonts/Tahoma.ttf'),
-            storage_path('app/fonts/tahoma.ttf'),storage_path('app/fonts/Tahoma.ttf'),
-            public_path('fonts/tahoma.ttf'),public_path('fonts/Tahoma.ttf'),
-            resource_path('fonts/tahoma.ttf'),resource_path('fonts/Tahoma.ttf'),
+            p { 
+                margin-top: 0; 
+                margin-bottom: {$pAfter}pt; 
+                text-align: justify; 
+                text-justify: inter-word; 
+            }
+
+            table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: {$pAfter}pt; 
+            }
+
+            th, td { 
+                padding: 3px 5px; 
+                vertical-align: top; 
+                text-align: left; 
+                border: 0 solid transparent; 
+            }
+
+            ul, ol { 
+                margin-top: 0; 
+                margin-bottom: {$pAfter}pt; 
+                padding-left: 1.2em; 
+            }
+
+            li { 
+                margin-bottom: 2pt; 
+                text-align: justify; 
+            }
+
+            /* JUDUL PARAGRAF / PASAL STYLING */
+            h1, h2, h3, h4, .title, .doc-title, .article-title { 
+                text-align: center; 
+                font-weight: bold; 
+                text-transform: uppercase; /* Agar rapi huruf besar semua */
+                margin-top: 14pt; 
+                margin-bottom: 6pt; 
+                line-height: 1.2; 
+                font-size: 11pt; /* Ukuran font judul disamakan atau sedikit lebih besar */
+                font-family: 'Tahoma', sans-serif;
+            }
+
+            /* Reset margin for first heading if needed */
+            h1:first-child, h2:first-child { margin-top: 0; }
+
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: bold; }
+            .page-break { page-break-after: always; }
+
+            {$fontFaceCss}
+            {$tplCss}
+        ";
+
+        return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body><img class='letterhead-img' src='{$lhImg}'><div class='doc-wrap'>{$body}</div></body></html>";
+    }
+
+    protected function pdfDataUri($disk, $path){
+        if(!Storage::disk($disk)->exists($path))return null;
+        $bin=Storage::disk($disk)->get($path);$mime=Storage::disk($disk)->mimeType($path)?:'image/jpeg';
+        return "data:{$mime};base64,".base64_encode($bin);
+    }
+
+    // Helper to find font files in likely storage locations
+    protected function findFontFile($filename) {
+        $paths = [
+            storage_path('fonts/' . $filename),
+            storage_path('app/fonts/' . $filename),
+            storage_path('app/public/fonts/' . $filename),
+            public_path('fonts/' . $filename),
+            resource_path('fonts/' . $filename),
         ];
-        $candidatesBold=[
-            storage_path('fonts/tahomabd.ttf'),storage_path('fonts/TahomaBold.ttf'),storage_path('fonts/tahoma-bold.ttf'),
-            storage_path('app/fonts/tahomabd.ttf'),storage_path('app/fonts/TahomaBold.ttf'),storage_path('app/fonts/tahoma-bold.ttf'),
-            public_path('fonts/tahomabd.ttf'),public_path('fonts/TahomaBold.ttf'),public_path('fonts/tahoma-bold.ttf'),
-            resource_path('fonts/tahomabd.ttf'),resource_path('fonts/TahomaBold.ttf'),resource_path('fonts/tahoma-bold.ttf'),
-        ];
-        $r=null;$b=null;
-        foreach($candidatesRegular as $p){if($p&&is_file($p)){$r=$p;break;}}
-        foreach($candidatesBold as $p){if($p&&is_file($p)){$b=$p;break;}}
-        return [$r,$b];
+
+        foreach ($paths as $path) {
+            if (file_exists($path)) return $path;
+        }
+        return null;
     }
 
     protected function getTemplateVars(Contract $c){
