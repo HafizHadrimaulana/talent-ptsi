@@ -5,7 +5,7 @@ import { initUpdateJenisPelatihanHandler } from "./training-approval/handler/upd
 import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
 import { initModalHandler } from "../../utils/modal";
 import { initInputLnaHandler } from "./training-approval/handler/inputLnaHandler";
-import { initAllApprovalHandler, initBulkApprovalHandler } from "./training-approval/handler/approveHandler";
+// import { initAllApprovalHandler, initBulkApprovalHandler } from "./training-approval/handler/approveHandler";
 
 const TRAINING_CONFIG = {
     tables: {
@@ -212,17 +212,17 @@ const initializeButtonHandlers = () => {
         initDownloadTemplateHandler();
     }
 
-    // Bulk Approval
-    if (document.querySelector(TRAINING_CONFIG.buttons.bulkApprove)) {
-        console.log("Initializing bulk approval handler");
-        initBulkApprovalHandler();
-    }
+    // // Bulk Approval
+    // if (document.querySelector(TRAINING_CONFIG.buttons.bulkApprove)) {
+    //     console.log("Initializing bulk approval handler");
+    //     initBulkApprovalHandler();
+    // }
 
-    // All Approval
-    if (document.querySelector(TRAINING_CONFIG.buttons.allApprove)) {
-        console.log("Initializing all approval handler");
-        initAllApprovalHandler();
-    }
+    // // All Approval
+    // if (document.querySelector(TRAINING_CONFIG.buttons.allApprove)) {
+    //     console.log("Initializing all approval handler");
+    //     initAllApprovalHandler();
+    // }
 };
 
 const initializeGlobalEventHandlers = () => {

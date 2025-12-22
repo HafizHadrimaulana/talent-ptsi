@@ -6,7 +6,7 @@
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
         <div>
-          <div class="u-title" id="ip-modal-title">Tambah Pelatihan Baru</div>
+          <div class="u-title" id="ip-modal-title">Pengajuan Pelatihan Baru</div>
           <div class="u-muted u-text-sm" id="ip-modal-subtitle">Tambah pelatihan</div>
         </div>
       </div>

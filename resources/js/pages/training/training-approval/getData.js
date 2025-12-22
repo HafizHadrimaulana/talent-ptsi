@@ -1,8 +1,8 @@
 import { getJSON } from "@/utils/fetch";
 import { initDeleteHandler } from "./handler/deleteHandler";
 import { initEditHandler } from "./handler/editHandler";
-import { initApproveHandler } from "./handler/approveHandler";
-import { initRejectHandler } from "./handler/rejectHandler";
+import { initApproveHandler, initApproveReferenceHandler } from "./handler/approveHandler";
+import { initRejectHandler, rejectTrainingPengajuanHandler } from "./handler/rejectHandler";
 import { initDragDropUpload } from "./handler/dragDropImport";
 import { initDetailHandler } from "./handler/initDetailHandler";
 
@@ -32,6 +32,35 @@ const TABLE_CONFIGS = {
                 {
                     roles: ['DHC'],
                     allow: ['edit', 'delete']
+                },
+                {
+                    roles: ['DBS Unit'],
+                    allow: ['approve', 'reject']
+                },
+            ]
+        }
+    },
+
+    'approval-pengajuan-training-table': {
+        apiEndpoint: () => `/training/training-request/get-approval-pengajuan-training`,
+        columns: [
+            'no','judul_sertifikasi','unit_kerja','penyelenggara',
+            'jumlah_jam','waktu_pelaksanaan','biaya_pelatihan',
+            'uhpd','biaya_akomodasi','estimasi_total_biaya',
+            'nama_proyek','jenis_portofolio','fungsi', 'status_training_reference', 'actions'
+        ],
+        dataMapper: (data) => data.data || [],
+        actions: {
+            default: ['details'],
+
+            rules: [
+                {
+                    roles: ['DBS Unit'],
+                    allow: ['approve_training_pengajuan', 'reject_training_pengajuan']
+                },
+                {
+                    roles: ['DHC'],
+                    allow: ['approve_training_pengajuan', 'reject_training_pengajuan']
                 },
             ]
         }
@@ -103,6 +132,8 @@ const ACTION_BUTTONS = {
     delete: { class: "u-btn u-btn--brand u-hover-lift", text: "Hapus" },
     approve: { class: "u-btn u-btn--brand u-hover-lift", text: "Terima" },
     reject: { class: "u-btn u-btn--brand u-hover-lift", text: "Tolak" },
+    approve_training_pengajuan: { class: "u-btn u-btn--brand u-hover-lift", text: "Terima" },
+    reject_training_pengajuan: { class: "u-btn u-btn--brand u-hover-lift", text: "Tolak" },
     details: { class: "u-btn u-btn--brand u-hover-lift", text: "Details" }
 };
 
@@ -302,6 +333,14 @@ const COLUMN_RENDERERS = {
             pending: {
                 label: "Pending",
                 class: "u-badge u-badge--warning",
+            },
+            in_review_dhc: {
+                label: "In Review DHC",
+                class: "u-badge u-badge--yellow",
+            },
+            rejected: {
+                label: "Ditolak",
+                class: "u-badge u-badge--danger",
             },
         };
 
@@ -528,6 +567,8 @@ const initializeEventHandlers = (tableBody, reloadFunction) => {
     initDeleteHandler(tableBody, reloadFunction);
     initApproveHandler(tableBody);
     initRejectHandler(tableBody);
+    rejectTrainingPengajuanHandler(tableBody);
+    initApproveReferenceHandler(tableBody);
     initDragDropUpload();
 };
 

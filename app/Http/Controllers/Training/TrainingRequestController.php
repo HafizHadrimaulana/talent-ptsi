@@ -80,7 +80,7 @@ class TrainingRequestController extends Controller
         $uiMap = [
 
             'DHC' => [
-                'tabs' => ['data-lna', 'training-request'],
+                'tabs' => ['data-lna', 'training-request', 'approval-pengajuan-training'],
                 'default_tab' => 'data-lna',
 
                 'tab_configs' => [
@@ -102,6 +102,13 @@ class TrainingRequestController extends Controller
                             'sdm-unit-table',
                         ],
                     ],
+
+                    'approval-pengajuan-training' => [
+                        'buttons' => [],
+                        'tables' => [
+                            'approval-pengajuan-training-table',
+                        ],
+                    ]
                 ],
             ],
 
@@ -141,6 +148,21 @@ class TrainingRequestController extends Controller
                         'buttons' => [],
                         'tables' => [
                             'sdm-unit-table',
+                        ],
+                    ]
+                ],
+            ],
+
+            'DBS Unit' => [
+                'tabs' => ['approval-pengajuan-training'],
+                'default_tab' => 'approval-pengajuan-training',
+
+                'tab_configs' => [
+
+                   'approval-pengajuan-training' => [
+                        'buttons' => [],
+                        'tables' => [
+                            'approval-pengajuan-training-table',
                         ],
                     ]
                 ],
@@ -399,6 +421,87 @@ class TrainingRequestController extends Controller
                 "status" => "error",
                 "message" => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function getApprovalPengajuanTraining(Request $request)
+    {
+        try {
+            $user  = auth()->user();
+            $role  = $user->getRoleNames()->first();
+
+            $unitId = optional($user->employee)->unit_id
+                ?? optional($user->person)->unit_id;
+
+            Log::info('getDataLna', [
+                'user_id' => $user->id,
+                'role'    => $role,
+                'unit_id' => $unitId,
+            ]);
+
+            $perPage = $request->input('per_page', 12);
+
+            $query = TrainingReference::with('unit')
+                ->orderBy('created_at', 'desc');
+
+
+            /**
+             * ======================================
+             * FILTER UNIT
+             * ======================================
+             */
+            if ($role !== 'DHC') {
+                // selain DHC → hanya unit sendiri
+                if (!$unitId) {
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => 'Unit user tidak ditemukan'
+                    ], 422);
+                }
+
+                $query->where('unit_id', $unitId);
+            }
+
+            /**
+             * ======================================
+             * FILTER STATUS BERDASARKAN ROLE
+             * ======================================
+             */
+            switch ($role) {
+
+                case 'DBS Unit':
+                    // hanya pending
+                    $query->where('status_training_reference', 'pending');
+                    break;
+
+                case 'DHC':
+                    // hanya in_review_dhc
+                    $query->where('status_training_reference', 'in_review_dhc');
+                    break;
+
+                default:
+                    // role lain → hanya active
+                    $query->where('status_training_reference', 'active');
+                    break;
+            }
+
+            $data = $query->paginate($perPage);
+
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $data->items(),
+                'pagination' => [
+                    'current_page' => $data->currentPage(),
+                    'last_page'    => $data->lastPage(),
+                    'per_page'     => $data->perPage(),
+                    'total'        => $data->total(),
+                ]
+            ]);
+
+
+        } catch (\Exception $e) {
+            Log::error("Error fetch data: " . $e->getMessage());
         }
     }
 
@@ -688,11 +791,15 @@ class TrainingRequestController extends Controller
         }
     }
 
+    // pengajuan LNA DHC dan SDM 
     public function inputLna(Request $request) 
     {
         $user = auth()->user();
         $role = $user->getRoleNames()->first();
-        Log::info("Mulai input training request:", $request->all());
+
+        Log::info("Mulai input LNA sdm request:", $request->all());
+
+        $statusTrainingReference = 'active';
 
         if ($role === 'SDM Unit') {
             $unitId = optional($user->employee)->unit_id 
@@ -705,10 +812,12 @@ class TrainingRequestController extends Controller
                 ], 422);
             }
 
-            // ⬅️ Paksa unit_id dari backend
+            // unit_id dari backend
             $request->merge([
                 'unit_id' => $unitId
             ]);
+
+            $statusTrainingReference = 'pending';
         };
 
         $request->merge([
@@ -749,6 +858,9 @@ class TrainingRequestController extends Controller
                 'uhpd'                   => $request->uhpd,
                 'biaya_akomodasi'        => $request->biaya_akomodasi,
                 'estimasi_total_biaya'   => $request->estimasi_total_biaya,
+
+                // pending jika sdm unit
+                'status_training_reference' => $statusTrainingReference,
             ]);
     
             Log::info("Data training berhasil disimpan.", $data->toArray());
@@ -836,6 +948,144 @@ class TrainingRequestController extends Controller
 
             // Kirim ke processApproval()
             $this->processApproval($trainingRequest, $role, 'reject');
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Data ID {$id} berhasil direject oleh {$role}.",
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Reject failed", [
+                'id' => $id,
+                'role' => $role ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat menolak data.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /// APPROVE & REJECT TRAINING REFERENCE
+
+    public function approveTrainingReference($id)
+    {
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
+
+        try {
+            $trainingReference = TrainingReference::findOrFail($id);
+
+            // ===============================
+            // CEK SUDAH FINAL ATAU BELUM
+            // ===============================
+            if (in_array($trainingReference->status_training_reference, ['active', 'rejected'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Data ini sudah final dan tidak dapat di-approve.',
+                ], 400);
+            }
+
+            // ===============================
+            // TENTUKAN NEXT STATUS
+            // ===============================
+            $nextStatus = match ($role) {
+                'DBS Unit' => $trainingReference->status_training_reference === 'pending'
+                    ? 'in_review_dhc'
+                    : null,
+
+                'DHC' => $trainingReference->status_training_reference === 'in_review_dhc'
+                    ? 'active'
+                    : null,
+
+                default => null,
+            };
+
+            if (!$nextStatus) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Anda tidak memiliki hak untuk approve pada status ini.',
+                ], 403);
+            }
+
+            // ===============================
+            // UPDATE STATUS
+            // ===============================
+            $trainingReference->update([
+                'status_training_reference' => $nextStatus,
+                // 'approved_by'               => $user->id,
+                // 'approved_at'               => now(),
+            ]);
+
+            Log::info('Training reference approved', [
+                'training_reference_id' => $id,
+                'from_status' => $trainingReference->getOriginal('status_training_reference'),
+                'to_status'   => $nextStatus,
+                'role'        => $role,
+                'user_id'     => $user->id,
+            ]);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => "Data berhasil di-approve oleh {$role}.",
+                'data' => [
+                    'id' => $trainingReference->id,
+                    'status' => $nextStatus,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Approve error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    public function rejectTrainingReference($id)
+    {
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
+        
+        try {
+            $trainingReference = TrainingReference::findOrFail($id);
+
+            // Jika sudah final, tidak boleh reject
+            if (in_array($trainingReference->status_training_reference, ['active', 'rejected'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Data ini sudah final dan tidak dapat direject.',
+                ], 400);
+            }
+
+            // validasi
+            $allowedReject = match ($role) {
+                'DBS Unit' => $trainingReference->status_training_reference === 'pending',
+                'DHC'      => $trainingReference->status_training_reference === 'in_review_dhc',
+                default    => false,
+            };
+
+            if (!$allowedReject) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Anda tidak memiliki hak untuk menolak data ini.',
+                ], 403);
+            }
+
+            // update
+            $trainingReference->update([
+                'status_training_reference' => 'rejected',
+                // 'rejected_reason'        => $request->input('reason'), // optional
+            ]);
+
+            Log::info('Training reference rejected', [
+                'training_reference_id' => $id,
+                'role' => $role,
+                'user_id' => $user->id,
+            ]);
 
             return response()->json([
                 'status' => 'success',

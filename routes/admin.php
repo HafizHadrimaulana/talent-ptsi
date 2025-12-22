@@ -250,6 +250,9 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('training-request/get-data-units', [TrainingRequestController::class, 'getDataUnits'])
             ->name('training-request.get-data-units');
 
+        Route::get('training-request/get-approval-pengajuan-training', [TrainingRequestController::class, 'getApprovalPengajuanTraining'])
+            ->name('training-request.get-approval-pengajuan-training');
+
         //// sdm unit
         Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
             ->name('training-request');
@@ -270,6 +273,11 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.approve-training-request');
         Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
             ->name('training-request.reject-training-request');
+
+        Route::post('training-request/{id}/approve-training-reference', [TrainingRequestController::class,'approveTrainingReference'])
+            ->name('training-request.approve-training-reference');
+        Route::post('training-request/{id}/reject-training-pengajuan', [TrainingRequestController::class,'rejectTrainingReference'])
+            ->name('training-request.reject-training-pengajuan');
 
         // Monitoring
         // Route::get('monitoring', fn () => view('training.monitoring.monitoring'))
