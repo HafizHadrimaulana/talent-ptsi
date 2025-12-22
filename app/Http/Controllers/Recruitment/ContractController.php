@@ -292,7 +292,12 @@ class ContractController extends Controller
         $cfg=(array)(config('recruitment.pdf',[])??[]);
         $tplKey=(string)($template->code??'');
         $m=(array)(data_get($cfg,"templates.{$tplKey}.margin_cm")??data_get($cfg,'margin_cm')??[]);
-        $mt=(float)($m['top']??3.5);$mr=(float)($m['right']??2.54);$mb=(float)($m['bottom']??3.25);$ml=(float)($m['left']??2.54);
+        
+        // STANDARD MARGIN: 3.5cm Top/Bottom for ALL templates
+        $m['top'] = 3.5;
+        $m['bottom'] = 3.5;
+
+        $mt=(float)($m['top']);$mr=(float)($m['right']??2.54);$mb=(float)($m['bottom']);$ml=(float)($m['left']??2.54);
 
         $page=(array)($cfg['page']??[]);
         $pw=(float)($page['width_cm']??21);$ph=(float)($page['height_cm']??29.7);
@@ -300,9 +305,9 @@ class ContractController extends Controller
         $font=(array)(data_get($cfg,"templates.{$tplKey}.font")??data_get($cfg,'font')??[]);
         $ff=(string)($font['family']??'Tahoma');
         $fs=(float)($font['size_pt']??11);
-        $lh=(float)($font['line_height']??1.15);
+        $lh=(float)($font['line_height']??1.3); // Normalized Spacing
         $titleSize=(float)($font['title_size_pt']??14);
-        $pa=(float)($font['paragraph_after_pt']??3);
+        $pa=(float)($font['paragraph_after_pt']??6);
 
         $disk=(string)($cfg['letterhead_disk']??'public');
         $path=(string)($cfg['letterhead_path']??'');
@@ -322,23 +327,27 @@ class ContractController extends Controller
         $tplCss=preg_replace('~@page\s*[^{]*\{.*?\}~is','',$tplCss);
         $tplCss=preg_replace('~\b(html|body)\b\s*\{.*?\}~is','',$tplCss);
 
-        $css="@page{margin:0;}{$fontFaceCss}
-        body{margin:0;padding:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;font-family:'{$finalFamily}',{$ff},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;}
-        .letterhead-img{position:fixed;top:0;left:0;width:{$pw}cm;height:{$ph}cm;z-index:-9999;}
+        // BG LOGIC: Img 1.0 (Full), Body White Transparant (0.88)
+        $css="@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}{$fontFaceCss}
+        body{margin:0;padding:0;font-family:'{$finalFamily}',{$ff},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:rgba(255,255,255,0.88);}
+        .letterhead-img{position:fixed;top:-{$mt}cm;left:-{$ml}cm;width:{$pw}cm;height:{$ph}cm;z-index:-9999;opacity:1.0;}
         .content{margin:0!important;padding:0!important;}
         p{margin:0 0 {$pa}pt 0;text-align:justify;text-justify:inter-word;}
         .justify{text-align:justify;text-justify:inter-word;}
         strong,b{font-weight:700;}
         table{width:100%;border-collapse:collapse;}
         table.info{width:100%;border-collapse:collapse;margin:0 0 {$pa}pt 0;}
-        table.info td{vertical-align:top;padding:0;}
-        ol,ul{margin:0 0 {$pa}pt 0;padding-left:20pt;}
-        li{margin:0 0 {$pa}pt 0;text-align:justify;text-justify:inter-word;}
+        table.info td{vertical-align:top;padding:2px 0;}
+        ol{margin:0 0 {$pa}pt 0;padding-left:30px;}
+        ol li{text-align:justify;padding-left:5px;margin-bottom:5px;}
+        ol ol {list-style-type: lower-alpha; padding-left:25px;}
+        ul{margin:0 0 {$pa}pt 0;padding-left:30px;}
+        ul li{text-align:justify;padding-left:5px;margin-bottom:5px;}
         .title{text-align:center;font-weight:700;text-transform:uppercase;font-size:{$titleSize}pt;margin:0 0 5pt 0;text-decoration:underline;}
         .subtitle{text-align:center;font-weight:700;font-size:{$fs}pt;margin:0 0 12pt 0;}
         .pasal-title{text-align:center!important;font-weight:700!important;text-transform:uppercase;line-height:{$lh};margin:14pt 0 6pt 0;font-size:{$fs}pt;page-break-after:avoid;}
         table.ttd{width:100%;margin-top:24pt;page-break-inside:avoid;table-layout:fixed;}
-        table.ttd td{text-align:center;vertical-align:bottom;}
+        table.ttd td{text-align:center;vertical-align:top;}
         .sig-box{height:70px;}
         {$tplCss}";
 

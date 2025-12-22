@@ -1,11 +1,11 @@
 <?php
 
 return [
-'company_name'=>'PT Surveyor Indonesia',
-'company_address'=>'Gedung Surveyor Indonesia, Jl. Jend. Gatot Subroto Kav. 56, Jakarta 12950',
-'company_city'=>'Jakarta',
-'company_rep_name'=>'Lussy Ariani Seba',
-'company_rep_title'=>'Direktur Sumber Daya Manusia',
+// 'company_name'=>'PT Surveyor Indonesia',
+// 'company_address'=>'Gedung Surveyor Indonesia, Jl. Jend. Gatot Subroto Kav. 56, Jakarta 12950',
+// 'company_city'=>'Jakarta',
+// 'company_rep_name'=>'Lussy Ariani Seba',
+// 'company_rep_title'=>'Direktur Sumber Daya Manusia',
 'contract_statuses'=>['draft'=>'Draft','review'=>'Review','approved'=>'Disetujui','signed'=>'Ditandatangani'],
 'contract_applicant_statuses'=>['APPROVED'],
 'contract_types'=>[

@@ -10,23 +10,25 @@ class ContractTemplateSeeder extends Seeder
     public function run()
     {
         $css="
-        header{position:fixed;top:0;left:0;right:0;height:140px;background:url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');background-size:cover;border-bottom:2px double #000;margin:0 2cm;}
+        header{display:none;}
         .title{text-align:center;font-weight:bold;text-transform:uppercase;font-size:14pt;margin-bottom:5px;text-decoration:underline;}
         .subtitle{text-align:center;font-weight:bold;font-size:11pt;margin-bottom:20px;}
         .justify{text-align:justify;}
         .center{text-align:center;}
         .bold{font-weight:bold;}
         table.info{width:100%;border-collapse:collapse;margin-bottom:5px;}
-        table.info td{vertical-align:top;padding:2px;}
+        table.info td{vertical-align:top;padding:2px 0;}
         .pasal-title{text-align:center;font-weight:bold;text-transform:uppercase;margin-top:15px;margin-bottom:5px;font-size:11pt;}
         table.ttd{width:100%;margin-top:30px;page-break-inside:avoid;}
-        table.ttd td{text-align:center;vertical-align:bottom;height:100px;}
-        ol{margin:0;padding-left:20px;}
-        li{margin-bottom:5px;text-align:justify;}
-        ul{list-style-type:disc;margin:0;padding-left:20px;}
+        table.ttd td{text-align:center;vertical-align:top;}
+        ol{margin:0;padding-left:30px;}
+        ol li{text-align:justify;padding-left:5px;margin-bottom:5px;}
+        ol ol {list-style-type: lower-alpha; padding-left:25px;}
+        ul{margin:0;padding-left:30px;}
+        ul li{text-align:justify;padding-left:5px;margin-bottom:5px;}
         ";
 
-        $header='<header><div style="position:fixed;top:30px;right:2.5cm;text-align:right;font-size:10pt;font-weight:bold;color:#1a3c70;">PT SURVEYOR INDONESIA<br>Graha Surveyor Indonesia<br>Jl. Jend. Gatot Subroto Kav. 56<br>Jakarta 12950</div></header>';
+        $header='';
 
         ContractTemplate::updateOrCreate(['code'=>'PKWT'],[
             'name'=>'PKWT Rev 2025','css'=>$css,
@@ -39,15 +41,13 @@ class ContractTemplateSeeder extends Seeder
 
                 <table class="info">
                     <tr>
-                        <td width="20">I.</td>
-                        <td width="150"><strong>{{signer_name}}</strong></td>
-                        <td>: {{signer_position}}, bertindak untuk dan atas nama Direktur Utama PT Surveyor Indonesia, berkedudukan di Gedung Graha Surveyor Indonesia Lt. 4-11 Jalan Jenderal Gatot Subroto Kavling 56 Jakarta 12950, selanjutnya disebut <strong>PIHAK PERTAMA</strong>.</td>
+                        <td width="20" valign="top">I.</td>
+                        <td class="justify"><strong>{{signer_name}}</strong>, {{signer_position}}, bertindak untuk dan atas nama Direktur Utama PT Surveyor Indonesia, berkedudukan di Gedung Graha Surveyor Indonesia Lt. 4-11 Jalan Jenderal Gatot Subroto Kavling 56 Jakarta 12950, selanjutnya disebut <strong>PIHAK PERTAMA</strong>.</td>
                     </tr>
-                    <tr><td colspan="3">&nbsp;</td></tr>
+                    <tr><td colspan="2">&nbsp;</td></tr>
                     <tr>
-                        <td>II.</td>
-                        <td><strong>{{candidate_name}}</strong></td>
-                        <td>: Lahir di {{pob}}, pada tanggal {{dob}}, Warga Negara Indonesia, {{gender}}, bertempat tinggal di {{candidate_address}}, pemegang Kartu Tanda Penduduk Nomor {{candidate_nik}}, selanjutnya disebut <strong>PIHAK KEDUA</strong>.</td>
+                        <td valign="top">II.</td>
+                        <td class="justify"><strong>{{candidate_name}}</strong>, lahir di {{pob}}, pada tanggal {{dob}}, Warga Negara Indonesia, {{gender}}, bertempat tinggal di {{candidate_address}}, pemegang Kartu Tanda Penduduk Nomor {{candidate_nik}}, selanjutnya disebut <strong>PIHAK KEDUA</strong>.</td>
                     </tr>
                 </table>
 
@@ -261,69 +261,11 @@ class ContractTemplateSeeder extends Seeder
                     <tr>
                         <td width="50%">
                             <strong>PIHAK PERTAMA</strong><br>
-                            PT Surveyor Indonesia<br>
-                            <div class="sig-box">{{signer_signature}}</div>
-                            <u><strong>{{signer_name}}</strong></u><br>{{signer_position}}
-                        </td>
-                        <td width="50%">
-                            <strong>PIHAK KEDUA</strong><br><br>
-                            <div class="sig-box">{{candidate_signature}}</div>
-                            <u><strong>{{candidate_name}}</strong></u>
-                        </td>
-                    </tr>
-                </table>
-            </div>'
-        ]);
-
-        ContractTemplate::updateOrCreate(['code'=>'SPK'],[
-            'name'=>'Surat Penawaran Kerja','css'=>$css,
-            'body'=>$header.'
-            <div class="content">
-                <table class="info">
-                    <tr><td width="100">Nomor</td><td>: {{contract_no}}</td></tr>
-                    <tr><td>Tanggal</td><td>: {{today_date}}</td></tr>
-                </table>
-                <br>
-                <p>Kepada Yth.<br><strong>Sdr/i. {{candidate_name}}</strong><br>{{candidate_address}}</p>
-                <div class="title" style="text-align:left;font-size:12pt;margin-top:10px;">Perihal: Surat Penawaran Kerja</div>
-                <p class="justify">Bersama ini kami sampaikan penawaran kerja sebagai pegawai PT Surveyor Indonesia dengan hak dan fasilitas serta kewajiban yang harus dilaksanakan sebagai Pegawai PTSI:</p>
-                <table class="info">
-                    <tr><td width="160">1. Jabatan</td><td>: <strong>{{position_name}}</strong></td></tr>
-                    <tr><td>2. Penempatan</td><td>: {{unit_name}}</td></tr>
-                    <tr><td>3. Status Kepegawaian</td><td>: {{employment_type}}</td></tr>
-                    <tr><td>4. Periode</td><td>: {{duration}} ({{start_date}} s/d {{end_date}})</td></tr>
-                    <tr><td>5. Gaji/Upah</td><td>: <strong>{{salary}}</strong> ({{salary_words}}) per bulan, dibayarkan tanggal 25 setiap bulannya.</td></tr>
-                    <tr><td>6. Tanggal Efektif</td><td>: {{start_date}}</td></tr>
-                </table>
-                <p class="bold">I. Fasilitas Lainnya:</p>
-                <ol>
-                    <li>Tunjangan Hari Raya (THR): 1 kali upah jika telah bekerja 12 bulan berturut-turut, proporsional minimal 1 bulan.</li>
-                    <li>Pajak Penghasilan (PPh 21) ditanggung oleh perusahaan.</li>
-                    <li>BPJS Ketenagakerjaan: Dipotong 2% dari Gaji/Upah.</li>
-                    <li>BPJS Pensiun: Dipotong 1% dari Gaji/Upah.</li>
-                    <li>BPJS Kesehatan: Dipotong 1% dari Upah.</li>
-                    <li>Bantuan Makan: {{meal_allowance}} per hari kerja dalam bentuk kupon.</li>
-                    <li>Uang Kompensasi: Diberikan di akhir perjanjian kerja sesuai ketentuan perundang-undangan yang berlaku.</li>
-                    <li>Fasilitas Kesehatan: Menggunakan program BPJS Kesehatan.</li>
-                    <li>Perjalanan Dinas: Sesuai ketentuan perusahaan (UHPD) jika jarak > 60 Km.</li>
-                    <li>{{other_benefits}}</li>
-                </ol>
-                <p class="bold">II. Kewajiban:</p>
-                <p class="justify">Mentaati, mematuhi dan melaksanakan disiplin kerja dan peraturan kerja perusahaan yang berlaku.</p>
-                <p class="bold">III. Ruang lingkup tugas, wewenang dan tanggung jawab</p>
-                <p class="justify">Rincian tugas dan tanggung jawab (akuntabilitas) dan target (KPI) akan ditetapkan kemudian oleh Sekretaris Perusahaan.</p>
-                <p class="justify">Demikian penawaran kami, mohon jawaban Saudara dapat diisi pada kolom yang tersedia dan segera dikirim kembali kepada kami.</p>
-                <p class="justify">Atas kerjasama Saudara kami ucapkan terima kasih.</p>
-                <table class="ttd">
-                    <tr>
-                        <td>
-                            <strong>{{signer_position}}</strong><br><br>
                             <div class="sig-box">{{signer_signature}}</div>
                             <u><strong>{{signer_name}}</strong></u>
                         </td>
-                        <td>
-                            <strong>Kolom Persetujuan</strong><br>
-                            Setuju / Tidak Setuju<br>
+                        <td width="50%">
+                            <strong>PIHAK KEDUA</strong><br>
                             <div class="sig-box">{{candidate_signature}}</div>
                             <u><strong>{{candidate_name}}</strong></u>
                         </td>
@@ -339,10 +281,20 @@ class ContractTemplateSeeder extends Seeder
                 <div class="title">PERJANJIAN BERSAMA (PB)<br>PENGAKHIRAN HUBUNGAN KERJA</div>
                 <div class="subtitle">NOMOR: {{contract_no}}</div>
                 <p class="justify">Pada hari ini <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong>, bertempat di Jakarta, telah dibuat dan ditandatangani Perjanjian Bersama (PB), oleh dan antara:</p>
+                
                 <table class="info">
-                    <tr><td width="20">1.</td><td width="150"><strong>{{signer_name}}</strong></td><td>: {{signer_position}}, mewakili PT Surveyor Indonesia (<strong>PIHAK PERTAMA</strong>).</td></tr>
-                    <tr><td>2.</td><td><strong>{{candidate_name}}</strong></td><td>: NIK {{candidate_nik}}, alamat {{candidate_address}} (<strong>PIHAK KEDUA</strong>).</td></tr>
+                    <tr><td width="150">Nama</td><td width="10">:</td><td><strong>{{signer_name}}</strong></td></tr>
+                    <tr><td>Jabatan</td><td>:</td><td>{{signer_position}}</td></tr>
                 </table>
+                <p class="justify" style="margin-top:-5pt;">Dalam hal ini mewakili PT Surveyor Indonesia (Persero), untuk selanjutnya disebut <strong>PIHAK PERTAMA</strong>.</p>
+
+                <table class="info">
+                    <tr><td width="150">Nama</td><td width="10">:</td><td><strong>{{candidate_name}}</strong></td></tr>
+                    <tr><td>NIK</td><td>:</td><td>{{candidate_nik}}</td></tr>
+                    <tr><td>Alamat</td><td>:</td><td>{{candidate_address}}</td></tr>
+                </table>
+                <p class="justify" style="margin-top:-5pt;">Dalam hal ini bertindak untuk dan atas nama diri sendiri dan selanjutnya disebut <strong>PIHAK KEDUA</strong>.</p>
+
                 <p class="justify">PIHAK PERTAMA dan PIHAK KEDUA untuk selanjutnya disebut “PARA PIHAK” telah mengadakan perundingan dan telah tercapai kesepakatan sebagai berikut:</p>
                 <ol>
                     <li>Bahwa PARA PIHAK sebelumnya telah saling mengikatkan diri dalam suatu Perjanjian Kerja Waktu Tertentu.</li>
@@ -359,12 +311,12 @@ class ContractTemplateSeeder extends Seeder
                 <p class="justify">Demikian Perjanjian Bersama ini dibuat dan ditandatangani oleh PARA PIHAK dalam rangkap 2 (dua) bermaterai cukup dan masing-masing memiliki kekuatan hukum yang sama.</p>
                 <table class="ttd">
                     <tr>
-                        <td>
+                        <td width="50%">
                             <strong>PIHAK PERTAMA</strong><br>
                             <div class="sig-box">{{signer_signature}}</div>
-                            <u><strong>{{signer_name}}</strong></u><br>{{signer_position}}
+                            <u><strong>{{signer_name}}</strong></u>
                         </td>
-                        <td>
+                        <td width="50%">
                             <strong>PIHAK KEDUA</strong><br>
                             <div class="sig-box">{{candidate_signature}}</div>
                             <u><strong>{{candidate_name}}</strong></u>
