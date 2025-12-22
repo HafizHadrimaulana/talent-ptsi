@@ -205,7 +205,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     Route::prefix('training')->name('training.')->group(function () {
 
         // Dashboard
-        Route::get('dashboard', [TrainingDashboardController::class,'dataDashboard'])
+        Route::get('dashboard', [TrainingDashboardController::class,'index'])
             ->middleware('permission:training.view')->name('dashboard');
         Route::get('dashboard/data-evaluation', [TrainingDashboardController::class,'getDataEvaluation'])
             ->name('dashboard.data-evaluation');

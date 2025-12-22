@@ -80,12 +80,12 @@ class TrainingRequestController extends Controller
         $uiMap = [
 
             'DHC' => [
-                'tabs' => ['data-lna', 'training-request', 'approval-pengajuan-training'],
-                'default_tab' => 'data-lna',
+                'tabs' => ['update-data-LNA', 'approval-training-karyawan', 'approval-pengajuan-training'],
+                'default_tab' => 'update-data-LNA',
 
                 'tab_configs' => [
 
-                    'data-lna' => [
+                    'update-data-LNA' => [
                         'buttons' => [
                             'import',
                             'lna-input',
@@ -96,7 +96,7 @@ class TrainingRequestController extends Controller
                         ],
                     ],
 
-                    'training-request' => [
+                    'approval-training-karyawan' => [
                         'buttons' => [],
                         'tables' => [
                             'sdm-unit-table',
@@ -113,19 +113,19 @@ class TrainingRequestController extends Controller
             ],
 
             'SDM Unit' => [
-                'tabs' => ['training-request', 'daftar-lna'],
-                'default_tab' => 'training-request',
+                'tabs' => ['pengajuan-pelatihan', 'data-LNA'],
+                'default_tab' => 'pengajuan-pelatihan',
 
                 'tab_configs' => [
 
-                    'daftar-lna' => [
+                    'data-LNA' => [
                         'buttons' => ['lna-input'],
                         'tables' => [
                             'data-lna-table',
                         ],
                     ],
 
-                    'training-request' => [
+                    'pengajuan-pelatihan' => [
                         'buttons' => [
                             'import',
                             'training-input'
@@ -914,9 +914,9 @@ class TrainingRequestController extends Controller
         }
 
         $user = auth()->user();
-
+        
         try {
-            $this->processApproval($trainingRequest, $user, 'approve');
+            $this->processApproval($trainingRequest, 'approve');
             return response()->json([
                 'status' => 'success',
                 'message' => "Data ID {$id} berhasil di-approve oleh {$user->name}.",
@@ -947,7 +947,7 @@ class TrainingRequestController extends Controller
             }
 
             // Kirim ke processApproval()
-            $this->processApproval($trainingRequest, $role, 'reject');
+            $this->processApproval($trainingRequest, 'reject');
 
             return response()->json([
                 'status' => 'success',
@@ -1309,9 +1309,10 @@ class TrainingRequestController extends Controller
         return $result;
     }
 
-    private function processApproval(TrainingRequest $trainingRequest, User $user, string $action): void 
+    private function processApproval(TrainingRequest $trainingRequest, string $action): void 
     {
         $currentStatus = $trainingRequest->status_approval_training;
+        $user          = auth()->user();
         $roleNames     = $user->getRoleNames()->toArray();
         $isHumanCapital = $this->isHumanCapital($user);
 

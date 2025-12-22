@@ -178,10 +178,8 @@ const COLUMN_RENDERERS = {
     `,
     
     no: (item, index, config) => `
-        <td>
-            <div class="u-flex u-items-center u-gap-sm">
-                <div class="u-badge u-badge--primary">${index + 1}</div>
-            </div>
+        <td class="text-center">
+            <div class="u-badge u-badge--primary">${index + 1}</div>
         </td>
     `,
     
@@ -203,7 +201,11 @@ const COLUMN_RENDERERS = {
         </td>
     `,
 
-    // judul_sertifikasi: (item, index, config) => `<td>${item.judul_sertifikasi ?? "-"}</td>`,
+    judul_sertifikasi: (item, index, config) => `
+        <td>
+            <div class="u-font-medium">${item.jenis_pelatihan ?? item.judul_sertifikasi ?? "-"}</div>
+        </td>
+    `,
 
     peserta: (item, index, config) => `
     <td>
@@ -214,10 +216,15 @@ const COLUMN_RENDERERS = {
     </td>
     `,
 
-    tanggal_mulai: (item, index, config) => `<td>${formatDate(item.tanggal_mulai) ?? "-"}</td>`,
-    tanggal_berakhir: (item, index, config) => `<td>${formatDate(item.tanggal_berakhir) ?? "-"}</td>`,
+    tanggal_mulai: (item, index, config) => `
+        <td>${item.tanggal_mulai ? formatDate(item.tanggal_mulai) : "-"}</td>
+    `,
+    tanggal_berakhir: (item, index, config) => `
+        <td>${item.tanggal_berakhir ? formatDate(item.tanggal_berakhir) : "-"}</td>
+    `,
+
     realisasi_biaya_pelatihan: (item, index, config) => `<td>${formatRupiah(item.realisasi_biaya_pelatihan)}</td>`,
-    estimasi_total_biaya: (item, index, config) => `<td>${formatRupiah(item.estimasi_total_biaya)}</td>`,
+    estimasi_total_biaya: (item, index, config) => `<td class="u-text-right u-font-bold">${formatRupiah(item.estimasi_total_biaya)}</td>`,
 
     lampiran_penawaran: (item, index, config) => {
         const hasLampiran = item.lampiran_penawaran && 
@@ -238,19 +245,22 @@ const COLUMN_RENDERERS = {
         `;
     },
 
-    nik: (item, index, config) => `<td>${item.nik ?? "-"}</td>`,
-    nama_peserta: (item, index, config) => `<td>${item.nama_peserta ?? "-"}</td>`,
-    status_pegawai: (item, index, config) => `<td>${item.status_pegawai ?? "-"}</td>`,
-    jabatan_saat_ini: (item, index, config) => `<td>${item.jabatan_saat_ini ?? "-"}</td>`,
+    nik: (item, index, config) => `<td><code class="u-text-xs">${item.nik ?? "-"}</code></td>`,
+    nama_peserta: (item, index, config) => `
+        <td class="u-font-semibold">${item.nama_peserta ?? "-"}</td>
+    `,
+    status_pegawai: (item, index, config) => `
+        <td><span class="u-text-sm">${item.status_pegawai ?? "-"}</span></td>
+    `,
+
     unit_kerja: (item, index, config) => `<td>${item.unit_kerja ?? "-"}</td>`,
-    // judul_sertifikasi: (item, index, config) => `<td>${item.judul_sertifikasi ?? "-"}</td>`,
     penyelenggara: (item, index, config) => `<td>${item.penyelenggara ?? "-"}</td>`,
     jumlah_jam: (item, index, config) => `<td>${item.jumlah_jam ?? "-"}</td>`,
     waktu_pelaksanaan: (item, index, config) => `<td>${item.waktu_pelaksanaan ?? "-"}</td>`,
-    biaya_pelatihan: (item, index, config) => `<td>${formatRupiah(item.biaya_pelatihan)}</td>`,
-    uhpd: (item, index, config) => `<td>${formatRupiah(item.uhpd)}</td>`,
-    biaya_akomodasi: (item, index, config) => `<td>${formatRupiah(item.biaya_akomodasi)}</td>`,
-    estimasi_total_biaya: (item, index, config) => `<td>${formatRupiah(item.estimasi_total_biaya)}</td>`,
+    biaya_pelatihan: (item, index, config) => `<td class="text-center font-semibold u-text-primary">${formatRupiah(item.biaya_pelatihan)}</td>`,
+    uhpd: (item, index, config) => `<td class="text-center font-semibold u-text-primary">${formatRupiah(item.uhpd)}</td>`,
+    biaya_akomodasi: (item, index, config) => `<td class="text-center font-semibold u-text-primary">${formatRupiah(item.biaya_akomodasi)}</td>`,
+    estimasi_total_biaya: (item, index, config) => `<td class="text-center font-semibold u-text-primary">${formatRupiah(item.estimasi_total_biaya)}</td>`,
     nama_proyek: (item, index, config) => `<td>${item.nama_proyek ?? "-"}</td>`,
     jenis_portofolio: (item, index, config) => `<td>${item.jenis_portofolio ?? "-"}</td>`,
     fungsi: (item, index, config) => `<td>${item.fungsi ?? "-"}</td>`,

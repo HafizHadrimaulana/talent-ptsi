@@ -135,18 +135,22 @@ const initializeTabs = () => {
             // Toggle active di tabs__list
             buttons.forEach((b) => {
                 b.classList.remove(TRAINING_CONFIG.tabs.activeClass);
+
+                b.classList.remove(
+                    "border-blue-600",
+                    "text-slate-900",
+                    "font-semibold"
+                );
+
                 b.classList.add(
                     "border-transparent",
                     "text-slate-500",
-                    "hover:text-slate-800",
-                    "hover:border-blue-600"
                 );
             });
+            
             btn.classList.remove(
                 "border-transparent",
-                "text-slate-500",
-                "hover:text-slate-800",
-                "hover:border-blue-600"
+                "text-slate-500"
             );
 
             btn.classList.add(

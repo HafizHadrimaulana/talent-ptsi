@@ -24,7 +24,7 @@
                             class="u-tabs__item pb-2 -mb-0.5 border-b-2 whitespace-nowrap
                                 {{ $activeTab === $tab
                                     ? 'border-blue-600 text-slate-900 font-semibold'
-                                    : 'border-transparent text-slate-500 hover:text-slate-800' }}"
+                                    : 'border-transparent text-slate-500' }}"
                         >
                             {{ $ui['tab_labels'][$tab] ?? ucwords(str_replace('-', ' ', $tab)) }}
                         </button>

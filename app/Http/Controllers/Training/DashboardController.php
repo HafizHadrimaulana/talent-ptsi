@@ -6,10 +6,11 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Training;
 use App\Models\TrainingTemp;
-use App\Models\StatusApprovalTraining;
 use App\Models\Evaluation;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\TrainingReference;
+use App\Models\TrainingRequest;
 
 use Illuminate\Database\QueryException;
 
@@ -18,16 +19,93 @@ use Illuminate\Support\Facades\Log;
 class DashboardController extends Controller
 {
     
-    public function dataDashboard()
+    public function index()
     {
-        $counts = TrainingTemp::select('status_approval_training_id', DB::raw('count(*) as total'))
-            ->groupBy('status_approval_training_id')
-            ->pluck('total', 'status_approval_training_id');
-        
-        $statuses = StatusApprovalTraining::all();
+        /**
+         * ==========================================
+         * A. TRAINING REFERENCE (LNA)
+         * ==========================================
+         */
+        $referenceCounts = TrainingReference::select(
+                'status_training_reference',
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('status_training_reference')
+            ->pluck('total', 'status_training_reference');
 
-        return view('training.dashboard.index', compact('counts', 'statuses'));
+        /**
+         * ==========================================
+         * B. TRAINING REQUEST
+         * ==========================================
+         */
+        $requestCounts = TrainingRequest::select(
+                'status_approval_training',
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('status_approval_training')
+            ->pluck('total', 'status_approval_training');
+
+        /**
+         * ==========================================
+         * C. DEFINISI STATUS (HARDCODE = BENAR)
+         * ==========================================
+         */
+        $dashboardItems = collect([
+            // ===== LNA =====
+            [
+                'key'   => 'pending',
+                'label' => 'Pending (LNA)',
+                'total' => $referenceCounts['pending'] ?? 0,
+            ],
+            [
+                'key'   => 'in_review_dhc',
+                'label' => 'In Review DHC (LNA)',
+                'total' => $referenceCounts['in_review_dhc'] ?? 0,
+            ],
+            [
+                'key'   => 'active',
+                'label' => 'Active (LNA)',
+                'total' => $referenceCounts['active'] ?? 0,
+            ],
+            [
+                'key'   => 'rejected',
+                'label' => 'Rejected (LNA)',
+                'total' => $referenceCounts['rejected'] ?? 0,
+            ],
+
+            // ===== TRAINING REQUEST =====
+            [
+                'key'   => 'created',
+                'label' => 'Created (Request)',
+                'total' => $requestCounts['created'] ?? 0,
+            ],
+            [
+                'key'   => 'in_review_gmvp',
+                'label' => 'In Review GM/VP',
+                'total' => $requestCounts['in_review_gmvp'] ?? 0,
+            ],
+            [
+                'key'   => 'in_review_dhc',
+                'label' => 'In Review DHC',
+                'total' => $requestCounts['in_review_dhc'] ?? 0,
+            ],
+            [
+                'key'   => 'approved',
+                'label' => 'Approved',
+                'total' => $requestCounts['approved'] ?? 0,
+            ],
+            [
+                'key'   => 'rejected',
+                'label' => 'Rejected',
+                'total' => $requestCounts['rejected'] ?? 0,
+            ],
+        ]);
+
+        return view('training.dashboard.index', [
+            'dashboardItems' => $dashboardItems
+        ]);
     }
+
 
     public function getDataEvaluation()
     {
