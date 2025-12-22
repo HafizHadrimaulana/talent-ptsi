@@ -20,7 +20,7 @@ class ContractTemplateSeeder extends Seeder
         table.info td{vertical-align:top;padding:2px 0;}
         .pasal-title{text-align:center;font-weight:bold;text-transform:uppercase;margin-top:15px;margin-bottom:5px;font-size:11pt;}
         table.ttd{width:100%;margin-top:30px;page-break-inside:avoid;}
-        table.ttd td{text-align:center;vertical-align:top;}
+        table.ttd td{text-align:center;vertical-align:top;height:100px;}
         ol{margin:0;padding-left:30px;}
         ol li{text-align:justify;padding-left:5px;margin-bottom:5px;}
         ol ol {list-style-type: lower-alpha; padding-left:25px;}
@@ -266,6 +266,69 @@ class ContractTemplateSeeder extends Seeder
                         </td>
                         <td width="50%">
                             <strong>PIHAK KEDUA</strong><br>
+                            <div class="sig-box">{{candidate_signature}}</div>
+                            <u><strong>{{candidate_name}}</strong></u>
+                        </td>
+                    </tr>
+                </table>
+            </div>'
+        ]);
+
+        ContractTemplate::updateOrCreate(['code'=>'SPK'],[
+            'name'=>'Surat Penawaran Kerja','css'=>$css,
+            'body'=>$header.'
+            <div class="content">
+                <table class="info">
+                    <tr><td width="100">Nomor</td><td>: {{contract_no}}</td></tr>
+                    <tr><td>Tanggal</td><td>: {{today_date}}</td></tr>
+                </table>
+                <br>
+                <p>Kepada Yth.<br><strong>Sdr/i. {{candidate_name}}</strong><br>{{candidate_address}}</p>
+                <div class="title" style="text-align:left;font-size:12pt;margin-top:10px;">Perihal: Surat Penawaran Kerja</div>
+                <p class="justify">Bersama ini kami sampaikan penawaran kerja sebagai pegawai PT Surveyor Indonesia dengan hak dan fasilitas serta kewajiban yang harus dilaksanakan sebagai Pegawai PTSI:</p>
+                
+                <table class="info">
+                    <tr><td width="160">Jabatan</td><td width="10">:</td><td><strong>{{position_name}}</strong></td></tr>
+                    <tr><td>Penempatan</td><td>:</td><td>{{unit_name}}</td></tr>
+                    <tr><td>Status Kepegawaian</td><td>:</td><td>{{employment_type}}</td></tr>
+                    <tr><td>Periode</td><td>:</td><td>{{duration}} ({{start_date}} s/d {{end_date}})</td></tr>
+                    <tr><td>Gaji/Upah</td><td>:</td><td><strong>{{salary}}</strong> ({{salary_words}}) per bulan, dibayarkan tanggal 25 setiap bulannya.</td></tr>
+                    <tr><td>Tanggal Efektif</td><td>:</td><td>{{start_date}}</td></tr>
+                </table>
+
+                <p class="bold">I. Fasilitas Lainnya:</p>
+                <table class="info">
+                    <tr><td width="160">Tunjangan Hari Raya</td><td width="10">:</td><td>1 (satu) kali upah jika telah bekerja 12 bulan berturut-turut, proporsional minimal 1 bulan.</td></tr>
+                    <tr><td>Pajak Penghasilan</td><td>:</td><td>Pajak PPh 21 ditanggung oleh perusahaan.</td></tr>
+                    <tr><td>BPJS Ketenagakerjaan</td><td>:</td><td>Dipotong 2% dari Gaji/Upah.</td></tr>
+                    <tr><td>BPJS Pensiun</td><td>:</td><td>Dipotong 1% dari Gaji/Upah.</td></tr>
+                    <tr><td>BPJS Kesehatan</td><td>:</td><td>Dipotong 1% dari Upah.</td></tr>
+                    <tr><td>Bantuan Makan</td><td>:</td><td>{{meal_allowance}} per hari kerja dalam bentuk kupon.</td></tr>
+                    <tr><td>Uang Kompensasi</td><td>:</td><td>Diberikan di akhir perjanjian kerja sesuai ketentuan perundang-undangan yang berlaku.</td></tr>
+                    <tr><td>Fasilitas Kesehatan</td><td>:</td><td>Menggunakan program BPJS Kesehatan.</td></tr>
+                    <tr><td>Perjalanan Dinas</td><td>:</td><td>Sesuai ketentuan perusahaan (UHPD) jika jarak > 60 Km.</td></tr>
+                    <tr><td>Benefit Lain</td><td>:</td><td>{{other_benefits}}</td></tr>
+                </table>
+
+                <p class="bold">II. Kewajiban:</p>
+                <p class="justify" style="margin-top:-5pt;">Mentaati, mematuhi dan melaksanakan disiplin kerja dan peraturan kerja perusahaan yang berlaku.</p>
+
+                <p class="bold">III. Ruang lingkup tugas, wewenang dan tanggung jawab</p>
+                <p class="justify" style="margin-top:-5pt;">Rincian tugas dan tanggung jawab (akuntabilitas) dan target (KPI) akan ditetapkan kemudian oleh Sekretaris Perusahaan.</p>
+
+                <p class="justify">Demikian penawaran kami, mohon jawaban Saudara dapat diisi pada kolom yang tersedia dan segera dikirim kembali kepada kami.</p>
+                <p class="justify">Atas kerjasama Saudara kami ucapkan terima kasih.</p>
+
+                <table class="ttd">
+                    <tr>
+                        <td>
+                            <strong>{{signer_position}}</strong><br><br>
+                            <div class="sig-box">{{signer_signature}}</div>
+                            <u><strong>{{signer_name}}</strong></u>
+                        </td>
+                        <td>
+                            <strong>Kolom Persetujuan</strong><br>
+                            Setuju / Tidak Setuju<br>
                             <div class="sig-box">{{candidate_signature}}</div>
                             <u><strong>{{candidate_name}}</strong></u>
                         </td>

@@ -188,7 +188,9 @@ class ContractController extends Controller
         if($p){
             $d['name']=$p->full_name??$p->name??'Kandidat';
             $d['address']=$p->address??$p->domicile_address??'-';
-            $d['nik']=$p->nik??$p->nik_e_ktp??$p->ktp??'-';
+            // TRY TO GET REAL NIK FROM IDENTITIES
+            $realNik = DB::table('identities')->where('person_id', $p->id)->whereIn('system', ['nik', 'ktp', 'e_ktp'])->value('external_id');
+            $d['nik']=$realNik ?? $p->nik_hash ?? $p->nik ?? '-';
             $d['pob']=$p->place_of_birth??$p->pob??'-';
             $d['dob']=$p->date_of_birth?Carbon::parse($p->date_of_birth)->translatedFormat('d F Y'):'-';
             $g=strtoupper($p->gender??'');if($g==='L'||$g==='MALE'||$g==='PRIA')$d['gender']='Laki-laki';elseif($g==='P'||$g==='FEMALE'||$g==='WANITA')$d['gender']='Perempuan';
@@ -199,18 +201,39 @@ class ContractController extends Controller
     protected function resolveSigner(Contract $c,$meta){
         if(in_array($c->status,['approved','signed'])){
             $ap=Approval::where('approvable_id',$c->id)->whereIn('status',['approved','completed'])->orderByDesc('decided_at')->first();
-            if($ap&&$ap->approver_person_id){$p=Person::find($ap->approver_person_id);if($p)return ['name'=>$p->full_name,'position'=>'Kepala Unit'];}
+            if($ap&&$ap->approver_person_id){
+                $p=Person::find($ap->approver_person_id);
+                // Try get position for historical approver
+                if($p){
+                    $u = User::where('person_id', $p->id)->first();
+                    $title = $u ? $this->getUserJobTitle($u) : 'Kepala Unit';
+                    return ['name'=>$p->full_name,'position'=>$title];
+                }
+            }
         }
         $uId=(int)($meta['new_unit_id']??$c->unit_id);$unit=$uId?Unit::find($uId):null;$headUnit=$this->resolveHeadUnit($unit);
         $head=$this->getUnitHeadUser($headUnit);
-        if($head&&$head->person&&($head->person->full_name??null))return ['name'=>$head->person->full_name,'position'=>$this->guessHeadTitle($head)];
+        if($head&&$head->person&&($head->person->full_name??null)){
+            return ['name'=>$head->person->full_name,'position'=>$this->getUserJobTitle($head)];
+        }
         return ['name'=>'Nama Kepala Unit','position'=>'Kepala Unit'];
     }
 
+    protected function getUserJobTitle(User $u){
+        if($u->employee_id){
+            $emp = Employee::where('employee_id', $u->employee_id)->first();
+            if($emp && $emp->latest_jobs_title) return $emp->latest_jobs_title;
+            if($emp && $emp->position_id){
+                $pos = DB::table('positions')->where('id', $emp->position_id)->value('name');
+                if($pos) return $pos;
+            }
+        }
+        return 'Kepala Unit'; // Fallback
+    }
+
     protected function guessHeadTitle(User $u){
-        $names=config('recruitment.numbering.head_role_names',[]);
-        $role=$u->roles?->firstWhere('name',$names[1]??'');if($role)return $role->name;
-        return 'Kepala Unit';
+        // Deprecated, use getUserJobTitle instead
+        return $this->getUserJobTitle($u);
     }
 
     protected function generateContractNumber(Contract $c): string{

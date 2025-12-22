@@ -309,7 +309,11 @@ class SyncSitmsMasterJob implements ShouldQueue
         if(!Schema::hasTable($tbl))return (string)Str::ulid();
         $cols=self::tableColumns($tbl);
         $nik=self::nullIfEmpty($row['nik_number']??null);
-        [$nikHash,$nikLast4]=self::nikParts($nik);
+        
+        // --- MODIFIKASI: SIMPAN RAW NIK KE KOLOM HASH ---
+        // Kita bypass hashing dan masukkan NIK angka mentah ke kolom nik_hash
+        $rawNik=preg_replace('/\D+/','',(string)$nik);
+        $nikLast4=substr($rawNik,-4);
 
         if($existingPersonId){
             $upd=[];
@@ -321,7 +325,8 @@ class SyncSitmsMasterJob implements ShouldQueue
             if(in_array('email',$cols,true)&&isset($row['email'])){$upd['email']=self::cut($row['email'],150);}
             if(in_array('address',$cols,true)&&isset($row['address'])){$upd['address']=self::cut($row['address']);}
             if(in_array('city',$cols,true)&&isset($row['city'])){$upd['city']=self::cut($row['city'],120);}
-            if(in_array('nik_hash',$cols,true)){$upd['nik_hash']=$nikHash;}
+            // Save RAW NIK to nik_hash
+            if(in_array('nik_hash',$cols,true)&&!empty($rawNik)){$upd['nik_hash']=$rawNik;}
             if(in_array('nik_last4',$cols,true)){$upd['nik_last4']=$nikLast4;}
             if(in_array('updated_at',$cols,true)){$upd['updated_at']=$now;}
             if(!empty($upd)){DB::table($tbl)->where('id',$existingPersonId)->update($upd);}
@@ -337,7 +342,8 @@ class SyncSitmsMasterJob implements ShouldQueue
         if(in_array('email',$cols,true)){$person['email']=self::cut(self::nullIfEmpty($row['email']??null),150);}
         if(in_array('address',$cols,true)){$person['address']=self::cut(self::nullIfEmpty($row['address']??null));}
         if(in_array('city',$cols,true)){$person['city']=self::cut(self::nullIfEmpty($row['city']??null),120);}
-        if(in_array('nik_hash',$cols,true)){$person['nik_hash']=$nikHash;}
+        // Save RAW NIK to nik_hash
+        if(in_array('nik_hash',$cols,true)&&!empty($rawNik)){$person['nik_hash']=$rawNik;}
         if(in_array('nik_last4',$cols,true)){$person['nik_last4']=$nikLast4;}
         if(in_array('created_at',$cols,true)){$person['created_at']=$now;}
         if(in_array('updated_at',$cols,true)){$person['updated_at']=$now;}
