@@ -2,7 +2,7 @@
     class="u-table u-table-mobile training-table" data-role="SDM Unit" data-dt>
     <thead>
         <tr>
-            <th>No 1111</th>
+            <th>No</th>
             <th>Judul Sertifikasi</th>
             <th>Peserta</th>
             <th>Tanggal Mulai</th>

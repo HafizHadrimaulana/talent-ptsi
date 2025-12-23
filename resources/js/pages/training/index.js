@@ -6,23 +6,6 @@ import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
 import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
 
 const TRAINING_CONFIG = {
-    tableDefinitions: {
-        "data-lna-table": {
-            columns: [
-                'no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 
-                'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 
-                'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 
-                'nama_proyek', 'jenis_portofolio', 'fungsi', 
-                'status_training_reference', 'actions'
-            ],
-            apiEndpoint: (unitId) => `/training/training-request/get-data-lna`
-        },
-        "training-request-table": {
-            columns: ['no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'
-            ],
-            apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
-        }
-    },
     tables: {
         selector: ".training-table",
         dataAttributes: {
@@ -84,12 +67,6 @@ const initializeTrainingTables = () => {
 
     tables.forEach((table) => {
         const tableId = table.id;
-        const tableDef = TRAINING_CONFIG.tableDefinitions[tableId];
-        
-        if (!tableDef) return;
-
-        const userRole = table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.role) || window.currentUserRole;
-        const unitId = table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.unitId) || window.userUnitId;
 
         try {
             initGetDataTable(tableId, { unitId: window.currentUnitId });

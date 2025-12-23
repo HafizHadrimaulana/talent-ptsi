@@ -6,127 +6,127 @@ import { postJSON, postFormData } from "@/utils/fetch";
  */
 
 const initApproveHandler = (tableBody) => {
-    tableBody.addEventListener("click", async (e) => {
-        const button = e.target.closest("button[data-action='approve']");
-        if (!button) return;
+    // tableBody.addEventListener("click", async (e) => {
+    //     const button = e.target.closest("button[data-action='approve']");
+    //     if (!button) return;
 
-        const id = button.dataset.id;
+    //     const id = button.dataset.id;
 
-        const confirmResult = await Swal.fire({
-            title: "Yakin ingin menyetujui data ini?",
-            text: "Data akan disetujui dan tidak dapat dibatalkan.",
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "Ya, Setujui",
-            cancelButtonText: "Batal",
-            reverseButtons: true,
-        });
+    //     const confirmResult = await Swal.fire({
+    //         title: "Yakin ingin menyetujui data ini?",
+    //         text: "Data akan disetujui dan tidak dapat dibatalkan.",
+    //         icon: "question",
+    //         showCancelButton: true,
+    //         confirmButtonText: "Ya, Setujui",
+    //         cancelButtonText: "Batal",
+    //         reverseButtons: true,
+    //     });
 
-        if (!confirmResult.isConfirmed) return;
+    //     if (!confirmResult.isConfirmed) return;
 
-        try {
-            Swal.fire({
-                title: "Memproses...",
-                text: "Mohon tunggu sebentar.",
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-            });
+    //     try {
+    //         Swal.fire({
+    //             title: "Memproses...",
+    //             text: "Mohon tunggu sebentar.",
+    //             allowOutsideClick: false,
+    //             didOpen: () => Swal.showLoading(),
+    //         });
 
-            const res = await postJSON(
-                `/training/training-request/${id}/approve-training-request`
-            );
-            console.log("res", res);
+    //         const res = await postJSON(
+    //             `/training/training-request/${id}/approve-training-request`
+    //         );
+    //         console.log("res", res);
 
-            Swal.close();
+    //         Swal.close();
 
-            if (res.status === "success") {
-                await Swal.fire({
-                    icon: "success",
-                    title: "Disetujui",
-                    text: res.message,
-                    timer: 2000,
-                    showConfirmButton: false,
-                });
-                location.reload();
-            } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "Gagal",
-                    text: res.message || "Gagal menyetujui data.",
-                });
-            }
-        } catch (error) {
-            Swal.close();
-            console.error(error);
-            Swal.fire({
-                icon: "error",
-                title: "Kesalahan Server",
-                text: "Terjadi kesalahan saat menyetujui data.",
-            });
-        }
-    });
+    //         if (res.status === "success") {
+    //             await Swal.fire({
+    //                 icon: "success",
+    //                 title: "Disetujui",
+    //                 text: res.message,
+    //                 timer: 2000,
+    //                 showConfirmButton: false,
+    //             });
+    //             location.reload();
+    //         } else {
+    //             Swal.fire({
+    //                 icon: "error",
+    //                 title: "Gagal",
+    //                 text: res.message || "Gagal menyetujui data.",
+    //             });
+    //         }
+    //     } catch (error) {
+    //         Swal.close();
+    //         console.error(error);
+    //         Swal.fire({
+    //             icon: "error",
+    //             title: "Kesalahan Server",
+    //             text: "Terjadi kesalahan saat menyetujui data.",
+    //         });
+    //     }
+    // });
 };
 
 const initApproveReferenceHandler = (tableBody) => {
-    tableBody.addEventListener("click", async (e) => {
-        const button = e.target.closest("button[data-action='approve_training_pengajuan']");
-        if (!button) return;
+    // tableBody.addEventListener("click", async (e) => {
+    //     const button = e.target.closest("button[data-action='approve_training_pengajuan']");
+    //     if (!button) return;
 
-        const id = button.dataset.id;
+    //     const id = button.dataset.id;
 
-        const confirmResult = await Swal.fire({
-            title: "Yakin ingin menyetujui data referece ini?",
-            text: "Data akan disetujui dan tidak dapat dibatalkan.",
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "Ya, Setujui",
-            cancelButtonText: "Batal",
-            reverseButtons: true,
-        });
+    //     const confirmResult = await Swal.fire({
+    //         title: "Yakin ingin menyetujui data referece ini?",
+    //         text: "Data akan disetujui dan tidak dapat dibatalkan.",
+    //         icon: "question",
+    //         showCancelButton: true,
+    //         confirmButtonText: "Ya, Setujui",
+    //         cancelButtonText: "Batal",
+    //         reverseButtons: true,
+    //     });
 
-        if (!confirmResult.isConfirmed) return;
+    //     if (!confirmResult.isConfirmed) return;
 
-        try {
-            Swal.fire({
-                title: "Memproses...",
-                text: "Mohon tunggu sebentar.",
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-            });
+    //     try {
+    //         Swal.fire({
+    //             title: "Memproses...",
+    //             text: "Mohon tunggu sebentar.",
+    //             allowOutsideClick: false,
+    //             didOpen: () => Swal.showLoading(),
+    //         });
 
-            const res = await postJSON(
-                `/training/training-request/${id}/approve-training-reference`
-            );
-            console.log("res", res);
+    //         const res = await postJSON(
+    //             `/training/training-request/${id}/approve-training-reference`
+    //         );
+    //         console.log("res", res);
 
-            Swal.close();
+    //         Swal.close();
 
-            if (res.status === "success") {
-                await Swal.fire({
-                    icon: "success",
-                    title: "Disetujui",
-                    text: res.message,
-                    timer: 2000,
-                    showConfirmButton: false,
-                });
-                location.reload();
-            } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "Gagal",
-                    text: res.message || "Gagal menyetujui data.",
-                });
-            }
-        } catch (error) {
-            Swal.close();
-            console.error(error);
-            Swal.fire({
-                icon: "error",
-                title: "Kesalahan Server",
-                text: "Terjadi kesalahan saat menyetujui data.",
-            });
-        }
-    });
+    //         if (res.status === "success") {
+    //             await Swal.fire({
+    //                 icon: "success",
+    //                 title: "Disetujui",
+    //                 text: res.message,
+    //                 timer: 2000,
+    //                 showConfirmButton: false,
+    //             });
+    //             location.reload();
+    //         } else {
+    //             Swal.fire({
+    //                 icon: "error",
+    //                 title: "Gagal",
+    //                 text: res.message || "Gagal menyetujui data.",
+    //             });
+    //         }
+    //     } catch (error) {
+    //         Swal.close();
+    //         console.error(error);
+    //         Swal.fire({
+    //             icon: "error",
+    //             title: "Kesalahan Server",
+    //             text: "Terjadi kesalahan saat menyetujui data.",
+    //         });
+    //     }
+    // });
 };
 
 // const initAllApprovalHandler = () => {

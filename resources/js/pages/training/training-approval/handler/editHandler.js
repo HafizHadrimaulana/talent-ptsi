@@ -12,97 +12,97 @@ export function initEditHandler(tableBody, reloadCallback) {
     const form = document.querySelector("#lna-edit-form");
     const closeBtn = document.querySelector("#lna-edit-close-modal");
 
-    tableBody.addEventListener("click", async (e) => {
-        const button = e.target.closest("button[data-action='edit']");
-        if (!button) return;
+    // tableBody.addEventListener("click", async (e) => {
+    //     const button = e.target.closest("button[data-action='edit']");
+    //     if (!button) return;
 
-        initBiayaHandler(form);
+    //     initBiayaHandler(form);
 
-        const id = button.dataset.id;
+    //     const id = button.dataset.id;
 
-        try {
-            const res = await getDetailLnaHandler(id);
+    //     try {
+    //         const res = await getDetailLnaHandler(id);
 
-            console.log("res get edit data", res);
+    //         console.log("res get edit data", res);
 
-            fillEditForm(res);
-            modal.classList.remove("hidden");
-            modal.hidden = false;
+    //         fillEditForm(res);
+    //         modal.classList.remove("hidden");
+    //         modal.hidden = false;
 
-        } catch (error) {
-            Swal.close();
-            console.error(error);
-            Swal.fire({
-                icon: "error",
-                title: "Terjadi Kesalahan",
-                text: "Tidak dapat memuat data dari server.",
-            });
-        }
+    //     } catch (error) {
+    //         Swal.close();
+    //         console.error(error);
+    //         Swal.fire({
+    //             icon: "error",
+    //             title: "Terjadi Kesalahan",
+    //             text: "Tidak dapat memuat data dari server.",
+    //         });
+    //     }
 
-        closeBtn.addEventListener("click", () => {
-            modal.classList.add("hidden");
-            modal.hidden = true;
-        });
+    //     closeBtn.addEventListener("click", () => {
+    //         modal.classList.add("hidden");
+    //         modal.hidden = true;
+    //     });
 
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
+    //     form.addEventListener("submit", async (e) => {
+    //         e.preventDefault();
 
-            const formData = new FormData(form);
-            modal.classList.add("hidden");
+    //         const formData = new FormData(form);
+    //         modal.classList.add("hidden");
 
-            const confirm = await Swal.fire({
-                title: "Simpan Perubahan?",
-                text: "Pastikan semua data sudah benar.",
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonText: "Ya, Simpan",
-                cancelButtonText: "Batal",
-            });
+    //         const confirm = await Swal.fire({
+    //             title: "Simpan Perubahan?",
+    //             text: "Pastikan semua data sudah benar.",
+    //             icon: "question",
+    //             showCancelButton: true,
+    //             confirmButtonText: "Ya, Simpan",
+    //             cancelButtonText: "Batal",
+    //         });
 
-            if (!confirm.isConfirmed) return;
+    //         if (!confirm.isConfirmed) return;
 
-            Swal.fire({
-                title: "Menyimpan Data...",
-                text: "Sedang memperbarui data.",
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-            });
+    //         Swal.fire({
+    //             title: "Menyimpan Data...",
+    //             text: "Sedang memperbarui data.",
+    //             allowOutsideClick: false,
+    //             didOpen: () => Swal.showLoading(),
+    //         });
 
-            try {
-                const res = await postJSON(`/training/training-request/${id}/edit-data-lna`, formData);
-                Swal.close();
+    //         try {
+    //             const res = await postJSON(`/training/training-request/${id}/edit-data-lna`, formData);
+    //             Swal.close();
 
-                console.log('res edit', res)
-                if (res.status === "success") {
+    //             console.log('res edit', res)
+    //             if (res.status === "success") {
                     
 
-                    await Swal.fire({
-                        icon: "success",
-                        title: "Berhasil",
-                        text: res.message,
-                        timer: 2000,
-                        showConfirmButton: false,
-                    });
+    //                 await Swal.fire({
+    //                     icon: "success",
+    //                     title: "Berhasil",
+    //                     text: res.message,
+    //                     timer: 2000,
+    //                     showConfirmButton: false,
+    //                 });
 
-                    reloadCallback();
-                } else {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Gagal",
-                        text: res.message || "Gagal memperbarui data.",
-                    });
-                }
-            } catch (error) {
-                Swal.close();
-                console.error(error);
-                Swal.fire({
-                    icon: "error",
-                    title: "Kesalahan Server",
-                    text: "Terjadi kesalahan saat memperbarui data.",
-                });
-            }
-        });
-    });
+    //                 reloadCallback();
+    //             } else {
+    //                 Swal.fire({
+    //                     icon: "error",
+    //                     title: "Gagal",
+    //                     text: res.message || "Gagal memperbarui data.",
+    //                 });
+    //             }
+    //         } catch (error) {
+    //             Swal.close();
+    //             console.error(error);
+    //             Swal.fire({
+    //                 icon: "error",
+    //                 title: "Kesalahan Server",
+    //                 text: "Terjadi kesalahan saat memperbarui data.",
+    //             });
+    //         }
+    //     });
+    // });
 
     function fillEditForm(data) {
         document.querySelector("#edit-id").value = data.id;

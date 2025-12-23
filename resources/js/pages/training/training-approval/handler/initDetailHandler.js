@@ -12,39 +12,39 @@ export function initDetailHandler(tableBody) {
     const form = document.querySelector("#lna-detail-form");
     const closeBtn = document.querySelector("#lna-detail-close-modal");
 
-    tableBody.addEventListener("click", async (e) => {
-        console.log('click detail');
-        const button = e.target.closest("button[data-action='details']");
-        if (!button) return;
+    // tableBody.addEventListener("click", async (e) => {
+    //     console.log('click detail');
+    //     const button = e.target.closest("button[data-action='details']");
+    //     if (!button) return;
 
-        initBiayaHandler(form);
+    //     initBiayaHandler(form);
 
-        const id = button.dataset.id;
+    //     const id = button.dataset.id;
 
-        try {
-            modal.classList.remove("hidden");
-            const res = await getJSON(`/training/training-request/${id}/get-lna-by-id`);
+    //     try {
+    //         modal.classList.remove("hidden");
+    //         const res = await getJSON(`/training/training-request/${id}/get-lna-by-id`);
 
-            console.log("res get edit data", res);
+    //         console.log("res get edit data", res);
 
-            fillEditForm(res);
-            modal.hidden = false;
+    //         fillEditForm(res);
+    //         modal.hidden = false;
 
-        } catch (error) {
-            Swal.close();
-            console.error(error);
-            Swal.fire({
-                icon: "error",
-                title: "Terjadi Kesalahan",
-                text: "Tidak dapat memuat data dari server.",
-            });
-        }
+    //     } catch (error) {
+    //         Swal.close();
+    //         console.error(error);
+    //         Swal.fire({
+    //             icon: "error",
+    //             title: "Terjadi Kesalahan",
+    //             text: "Tidak dapat memuat data dari server.",
+    //         });
+    //     }
 
-        closeBtn.addEventListener("click", () => {
-            modal.classList.add("hidden");
-            modal.hidden = true;
-        });
-    });
+    //     closeBtn.addEventListener("click", () => {
+    //         modal.classList.add("hidden");
+    //         modal.hidden = true;
+    //     });
+    // });
 
     function fillEditForm(data) {
         document.querySelector("#edit-id").value = data.id;

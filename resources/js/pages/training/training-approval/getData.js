@@ -61,11 +61,23 @@ const TABLE_CONFIGS = {
         actions: {
             default: ['details'],
             rules: [
-                { roles: ['SDM Unit'], when: s => s === 'in_review_gmvp', allow: ['delete'] },
-                { roles: ['DHC'], when: s => s === 'in_review_dhc', allow: ['approve', 'reject'] },
-                { roles: ['AVP'], when: s => s === 'in_review_avpdhc', allow: ['approve', 'reject'] },
-                { roles: ['Kepala Unit'], allow: ['approve', 'reject'] },
-            ]
+                {
+                    roles: ["SDM Unit"],
+                    when: (s) => s === "in_review_gmvp",
+                    allow: ["delete"],
+                },
+                {
+                    roles: ["DHC"],
+                    when: (s) => s === "in_review_dhc",
+                    allow: ["approve", "reject"],
+                },
+                {
+                    roles: ["AVP"],
+                    when: (s) => s === "in_review_avpdhc",
+                    allow: ["approve", "reject"],
+                },
+                { roles: ["Kepala Unit"], allow: ["approve", "reject"] },
+            ],
         }
     }
 };
@@ -103,10 +115,53 @@ const COLUMN_RENDERERS = {
         return `<div class="text-center"><span class="u-badge ${hasFile ? 'u-badge--success' : 'u-badge--danger'}">${hasFile ? 'Tersedia' : 'Kosong'}</span></div>`;
     },
 
-    status_approval_training: (d) => `
-        <div class="text-center">
-            <span class="u-badge u-badge--info">${d?.replace(/_/g, ' ').toUpperCase() || '-'}</span>
-        </div>`,
+    status_approval_training: (d) => {
+        // 1. Definisikan mapping style
+        const STATUS_MAP = {
+            created: {
+                label: "Created",
+                class: "u-badge--secondary"
+            },
+            in_review_gmvp: {
+                label: "In Review GM/VP",
+                class: "u-badge--warning"
+            },
+            in_review_dhc: {
+                label: "In Review DHC",
+                class: "u-badge--info"
+            },
+            in_review_avpdhc: {
+                label: "In Review AVP DHC",
+                class: "u-badge--purple"
+            },
+            in_review_vpdhc: {
+                label: "In Review VP DHC",
+                class: "u-badge--primary"
+            },
+            approved: {
+                label: "Approved",
+                class: "u-badge--success"
+            },
+            rejected: {
+                label: "Rejected",
+                class: "u-badge--danger"
+            }
+        };
+
+        // 2. Ambil config berdasarkan key status (d), jika tidak ada gunakan default
+        const config = STATUS_MAP[d] || { 
+            label: d?.replace(/_/g, ' ').toUpperCase() || '-', 
+            class: "u-badge--secondary" 
+        };
+
+        // 3. Render HTML
+        return `
+            <div class="text-center">
+                <span class="u-badge ${config.class}">
+                    ${config.label}
+                </span>
+            </div>`;
+    },
 
     status_training_reference: (d) => {
         const MAP = {
@@ -120,17 +175,34 @@ const COLUMN_RENDERERS = {
 
     actions: (data, type, row, meta, baseConfig) => {
         const actions = resolveActions(baseConfig, row);
+        
+        const finalActions = actions && actions.length ? actions : ['details'];
+        
         const tableId = baseConfig.tableId;
-        const buttons = actions.map(act => {
+
+        const buttons = finalActions.map(act => {
             const btn = ACTION_BUTTONS[act];
-            return btn ? `<button class="${btn.class} btn-action" data-action="${act}" data-id="${row.id}" data-table="${tableId}">${btn.text}</button>` : '';
+            if (!btn) return "";
+            
+            return `<button 
+                        class="${btn.class} btn-action" 
+                        data-action="${act}" 
+                        data-id="${row.id}" 
+                        data-table="${tableId}">
+                        ${btn.text}
+                    </button>`;
         }).join('');
 
-        return `<div class="cell-actions text-center"><div class="u-flex u-justify-center u-gap-sm">${buttons || "-"}</div></div>`;
+        return `
+            <div class="u-flex u-justify-center u-gap-sm">
+                ${buttons || "-"}
+            </div>
+        `;
     }
 };
 
 const resolveActions = (config, item) => {
+    console.log('aaa', config);
     const role = window.currentUserRole;
     let allowed = config.actions?.default || ['details'];
 
@@ -159,6 +231,9 @@ export function initGetDataTable(tableBody, options = {}) {
     if ($.fn.DataTable.isDataTable(`#${tableId}`)) {
         $(`#${tableId}`).DataTable().destroy();
     }
+
+    const reloadTable = () => $(`#${tableId}`).DataTable().ajax.reload(null, false);
+    initializeEventHandlers($tableBody, reloadTable);
 
     initDataTables(`#${tableId}`, {
         serverSide: true,
@@ -204,9 +279,9 @@ export function initGetDataTable(tableBody, options = {}) {
                 return renderer ? renderer(data, type, row, meta, baseConfig) : (data ?? "-");
             }
         })),
-        drawCallback: function() {
-            initializeEventHandlers(tableBody, () => this.api().draw(false));
-        }
+        // drawCallback: function() {
+        //     initializeEventHandlers(tableBody, () => this.api().draw(false));
+        // }
     });
 }
 
