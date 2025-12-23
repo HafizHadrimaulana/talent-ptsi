@@ -597,86 +597,75 @@
 <div id="registerModal"
      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
 
-    <!-- Modal Card -->
-    <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative">
+    <div id="registerCard" class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative transform transition-all duration-300 scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
 
-        <img src="/images/logo-alter.png" alt="logo-alter"
-             class="w-auto h-12 mx-auto mb-5">
-
-        <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">
-            Pendaftaran Akun
-        </h2>
-
-        <!-- Nama Lengkap -->
-        <div class="mb-3">
-            <label class="block font-medium text-gray-700 mb-1">Nama Lengkap</label>
-            <input type="text" placeholder="Masukkan nama lengkap..."
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                   required>
-        </div>
-
-        <!-- No KTP -->
-        <div class="mb-3">
-            <label class="block font-medium text-gray-700 mb-1">No KTP</label>
-            <input type="text" placeholder="Masukkan nomor KTP..."
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                   required>
-        </div>
-
-        <!-- Email -->
-        <div class="mb-3">
-            <label class="block font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" placeholder="Masukkan email..."
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                   required>
-        </div>
-
-        <!-- Password -->
-        <div class="mb-3">
-            <label class="block font-medium text-gray-700 mb-1">Password</label>
-            <input type="password" placeholder="Buat password..."
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                   required>
-        </div>
-
-        <!-- Confirm Password -->
-        <div class="mb-3">
-            <label class="block font-medium text-gray-700 mb-1">Confirm Password</label>
-            <input type="password" placeholder="Konfirmasi password..."
-                   class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                   required>
-        </div>
-
-        <!-- Checkbox -->
-        <div class="mt-2">
-            <label class="block font-medium text-gray-700 mb-1">
-                <input type="checkbox" id="termsCheckbox" required>
-                Dengan melakukan registrasi saya menyatakan telah membaca dan menerima
-                <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
-                    ketentuan yang berlaku
-                </a>
-            </label>
-        </div>
-
-        <!-- Close Button -->
-        <button onclick="closeModal()"
-                class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer">
+        <button type="button" onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10">
             ✕
         </button>
 
-        <!-- Action Buttons -->
-        <div class="flex justify-end gap-3 mt-4">
-            <button onclick="closeModal()"
-                    class="px-5 py-2 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
-                Cancel
-            </button>
-
-            <button id="submitBtn"
-                    class="px-5 py-2 rounded-full bg-[#00A29A] text-white hover:bg-[#008f87] cursor-pointer"
-                    disabled>
-                Submit
-            </button>
+        <div class="text-center mb-5">
+            <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-2">
+            <h2 class="text-xl font-semibold text-gray-800">Pendaftaran Akun</h2>
         </div>
+
+        <form method="POST" action="{{ route('register') }}">
+            @csrf
+
+            <div class="mb-3">
+                <label class="block font-medium text-gray-700 mb-1 text-sm">Nama Lengkap</label>
+                <input type="text" name="name" value="{{ old('name') }}" placeholder="Nama lengkap..."
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#00A29A] focus:outline-none text-sm" required>
+                @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="block font-medium text-gray-700 mb-1 text-sm">No KTP</label>
+                <input type="text" name="nik" value="{{ old('nik') }}" placeholder="16 digit NIK..."
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#00A29A] focus:outline-none text-sm" maxlength="16" required>
+                @error('nik') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="block font-medium text-gray-700 mb-1 text-sm">Email</label>
+                <input type="email" name="email" value="{{ old('email') }}" placeholder="email@contoh.com"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#00A29A] focus:outline-none text-sm" required>
+                @error('email') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="block font-medium text-gray-700 mb-1 text-sm">Password</label>
+                <input type="password" name="password" placeholder="Password..."
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#00A29A] focus:outline-none text-sm" required>
+                @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="block font-medium text-gray-700 mb-1 text-sm">Confirm Password</label>
+                <input type="password" name="password_confirmation" placeholder="Ulangi password..."
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#00A29A] focus:outline-none text-sm" required>
+            </div>
+
+            <div class="mt-4">
+                <label class="flex items-start gap-2 font-medium text-gray-700 text-xs cursor-pointer">
+                    <input type="checkbox" id="termsCheckbox" class="mt-0.5" required>
+                    <span>
+                        Saya menyetujui
+                        <a href="#" class="font-semibold text-[#00A29A] hover:underline">syarat & ketentuan</a> yang berlaku.
+                    </span>
+                </label>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium transition cursor-pointer">
+                    Batal
+                </button>
+                
+                <button id="submitBtn" type="submit" disabled
+                        class="px-6 py-2 rounded-lg bg-gray-300 text-white text-sm font-medium cursor-not-allowed transition-all">
+                    Register
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -812,11 +801,10 @@
         }
       }
 
-      // Run on load
-      updateNavbarVisibility();
-
       // Run on scroll
       window.addEventListener('scroll', updateNavbarVisibility);  
+      // Run on load
+      updateNavbarVisibility();
 
     // Smooth scroll animation
     document.querySelectorAll('a.nav-link, a[href^="#"]').forEach(anchor => {
@@ -1003,36 +991,52 @@ preloadList.forEach(src => {
   prev.addEventListener('click', () => {
     carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
   });
-function openModal() {
-    const modal = document.getElementById('registerModal');
-    const card = document.getElementById('registerCard');
+  
+  
+  const regModal = document.getElementById('registerModal');
+  const regCard = document.getElementById('registerCard');
 
-    modal.classList.remove('opacity-0', 'pointer-events-none');
-    card.classList.remove('opacity-0', 'scale-95');
-}
+  function openModal() {
+    regModal.classList.remove('opacity-0', 'pointer-events-none');
+    regCard.classList.remove('opacity-0', 'scale-95');
+  }
 
-function closeModal() {
-    const modal = document.getElementById('registerModal');
-    const card = document.getElementById('registerCard');
+  function closeModal() {
+    regModal.classList.add('opacity-0', 'pointer-events-none');
+    regCard.classList.add('opacity-0', 'scale-95');
+  }
+    
+  const checkbox = document.getElementById('termsCheckbox');
+  const submitBtn = document.getElementById('submitBtn');
 
-    // Start animation
-    modal.classList.add('opacity-0', 'pointer-events-none');
-    card.classList.add('opacity-0', 'scale-95');
-}
-    const checkbox = document.getElementById('termsCheckbox');
-    const submitBtn = document.getElementById('submitBtn');
-
-    checkbox.addEventListener('change', function () {
-        if (this.checked) {
+    if(checkbox && submitBtn){
+        checkbox.addEventListener('change', function () {
+          if (this.checked) {
             submitBtn.disabled = false;
-            submitBtn.classList.remove("bg-gray-300");
-            submitBtn.classList.add("bg-[#00A29A]", "hover:bg-[#008f87]");
-        } else {
+            // Hapus style disabled
+            submitBtn.classList.remove("bg-gray-300", "cursor-not-allowed");
+            // Tambah style aktif
+            submitBtn.classList.add("bg-[#00A29A]", "hover:bg-[#008f87]", "cursor-pointer", "shadow-md");
+          } else {
             submitBtn.disabled = true;
-            submitBtn.classList.remove("bg-[#00A29A]", "hover:bg-[#008f87]");
-            submitBtn.classList.add("bg-gray-300");
-        }
-    });
+            // Balikin style disabled
+            submitBtn.classList.add("bg-gray-300", "cursor-not-allowed");
+            // Hapus style aktif
+            submitBtn.classList.remove("bg-[#00A29A]", "hover:bg-[#008f87]", "cursor-pointer", "shadow-md");
+          }
+        });
+    }
+
+    @if($errors->any())
+        // Cek apakah error berasal dari login atau register
+        @if($errors->has('login') || $errors->has('password'))
+             // Jika error login, buka modal login (jika ada fungsi openLoginModal)
+             if(typeof openLoginModal === 'function') openLoginModal();
+        @else
+             // Defaultnya buka modal register
+             openModal();
+        @endif
+    @endif
 
     const boxes = document.querySelectorAll(".akh-box");
     const dialog = document.getElementById("akhDialog");

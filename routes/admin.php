@@ -17,6 +17,9 @@ use App\Http\Controllers\Recruitment\PublishingController;
 use App\Http\Controllers\Training\MonitoringController as TrainingMonitoringController;
 use App\Http\Controllers\Training\PrincipalApprovalController as TrainingApprovalController;
 
+use App\Http\Controllers\Recruitment\ApplicantDataController;
+use App\Http\Controllers\Public\CareerController;
+
 use App\Http\Controllers\Admin\Org\OrgController;
 
 Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
@@ -109,5 +112,19 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('recruitment', function () { return view('reports.recruitment'); })->name('recruitment');
         Route::get('training', function () { return view('reports.training'); })->name('training');
     });
+
+    // 1. Biodata & Status
+    Route::prefix('recruitment/applicant-data')
+        ->name('recruitment.applicant-data.')
+        ->middleware('permission:applicant.data.view') // Permission baru
+        ->group(function () {
+            Route::get('/', [ApplicantDataController::class, 'index'])->name('index');
+            Route::post('/update', [ApplicantDataController::class, 'update'])->name('update');
+        });
+
+    // 2. Cari Lowongan (Versi Login)
+    Route::get('careers', [CareerController::class, 'index'])
+        ->middleware('permission:careers.view') // Permission baru
+        ->name('careers.index');
 
 });

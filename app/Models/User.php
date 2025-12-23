@@ -17,13 +17,10 @@ class User extends Authenticatable
         'email',
         'password',
         'unit_id',
-        // Tambahkan kolom baru ini:
-        'nik',
-        'phone',
-        'education_level',
-        'education',
-        'experience',
-        'cv_path',
+        'employee_id',
+        'person_id', // WAJIB ADA
+        'job_title',
+        'is_active', // Opsional, best practice
     ];
 
     protected $hidden = [

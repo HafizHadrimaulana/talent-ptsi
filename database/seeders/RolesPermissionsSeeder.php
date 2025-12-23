@@ -133,6 +133,10 @@ class RolesPermissionsSeeder extends Seeder
 
                 // Reports
                 'reports.export',
+
+                // Applicant 
+                'applicant.data.view',  
+                'careers.view',
             ];
 
             foreach ($perms as $p) {
@@ -188,10 +192,10 @@ class RolesPermissionsSeeder extends Seeder
                 'employees.view','training.view',
             ]);
 
-            $rolePelamar = Role::firstOrCreate(['name' => 'Pelamar', 'guard_name' => 'web']);
-            $rolePelamar->syncPermissions([
-                'recruitment.external.view',
-                'recruitment.external.apply',
+
+            $role['Pelamar']->syncPermissions([
+                'applicant.data.view', 
+                'careers.view',
             ]);
         });
 

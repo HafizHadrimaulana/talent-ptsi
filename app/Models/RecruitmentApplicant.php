@@ -10,7 +10,7 @@ class RecruitmentApplicant extends Model
     protected $guarded = ['id'];
 
     // Relasi balik ke Izin Prinsip
-    public function vacancy()
+    public function recruitmentRequest()
     {
         return $this->belongsTo(RecruitmentRequest::class, 'recruitment_request_id');
     }
