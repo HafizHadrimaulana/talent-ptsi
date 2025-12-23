@@ -6,26 +6,49 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
     use HasFactory, HasRoles, Notifiable;
 
     protected $fillable = [
-        'name','email','password','unit_id','employee_id','job_title',
+        'name',
+        'email',
+        'password',
+        'unit_id',
+        'employee_id',
+        'person_id', // WAJIB ADA
+        'job_title',
+        'is_active', // Opsional, best practice
     ];
 
-    protected $hidden = ['password','remember_token'];
+    protected $hidden = [
+        'password',
+        'remember_token'
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
 
     protected $guard_name = 'web';
 
-    public function unit()
+    /**
+     * Relasi ke tabel Persons (FIX ERROR)
+     */
+    public function person(): BelongsTo
     {
-
-        return $this->belongsTo(\App\Models\Unit::class);
+        return $this->belongsTo(\App\Models\Person::class, 'person_id');
     }
 
-    public function employee()
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Unit::class, 'unit_id');
+    }
+
+    public function employee(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Employee::class, 'employee_id', 'employee_id');
     }

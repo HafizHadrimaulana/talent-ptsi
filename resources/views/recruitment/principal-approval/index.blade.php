@@ -2,16 +2,68 @@
 @section('title','Izin Prinsip')
 
 @section('content')
+<script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
+
+<style>
+    #createApprovalModal {
+        z-index: 1050 !important;
+    }
+    
+    #uraianModal {
+        z-index: 2000 !important; 
+        background-color: rgba(0, 0, 0, 0.5); 
+        display: none;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        inset: 0;
+    }
+    
+    #uraianModal:not([hidden]) {
+        display: flex !important;
+    }
+
+    #noteEditorModal {
+        z-index: 2050 !important; 
+        background-color: rgba(0, 0, 0, 0.5); 
+        /* Flexbox centering magic - Wajib ada */
+        display: none; 
+        align-items: center; 
+        justify-content: center; 
+        position: fixed; 
+        inset: 0;
+    }
+
+    #noteEditorModal:not([hidden]) {
+        display: flex !important;
+    }
+
+    #detailApprovalModal { z-index: 1060 !important; }
+
+    .modal-card-wide { width: 95% !important; max-width: 1000px !important; max-height: 90vh; display: flex; flex-direction: column; }
+    .u-modal__body { overflow-y: auto; }
+    
+    .uj-section-title { font-weight: 700; font-size: 0.95rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; margin-bottom: 1rem; color: #374151; text-transform: uppercase; background-color: #f3f4f6; padding: 8px; margin-top: 10px; }
+    .uj-label { font-size: 0.85rem; font-weight: 600; color: #4b5563; margin-bottom: 0.25rem; display: block; }
+    
+    .u-grid-2-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 768px) { .u-grid-2-custom { grid-template-columns: 1fr; } }
+
+    /* --- CKEditor Styles --- */
+    .ck-editor__editable_inline { min-height: 200px; max-height: 400px; }
+    .ck.ck-balloon-panel { z-index: 2060 !important; }
+</style>
+
 @php
   use Illuminate\Support\Facades\DB;
   use Illuminate\Support\Facades\Gate;
-
-  /** @var \App\Models\User|null $me */
-  $me     = auth()->user();
+  use Illuminate\Support\Facades\Auth;
+  
+  $me       = auth()->user();
   $meUnit = $me ? $me->unit_id : null;
+  $meUnitName = $meUnit ? DB::table('units')->where('id', $meUnit)->value('name') : '';
 
-  // fallback dari controller
-  $canSeeAll      = isset($canSeeAll)      ? $canSeeAll      : false;
+  $canSeeAll       = isset($canSeeAll)       ? $canSeeAll       : false;
   $selectedUnitId = isset($selectedUnitId) ? $selectedUnitId : null;
   $units          = isset($units)          ? $units          : collect();
 
@@ -20,302 +72,324 @@
           ? DB::table('units')->select('id','name')->orderBy('name')->get()
           : DB::table('units')->select('id','name')->where('id',$meUnit)->get();
   }
-
-  // map unit id -> name (buat tampilan tabel)
   $unitMap = $units->pluck('name','id');
+  $dhcUnitId = DB::table('units')->where(function($q){ $q->where('code','DHC')->orWhere('name','Divisi Human Capital')->orWhere('name','like','Divisi Human Capital%'); })->value('id');
 
-  // ambil id unit DHC (Divisi Human Capital)
-  $dhcUnitId = DB::table('units')
-      ->where(function($q){
-          $q->where('code','DHC')
-            ->orWhere('name','Divisi Human Capital')
-            ->orWhere('name','like','Divisi Human Capital%');
-      })->value('id');
+  $canCreate = Gate::check('recruitment.create') || Gate::check('recruitment.update') || ($me && $me->hasRole('SDM Unit')) || ($me && $me->hasRole('Superadmin'));
 
-  // izinkan SDM Unit + Superadmin + permission tertentu melihat tombol create
-  $canCreate = Gate::check('recruitment.create')
-                || Gate::check('recruitment.update')
-                || ($me && $me->hasRole('SDM Unit'))
-                || ($me && $me->hasRole('Superadmin'));
+  $rkapList = isset($rkapList) ? $rkapList : collect([
+    (object)['name' => 'Reporter', 'rkap' => 5, 'existing' => 2],
+    (object)['name' => 'KJJJ', 'rkap' => 3, 'existing' => 1],
+    (object)['name' => 'Inspektor', 'rkap' => 4, 'existing' => 4],
+  ]);
+
+  $positions = DB::table('positions')->select('id', 'name')->where('is_active',1)->orderBy('name')->get();
+
+  try {
+      $rawPics = DB::table('employees')->join('persons', 'employees.person_id', '=', 'persons.id')->select('employees.id', 'employees.employee_id', 'persons.full_name')->where('employees.unit_id', $selectedUnitId ?? $meUnit)->orderBy('persons.full_name')->get();
+  } catch (\Exception $e) { $rawPics = collect(); }
+
+  $picListFormatted = $rawPics->map(function($p) { return ['id' => $p->id, 'name' => ($p->employee_id ?? '-') . ' - ' . ($p->full_name ?? '-')]; })->values();
+  $locationsJs = $locations->map(function($l) {
+        return [
+            'id' => $l->id, 
+            'name' => $l->city . ' - ' . $l->name
+        ];
+    })->values();
 @endphp
 
 <div class="u-card u-card--glass u-hover-lift">
+  {{-- Header & Filter --}}
   <div class="u-flex u-items-center u-justify-between u-mb-md">
     <h2 class="u-title">Izin Prinsip</h2>
-
-    {{-- Filter Unit --}}
     <form method="get" class="u-flex u-gap-sm u-items-center">
       @if($canSeeAll)
         <label class="u-text-sm u-font-medium">Unit</label>
         <select name="unit_id" class="u-input" onchange="this.form.submit()">
           <option value="">All units</option>
-          @foreach($units as $u)
-            <option value="{{ $u->id }}" @selected((string)$u->id === (string)($selectedUnitId ?? ''))>
-              {{ $u->name }}
-            </option>
-          @endforeach
+          @foreach($units as $u) <option value="{{ $u->id }}" @selected((string)$u->id === (string)($selectedUnitId ?? ''))>{{ $u->name }}</option> @endforeach
         </select>
       @else
         @php $unitName = ($units[0]->name ?? 'Unit Saya'); @endphp
         <span class="u-badge u-badge--glass">Scoped to: {{ $unitName }}</span>
       @endif
     </form>
-
     @if($canCreate)
-    <button class="u-btn u-btn--brand u-hover-lift"
-            data-modal-open="createApprovalModal"
-            data-mode="create">
-      <i class="fas fa-plus u-mr-xs"></i> Buat Permintaan
-    </button>
+    <button class="u-btn u-btn--brand u-hover-lift" data-modal-open="createApprovalModal" data-mode="create"><i class="fas fa-plus u-mr-xs"></i> Buat Permintaan</button>
     @endif
   </div>
 
-  {{-- Notifikasi --}}
-  @if(session('ok'))
-    @push('swal')
-      <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script>
-    @endpush
-  @endif
-
+  {{-- Notifications --}}
+  @if(session('ok')) @push('swal') <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script> @endpush @endif
   @if($errors->any())
     <div class="u-card u-mb-md u-error">
-      <div class="u-flex u-items-center u-gap-sm u-mb-sm">
-        <i class="u-error-icon fas fa-exclamation-circle"></i>
-        <span class="u-font-semibold">Periksa kembali data berikut:</span>
-      </div>
-      <ul class="u-list">
-        @foreach($errors->all() as $e)
-          <li class="u-item">{{ $e }}</li>
-        @endforeach
-      </ul>
+      <ul class="u-list">@foreach($errors->all() as $e)<li class="u-item">{{ $e }}</li>@endforeach</ul>
     </div>
   @endif
 
+  {{-- Tabel Utama --}}
   <div class="dt-wrapper">
     <div class="u-flex u-items-center u-justify-between u-mb-sm">
       <div class="u-font-semibold">Daftar Izin Prinsip</div>
-      <span class="u-badge u-badge--glass">
-        {{ $canSeeAll && !$selectedUnitId ? 'All units' : 'Unit ID: '.($selectedUnitId ?? $meUnit) }}
-      </span>
+      <span class="u-badge u-badge--glass">{{ $canSeeAll && !$selectedUnitId ? 'All units' : 'Unit ID: '.($selectedUnitId ?? $meUnit) }}</span>
     </div>
-
     <div class="u-scroll-x">
       <table id="ip-table" class="u-table" data-dt>
         <thead>
-          <tr>
-            <th>No Ticket</th>
-            <th>Judul</th>
-            <th>Unit</th>
-            <th>Jenis Permintaan</th>
-            <th>Posisi</th>
-            <th>HC</th>
-            <th>Jenis Kontrak</th>
-            <th>Target Mulai</th>
-            <th>Progress</th>
-            <th>Sumber Anggaran</th>
-            <th>Status</th>
-            <th class="cell-actions">Aksi</th>
-          </tr>
+          <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progress</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
         </thead>
         <tbody>
           @foreach($list as $r)
           @php
+            $meUnit = auth()->user()->unit_id; 
             $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
+            $me = auth()->user();
 
-            $stageIndex = null;
+            // --- 1. LOGIC APPROVAL HISTORY & NOTES ---
+            $approvalHistory = [];
+            $roleTitles = ['Kepala Unit', 'DHC', 'AVP HC Ops', 'VP Human Capital', 'Dir SDM'];
+            
             if ($r->relationLoaded('approvals')) {
-              foreach ($r->approvals as $i => $ap) {
-                if (($ap->status ?? 'pending') === 'pending') { $stageIndex = $i; break; }
-              }
+                foreach ($r->approvals as $index => $app) {
+                    $rawNote = $app->note;
+                    $cleanNote = preg_replace('/\[stage=[^\]]+\]/', '', $rawNote); 
+                    $cleanNote = trim($cleanNote); 
+
+                    $approvalHistory[] = [
+                        'role'   => $roleTitles[$index] ?? 'Approver',
+                        'status' => $app->status, 
+                        'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') : '-',
+                        'note'   => $cleanNote
+                    ];
+                }
             }
 
-            $meRoles = [
-              'Superadmin'  => $me && $me->hasRole('Superadmin'),
-              'Kepala Unit' => $me && $me->hasRole('Kepala Unit'),
-              'DHC'         => $me && $me->hasRole('DHC'),
-              'Dir SDM'     => $me && $me->hasRole('Dir SDM'),
+            $myJobTitle = null;
+            if ($me->person_id) {
+                $myJobTitle = DB::table('employees')
+                    ->join('positions', 'employees.position_id', '=', 'positions.id')
+                    ->where('employees.person_id', $me->person_id)
+                    ->value('positions.name');
+            }
+                
+
+            // --- 2. LOGIC VISIBILITY CATATAN ---
+            $isRequester = $me->id === $r->created_by || $me->id === $r->requested_by;
+            $isApprover = $me->hasRole('Kepala Unit') 
+                       || $me->hasRole('DHC') 
+                       || $me->hasRole('Dir SDM')
+                       || $me->hasRole('Superadmin')
+                       || $me->hasRole('SDM Unit')
+                       || ($me->hasRole('AVP Human Capital Operation') || $myJobTitle === 'AVP Human Capital Operation')
+                       || ($me->hasRole('VP Human Capital') || $myJobTitle === 'VP Human Capital');
+            
+            $canViewNotes = $isRequester || $isApprover;
+            
+            $stageIndex = null; 
+            $rejectedByLabel = ''; 
+
+            if ($r->relationLoaded('approvals')) { 
+                foreach ($r->approvals as $i => $ap) { 
+                    if ($stageIndex === null && ($ap->status ?? 'pending') === 'pending') { $stageIndex = $i; }
+                    if (($ap->status ?? '') === 'rejected') { $rejectedByLabel = $roleTitles[$i] ?? 'Approver'; }
+                } 
+            }
+
+            $me = auth()->user();
+            // DEFINISI ROLES USER LOGIN
+            $meRoles = [ 
+                'Superadmin'  => $me && $me->hasRole('Superadmin'), 
+                'Kepala Unit' => $me && $me->hasRole('Kepala Unit'), 
+                'DHC'         => $me && $me->hasRole('DHC'), 
+                'AVP HC Ops'  => $me && $me->hasRole('AVP Human Capital Operation'), 
+                'VP HC'       => $me && $me->hasRole('VP Human Capital'),
+                'Dir SDM'     => $me && $me->hasRole('Dir SDM') 
             ];
-
-            $status = $r->status ?? 'draft';
-            $badge  = $status === 'rejected' ? 'u-badge--danger'
-                    : ($status === 'draft' ? 'u-badge--warn'
-                    : ($status === 'approved' ? 'u-badge--primary' : 'u-badge--soft'));
-
+            
+            $status          = $r->status ?? 'draft';
             $employmentType  = $r->employment_type ?? $r->contract_type ?? null;
             $targetStart     = $r->target_start_date ?? $r->start_date ?? null;
             $budgetSource    = $r->budget_source_type ?? $r->budget_source ?? null;
             $requestType     = $r->request_type ?? $r->type ?? 'Rekrutmen';
+            $budgetRef       = $r->budget_ref ?? $r->rkap_ref ?? $r->rab_ref ?? $r->budget_reference ?? '';
+            $justif          = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
+            $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
+            
+            $totalStages = 5;
+            $progressStep = null;
 
-            $publishPref = $r->publish_vacancy_pref ?? $r->publish_pref ?? $r->publish_vacancy ?? '';
-            $budgetRef   = $r->budget_ref ?? $r->rkap_ref ?? $r->rab_ref ?? $r->budget_reference ?? '';
-            $justif      = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
+            if ($status === 'draft') { $progressText = 'Draft di SDM Unit'; $progressStep = 0; }
+            elseif ($status === 'rejected') { $progressText = $rejectedByLabel ? 'Ditolak oleh ' . $rejectedByLabel : 'Ditolak'; }
+            elseif ($status === 'approved') { $progressText = 'Selesai (Approved Dir SDM)'; $progressStep = $totalStages; }
+            elseif ($stageIndex === 0) { $progressText = 'Menunggu Kepala Unit'; $progressStep = 1; }
+            elseif ($stageIndex === 1) { $progressText = 'Menunggu DHC';         $progressStep = 2; }
+            elseif ($stageIndex === 2) { $progressText = 'Menunggu AVP HC Ops';     $progressStep = 3; }
+            elseif ($stageIndex === 3) { $progressText = 'Menunggu VP HC';      $progressStep = 4; }
+            elseif ($stageIndex === 4) { $progressText = 'Menunggu Dir SDM';     $progressStep = 5; }
+            else { $progressText = 'In Review'; }
 
-            $unitNameRow = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
+            // --- 4. LOGIC TOMBOL AKSI (PERMISSION) ---
+            $canStage = false;
+            $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
 
-            // progress label: Izin Prinsip → flow sampai approved Dir SDM
-            $totalStages   = 3;
-            $progressStep  = null;
-            if ($status === 'draft') {
-                $progressText = 'Draft di SDM Unit';
-                $progressStep = 0;
-            } elseif ($status === 'rejected') {
-                $progressText = 'Ditolak';
-            } elseif ($status === 'approved') {
-                $progressText = 'Selesai (Approved Dir SDM)';
-                $progressStep = $totalStages;
-            } elseif ($stageIndex === 0) {
-                $progressText = 'Menunggu Kepala Unit';
-                $progressStep = 1;
-            } elseif ($stageIndex === 1) {
-                $progressText = 'Menunggu DHC';
-                $progressStep = 2;
-            } elseif ($stageIndex === 2) {
-                $progressText = 'Menunggu Dir SDM';
-                $progressStep = 3;
-            } else {
-                $progressText = 'In Review';
+            if(in_array($status, ['in_review','submitted']) && $stageIndex !== null) {
+                if ($meRoles['Superadmin']) { $canStage = true; } 
+                else {
+                    if ($stageIndex === 0) { 
+                        $canStage = $meRoles['Kepala Unit'] && $sameUnit; 
+                    } 
+                    elseif ($stageIndex === 1) { 
+                        $canStage = $meRoles['DHC'] || $isKepalaUnitDHC; 
+                    } 
+                    elseif ($stageIndex === 2) { 
+                        // Stage 3: AVP HC Ops
+                        $isAvp = $me->hasRole('AVP Human Capital Operation') || ($myJobTitle === 'AVP Human Capital Operation');
+                        $canStage = $isAvp || $isKepalaUnitDHC; 
+                    }
+                    elseif ($stageIndex === 3) { 
+                        // Stage 4: VP Human Capital
+                        $canStage = $meRoles['VP HC'] || $isKepalaUnitDHC; 
+                    } 
+                    elseif ($stageIndex === 4) { 
+                        $canStage = $meRoles['Dir SDM']; 
+                    }
+                }
+            }
+            
+            $recruitmentDetails = collect($r->meta['recruitment_details'] ?? []);
+            $hasMultiData = $recruitmentDetails->count() > 1;
+            $posObj = $positions->firstWhere('id', $r->position);
+            $positionDisplay = $posObj ? $posObj->name : $r->position;
+
+            $slaBadgeClass = '';
+            $slaText = '-';
+            
+            $kaUnitApp = $r->approvals->sortBy('id')->first();
+            $isApprovedByKaUnit = ($kaUnitApp && $kaUnitApp->status === 'approved' && $kaUnitApp->decided_at);
+            // Hanya hitung SLA jika status masih berjalan (submitted/in_review)
+            if (in_array($status, ['submitted', 'in_review']) && $isApprovedByKaUnit) {
+                
+                // Waktu Mulai = Waktu saat Kepala Unit klik Approve
+                $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
+
+                // A. Hitung Selisih Hari (Khusus untuk menentukan WARNA Merah/Kuning)
+                $daysDiff = $slaTimeBase->diffInDays(now());
+
+                // B. Hitung Teks Tampilan (Human Readable: Jam, Menit)
+                // syntax DIFF_RELATIVE_TO_NOW membuat output seperti "4 jam setelahnya" (tanpa 'ago')
+                $rawText = $slaTimeBase->locale('id')->diffForHumans([
+                    'parts' => 2,        // Batasi 2 bagian (misal: 1 jam, 30 menit)
+                    'join' => true,      // Gabungkan dengan kata sambung
+                    'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW, 
+                ]);
+
+                // C. Bersihkan Teks (Hapus 'yang', 'setelahnya', ganti 'dan' jadi ',')
+                // Menghapus kata-kata tidak perlu agar singkat
+                $cleanText = str_replace(
+                    ['yang ', 'setelahnya', 'sebelumnya', ' dan '], 
+                    ['', '', '', ', '], 
+                    $rawText
+                );
+                
+                $slaText = trim($cleanText);
+
+                // D. Tentukan Warna Badge
+                if ($daysDiff >= 5) {
+                    $slaBadgeClass = 'u-badge--danger'; // Merah
+                } elseif ($daysDiff >= 3) {
+                    $slaBadgeClass = 'u-badge--warning'; // Kuning
+                } else {
+                    $slaBadgeClass = 'u-badge--info'; // Biru
+                }
             }
           @endphp
-          <tr>
-            <td>
-              @if(!empty($r->request_no))
-                <span class="u-badge u-badge--glass u-text-2xs">{{ $r->request_no }}</span>
-              @else
-                <span class="u-text-2xs u-muted">-</span>
-              @endif
-            </td>
-            <td>
-              <span class="u-font-medium">{{ $r->title }}</span>
-              <div class="u-text-2xs u-muted">
-                Dibuat {{ optional($r->created_at)->format('d M Y') ?? '-' }}
-              </div>
+          <tr class="recruitment-main-row u-align-top" data-recruitment-id="{{ $r->id }}">
+            <td>@if(!empty($r->ticket_number)) <span class="u-badge u-badge--primary u-text-2xs">{{ $r->ticket_number }}</span> @else <span class="u-text-2xs u-text-muted">-</span> @endif</td>
+            <td style="min-width: 200px;">
+                @if($hasMultiData)
+                    <div class="u-flex u-flex-col u-gap-xs">
+                        @foreach($recruitmentDetails as $detail)
+                        <div style="border-bottom: 1px dashed #e5e7eb; padding-bottom: 4px; margin-bottom: 4px;">
+                            <span class="u-font-medium">{{ $detail['title'] ?? $r->title }}</span>
+                            <div class="u-text-2xs u-muted">Dibuat {{ optional($r->created_at)->format('d M Y') ?? '-' }}</div>
+                        </div>
+                        @endforeach
+                    </div>
+                @else
+                    <span class="u-font-medium">{{ $r->title }}</span>
+                    <div class="u-text-2xs u-muted">Dibuat {{ optional($r->created_at)->format('d M Y') ?? '-' }}</div>
+                @endif
             </td>
             <td>{{ $unitNameRow }}</td>
+            <td><span class="u-badge u-badge--glass u-text-2xs">{{ $requestType }}</span></td>
             <td>
-              <span class="u-badge u-badge--glass u-text-2xs">
-                {{-- align dg 2 jalur flow: Rekrutmen & Perpanjang Kontrak --}}
-                @if($requestType === 'Perpanjang Kontrak')
-                  Perpanjang Kontrak
-                @elseif($requestType === 'Rekrutmen')
-                  Rekrutmen
+              @if($hasMultiData)
+                <div class="u-flex u-flex-col u-gap-xs">
+                    @foreach($recruitmentDetails as $detail)
+                    <div class="u-text-sm" style="border-bottom: 1px dashed #e5e7eb; padding-bottom: 4px; margin-bottom: 4px;">{{ $detail['position_text'] ?? $detail['position'] ?? '-' }}</div>
+                    @endforeach
+                </div>
+              @else {{ $positionDisplay }} @endif
+            </td>
+            <td><span class="u-badge u-badge--glass">{{ $r->headcount }} Orang</span></td>
+            <td>@if($employmentType) <span class="u-badge u-badge--glass">{{ $employmentType }}</span> @else - @endif</td>
+            <td><div class="u-text-2xs"><span class="u-badge u-badge--glass">{{ $progressText }}</span></div></td>
+            <td>
+                @if($slaText !== '-')
+                    <span class="u-badge {{ $slaBadgeClass }} u-text-2xs" title="Dihitung sejak approval Kepala Unit">
+                        <i class="far fa-clock u-mr-xs"></i> {{ $slaText }}
+                    </span>
                 @else
-                  {{ $requestType }}
+                    <span class="u-text-muted u-text-2xs" title="Menunggu approval Kepala Unit">-</span>
                 @endif
-              </span>
             </td>
-            <td>{{ $r->position }}</td>
-            <td><span class="u-badge u-badge--glass">{{ $r->headcount }} orang</span></td>
-            <td>
-              @if($employmentType)
-                <span class="u-badge u-badge--glass">{{ $employmentType }}</span>
-              @else
-                <span class="u-text-2xs u-muted">-</span>
-              @endif
-            </td>
-            <td>
-              @if($targetStart)
-                <span class="u-text-sm">{{ \Illuminate\Support\Carbon::parse($targetStart)->format('d M Y') }}</span>
-              @else
-                <span class="u-text-2xs u-muted">-</span>
-              @endif
-            </td>
-            <td>
-              <div class="u-text-2xs">
-                <span class="u-badge u-badge--glass">{{ $progressText }}</span>
-                @if($progressStep !== null)
-                  <div class="u-muted u-mt-xxs">Stage {{ $progressStep }} / {{ $totalStages }}</div>
-                @endif
-              </div>
-            </td>
-            <td>
-              @if($budgetSource)
-                <span class="u-badge u-badge--glass u-text-2xs">{{ $budgetSource }}</span>
-              @else
-                <span class="u-text-2xs u-muted">-</span>
-              @endif
-            </td>
-            <td><span class="u-badge {{ $badge }}">{{ ucfirst($status) }}</span></td>
-
             <td class="cell-actions">
               <div class="cell-actions__group">
-                {{-- Draft: Edit + Submit (SDM unit & Superadmin) --}}
                 @if($status === 'draft' && ($sameUnit || $meRoles['Superadmin']))
                   @if($canCreate)
-                    <button type="button"
-                            class="u-btn u-btn--outline u-btn--sm u-hover-lift"
-                            title="Edit draft"
-                            data-modal-open="createApprovalModal"
-                            data-mode="edit"
-                            data-update-url="{{ route('recruitment.principal-approval.update',$r) }}"
-                            data-request-type="{{ e($requestType) }}"
-                            data-title="{{ e($r->title) }}"
-                            data-position="{{ e($r->position) }}"
-                            data-headcount="{{ (int) $r->headcount }}"
-                            data-employment-type="{{ e($employmentType ?? '') }}"
-                            data-target-start="{{ $targetStart }}"
-                            data-budget-source-type="{{ e($budgetSource ?? '') }}"
-                            data-budget-ref="{{ e($budgetRef) }}"
-                            data-publish-pref="{{ e($publishPref) }}"
-                            data-justification="{{ e($justif) }}">
-                      <i class="fas fa-edit u-mr-xs"></i> Edit
+                    <button type="button" class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Edit draft" 
+                          data-modal-open="createApprovalModal" 
+                          data-mode="edit" 
+                          data-update-url="{{ route('recruitment.principal-approval.update',$r) }}" 
+                          data-delete-url="{{ route('recruitment.principal-approval.destroy', ['req' => $r->id]) }}"
+                          data-request-type="{{ e($requestType) }}" 
+                          data-title="{{ e($r->title) }}" 
+                          data-position="{{ e($r->position) }}" 
+                          data-headcount="{{ (int) $r->headcount }}" 
+                          data-employment-type="{{ e($employmentType ?? '') }}" 
+                          data-target-start="{{ $targetStart }}" 
+                          data-budget-source-type="{{ e($budgetSource ?? '') }}" 
+                          data-budget-ref="{{ e($budgetRef) }}" 
+                          data-justification="{{ e($justif) }}"
+                          data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'>
+                          <i class="fas fa-edit u-mr-xs"></i> Edit
                     </button>
-
-                    <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}"
-                          class="u-inline js-confirm"
-                          data-confirm-title="Submit permintaan?"
-                          data-confirm-text="Permintaan akan dikirim untuk persetujuan berjenjang."
-                          data-confirm-icon="question">
-                      @csrf
-                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift">
-                        <i class="fas fa-paper-plane u-mr-xs"></i> Submit
-                      </button>
-                    </form>
+                    <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" class="u-inline js-confirm">@csrf<button class="u-btn u-btn--outline u-btn--sm u-hover-lift"><i class="fas fa-paper-plane u-mr-xs"></i> Submit</button></form>
                   @endif
                 @endif
-
-                {{-- Approval berjenjang --}}
-                @if(in_array($status, ['in_review','submitted']) && $stageIndex !== null)
-                  @php
-                    $canStage = false;
-
-                    if ($meRoles['Superadmin']) {
-                        $canStage = true;
-                    } else {
-                        if ($stageIndex === 0) {
-                          $canStage = $meRoles['Kepala Unit'] && ((string)$meUnit === (string)$r->unit_id);
-                        } elseif ($stageIndex === 1) {
-                          $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
-                          $canStage = $meRoles['DHC'] || $isKepalaUnitDHC;
-                        } elseif ($stageIndex === 2) {
-                          $canStage = $meRoles['Dir SDM'];
-                        }
-                    }
-                  @endphp
-
-                  @if($canStage)
-                    <form method="POST" action="{{ route('recruitment.principal-approval.approve',$r) }}"
-                          class="u-inline js-confirm"
-                          data-confirm-title="Setujui permintaan?"
-                          data-confirm-text="Permintaan akan diteruskan ke approver berikutnya."
-                          data-confirm-icon="success">
-                      @csrf
-                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-success">
-                        <i class="fas fa-check u-mr-xs"></i> Approve
-                      </button>
-                    </form>
-
-                    <form method="POST" action="{{ route('recruitment.principal-approval.reject',$r) }}"
-                          class="u-inline js-confirm"
-                          data-confirm-title="Tolak permintaan?"
-                          data-confirm-text="Proses akan dihentikan."
-                          data-confirm-icon="error">
-                      @csrf
-                      <button class="u-btn u-btn--outline u-btn--sm u-hover-lift u-danger">
-                        <i class="fas fa-times u-mr-xs"></i> Reject
-                      </button>
-                    </form>
-                  @endif
-                @endif
+                <button type="button" class="u-btn u-btn--outline u-btn--sm u-hover-lift js-open-detail" 
+                        data-modal-open="detailApprovalModal" 
+                        data-id="{{ $r->id }}" 
+                        data-ticket-number="{{ $r->ticket_number ?? '-' }}" 
+                        data-title="{{ e($r->title) }}" 
+                        data-unit="{{ e($unitNameRow) }}" 
+                        data-request-type="{{ e($requestType) }}" 
+                        data-position="{{ e($positionDisplay) }}" 
+                        data-headcount="{{ (int) $r->headcount }}" 
+                        data-employment-type="{{ e($employmentType ?? '') }}" 
+                        data-target-start="{{ $targetStart ? \Illuminate\Support\Carbon::parse($targetStart)->format('d M Y') : '-' }}" 
+                        data-budget-source="{{ e($budgetSource ?? '') }}" 
+                        data-budget-ref="{{ e($budgetRef) }}" 
+                        data-justification="{{ e($justif) }}" 
+                        data-status="{{ e(ucfirst($status)) }}" 
+                        data-history='{{ json_encode($approvalHistory) }}'
+                        data-can-view-notes="{{ $canViewNotes ? 'true' : 'false' }}"
+                        data-can-approve="{{ $canStage ? 'true' : 'false' }}" 
+                        data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" 
+                        data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" 
+                        data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'>
+                        <i class="fas fa-info-circle u-mr-xs"></i> Detail
+                </button>
               </div>
             </td>
           </tr>
@@ -326,238 +400,1985 @@
   </div>
 </div>
 
-<!-- Create / Edit Approval Modal -->
-<div id="createApprovalModal" class="u-modal" hidden>
-  <div class="u-modal__card">
+{{-- MODAL URAIAN JABATAN (FORM BASED) --}}
+<div id="uraianModal" class="u-modal" hidden>
+  <div class="u-modal__card modal-card-wide">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
-        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
+        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-file-alt"></i></div>
         <div>
-          <div class="u-title" id="ip-modal-title">Buat Izin Prinsip Baru</div>
-          <div class="u-muted u-text-sm" id="ip-modal-subtitle">Ajukan permintaan rekrutmen atau perpanjangan kontrak</div>
+            <div class="u-title">Form Uraian Jabatan</div>
+            <div class="u-muted u-text-sm">Silakan lengkapi data uraian jabatan.</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
-        <i class="fas fa-times"></i>
-      </button>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
     </div>
 
-    <div class="u-modal__body">
-      <form method="POST"
-            action="{{ route('recruitment.principal-approval.store') }}"
-            class="u-space-y-md u-p-md"
-            id="createApprovalForm"
-            data-default-action="{{ route('recruitment.principal-approval.store') }}">
-        @csrf
-
-        <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan</label>
-          <select class="u-input" name="request_type">
-            <option value="Rekrutmen">Rekrutmen</option>
-            <option value="Perpanjang Kontrak">Perpanjang Kontrak</option>
-          </select>
+    <div class="u-modal__body u-p-md" style="background-color: #f9fafb;">
+      <form id="uraianForm" class="u-space-y-md">
+        
+        {{-- SECTION 1: IDENTITAS JABATAN --}}
+        <div class="u-card u-p-md">
+            <h3 class="uj-section-title">1. Identitas Jabatan</h3>
+            <div class="u-grid-2-custom">
+                <div class="u-space-y-sm">
+                    <div><label class="uj-label">Nama Jabatan</label><input type="text" class="u-input" id="uj_nama" placeholder="Otomatis dari Posisi/Job Function"></div>
+                    <div><label class="uj-label">Unit Kerja (Divisi/UUS/Cabang)</label><input type="text" class="u-input" id="uj_unit" placeholder="Otomatis dari Unit User"></div>
+                </div>
+                <div class="u-space-y-sm">
+                    <div><label class="uj-label">Melapor Pada</label><input type="text" class="u-input" id="uj_melapor" placeholder="Jabatan Atasan Langsung"></div>
+                    <div><label class="uj-label">Pemangku</label><input type="text" class="u-input" id="uj_pemangku" placeholder="Nama Pemangku"></div>
+                </div>
+            </div>
         </div>
 
-        <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
-          <input class="u-input" name="title" placeholder="Mis. Rekrutmen Analis TKDN Proyek X" required>
+        {{-- SECTION 2: TUJUAN JABATAN --}}
+        <div class="u-card u-p-md">
+            <h3 class="uj-section-title">2. Tujuan Jabatan</h3>
+            <div class="u-mb-xs u-text-xs u-muted">Kesimpulan dari akuntabilitas utama, dalam satu kalimat.</div>
+            <textarea class="u-input" rows="3" id="uj_tujuan"></textarea>
         </div>
 
-        <div class="u-grid-2 u-stack-mobile u-gap-md">
-          <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi</label>
-            <input class="u-input" name="position" placeholder="Masukkan posisi (mis. Analis TKDN)" required>
-          </div>
-          <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
-            <input class="u-input" type="number" min="1" name="headcount" value="1" placeholder="Jumlah orang" required>
+        {{-- SECTION 3: AKUNTABILITAS UTAMA --}}
+        <div class="u-card u-p-md">
+            <h3 class="uj-section-title">3. Akuntabilitas Utama</h3>
+            <div class="u-mb-xs u-text-xs u-muted">Uraian tugas dan tujuan tugas (gunakan poin-poin).</div>
+            <textarea class="u-input" rows="6" id="uj_akuntabilitas"></textarea>
+        </div>
+
+        {{-- SECTION 4: DIMENSI --}}
+        <div class="u-card u-p-md">
+            <h3 class="uj-section-title">4. Dimensi</h3>
+            <div class="u-space-y-sm">
+                <div class="u-grid-2-custom">
+                    <div>
+                        <label class="uj-label">Dimensi Keuangan</label>
+                        <input type="text" class="u-input" id="uj_dimensi_keuangan" placeholder="-">
+                    </div>
+                    <div>
+                        <label class="uj-label">Dimensi Non-Keuangan</label>
+                        <input type="text" class="u-input" id="uj_dimensi_non_keuangan" placeholder="-">
+                    </div>
+                </div>
+                <div class="u-grid-2-custom">
+                    <div>
+                        <label class="uj-label">Anggaran (Rp)</label>
+                        <input type="text" class="u-input" id="uj_anggaran" placeholder="1.000.000">
+                    </div>
+                    <div>
+                        <label class="uj-label">Bawahan Langsung</label>
+                        <input type="text" class="u-input" id="uj_bawahan_langsung" placeholder="-">
+                    </div>
+                    <div>
+                        <label class="uj-label">Total Staff</label>
+                        <input type="text" class="u-input" id="uj_total_staff" placeholder="-">
+                    </div>
+                    <div>
+                        <label class="uj-label">Total Pegawai (Unit Kerja)</label>
+                        <input type="text" class="u-input" id="uj_total_pegawai" placeholder="-">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- SECTION 5: WEWENANG --}}
+        <div class="u-card u-p-md">
+            <h3 class="uj-section-title">5. Wewenang</h3>
+            <div class="u-mb-xs u-text-xs u-muted">Suatu tugas yang dapat dilakukan pemangku jabatan tanpa meminta persetujuan atasan.</div>
+            <textarea class="u-input" rows="4" id="uj_wewenang"></textarea>
+        </div>
+
+        {{-- SECTION 6: HUBUNGAN KERJA --}}
+        <div class="u-card u-p-md">
+          <h3 class="uj-section-title">6. Hubungan Kerja</h3>
+          <div class="u-mb-xs u-text-xs u-muted">Jelaskan hubungan kerja internal dan eksternal</div>
+          <div class="u-grid-2-custom">
+            <div>
+              <label class="uj-label">Internal</label>
+              <textarea class="u-input" rows="3" id="uj_hub_internal" placeholder="Hubungan internal..."></textarea>
+            </div>
+            <div>
+              <label class="uj-label">Eksternal</label>
+              <textarea class="u-input" rows="3" id="uj_hub_eksternal" placeholder="Hubungan eksternal..."></textarea>
+            </div>
           </div>
         </div>
 
-        <div class="u-grid-2 u-stack-mobile u-gap-md">
+        {{-- SECTION 7: SPESIFIKASI JABATAN --}}
+        <div class="u-card u-p-md">
+          <h3 class="uj-section-title">7. Spesifikasi Jabatan</h3>
+          <div class="u-mb-xs u-text-xs u-muted">Latar belakang pendidikan, pengalaman, pengetahuan & kompetensi</div>
           <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak</label>
-            <select class="u-input" name="employment_type">
-              <option value="">Pilih jenis kontrak</option>
-              <option value="Organik">Organik</option>
-              <option value="Project Based">Project Based</option>
-              <option value="Alih Daya">Alih Daya</option>
-            </select>
-          </div>
-          <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Target Mulai Kerja</label>
-            <input class="u-input" type="date" name="target_start_date">
-          </div>
-        </div>
-
-        <div class="u-grid-2 u-stack-mobile u-gap-md">
-          <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Sumber Anggaran</label>
-            <select class="u-input" name="budget_source_type">
-              <option value="">Pilih sumber anggaran</option>
-              <option value="RKAP">RKAP</option>
-              <option value="RAB Proyek">RAB Proyek</option>
-              <option value="Lainnya">Lainnya</option>
-            </select>
-          </div>
-          <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Referensi Anggaran</label>
-            <input class="u-input" name="budget_ref" placeholder="No. RKAP / No. RAB / keterangan singkat">
+            <div>
+              <label class="uj-label">Latar belakang pendidikan dan pengalaman</label>
+              <textarea class="u-input" rows="3" id="uj_spek_pendidikan" placeholder="Deskripsi pendidikan & pengalaman"></textarea>
+            </div>
+            <div>
+              <label class="uj-label">Pengetahuan dan ketrampilan</label>
+              <textarea class="u-input" rows="3" id="uj_spek_pengetahuan" placeholder="Pengetahuan & ketrampilan yang dibutuhkan"></textarea>
+            </div>
+            <div>
+              <label class="uj-label">Kompetensi perilaku</label>
+              <textarea class="u-input" rows="3" id="uj_spek_kompetensi" placeholder="Kompetensi perilaku umum"></textarea>
+            </div>
+            <div class="u-grid-2-custom">
+              <div>
+                <label class="uj-label">Kompetensi Wajib</label>
+                <textarea class="u-input" rows="3" id="uj_spek_kompetensi_wajib" placeholder="Kompetensi wajib (pisahkan baris)"></textarea>
+              </div>
+              <div>
+                <label class="uj-label">Kompetensi Generik Pendukung</label>
+                <textarea class="u-input" rows="3" id="uj_spek_kompetensi_generik" placeholder="Kompetensi generik pendukung (pisahkan baris)"></textarea>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Publikasikan Lowongan?</label>
-          <select class="u-input" name="publish_vacancy_pref">
-            <option value="">Belum ditentukan</option>
-            <option value="yes">Ya, akan dipublikasikan</option>
-            <option value="no">Tidak perlu dipublikasikan</option>
-          </select>
-        </div>
-
-        <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Justifikasi</label>
-          <textarea class="u-input" name="justification" rows="4"
-            placeholder="Jelaskan kebutuhan rekrutmen, keterkaitan dengan RKAP/RAB, dan urgensi kebutuhan..."></textarea>
+        {{-- SECTION 8: STRUKTUR ORGANISASI --}}
+        <div class="u-card u-p-md">
+          <h3 class="uj-section-title">8. Struktur organisasi</h3>
+          <div class="u-mb-xs u-text-xs u-muted">Unggah gambar struktur organisasi (opsional)</div>
+          <div class="u-space-y-sm">
+            <input type="file" accept="image/*" id="uj_struktur" class="u-input" />
+            <div id="uj_struktur_preview" style="margin-top:8px;"></div>
+          </div>
         </div>
       </form>
     </div>
 
     <div class="u-modal__foot">
-      <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
-      <div class="u-flex u-gap-sm">
-        <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-        <button form="createApprovalForm" class="u-btn u-btn--brand u-hover-lift">
-          <i class="fas fa-save u-mr-xs"></i> Simpan Draft
-        </button>
+      <div class="u-flex u-justify-between u-items-center u-gap-sm">
+        <div id="uj_status_display" class="u-badge u-badge--glass">Status: Draft</div>
+        <div class="u-flex u-gap-sm">
+          <button type="button" class="u-btn u-btn--outline u-btn--primary" id="btnPreviewPdf" style="display:none;">
+            <i class="fas fa-file-pdf u-mr-xs"></i> Preview PDF
+          </button>
+          <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+          <button type="button" class="u-btn u-btn--outline js-save-uraian-form" data-status="Draft">Simpan Draft</button>
+          <button type="button" class="u-btn u-btn--brand js-save-uraian-form" data-status="Final">Simpan & Finalisasi</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
+{{-- MODAL CREATE (UTAMA) --}}
+<div id="createApprovalModal" class="u-modal" hidden>
+  <div class="u-modal__card">
+    <div class="u-modal__head">
+      <div class="u-flex u-items-center u-gap-md">
+        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
+        <div><div class="u-title" id="ip-modal-title">Buat Izin Prinsip Baru</div><div class="u-muted u-text-sm" id="ip-modal-subtitle">Ajukan permintaan rekrutmen atau perpanjangan kontrak</div></div>
+      </div>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
+    </div>
+
+    <div class="u-modal__body">
+      <form method="POST" action="{{ route('recruitment.principal-approval.store') }}" class="u-space-y-md u-p-md" id="createApprovalForm" data-default-action="{{ route('recruitment.principal-approval.store') }}">
+        @csrf
+        <input type="hidden" name="details_json" id="detailsJson">
+
+        {{-- [SECTION STATIS] --}}
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan</label>
+          <select class="u-input" name="request_type"><option value="Rekrutmen">Rekrutmen</option><option value="Perpanjang Kontrak">Perpanjang Kontrak</option></select>
+        </div>
+        <div class="u-grid-2 u-stack-mobile u-gap-md">
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak</label>
+            <select class="u-input" id="contractTypeSelect" name="employment_type" required>
+                <option value="">Pilih jenis kontrak</option>
+                <option value="Organik">Organik</option>
+                <option value="Project Based">Project Based</option>
+                <option value="Kontrak MPS">Kontrak MPS</option>
+                <option value="Kontrak On-call">Kontrak On-call</option>
+                <option value="Alihdaya">Alihdaya</option>
+            </select>
+          </div>
+          <div class="u-space-y-sm">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Sumber Anggaran</label>
+            <select class="u-input" id="budgetSourceSelect" name="budget_source_type" style="-webkit-appearance: none; -moz-appearance: none; appearance: none;"><option value="">Sumber anggaran</option><option value="RKAP">RKAP</option><option value="RAB Proyek">RAB Proyek</option><option value="Lainnya">Lainnya</option></select>
+          </div>
+        </div>
+        <div class="u-space-y-sm">
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
+          <input class="u-input" type="number" min="1" name="headcount" id="headcountInput" value="1" placeholder="Jumlah orang" required>
+        </div>
+        
+        {{-- Tabs Container Multidata --}}
+        <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;">
+           {{-- Tombol Data 1, Data 2, dll di-generate via JS --}}
+        </div>
+
+        {{-- [SECTION DINAMIS] --}}
+        <div id="dynamicContentWrapper" class="u-p-md u-border u-rounded u-bg-light">
+            <div class="u-space-y-sm u-mb-md">
+              <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
+              <input class="u-input" id="titleInput" name="title" placeholder="Mis. Rekrutmen Analis TKDN Proyek X" required>
+            </div>
+
+            {{-- SECTION PROJECT BASED --}}
+            <div id="projectSection" class="u-space-y-md" style="display:none;">
+              <div class="u-flex u-items-center u-justify-between"><div><label class="u-block u-text-sm u-font-medium u-mb-sm">Data Project</label><div class="u-text-2xs u-muted">Pilih kode project, nama project akan otomatis terisi</div></div></div>
+              <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div class="u-space-y-sm">
+                  <label class="u-block u-text-sm u-font-medium u-mb-sm">Kode Project</label>
+                  <select class="u-input" id="kodeProjectSelect" name="kode_project">
+                    <option value="">Pilih kode project</option>
+                    <option value="NEW" class="u-font-bold u-text-brand" style="font-weight:bold; color:#0055ff;">+ Buat Project Baru</option> 
+                    @foreach($projects as $p) 
+                        <option value="{{ $p->project_code }}" data-nama="{{ $p->project_name }}">
+                            {{ $p->project_code }} - {{ $p->project_name }}
+                        </option> 
+                    @endforeach
+                </select>
+                </div>
+                <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project</label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
+              </div>
+              <div class="u-space-y-sm" style="position: relative;">
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Project Based -->
+                <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off">
+                <input type="hidden" name="position" id="positionInput">
+                <div id="positionSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
+              </div>
+              <div class="u-space-y-sm">
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan</label>
+                <div class="u-flex u-items-center u-gap-sm">
+                  <div id="uraianStatusProject" class="u-text-2xs u-muted">Belum ada uraian</div>
+                  <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian-project">Isi Uraian</button>
+                </div>
+              </div>
+              <div class="u-space-y-sm" style="position: relative;">
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
+                <input type="text" id="picProjectSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
+                <input type="hidden" name="pic_project" id="picProjectInput">
+                <div id="picProjectSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
+              </div>
+            </div>
+
+            {{-- SECTION ORGANIK --}}
+            <div id="rkapSection" class="u-space-y-md" style="display:none;">
+              <div class="u-flex u-items-center u-justify-between"><div><label class="u-block u-text-sm u-font-medium u-mb-sm">Tabel RKAP 2025</label><div class="u-text-2xs u-muted">Pilih job function untuk memakai kuota RKAP</div></div></div>
+              <div class="u-scroll-x">
+                <table class="u-table u-table--striped" id="rkap-table">
+                  <thead><tr><th>Job Function</th><th>RKAP 2025</th><th>Jumlah karyawan existing</th><th class="cell-actions">Aksi</th></tr></thead>
+                  <tbody>
+                    @foreach($rkapList as $j)
+                      <tr data-job-name="{{ $j->name }}" data-job-rkap="{{ $j->rkap }}" data-job-existing="{{ $j->existing }}">
+                        <td>{{ $j->name }}</td><td>{{ $j->rkap }}</td><td>{{ $j->existing }}</td>
+                        <td class="cell-actions"><button type="button" class="u-btn u-btn--sm u-btn--outline js-rkap-select" title="Pilih {{ $j->name }}">+</button></td>
+                      </tr>
+                    @endforeach
+                  </tbody>
+                </table>
+              </div>
+              <div id="rkapSelectedInfo" style="display:none;margin-top:12px;" class="u-space-y-sm">
+                <div class="u-text-sm u-font-medium">Selected: <span id="rkapSelectedName"></span></div>
+                <div class="u-grid-2 u-stack-mobile u-gap-md">
+                  <div>
+                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan</label>
+                    <div class="u-flex u-items-center u-gap-sm">
+                      <div id="uraianStatus" class="u-text-2xs u-muted">Belum ada uraian</div>
+                      <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian">Isi Uraian</button>
+                    </div>
+                    <div style="position: relative;">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Organik -->
+                      <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off">
+                      <input type="hidden" id="positionOrganikInput"> 
+                      <div id="positionOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
+                    </div>  
+                  </div>
+                  <div>
+                    <div style="position: relative;" class="u-mb-md">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
+                      <input type="text" id="picOrganikSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
+                      <input type="hidden" name="pic" id="picOrganikInput">
+                      <div id="picOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="extraDynamicFields" class="u-mt-md u-pt-md u-border-t">
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja</label>
+                      <input class="u-input" type="date" id="dyn_start_date" required>
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Selesai Kerja</label>
+                      <input class="u-input" type="date" id="dyn_end_date" required>
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm" style="position: relative;">
+                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Kota Lokasi Penempatan Kerja</label>
+                    <input class="u-input" type="text" id="dyn_location" placeholder="Ketik atau Pilih Kota/Kabupaten" autocomplete="off">
+                    <input type="hidden" id="dyn_location_id">
+                    <div id="dynLocationSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
+                </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan</label>
+                      <select class="u-input" id="dyn_education" required>
+                          <option value="">Pilih Pendidikan</option>
+                          <option value="SMA">SMA</option>
+                          <option value="D3">D3</option>
+                          <option value="D4">D4</option>
+                          <option value="S1">S1</option>
+                          <option value="S2">S2</option>
+                          <option value="S3">S3</option>
+                      </select>
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-md">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pelatihan</label>
+                      <input class="u-input" type="text" id="dyn_brevet" placeholder="Masukkan pelatihan">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pengalaman</label>
+                      <input class="u-input" type="text" id="dyn_experience" placeholder="Masukkan pengalaman" required>
+                  </div>
+              </div>
+              <div class="u-bg-light u-p-sm u-rounded u-font-bold u-text-sm u-mb-sm" style="color:#374151;"><b>Remunerasi</b></div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_salary" placeholder="1.000.000" required>
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Terbilang</label>
+                      <input class="u-input" type="text" id="dyn_terbilang" placeholder="NOL RUPIAH" readonly>
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Jabatan (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceJ" placeholder="Masukkan angka">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Project (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceP" placeholder="Masukkan angka">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Komunikasi (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceC" placeholder="Masukkan angka">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Kinerja (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceK" placeholder="Masukkan angka">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">BPJS Kesehatan (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_bpjs_kes" readonly placeholder="Autofill">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">BPJS Ketenagakerjaan (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_bpjs_tk" readonly placeholder="Autofill">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">THR (1x Gaji Pokok)</label>
+                      <input class="u-input u-bg-light" type="number" id="dyn_thr" readonly placeholder="Autofill">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Kompensasi (1x Gaji Pokok)</label>
+                      <input class="u-input u-bg-light" type="number" id="dyn_kompensasi" readonly placeholder="Autofill">
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Apakah sudah ada kandidat? (Jika ya, Upload CV)</label>
+                      <input type="file" id="dyn_cv" class="u-input" accept=".pdf,.doc,.docx">
+                      <div id="dyn_cv_preview_text" class="u-text-2xs u-text-brand u-mt-xs"></div>
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">PPH 21</label>
+                      <input class="u-input" type="number" id="dyn_pph21" readonly placeholder="Autofill">
+                  </div>
+              </div>
+          </div>
+        </div>
+
+        {{-- Justifikasi --}}
+        <div class="u-space-y-sm u-mt-md">
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Detail Penjelasan Kebutuhan</label>
+            <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan secara detail..." required></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="u-modal__foot">
+      <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
+      <div class="u-flex u-gap-sm">
+        <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+        <form method="POST" action="" id="deleteDraftForm" class="u-inline js-confirm" data-confirm-title="Hapus Draft?" style="display:none;">@csrf @method('DELETE')<button type="submit" class="u-btn u-btn--outline u-hover-lift" style="color:#ef4444; border-color:#ef4444;"><i class="fas fa-trash-alt u-mr-xs"></i> Hapus</button></form>
+        <button form="createApprovalForm" class="u-btn u-btn--brand u-hover-lift" id="submitApprovalBtn"><i class="fas fa-save u-mr-xs"></i> Simpan Draft</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- DETAIL APPROVAL --}}
+<div id="detailApprovalModal" class="u-modal" hidden>
+  <div class="u-modal__card" style="max-width: 900px;"> 
+    <div class="u-modal__head">
+      <div class="u-flex u-items-center u-gap-md">
+        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-info-circle"></i></div>
+        <div>
+          <div class="u-title">Detail Izin Prinsip</div>
+          <div class="u-muted u-text-sm">Informasi lengkap permintaan</div>
+        </div>
+      </div>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="u-modal__body u-p-md">
+        <div id="detailTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-md u-border-b u-pb-sm"></div>
+        <div id="detailContentContainer" class="u-animate-fade-in">
+            <div class="u-grid-2 u-stack-mobile u-gap-lg">
+                <div class="u-card u-p-md">
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">No Ticket</div><div class="u-font-medium" id="view-ticket">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Judul</div><div class="u-font-medium" id="view-title">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Jenis Permintaan</div><div id="view-request-type">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Headcount</div><div id="view-headcount">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">PIC Request</div><div id="view-pic">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Detail Penjelasan</div><div id="view-justification">-</div></div>
+                </div>
+                <div class="u-card u-p-md">
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Status</div><div id="view-status">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Unit</div><div id="view-unit">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Posisi</div><div id="view-position" class="u-font-medium">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Jenis Kontrak</div><div id="view-employment">-</div></div>
+                    <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Sumber Anggaran</div><div id="view-budget-source">-</div></div>
+                    <div>
+                        <div class="u-text-xs u-font-bold u-muted u-uppercase">Uraian Jabatan</div>
+                        <div class="u-mt-xs">
+                             <button type="button" id="btn-view-pdf-detail" class="u-btn u-btn--xs u-btn--outline" style="display:none;">
+                                <i class="fas fa-file-pdf u-mr-xs"></i> Download PDF
+                             </button>
+                             <div id="view-uraian-status" class="u-text-2xs u-muted u-mt-xxs">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="u-modal__foot">
+      <div class="u-flex u-justify-between u-items-center u-gap-sm">
+        <div class="u-muted u-text-sm"><span id="tab-indicator-text">Menampilkan Data 1</span></div>
+        <div class="u-flex u-gap-sm action-buttons">
+            <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+
+            {{-- Form Reject --}}
+            <form method="POST" action="" class="detail-reject-form u-inline" style="display:none;">
+                @csrf
+                {{-- ID ditambahkan agar JS bisa memindahkan catatan kesini --}}
+                <input type="hidden" name="note" class="reject-note-input" id="real_reject_note"> 
+                <button type="button" class="u-btn u-btn--outline u-danger detail-reject-btn" 
+                    onclick="triggerCustomConfirm(this, 'reject')">
+                    <i class="fas fa-times u-mr-xs"></i> Reject
+                </button>
+            </form>
+
+            {{-- Tombol Catatan --}}
+            <button type="button" class="u-btn u-btn--outline u-text-brand js-open-note-modal" style="display:none;" id="btn-add-note">
+                <i class="fas fa-edit u-mr-xs"></i> Catatan
+            </button>
+
+            {{-- Form Approve --}}
+            <form method="POST" action="" class="detail-approve-form u-inline" style="display:none;">
+                @csrf
+                {{-- ID ini sudah ada sebelumnya --}}
+                <input type="hidden" name="extended_note" id="hidden_extended_note">
+                <button type="button" class="u-btn u-btn--brand u-success detail-approve-btn" 
+                    onclick="triggerCustomConfirm(this, 'approve')">
+                    <i class="fas fa-check u-mr-xs"></i> Approve
+                </button>
+            </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{-- MODAL KONFIRMASI (CUSTOM POPUP) --}}
+<div id="confirmationModal" class="u-modal" style="z-index: 3000; display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.6);">
+    <div class="u-modal__card" style="width: 100%; max-width: 400px; background: white; border-radius: 12px; overflow: hidden; animation: u-slide-up 0.2s ease-out; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div class="u-p-lg u-text-center">
+            {{-- Pesan Konfirmasi --}}
+            <div class="u-mb-lg">
+                <h3 id="conf-title" class="u-font-bold u-text-dark" style="font-size: 1.1rem; line-height: 1.5;">
+                    Apakah Anda yakin menyetujui izin prinsip ini?
+                </h3>
+            </div>
+            
+            {{-- Tombol Aksi --}}
+            <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 25px;">
+                {{-- Tombol Ya (Hijau) --}}
+                <button type="button" id="btn-conf-yes" class="u-btn" style="background-color: #22c55e; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
+                    Ya
+                </button>
+                
+                {{-- Tombol Tidak (Merah) --}}
+                <button type="button" id="btn-conf-no" class="u-btn" style="background-color: #ef4444; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
+                    Tidak
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="noteEditorModal" class="u-modal" hidden>
+  <div class="u-modal__card" style="width: 700px; max-width: 95%;">
+    <div class="u-modal__head">
+      <div class="u-title"><i class="fas fa-sticky-note u-mr-xs"></i> Tambahkan Catatan</div>
+      <button class="u-btn u-btn--ghost u-btn--sm js-close-note-modal"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="u-modal__body u-p-md">
+      <div class="u-mb-sm u-text-sm u-muted">Catatan ini akan tersimpan dan dapat dilihat oleh admin SDM Unit.</div>
+      <textarea id="editorContent"></textarea>
+    </div>
+    <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+      <button type="button" class="u-btn u-btn--ghost js-close-note-modal">Batal</button>
+      <button type="button" class="u-btn u-btn--brand js-save-note">Simpan Catatan</button>
+    </div>
+  </div>
+</div>
+
+{{-- MODAL CREATE PROJECT (Popup di atas Popup) --}}
+<div id="createProjectModal" class="u-modal" style="z-index: 3050; display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.6);">
+    <div class="u-modal__card" style="width: 100%; max-width: 600px; background: white; border-radius: 8px; overflow: hidden; animation: u-slide-up 0.2s ease-out;">
+        <div class="u-modal__head u-flex u-justify-between u-items-center u-p-md u-border-b">
+            <div class="u-font-bold u-text-lg">Tambah Project Baru</div>
+            <button type="button" class="u-btn u-btn--ghost u-btn--sm js-close-project-modal"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <form id="formCreateProject" enctype="multipart/form-data">
+            @csrf
+            <div class="u-modal__body u-p-md u-space-y-md">
+                <div class="u-space-y-sm">
+                    <label class="u-label u-font-medium u-text-sm">Kode Project <span class="u-text-danger">*</span></label>
+                    <input type="text" name="project_code" class="u-input" placeholder="Contoh: PRJ-2025-001" required>
+                </div>
+                
+                <div class="u-space-y-sm">
+                    <label class="u-label u-font-medium u-text-sm">Nama Project <span class="u-text-danger">*</span></label>
+                    <input type="text" name="project_name" class="u-input" placeholder="Contoh: Pembangunan Infrastruktur X" required>
+                </div>
+
+                <div class="u-space-y-sm" style="position: relative;">
+                    <label class="u-label u-font-medium u-text-sm">Lokasi Project <span class="u-text-danger">*</span></label>
+                    
+                    <input type="text" id="projectLocationSearchInput" class="u-input" placeholder="Ketik Kota atau Nama Lokasi..." autocomplete="off" required>
+                    
+                    <input type="hidden" name="location_id" id="projectLocationInput">
+                    
+                    <div id="projectLocationSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 3100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
+                </div>
+
+                <div class="u-space-y-sm">
+                    <label class="u-label u-font-medium u-text-sm">Dokumen (Proposal/RAB) <span class="u-text-danger">*</span></label>
+                    <div class="u-text-2xs u-muted u-mb-xs">Format: PDF, DOC, DOCX (Max 5MB)</div>
+                    <input type="file" name="document" class="u-input" accept=".pdf,.doc,.docx" required>
+                </div>
+            </div>
+
+            <div class="u-modal__foot u-p-md u-border-t u-flex u-justify-end u-gap-sm">
+                <button type="button" class="u-btn u-btn--ghost js-close-project-modal">Batal</button>
+                <button type="submit" class="u-btn u-btn--brand" id="btnSaveProject">
+                    <i class="fas fa-save u-mr-xs"></i> Simpan Project
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const page = {
-    dt: null,
-    init() { this.bindModal(); this.initDT(); this.bindExternalSearch(); },
-    bindModal() {
-      const modal   = document.getElementById('createApprovalModal');
-      const form    = document.getElementById('createApprovalForm');
-      const titleEl = document.getElementById('ip-modal-title');
-      const subEl   = document.getElementById('ip-modal-subtitle');
+    function toggleHistoryNote(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            // Toggle display antara none dan block
+            if (el.style.display === "none" || el.style.display === "") {
+                el.style.display = "block";
+                const icon = document.getElementById('icon-' + id);
+                if(icon) icon.className = "fas fa-chevron-up u-mr-xs";
+            } else {
+                el.style.display = "none";
+                const icon = document.getElementById('icon-' + id);
+                if(icon) icon.className = "fas fa-chevron-down u-mr-xs";
+            }
+        }
+    }
+    function setBudgetLock(isLocked, budgetType) {
+        const budgetSelect = document.getElementById('budgetSourceSelect');
+        if (!budgetSelect) return;
 
-      document.addEventListener('click', function(e) {
-        const btn = e.target.closest('[data-modal-open]');
-        if (btn) {
-          const id   = btn.getAttribute('data-modal-open');
-          const mode = btn.getAttribute('data-mode') || 'create';
-          const el   = document.getElementById(id);
-          if (!el || !form) return;
+        if (isLocked) {
+            // 1. Set nilai otomatis (misal: RKAP atau RAB Proyek)
+            budgetSelect.value = budgetType;
 
-          // reset ke default action
-          const defaultAction = form.dataset.defaultAction || form.getAttribute('action');
-          form.setAttribute('action', defaultAction);
+            // 2. Kunci elemen agar tidak bisa diklik user (Visual Disabled)
+            // Kita gunakan pointer-events none agar nilai tetap terkirim saat submit form
+            // (Kalau pakai attribute disabled="true", nilainya tidak akan terkirim ke controller)
+            budgetSelect.style.pointerEvents = 'none';
+            budgetSelect.style.backgroundColor = '#e5e7eb'; // Warna abu-abu (visual disabled)
+            budgetSelect.classList.add('u-muted');
+        } else {
+            // 1. Buka kunci
+            budgetSelect.style.pointerEvents = 'auto';
+            budgetSelect.style.backgroundColor = ''; // Reset warna
+            budgetSelect.classList.remove('u-muted');
 
-          // reset _method
-          let methodInput = form.querySelector('input[name="_method"]');
-          if (methodInput) methodInput.remove();
+            // 2. Jika ada parameter kosong (''), kita biarkan user memilih sendiri,
+            // atau jika ada value tertentu, kita set.
+            if (budgetType !== '') {
+                budgetSelect.value = budgetType;
+            }
+        }
+    }
 
-          if (mode === 'edit') {
-            // ubah ke PUT
-            const updateUrl = btn.getAttribute('data-update-url') || defaultAction;
-            form.setAttribute('action', updateUrl);
-            methodInput = document.createElement('input');
-            methodInput.type  = 'hidden';
-            methodInput.name  = '_method';
-            methodInput.value = 'PUT';
-            form.appendChild(methodInput);
+    // --- POPUP KONFIRMASI ---
+    let formToSubmit = null;
 
-            // isi field dari data-*
-            const setVal = (name, val) => {
-              const field = form.querySelector('[name="'+name+'"]');
-              if (field) field.value = val ?? '';
+    function triggerCustomConfirm(btn, action) {
+        const modal = document.getElementById('confirmationModal');
+        const titleEl = document.getElementById('conf-title');
+        
+        // Simpan form yang akan di-submit
+        formToSubmit = btn.closest('form');
+
+        // Sinkronisasi Catatan agar tidak hilang
+        // Ambil nilai dari editor catatan (yang tersimpan di hidden_extended_note)
+        const noteEditorValue = document.getElementById('hidden_extended_note').value;
+        
+        // Masukkan ke input hidden form yang sesuai
+        if(action === 'reject') {
+            const rejectInput = document.getElementById('real_reject_note');
+            if(rejectInput) rejectInput.value = noteEditorValue;
+            
+            // Ubah Teks Judul Popup
+            titleEl.textContent = "Apakah Anda yakin menolak izin prinsip ini?";
+        } else {
+            // Untuk approve, inputnya adalah hidden_extended_note itu sendiri, jadi aman.
+            titleEl.textContent = "Apakah Anda yakin menyetujui izin prinsip ini?";
+        }
+        modal.style.display = 'flex';
+    }
+    function terbilang(nilai) {
+        nilai = Math.floor(Math.abs(nilai));
+        var huruf = [
+            '', 'SATU', 'DUA', 'TIGA', 'EMPAT', 'LIMA', 'ENAM', 'TUJUH', 'DELAPAN', 'SEMBILAN', 'SEPULUH', 'SEBELAS'
+        ];
+        var temp = '';
+
+        if (nilai < 12) {
+            temp = ' ' + huruf[nilai];
+        } else if (nilai < 20) {
+            temp = terbilang(nilai - 10) + ' BELAS ';
+        } else if (nilai < 100) {
+            temp = terbilang(Math.floor(nilai / 10)) + ' PULUH ' + terbilang(nilai % 10);
+        } else if (nilai < 200) {
+            temp = ' SERATUS ' + terbilang(nilai - 100);
+        } else if (nilai < 1000) {
+            temp = terbilang(Math.floor(nilai / 100)) + ' RATUS ' + terbilang(nilai % 100);
+        } else if (nilai < 2000) {
+            temp = ' SERIBU ' + terbilang(nilai - 1000);
+        } else if (nilai < 1000000) {
+            temp = terbilang(Math.floor(nilai / 1000)) + ' RIBU ' + terbilang(nilai % 1000);
+        } else if (nilai < 1000000000) {
+            temp = terbilang(Math.floor(nilai / 1000000)) + ' JUTA ' + terbilang(nilai % 1000000);
+        } else if (nilai < 1000000000000) {
+            temp = terbilang(Math.floor(nilai / 1000000000)) + ' MILIAR ' + terbilang(nilai % 1000000000);
+        } else if (nilai < 1000000000000000) {
+            temp = terbilang(Math.floor(nilai / 1000000000000)) + ' TRILIUN ' + terbilang(nilai % 1000000000000);
+        }
+
+        return temp.trim();
+    }
+    // Event Listener untuk Tombol YA dan TIDAK di dalam Popup
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnYes = document.getElementById('btn-conf-yes');
+        if(btnYes) {
+            btnYes.addEventListener('click', function() {
+                if(formToSubmit) {
+                    formToSubmit.submit();
+                }
+                document.getElementById('confirmationModal').style.display = 'none';
+            });
+        }
+
+        const btnNo = document.getElementById('btn-conf-no');
+        if(btnNo) {
+            btnNo.addEventListener('click', function() {
+                document.getElementById('confirmationModal').style.display = 'none';
+                formToSubmit = null;
+            });
+        }
+        
+        const positionsData = {!! json_encode($positions) !!};
+        const locationsData = {!! json_encode($locationsJs) !!};
+        const picData       = {!! json_encode($picListFormatted) !!};
+        const meUnitName    = {!! json_encode($meUnitName) !!}; 
+
+        function setupSearchableDropdown(searchInput, hiddenInput, resultsContainer, dataArray, allowNew = false) { 
+                if (!searchInput || !resultsContainer) return;
+                const renderOptions = (filterText = '') => {
+                    resultsContainer.innerHTML = ''; const lowerFilter = filterText.toLowerCase(); const filtered = dataArray.filter(item => item.name.toLowerCase().includes(lowerFilter));
+                    if (filtered.length > 0) {
+                        filtered.forEach(item => {
+                            const div = document.createElement('div'); div.className = 'u-p-sm'; div.style.cursor = 'pointer'; div.style.borderBottom = '1px solid #f0f0f0'; div.textContent = item.name;
+                            div.addEventListener('click', () => { searchInput.value = item.name; if(hiddenInput) hiddenInput.value = item.id; resultsContainer.style.display = 'none'; });
+                            resultsContainer.appendChild(div);
+                        });
+                    } else { if (!allowNew) { const noRes = document.createElement('div'); noRes.className = 'u-p-sm u-text-muted'; noRes.textContent = 'Tidak ditemukan'; resultsContainer.appendChild(noRes); } }
+                    if (allowNew && filterText.trim() !== '') {
+                        const addNewDiv = document.createElement('div'); addNewDiv.className = 'u-p-sm u-text-brand'; addNewDiv.style.cursor = 'pointer'; addNewDiv.innerHTML = `Gunakan: "${filterText}"`;
+                        addNewDiv.addEventListener('click', () => { searchInput.value = filterText; if(hiddenInput) hiddenInput.value = filterText; resultsContainer.style.display = 'none'; });
+                        resultsContainer.appendChild(addNewDiv);
+                    }
+                };
+                searchInput.addEventListener('focus', () => { renderOptions(searchInput.value); resultsContainer.style.display = 'block'; });
+                searchInput.addEventListener('input', (e) => { renderOptions(e.target.value); resultsContainer.style.display = 'block'; });
+                document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) resultsContainer.style.display = 'none'; });
+            }
+
+        const page = {
+            dt: null,
+            init() { 
+                this.bindModal(); 
+                this.initDT(); 
+                this.bindExternalSearch(); 
+                // --- LOGIC ADD NEW PROJECT ---
+                const projectModal = document.getElementById('createProjectModal');
+                const projectForm = document.getElementById('formCreateProject');
+                const projectSelect = document.getElementById('kodeProjectSelect');
+                const projectNameInput = document.getElementById('namaProjectInput');
+
+                const locSearchInput = document.getElementById('projectLocationSearchInput');
+                const locHiddenInput = document.getElementById('projectLocationInput');
+                const locResultsContainer = document.getElementById('projectLocationSearchResults');
+
+                setupSearchableDropdown(locSearchInput, locHiddenInput, locResultsContainer, locationsData, false);
+
+                // 1. Event Listener saat Dropdown berubah
+                if (projectSelect) {
+                    projectSelect.addEventListener('change', function() {
+                        if (this.value === 'NEW') {
+                            this.value = ""; 
+                            if(projectNameInput) projectNameInput.value = "";
+                            
+                            projectForm.reset();
+                            if(locSearchInput) locSearchInput.value = "";
+                            if(locHiddenInput) locHiddenInput.value = "";
+                            projectModal.style.display = 'flex';
+                        }
+                    });
+                }
+
+                document.querySelectorAll('.js-close-project-modal').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        projectModal.style.display = 'none';
+                    });
+                });
+
+                if (projectForm) {
+                    projectForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        
+                        const btnSave = document.getElementById('btnSaveProject');
+                        const originalText = btnSave.innerHTML;
+                        btnSave.disabled = true;
+                        btnSave.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Menyimpan...';
+
+                        const formData = new FormData(this);
+
+                        fetch("{{ route('recruitment.project.store') }}", {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                projectModal.style.display = 'none';
+                                
+                                const newOption = document.createElement('option');
+                                newOption.value = data.data.project_code;
+                                newOption.text = data.data.project_code + ' - ' + data.data.project_name;
+                                newOption.setAttribute('data-nama', data.data.project_name);
+                                newOption.selected = true;
+
+                                // Masukkan setelah opsi "Buat Project Baru" (index 1) atau di akhir
+                                const newIdx = 2; 
+                                if(projectSelect.options.length >= 2) {
+                                    projectSelect.add(newOption, 2);
+                                } else {
+                                    projectSelect.add(newOption);
+                                }
+
+                                projectSelect.value = data.data.project_code;
+                                if(projectNameInput) projectNameInput.value = data.data.project_name;
+                                alert('Project berhasil dibuat!'); 
+                            } else {
+                                alert('Gagal menyimpan: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Terjadi kesalahan saat menyimpan project.');
+                        })
+                        .finally(() => {
+                            btnSave.disabled = false;
+                            btnSave.innerHTML = originalText;
+                        });
+                    });
+                }
+            },
+
+            bindModal() {
+            const modalMain   = document.getElementById('createApprovalModal');
+            const detailModal = document.getElementById('detailApprovalModal');
+            const uraianModal = document.getElementById('uraianModal');
+            
+            const form          = document.getElementById('createApprovalForm');
+            const submitBtn     = document.getElementById('submitApprovalBtn');
+            const modalTitle    = document.getElementById('ip-modal-title');
+            const modalSubtitle = document.getElementById('ip-modal-subtitle');
+            
+            const contractTypeSelect = form.querySelector('#contractTypeSelect');
+            const budgetSourceSelect = form.querySelector('#budgetSourceSelect');
+            const headcountInput     = form.querySelector('#headcountInput');
+            const dataTabsContainer  = document.getElementById('dataTabsContainer');
+            const detailsJsonInput   = document.getElementById('detailsJson');
+            
+            // Inputs Form Utama
+            const requestTypeSelect  = form.querySelector('[name="request_type"]');
+            const titleInput         = form.querySelector('#titleInput');
+            const targetStartInput   = form.querySelector('#targetStartInput'); 
+            const justifInput        = form.querySelector('[name="justification"]');
+
+            const dynInputs = {
+                start_date:  form.querySelector('#dyn_start_date'),
+                end_date:    form.querySelector('#dyn_end_date'),
+                location:    form.querySelector('#dyn_location'),
+                education:   form.querySelector('#dyn_education'),
+                brevet:      form.querySelector('#dyn_brevet'),
+                experience:  form.querySelector('#dyn_experience'),
+                salary:      form.querySelector('#dyn_salary'),
+                terbilang:   form.querySelector('#dyn_terbilang'),
+                allowanceJ:   form.querySelector('#dyn_allowanceJ'),
+                allowanceP:   form.querySelector('#dyn_allowanceP'),
+                allowanceC:   form.querySelector('#dyn_allowanceC'),
+                allowanceK:   form.querySelector('#dyn_allowanceK'),
+                pph21:       form.querySelector('#dyn_pph21'),
+                bpjs_kes:    form.querySelector('#dyn_bpjs_kes'),
+                bpjs_tk:     form.querySelector('#dyn_bpjs_tk'),
+                thr:         form.querySelector('#dyn_thr'),
+                kompensasi:  form.querySelector('#dyn_kompensasi'),
+                cv:          form.querySelector('#dyn_cv'),
+                cv_preview:  form.querySelector('#dyn_cv_preview_text')
+            };
+            
+            const dynLocationId = document.getElementById('dyn_location_id');
+            const dynLocationResults = document.getElementById('dynLocationSearchResults');
+
+            setupSearchableDropdown(dynInputs.location, dynLocationId, dynLocationResults, locationsData, true);
+
+            // Kumpulkan input yang memicu perhitungan
+            const calcInputs = [
+                dynInputs.salary, 
+                dynInputs.thr, 
+                dynInputs.kompensasi,
+                dynInputs.start_date, 
+                dynInputs.end_date
+            ];
+
+            // Fungsi hitung renumerasi ke API
+            function calculateRemuneration() {
+                // Ambil value Gaji & Tanggal
+                const salary = parseFloat(dynInputs.salary ? dynInputs.salary.value : 0) || 0;
+                const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
+                const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
+
+                if (salary <= 0 || !start || !end) return;
+
+                // Ambil nilai dari input form
+                let valThr = parseFloat(dynInputs.thr ? dynInputs.thr.value : 0);
+                let valKomp = parseFloat(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
+
+                // paksa nilai THR & Kompensasi menggunakan nilai Gaji Pokok agar perhitungan akurat.
+                if (salary > 0 && valThr === 0) {
+                    valThr = salary;
+                    if(dynInputs.thr) dynInputs.thr.value = salary;
+                }
+                if (salary > 0 && valKomp === 0) {
+                    valKomp = salary;
+                    if(dynInputs.kompensasi) dynInputs.kompensasi.value = salary;
+                }
+
+                const payload = {
+                    salary: salary,
+                    start_date: start,
+                    end_date: end,
+                    thr: valThr,
+                    kompensasi: valKomp,
+                    _token: '{{ csrf_token() }}'
+                };
+
+                if(dynInputs.pph21) dynInputs.pph21.placeholder = "Menghitung...";
+
+                fetch("{{ route('api.calculate.salary') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("RESPONSE:", data);
+                    if(dynInputs.pph21)   dynInputs.pph21.value   = data.pph21_bulanan; 
+                    if(dynInputs.bpjs_kes) dynInputs.bpjs_kes.value = data.bpjs_kesehatan;
+                    if(dynInputs.bpjs_tk)  dynInputs.bpjs_tk.value  = data.bpjs_ketenagakerjaan;
+                })
+                .catch(error => {
+                    console.error('Error calculating:', error);
+                });
+            }
+
+            // Auto hitung saat mengetik
+            let calcTimeout;
+            calcInputs.forEach(input => {
+                if(input) {
+                    input.addEventListener('input', function() {
+                        clearTimeout(calcTimeout);
+                        // Delay 800ms agar tidak spam request saat mengetik cepat
+                        calcTimeout = setTimeout(calculateRemuneration, 800); 
+                    });
+                    input.addEventListener('change', calculateRemuneration);
+                }
+            });
+
+            // LOGIKA KALKULASI GAJI
+            if(dynInputs.salary) {
+                dynInputs.salary.addEventListener('input', function(e) {
+                    const val = e.target.value;
+                    
+                    // Autofill THR & Kompensasi
+                    if(dynInputs.thr) dynInputs.thr.value = val;
+                    if(dynInputs.kompensasi) dynInputs.kompensasi.value = val;
+
+                    // Autofill Terbilang
+                    if(dynInputs.terbilang) {
+                        if(val && !isNaN(val)) {
+                            // Konversi angka ke kata
+                            let text = terbilang(val) + ' RUPIAH';
+                            text = text.charAt(0).toUpperCase() + text.slice(1);
+                            dynInputs.terbilang.value = text;
+                        } else {
+                            dynInputs.terbilang.value = '';
+                        }
+                    }
+                });
+            }
+
+            // LOGIKA FILE UPLOAD (Convert to Base64)
+            if(dynInputs.cv) {
+                dynInputs.cv.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if(file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            dynInputs.cv._base64 = evt.target.result;
+                            dynInputs.cv._filename = file.name;
+                            if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = "File selected: " + file.name;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            // Elements Form Uraian
+            const uraianForm = document.getElementById('uraianForm');
+            const ujInputs = {
+                nama: document.getElementById('uj_nama'),
+                unit: document.getElementById('uj_unit'),
+                pemangku: document.getElementById('uj_pemangku'),
+                melapor: document.getElementById('uj_melapor'),
+                tujuan: document.getElementById('uj_tujuan'),
+                akuntabilitas: document.getElementById('uj_akuntabilitas'),
+                dimensi_keuangan: document.getElementById('uj_dimensi_keuangan'),
+                anggaran: document.getElementById('uj_anggaran'),
+                dimensi_non_keuangan: document.getElementById('uj_dimensi_non_keuangan'),
+                bawahan_langsung: document.getElementById('uj_bawahan_langsung'),
+                total_staff: document.getElementById('uj_total_staff'),
+                total_pegawai: document.getElementById('uj_total_pegawai'),
+                wewenang: document.getElementById('uj_wewenang'),
+                hub_internal: document.getElementById('uj_hub_internal'),
+                hub_eksternal: document.getElementById('uj_hub_eksternal'),
+                spek_pendidikan: document.getElementById('uj_spek_pendidikan'),
+                spek_pengetahuan: document.getElementById('uj_spek_pengetahuan'),
+                spek_kompetensi: document.getElementById('uj_spek_kompetensi'),
+                spek_kompetensi_wajib: document.getElementById('uj_spek_kompetensi_wajib'),
+                spek_kompetensi_generik: document.getElementById('uj_spek_kompetensi_generik'),
+                struktur: document.getElementById('uj_struktur')
+            };
+            const btnPreviewPdf = document.getElementById('btnPreviewPdf');
+            const uraianStatusDisplay = document.getElementById('uj_status_display');
+
+            // Handle file input for struktur organisasi
+            if(ujInputs.struktur) {
+                ujInputs.struktur.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    const previewDiv = document.getElementById('uj_struktur_preview');
+                    if(file && file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            ujInputs.struktur._base64 = evt.target.result;
+                            previewDiv.innerHTML = `<img src="${evt.target.result}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
+                        };
+                        reader.readAsDataURL(file);
+                    } else if(file) {
+                        alert('Silakan pilih file gambar (JPG, PNG, dll)');
+                        previewDiv.innerHTML = '';
+                    }
+                });
+            }
+
+            // References & Searchables
+            const rkapSection       = form.querySelector('#rkapSection');
+            const rkapSelectedInfo = form.querySelector('#rkapSelectedInfo');
+            const rkapSelectedName = form.querySelector('#rkapSelectedName');
+            const uraianStatus      = form.querySelector('#uraianStatus'); 
+            const projectSection        = form.querySelector('#projectSection');
+            const kodeProjectSelect     = form.querySelector('#kodeProjectSelect');
+            const namaProjectInput      = form.querySelector('#namaProjectInput');
+            const uraianStatusProject   = form.querySelector('#uraianStatusProject');
+            
+            const picOrganikSearchInput = form.querySelector('#picOrganikSearchInput');
+            const picOrganikInput       = form.querySelector('#picOrganikInput');
+            const picOrganikResults     = form.querySelector('#picOrganikSearchResults');
+            const positionOrganikSearchInput = form.querySelector('#positionOrganikSearchInput');
+            const positionOrganikInput       = form.querySelector('#positionOrganikInput');
+            const positionOrganikSearchResults = form.querySelector('#positionOrganikSearchResults');
+            const positionSearchInput  = form.querySelector('#positionSearchInput');
+            const positionInput        = form.querySelector('#positionInput');
+            const positionSearchResults = form.querySelector('#positionSearchResults');
+            const picProjectSearchInput = form.querySelector('#picProjectSearchInput');
+            const picProjectInput       = form.querySelector('#picProjectInput');
+            const picProjectResults     = form.querySelector('#picProjectSearchResults');
+
+            let activeDataIndex = 1;
+            let totalDataCount  = 1;
+            let multiDataStore  = {}; 
+
+            function getActiveContractType() { return contractTypeSelect ? contractTypeSelect.value : ''; }
+
+            window.openUraianForm = function(currentData, mode) {
+                uraianForm.reset();
+                const d = currentData.uraian_data || {};
+
+                ujInputs.nama.value = d.nama || '';
+                ujInputs.unit.value = d.unit || '';
+                ujInputs.pemangku.value = d.pemangku || '';
+                ujInputs.melapor.value = d.melapor || '';
+                ujInputs.tujuan.value = d.tujuan || '';
+                ujInputs.akuntabilitas.value = d.akuntabilitas || '';
+                if(ujInputs.dimensi_keuangan) ujInputs.dimensi_keuangan.value = d.dimensi_keuangan || '';
+                if(ujInputs.anggaran) ujInputs.anggaran.value = d.anggaran || '';
+                if(ujInputs.dimensi_non_keuangan) ujInputs.dimensi_non_keuangan.value = d.dimensi_non_keuangan || '';
+                if(ujInputs.bawahan_langsung) ujInputs.bawahan_langsung.value = d.bawahan_langsung || '';
+                if(ujInputs.total_staff) ujInputs.total_staff.value = d.total_staff || '';
+                if(ujInputs.total_pegawai) ujInputs.total_pegawai.value = d.total_pegawai || '';
+                if(ujInputs.wewenang) ujInputs.wewenang.value = d.wewenang || '';
+                if(ujInputs.hub_internal) ujInputs.hub_internal.value = d.hub_internal || '';
+                if(ujInputs.hub_eksternal) ujInputs.hub_eksternal.value = d.hub_eksternal || '';
+                if(ujInputs.spek_pendidikan) ujInputs.spek_pendidikan.value = d.spek_pendidikan || '';
+                if(ujInputs.spek_pengetahuan) ujInputs.spek_pengetahuan.value = d.spek_pengetahuan || '';
+                if(ujInputs.spek_kompetensi) ujInputs.spek_kompetensi.value = d.spek_kompetensi || '';
+                if(ujInputs.spek_kompetensi_wajib) ujInputs.spek_kompetensi_wajib.value = d.spek_kompetensi_wajib || '';
+                if(ujInputs.spek_kompetensi_generik) ujInputs.spek_kompetensi_generik.value = d.spek_kompetensi_generik || '';
+
+                if(d.struktur_organisasi) {
+                    const previewDiv = document.getElementById('uj_struktur_preview');
+                    if(previewDiv) previewDiv.innerHTML = `<img src="${d.struktur_organisasi}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
+                    if(ujInputs.struktur) ujInputs.struktur._base64 = d.struktur_organisasi;
+                }
+
+                if (!ujInputs.unit.value && meUnitName) ujInputs.unit.value = meUnitName;
+                if (!ujInputs.nama.value) {
+                    if (mode === 'organik') {
+                        const selectedRow = form.querySelector('.js-rkap-select.selected');
+                        if(selectedRow) ujInputs.nama.value = selectedRow.closest('tr').dataset.jobName;
+                        else if (positionOrganikSearchInput && positionOrganikSearchInput.value) ujInputs.nama.value = positionOrganikSearchInput.value;
+                    } else if (mode === 'project') {
+                        if(positionSearchInput && positionSearchInput.value) ujInputs.nama.value = positionSearchInput.value;
+                    }
+                }
+
+                const status = currentData.uraian_status || 'Belum diisi';
+                uraianStatusDisplay.textContent = 'Status: ' + status;
+                
+                if(status === 'Final' || status === 'Finalized') {
+                    btnPreviewPdf.style.display = 'inline-flex';
+                    btnPreviewPdf.dataset.json = JSON.stringify(d);
+                } else {
+                    btnPreviewPdf.style.display = 'none';
+                }
+
+                uraianModal.hidden = false;
+                uraianModal.style.zIndex = '2000'; 
+                document.body.classList.add('modal-open');
             };
 
-            setVal('request_type',        btn.getAttribute('data-request-type') || 'Rekrutmen');
-            setVal('title',               btn.getAttribute('data-title') || '');
-            setVal('position',            btn.getAttribute('data-position') || '');
-            setVal('headcount',           btn.getAttribute('data-headcount') || '1');
-            setVal('employment_type',     btn.getAttribute('data-employment-type') || '');
-            setVal('target_start_date',   btn.getAttribute('data-target-start') || '');
-            setVal('budget_source_type',  btn.getAttribute('data-budget-source-type') || '');
-            setVal('budget_ref',          btn.getAttribute('data-budget-ref') || '');
-            setVal('publish_vacancy_pref',btn.getAttribute('data-publish-pref') || '');
-            const justif = btn.getAttribute('data-justification') || '';
-            const ta = form.querySelector('textarea[name="justification"]');
-            if (ta) ta.value = justif;
+            document.addEventListener('click', function(e) {
+                if(e.target.classList.contains('js-save-uraian-form')) {
+                    const status = e.target.getAttribute('data-status');
+                    const dataObj = {
+                        nama: ujInputs.nama.value,
+                        unit: ujInputs.unit.value,
+                        pemangku: ujInputs.pemangku.value,
+                        melapor: ujInputs.melapor.value,
+                        tujuan: ujInputs.tujuan.value,
+                        akuntabilitas: ujInputs.akuntabilitas.value,
+                        dimensi_keuangan: ujInputs.dimensi_keuangan ? ujInputs.dimensi_keuangan.value : '',
+                        anggaran: ujInputs.anggaran ? ujInputs.anggaran.value : '',
+                        dimensi_non_keuangan: ujInputs.dimensi_non_keuangan ? ujInputs.dimensi_non_keuangan.value : '',
+                        bawahan_langsung: ujInputs.bawahan_langsung ? ujInputs.bawahan_langsung.value : '',
+                        total_staff: ujInputs.total_staff ? ujInputs.total_staff.value : '',
+                        total_pegawai: ujInputs.total_pegawai ? ujInputs.total_pegawai.value : '',
+                        wewenang: ujInputs.wewenang ? ujInputs.wewenang.value : '',
+                        hub_internal: ujInputs.hub_internal ? ujInputs.hub_internal.value : '',
+                        hub_eksternal: ujInputs.hub_eksternal ? ujInputs.hub_eksternal.value : '',
+                        spek_pendidikan: ujInputs.spek_pendidikan ? ujInputs.spek_pendidikan.value : '',
+                        spek_pengetahuan: ujInputs.spek_pengetahuan ? ujInputs.spek_pengetahuan.value : '',
+                        spek_kompetensi: ujInputs.spek_kompetensi ? ujInputs.spek_kompetensi.value : '',
+                        spek_kompetensi_wajib: ujInputs.spek_kompetensi_wajib ? ujInputs.spek_kompetensi_wajib.value : '',
+                        spek_kompetensi_generik: ujInputs.spek_kompetensi_generik ? ujInputs.spek_kompetensi_generik.value : '',
+                        struktur_organisasi: (ujInputs.struktur && ujInputs.struktur._base64) ? ujInputs.struktur._base64 : ''
+                    };
 
-            if (titleEl)   titleEl.textContent   = 'Edit Izin Prinsip';
-            if (subEl)     subEl.textContent     = 'Perbarui draft permintaan sebelum dikirim approval';
-          } else {
-            // mode create
-            form.reset();
-            if (titleEl)   titleEl.textContent   = 'Buat Izin Prinsip Baru';
-            if (subEl)     subEl.textContent     = 'Ajukan permintaan rekrutmen atau perpanjangan kontrak';
-          }
+                    if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
+                    multiDataStore[activeDataIndex].uraian_data = dataObj;
+                    multiDataStore[activeDataIndex].uraian_status = status; 
 
-          el.hidden = false;
-          document.body.classList.add('modal-open');
-        }
+                    const type = getActiveContractType();
+                    const textStatus = (status === 'Final') ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
 
-        if (e.target.matches('[data-modal-close]') || (e.target.closest && e.target.closest('[data-modal-close]'))) {
-          const el = e.target.closest ? e.target.closest('.u-modal') : null;
-          if (el) {
-            el.hidden = true;
-            document.body.classList.remove('modal-open');
-          }
-        }
-      });
+                    const currentBudget = budgetSourceSelect ? budgetSourceSelect.value : '';
+                    if(currentBudget === 'RKAP') { 
+                        if(uraianStatus) uraianStatus.textContent = textStatus; 
+                    } 
+                    else { 
+                        if(uraianStatusProject) uraianStatusProject.textContent = textStatus; 
+                    }
 
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-          const open = document.querySelector('.u-modal:not([hidden])');
-          if (open) {
-            open.hidden = true;
-            document.body.classList.remove('modal-open');
-          }
-        }
-      });
-    },
-    initDT() {
-      if (window.jQuery && jQuery.fn && jQuery.fn.dataTable) {
-        this.dt = jQuery('#ip-table').DataTable({
-          responsive: true,
-          paging: false,
-          info: false,
-          language: {
-            search: "Cari:",
-            zeroRecords: "Tidak ada data",
-            infoEmpty: "Menampilkan 0 data",
-            infoFiltered: "(disaring dari _MAX_ total data)"
-          }
+                    if(status === 'Final') {
+                        btnPreviewPdf.dataset.json = JSON.stringify(dataObj);
+                        btnPreviewPdf.style.display = 'inline-flex';
+                        uraianStatusDisplay.textContent = 'Status: Final';
+                        alert('Data berhasil difinalisasi.');
+                    } else {
+                        uraianModal.hidden = true;
+                    }
+                }
+            });
+
+            function submitPdfForm(jsonData) {
+                if(!jsonData) return;
+                let formPdf = document.getElementById('pdf-generator-form');
+                if(!formPdf) {
+                    formPdf = document.createElement('form');
+                    formPdf.id = 'pdf-generator-form';
+                    formPdf.method = 'POST';
+                    formPdf.action = "{{ route('recruitment.uraian-jabatan.preview-pdf') }}"; 
+                    formPdf.target = '_blank';
+                    const csrf = document.createElement('input');
+                    csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = "{{ csrf_token() }}";
+                    formPdf.appendChild(csrf);
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden'; inp.name = 'data'; inp.id = 'pdf-data-input';
+                    formPdf.appendChild(inp);
+                    document.body.appendChild(formPdf);
+                }
+                document.getElementById('pdf-data-input').value = jsonData;
+                formPdf.submit();
+            }
+
+            if(btnPreviewPdf) {
+                btnPreviewPdf.addEventListener('click', function() { submitPdfForm(this.dataset.json); });
+            }
+
+            // --- Logic section dinamis ---      
+            function resetDynamicInputs() {
+                if(titleInput) titleInput.value = '';
+                Object.values(dynInputs).forEach(el => {
+                    if(el && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) el.value = '';
+                });
+                if (dynLocationId) dynLocationId.value = '';
+                if(dynInputs.cv) { dynInputs.cv.value = ''; dynInputs.cv._base64 = null; dynInputs.cv._filename = null; }
+                if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = '';
+
+                form.querySelectorAll('.js-rkap-select.selected').forEach(b => {
+                    b.classList.remove('selected', 'u-success'); b.classList.add('u-btn--outline'); b.innerHTML = '+';
+                });
+                if(rkapSelectedInfo) rkapSelectedInfo.style.display = 'none';
+                if(rkapSelectedName) rkapSelectedName.textContent = '';
+                if(uraianStatus) uraianStatus.textContent = 'Belum ada uraian';
+                if(picOrganikInput) picOrganikInput.value = '';
+                if(picOrganikSearchInput) picOrganikSearchInput.value = '';
+                if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
+                if(positionOrganikInput) positionOrganikInput.value = '';
+                if(kodeProjectSelect) kodeProjectSelect.value = '';
+                if(namaProjectInput) namaProjectInput.value = '';
+                if(positionSearchInput) positionSearchInput.value = '';
+                if(positionInput) positionInput.value = '';
+                if(uraianStatusProject) uraianStatusProject.textContent = 'Belum ada uraian';
+                if(picProjectInput) picProjectInput.value = '';
+                if(picProjectSearchInput) picProjectSearchInput.value = '';
+            }
+
+            function saveCurrentTabData() {
+                const idx = activeDataIndex;
+                if (!multiDataStore[idx]) multiDataStore[idx] = {};
+                if(titleInput) multiDataStore[idx].title = titleInput.value;
+
+                // Simpan input statis
+                multiDataStore[idx].start_date = dynInputs.start_date?.value || '';
+                multiDataStore[idx].end_date    = dynInputs.end_date?.value || '';
+                multiDataStore[idx].location    = dynInputs.location?.value || '';
+                multiDataStore[idx].education   = dynInputs.education?.value || '';
+                multiDataStore[idx].brevet      = dynInputs.brevet?.value || '';
+                multiDataStore[idx].experience  = dynInputs.experience?.value || '';
+                multiDataStore[idx].salary      = dynInputs.salary?.value || '';
+                multiDataStore[idx].terbilang   = dynInputs.terbilang?.value || '';
+                multiDataStore[idx].allowanceJ  = dynInputs.allowanceJ?.value || '';
+                multiDataStore[idx].allowanceP  = dynInputs.allowanceP?.value || '';
+                multiDataStore[idx].allowanceC  = dynInputs.allowanceC?.value || '';
+                multiDataStore[idx].allowanceK  = dynInputs.allowanceK?.value || '';
+                multiDataStore[idx].pph21       = dynInputs.pph21?.value || '';
+                multiDataStore[idx].bpjs_kes    = dynInputs.bpjs_kes?.value || '';
+                multiDataStore[idx].bpjs_tk     = dynInputs.bpjs_tk?.value || '';
+                multiDataStore[idx].thr         = dynInputs.thr?.value || '';
+                multiDataStore[idx].kompensasi  = dynInputs.kompensasi?.value || '';
+
+                if(dynInputs.cv && dynInputs.cv._base64) {
+                    multiDataStore[idx].cv_file = dynInputs.cv._base64;
+                    multiDataStore[idx].cv_filename = dynInputs.cv._filename;
+                }
+
+                // --- LOGIKA BARU: Tentukan tipe data berdasarkan SECTION YANG VISIBLE ---
+                // cek apakah section RKAP atau Project sedang tampil (berdasarkan Budget Source)
+                const isRkapVisible = rkapSection && rkapSection.style.display !== 'none';
+                const isProjectVisible = projectSection && projectSection.style.display !== 'none';
+
+                if (isRkapVisible) {
+                    const selectedRow = form.querySelector('.js-rkap-select.selected');
+                    const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
+                    multiDataStore[idx].type = 'Organik';
+                    multiDataStore[idx].rkap_job = rkapJob;
+                    multiDataStore[idx].pic_id = picOrganikInput.value;
+                    multiDataStore[idx].pic_text = picOrganikSearchInput.value;
+                    multiDataStore[idx].position = positionOrganikInput.value; 
+                    multiDataStore[idx].position_text = positionOrganikSearchInput.value;
+                } 
+                else if (isProjectVisible) {
+                    multiDataStore[idx].type = getActiveContractType();
+                    multiDataStore[idx].project_code = kodeProjectSelect.value;
+                    multiDataStore[idx].project_name = namaProjectInput.value;
+                    multiDataStore[idx].position = positionInput.value; 
+                    multiDataStore[idx].position_text = positionSearchInput.value;
+                    multiDataStore[idx].pic_id = picProjectInput.value;
+                    multiDataStore[idx].pic_text = picProjectSearchInput.value;
+                }
+            }
+
+            function loadTabData(idx) {
+                resetDynamicInputs(); 
+                const data = multiDataStore[idx];
+                if (!data) return; 
+
+                if(data.title && titleInput) titleInput.value = data.title;
+
+                if(dynInputs.start_date) dynInputs.start_date.value = data.start_date || '';
+                if(dynInputs.end_date)   dynInputs.end_date.value   = data.end_date || '';
+                if(dynInputs.location)   dynInputs.location.value   = data.location || '';
+                if(dynInputs.education)  dynInputs.education.value  = data.education || '';
+                if(dynInputs.brevet)     dynInputs.brevet.value     = data.brevet || '';
+                if(dynInputs.experience) dynInputs.experience.value = data.experience || '';
+                if(dynInputs.salary)     dynInputs.salary.value     = data.salary || '';
+                if(dynInputs.terbilang)  dynInputs.terbilang.value  = data.terbilang || '';
+                if(dynInputs.allowanceJ)  dynInputs.allowanceJ.value  = data.allowanceJ || '';
+                if(dynInputs.allowanceP)  dynInputs.allowanceP.value  = data.allowanceP || '';
+                if(dynInputs.allowanceC)  dynInputs.allowanceC.value  = data.allowanceC || '';
+                if(dynInputs.allowanceK)  dynInputs.allowanceK.value  = data.allowanceK || '';
+                if(dynInputs.pph21)      dynInputs.pph21.value      = data.pph21 || '';
+                if(dynInputs.bpjs_kes)   dynInputs.bpjs_kes.value   = data.bpjs_kes || '';
+                if(dynInputs.bpjs_tk)    dynInputs.bpjs_tk.value    = data.bpjs_tk || '';
+                if(dynInputs.thr)        dynInputs.thr.value        = data.thr || '';
+                if(dynInputs.kompensasi) dynInputs.kompensasi.value = data.kompensasi || '';
+
+                if(data.salary && dynInputs.terbilang) {
+                    let text = terbilang(data.salary) + 'RUPIAH';
+                    text = text.charAt(0).toUpperCase() + text.slice(1);
+                    dynInputs.terbilang.value = text;
+                } else if (dynInputs.terbilang) {
+                    dynInputs.terbilang.value = data.terbilang || '';
+                }
+                if(data.cv_filename && dynInputs.cv_preview) {
+                    dynInputs.cv_preview.textContent = "Current File: " + data.cv_filename;
+                    dynInputs.cv._base64 = data.cv_file;
+                    dynInputs.cv._filename = data.cv_filename;
+                }
+
+                const type = getActiveContractType();
+                const statusText = (data.uraian_status === 'Final') ? 'Tersimpan (Final)' : (data.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
+
+                const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
+
+                if (data.rkap_job || (type === 'Organik' && data.type === 'Organik') || (budgetSourceSelect && budgetSourceSelect.value === 'RKAP')) {
+                    if (data.rkap_job) {
+                        const rows = form.querySelectorAll('#rkap-table tbody tr');
+                        rows.forEach(tr => {
+                            if (tr.dataset.jobName === data.rkap_job) {
+                                const btn = tr.querySelector('.js-rkap-select');
+                                toggleRkapSelect(btn, true);
+                            }
+                        });
+                    }
+                    if(uraianStatus) uraianStatus.textContent = statusText;
+                    if(data.pic_id) picOrganikInput.value = data.pic_id;
+                    if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
+                    if(data.position) positionOrganikInput.value = data.position;
+                    if(data.position_text) positionOrganikSearchInput.value = data.position_text;
+
+                } else if (projectTypes.includes(type) && projectTypes.includes(data.type)) {
+                        if(data.project_code) {
+                            kodeProjectSelect.value = data.project_code;
+                            namaProjectInput.value = data.project_name || ''; 
+                        }
+                        if(data.position) positionInput.value = data.position;
+                        if(data.position_text) positionSearchInput.value = data.position_text;
+                        if(uraianStatusProject) uraianStatusProject.textContent = statusText;
+                        if(data.pic_id) picProjectInput.value = data.pic_id;
+                        if(data.pic_text) picProjectSearchInput.value = data.pic_text;
+                }
+            }
+
+            function renderTabs(count) {
+                dataTabsContainer.innerHTML = '';
+                dataTabsContainer.style.display = 'flex';
+                
+                for (let i = 1; i <= count; i++) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    const activeClass = (i === activeDataIndex) ? 'u-btn--brand' : 'u-btn--soft';
+                    btn.className = `u-btn u-btn--sm ${activeClass}`;
+                    btn.textContent = `Data ${i}`;
+                    btn.dataset.idx = i;
+                    btn.addEventListener('click', () => {
+                        saveCurrentTabData(); 
+                        const prevBtn = dataTabsContainer.querySelector(`button[data-idx="${activeDataIndex}"]`);
+                        if(prevBtn) { prevBtn.classList.remove('u-btn--brand'); prevBtn.classList.add('u-btn--soft'); }
+                        btn.classList.remove('u-btn--soft'); btn.classList.add('u-btn--brand');
+                        activeDataIndex = i; 
+                        loadTabData(i); 
+                    });
+                    dataTabsContainer.appendChild(btn);
+                }
+            }
+
+            if(headcountInput) {
+                headcountInput.addEventListener('input', function(e) {
+                    let val = parseInt(e.target.value);
+                    if (isNaN(val) || val < 1) val = 1;
+                    saveCurrentTabData(); 
+                    totalDataCount = val;
+                    if (activeDataIndex > totalDataCount) { activeDataIndex = 1; loadTabData(1); }
+                    renderTabs(totalDataCount);
+                });
+            }
+
+            if (contractTypeSelect) {
+                contractTypeSelect.addEventListener('change', function() {
+                const val = this.value;
+                multiDataStore = {}; 
+                resetDynamicInputs();
+                activeDataIndex = 1;
+                renderTabs(totalDataCount); 
+                const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
+                if (val === 'Organik') { setBudgetLock(true, 'RKAP'); }
+                else if (projectTypes.includes(val)) { setBudgetLock(true, 'RAB Proyek');}
+                else { setBudgetLock(false, ''); }
+                updateVisibility();
+                });
+            }
+
+            submitBtn.addEventListener('click', function(e) {
+                saveCurrentTabData();
+                const payload = [];
+                for (let i = 1; i <= totalDataCount; i++) {
+                    let d = multiDataStore[i] || {};
+                    d.type = getActiveContractType(); 
+                    if(!d.title) d.title = titleInput.value; 
+                    payload.push(d);
+                }
+                detailsJsonInput.value = JSON.stringify(payload);
+            });
+
+            const btnAddNote       = document.getElementById('btn-add-note');
+            const noteModal        = document.getElementById('noteEditorModal');
+            const hiddenNoteInput  = document.getElementById('hidden_extended_note');
+            const closeNoteBtns    = document.querySelectorAll('.js-close-note-modal');
+            const saveNoteBtn      = document.querySelector('.js-save-note');
+            let myNoteEditor = null;
+
+            if (!myNoteEditor && document.querySelector('#editorContent')) {
+                ClassicEditor
+                    .create(document.querySelector('#editorContent'), {
+                        toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'blockQuote', 'insertTable', 'undo', 'redo' ],
+                        placeholder: 'Tulis catatan persetujuan/penolakan di sini...'
+                    })
+                    .then(editor => { myNoteEditor = editor; })
+                    .catch(error => { console.error(error); });
+            }
+
+            if(btnAddNote) {
+                btnAddNote.addEventListener('click', function() {
+                    if(myNoteEditor) { myNoteEditor.setData(hiddenNoteInput.value || ''); }
+                    noteModal.hidden = false;
+                    noteModal.style.display = 'flex'; 
+                });
+            }
+            closeNoteBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    noteModal.hidden = true;
+                    noteModal.style.display = 'none';
+                });
+            });
+            if(saveNoteBtn) {
+                saveNoteBtn.addEventListener('click', function() {
+                    if(myNoteEditor) {
+                        const content = myNoteEditor.getData();
+                        hiddenNoteInput.value = content; 
+                        const cleanText = content.replace(/<[^>]*>?/gm, '').trim(); 
+                        if(cleanText !== '') {
+                            btnAddNote.classList.remove('u-btn--outline');
+                            btnAddNote.classList.add('u-btn--brand');
+                            btnAddNote.innerHTML = '<i class="fas fa-check-circle u-mr-xs"></i> Catatan Tersimpan';
+                        } else {
+                            btnAddNote.classList.add('u-btn--outline');
+                            btnAddNote.classList.remove('u-btn--brand');
+                            btnAddNote.innerHTML = '<i class="fas fa-edit u-mr-xs"></i> Catatan';
+                        }
+                    }
+                    noteModal.hidden = true;
+                    noteModal.style.display = 'none';
+                });
+            }
+
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('#uraianModal [data-modal-close]')) {
+                    const m = document.getElementById('uraianModal');
+                    m.hidden = true; 
+                }
+                else if (e.target.closest('#createApprovalModal [data-modal-close]') || e.target.closest('#detailApprovalModal [data-modal-close]')) {
+                    const m = e.target.closest('.u-modal');
+                    if(m) { m.hidden = true; document.body.classList.remove('modal-open'); }
+                }
+
+                const btnCreate = e.target.closest('[data-modal-open="createApprovalModal"]');
+                if(btnCreate) {
+                    const m = document.getElementById('createApprovalModal');
+                    const deleteForm = document.getElementById('deleteDraftForm');
+                    if(m) { 
+                        m.hidden = false; document.body.classList.add('modal-open'); 
+                        const mode = btnCreate.getAttribute('data-mode');
+                        multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1; 
+                        
+                        if(mode === 'create') {
+                            form.reset(); 
+                            setBudgetLock(false, ''); 
+                            if(modalTitle) modalTitle.textContent = "Buat Izin Prinsip Baru";
+                            if(modalSubtitle) modalSubtitle.textContent = "Ajukan permintaan rekrutmen atau perpanjangan kontrak";
+                            form.action = form.getAttribute('data-default-action'); 
+                            if(deleteForm) deleteForm.style.display = 'none';
+                            let methodField = form.querySelector('input[name="_method"]');
+                            if (methodField) methodField.remove();
+                            [positionSearchInput, positionInput, positionOrganikSearchInput, positionOrganikInput, 
+                            picProjectSearchInput, picProjectInput, picOrganikSearchInput, picOrganikInput].forEach(el => { if(el) el.value = ''; });
+                            resetDynamicInputs();
+                            renderTabs(1); 
+                            loadTabData(1);
+                            updateVisibility();
+
+                        } else if (mode === 'edit') {
+                            if(modalTitle) modalTitle.textContent = "Edit Izin Prinsip";
+                            const updateUrl = btnCreate.getAttribute('data-update-url');
+                            if(updateUrl) form.action = updateUrl;
+                            const deleteUrl = btnCreate.getAttribute('data-delete-url');
+                            if(deleteForm) { deleteForm.style.display = 'block'; deleteForm.action = deleteUrl || ''; }
+                            
+                            let methodField = form.querySelector('input[name="_method"]');
+                            if (!methodField) { methodField = document.createElement('input'); methodField.type = 'hidden'; methodField.name = '_method'; methodField.value = 'PUT'; form.appendChild(methodField); }
+
+                            if(requestTypeSelect) requestTypeSelect.value = btnCreate.getAttribute('data-request-type');
+                            if(titleInput) titleInput.value = btnCreate.getAttribute('data-title');
+                            if(justifInput) justifInput.value = btnCreate.getAttribute('data-justification');
+
+                            const contractType = btnCreate.getAttribute('data-employment-type');
+                            const budgetType   = btnCreate.getAttribute('data-budget-source-type');
+                            
+                            if(contractTypeSelect) contractTypeSelect.value = contractType;
+                            if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
+                            else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
+                            else { setBudgetLock(false, ''); if(budgetSourceSelect) budgetSourceSelect.value = budgetType; }
+                            updateVisibility();
+
+                            const posName = btnCreate.getAttribute('data-position');
+                            if (contractType === 'Organik') {
+                                if(positionOrganikSearchInput) positionOrganikSearchInput.value = posName;
+                                if(positionOrganikInput) positionOrganikInput.value = posName; 
+                            } else {
+                                if(positionSearchInput) positionSearchInput.value = posName;
+                                if(positionInput) positionInput.value = posName;
+                            }
+
+                            totalDataCount = parseInt(btnCreate.getAttribute('data-headcount')) || 1;
+                            if(headcountInput) headcountInput.value = totalDataCount;
+                            renderTabs(totalDataCount);
+
+                            const metaJsonStr = btnCreate.getAttribute('data-meta-json');
+                            if (metaJsonStr) {
+                                try {
+                                    const detailsArray = JSON.parse(metaJsonStr);
+                                    if (Array.isArray(detailsArray) && detailsArray.length > 0) {
+                                        detailsArray.forEach((detail, idx) => { multiDataStore[idx + 1] = detail; });
+                                    }
+                                } catch (e) { console.warn('Failed to parse meta-json:', e); }
+                            }
+                            activeDataIndex = 1;
+                            loadTabData(1);
+                        }
+                    }
+                }
+                
+                // Detail Modal Logic
+                const btnDetail = e.target.closest('.js-open-detail');
+                if(btnDetail && detailModal) {
+                    const safeTxt = (attr) => btnDetail.getAttribute(attr) || '-';
+                    const metaJsonStr = btnDetail.getAttribute('data-meta-json');
+                    let detailsArray = [];
+                    try { detailsArray = JSON.parse(metaJsonStr); } catch(e){}
+                    if(!Array.isArray(detailsArray) || detailsArray.length===0) detailsArray = [{}];
+
+
+                    const historyJson = btnDetail.getAttribute('data-history');
+                    const canViewNotes = btnDetail.getAttribute('data-can-view-notes') === 'true';
+                    let historyData = [];
+                    try { historyData = JSON.parse(historyJson); } catch(e) {}
+
+                    const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '-'; };
+                    setTxt('view-ticket', safeTxt('data-ticket-number'));
+                    setTxt('view-status', safeTxt('data-status'));
+                    setTxt('view-unit', safeTxt('data-unit'));
+                    setTxt('view-request-type', safeTxt('data-request-type'));
+                    setTxt('view-justification', safeTxt('data-justification'));
+                    setTxt('view-budget-source', safeTxt('data-budget-source'));
+                    
+                    const tabsContainer = document.getElementById('detailTabsContainer');
+                    tabsContainer.innerHTML = '';
+                    
+                    const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
+                    const approveUrl = btnDetail.getAttribute('data-approve-url');
+                    const rejectUrl = btnDetail.getAttribute('data-reject-url');
+                    
+                    const approveForm = detailModal.querySelector('.detail-approve-form');
+                    const rejectForm = detailModal.querySelector('.detail-reject-form');
+
+                    // Logic Tampilan Tombol Catatan di Detail Modal
+                    if(canApprove && approveForm && rejectForm) {
+                        approveForm.style.display = 'block';
+                        rejectForm.style.display = 'block';
+                        if(approveForm.querySelector('button')) approveForm.querySelector('button').disabled = false;
+                        if(rejectForm.querySelector('button')) rejectForm.querySelector('button').disabled = false;
+                        if(approveUrl) approveForm.action = approveUrl;
+                        if(rejectUrl) rejectForm.action = rejectUrl;
+                        if(btnAddNote) btnAddNote.style.display = 'block';
+                    } else {
+                        if(approveForm) approveForm.style.display = 'none';
+                        if(rejectForm) rejectForm.style.display = 'none';
+                        if(btnAddNote) btnAddNote.style.display = 'none';
+                    }
+
+                    const renderContent = (index) => {
+                        const data = detailsArray[index];
+                        const globalTitle = safeTxt('data-title');
+                        setTxt('view-title', data.title || globalTitle);
+                        setTxt('view-position', data.position_text || safeTxt('data-position'));
+                        setTxt('view-headcount', '1 Orang');
+                        setTxt('view-employment', data.type || safeTxt('data-employment-type'));
+                        setTxt('view-pic', data.pic_text || '-');
+
+                        const btnPdf = document.getElementById('btn-view-pdf-detail');
+                        const statusUraian = document.getElementById('view-uraian-status');
+                        if(data && data.uraian_data) {
+                            statusUraian.textContent = 'Tersedia';
+                            btnPdf.style.display = 'inline-flex';
+                            btnPdf.onclick = function() { submitPdfForm(JSON.stringify(data.uraian_data)); };
+                        } else {
+                            statusUraian.textContent = 'Tidak ada uraian';
+                            btnPdf.style.display = 'none';
+                        }
+                        
+                        const container = document.getElementById('detailContentContainer');
+                        let extraDetailDiv = document.getElementById('view-extra-details');
+                        
+                        if(!extraDetailDiv) {
+                            extraDetailDiv = document.createElement('div');
+                            extraDetailDiv.id = 'view-extra-details';
+                            extraDetailDiv.style.marginTop = '24px';
+                            container.appendChild(extraDetailDiv);
+                        } else {
+                            if (extraDetailDiv.parentNode !== container) {
+                                container.appendChild(extraDetailDiv);
+                            }
+                            extraDetailDiv.style.marginTop = '24px';
+                        }
+
+                        const makeRow = (lbl, val, isBold = false, isGrand = false) => {
+                            let styleVal = isBold ? 'font-weight: 800; color: #111827;' : 'font-medium';
+                            let styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
+                            let borderStyle = 'border-bottom: 1px solid #f3f4f6;';
+                            if (isGrand) {
+                                styleVal = 'font-weight: 900; color: #059669; font-size: 1.1em;'; 
+                                styleLbl = 'font-weight: 800; color: #065f46; font-size: 1.0em;';
+                                borderStyle = 'border-top: 2px solid #059669; padding-top: 8px; margin-top: 8px;';
+                            }
+
+                            return `<div class="u-flex u-justify-between u-mb-xs u-pb-xs" style="${borderStyle}">
+                                        <span class="u-text-xs u-uppercase ${styleLbl}">${lbl}</span>
+                                        <span class="u-text-sm u-text-right ${styleVal}">${val || '-'}</span>
+                                    </div>`;
+                        };
+
+                        const formatRp = (val) => {
+                            if (!val) return '-';
+                            let num = parseFloat(val);
+                            if (isNaN(num)) return '-';
+                            return 'Rp ' + num.toLocaleString('id-ID'); 
+                        };
+
+                        const parseVal = (v) => parseFloat(v) || 0;
+                        
+                        const totalAnggaranPerBulan = 
+                            parseVal(data.salary) + 
+                            parseVal(data.allowanceJ) + 
+                            parseVal(data.allowanceP) + 
+                            parseVal(data.allowanceC) + 
+                            parseVal(data.allowanceK) + 
+                            parseVal(data.thr) + 
+                            parseVal(data.kompensasi) + 
+                            parseVal(data.bpjs_tk) + 
+                            parseVal(data.bpjs_kes) + 
+                            parseVal(data.pph21);
+
+                        let duration = 1; 
+                        if (data.start_date && data.end_date) {
+                            const d1 = new Date(data.start_date);
+                            const d2 = new Date(data.end_date);
+                            d2.setDate(d2.getDate() + 1);
+                            let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+                            if (d2.getDate() < d1.getDate()) {
+                                months--;
+                            }
+                            duration = months > 0 ? months : 1;
+                        }
+                        const grandTotal = totalAnggaranPerBulan * duration;
+                        
+                        let historyHtml = '';
+                        if (historyData.length > 0) {
+                            historyHtml += `<div class="u-mt-lg u-pt-md u-border-t">`;
+                            historyHtml += `<div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em;">Riwayat Persetujuan</div>`;
+                            historyHtml += `<div class="u-space-y-sm">`; 
+                            
+                            console.log("DEBUG HISTORY:", {
+                                roleSaya: "{{ $me->getRoleNames()->first() ?? 'User' }}", 
+                                bisaLihatCatatan: canViewNotes, 
+                                dataHistory: historyData
+                            });
+                            historyData.forEach((h, index) => {
+                                let badgeClass = 'u-badge--subtle';
+                                let icon = '<i class="fas fa-circle-notch fa-spin"></i>';
+                                if(h.status === 'approved') { badgeClass = 'u-badge--success'; icon = '<i class="fas fa-check-circle"></i>'; } 
+                                else if(h.status === 'rejected') { badgeClass = 'u-badge--danger'; icon = '<i class="fas fa-times-circle"></i>'; } 
+                                else { icon = '<i class="far fa-clock"></i>'; }
+                                let contentNote = (h.note && h.note !== 'null') ? h.note.trim() : '';
+                                let hasNote = (canViewNotes && contentNote.length > 0);
+                                let noteId = `history-note-${index}`; 
+                                let iconId = `icon-history-note-${index}`;
+                                let cursorStyle = hasNote ? 'cursor: pointer;' : '';
+                                let clickAttr = hasNote ? `onclick="toggleHistoryNote('${noteId}')"` : '';
+                                let noteIndicator = hasNote 
+                                    ? `<div class="u-text-2xs u-text-brand u-mt-xxs u-font-medium"><i id="${iconId}" class="fas fa-chevron-down u-mr-xs"></i> Lihat Catatan</div>` 
+                                    : '';
+
+                                historyHtml += `
+                                <div class="u-card u-p-sm u-bg-white u-border u-mb-sm u-hover-lift" style="${cursorStyle}" ${clickAttr} title="${hasNote ? 'Klik untuk melihat catatan' : ''}">
+                                    <div class="u-flex u-justify-between u-items-center">
+                                        <div>
+                                            <div class="u-font-bold u-text-sm u-text-dark">${h.role}</div>
+                                            <div class="u-text-2xs u-muted"><i class="far fa-calendar-alt"></i> ${h.date}</div>
+                                        </div>
+                                        <div class="u-text-right">
+                                            <div class="u-badge ${badgeClass} u-text-2xs">${icon} ${h.status.toUpperCase()}</div>
+                                            ${noteIndicator}
+                                        </div>
+                                    </div>
+                                    
+                                    ${ hasNote ? 
+                                        `<div id="${noteId}" style="display: none;" class="u-bg-light u-p-sm u-rounded u-text-sm u-mt-sm u-animate-fade-in" style="border-left: 3px solid #3b82f6;">
+                                                <div class="u-text-xs u-font-bold u-text-muted u-mb-xxs u-uppercase">Isi Catatan:</div>
+                                                <div class="ck-content" style="font-size: 0.9em; color: #374151;">${h.note}</div>
+                                            </div>` : '' 
+                                    }
+                                </div>
+                                `;
+                            });
+                            historyHtml += `</div></div>`;
+                        }
+
+                        extraDetailDiv.innerHTML = `
+                            <div class="u-card u-p-md">
+                                <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">
+                                    Detail Kandidat & Remunerasi
+                                </div>
+                                <div class="u-grid-2 u-stack-mobile u-gap-lg">
+                                <div>
+                                    ${makeRow('Mulai Kerja', data.start_date)}
+                                    ${makeRow('Selesai Kerja', data.end_date)}
+                                    ${makeRow('Durasi Kontrak', duration + ' Bulan')} 
+                                    ${makeRow('Lokasi', data.location)}
+                                    ${makeRow('Pendidikan', data.education)}
+                                    ${makeRow('Brevet', data.brevet)}
+                                    ${makeRow('Pengalaman', data.experience)}
+                                    
+                                    <div class="u-mt-sm u-flex u-justify-between u-items-center">
+                                        <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
+                                        ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
+                                    </div>
+                                </div>
+
+                                <div> 
+                                    ${makeRow('Gaji Pokok', formatRp(data.salary))}
+                                    ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
+                                    ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
+                                    ${makeRow('Tunjangan Komunikasi', formatRp(data.allowanceC))}
+                                    ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
+                                    ${makeRow('THR', formatRp(data.thr))}
+                                    ${makeRow('Kompensasi', formatRp(data.kompensasi))}
+                                    ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
+                                    ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
+                                    ${makeRow('PPh 21', formatRp(data.pph21))}
+                                    
+                                    <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
+                                        ${makeRow('TOTAL ANGGARAN (PER BULAN)', formatRp(totalAnggaranPerBulan), true)}
+                                    </div>
+
+                                    ${makeRow(`TOTAL SELURUHNYA (${duration} BULAN)`, formatRp(grandTotal), false, true)}
+                                </div>
+                                </div>
+                            </div>
+                            ${historyHtml}
+                        `;
+                    };
+                    
+                    detailsArray.forEach((item, i) => {
+                        const btnTab = document.createElement('button');
+                        btnTab.type = 'button';
+                        const initialStyle = (i === 0) ? 'u-btn--brand u-text-white' : 'u-btn--ghost';
+                        btnTab.className = `u-btn u-btn--sm ${initialStyle} u-hover-lift`;
+                        btnTab.textContent = `Data ${i + 1}`;
+                        btnTab.style.borderRadius = '20px'; 
+                        btnTab.addEventListener('click', (evt) => {
+                            evt.preventDefault();
+                            Array.from(tabsContainer.children).forEach(c => {
+                                c.classList.remove('u-btn--brand', 'u-text-white');
+                                c.classList.add('u-btn--ghost');
+                            });
+                            btnTab.classList.remove('u-btn--ghost');
+                            btnTab.classList.add('u-btn--brand', 'u-text-white');
+                            renderContent(i);
+                        });
+                        tabsContainer.appendChild(btnTab);
+                    });          
+                    renderContent(0);
+                    detailModal.hidden = false; 
+                    document.body.classList.add('modal-open');
+                }
+            });
+
+            form.addEventListener('click', function(e) {
+                if (e.target.closest('.js-open-uraian-project')) {
+                    const currentData = multiDataStore[activeDataIndex] || {};
+                    openUraianForm(currentData, 'project');
+                }
+                if (e.target.closest('.js-open-uraian')) {
+                    const selectedRow = form.querySelector('.js-rkap-select.selected');
+                    if (!selectedRow) { alert('Pilih Job Function di tabel RKAP terlebih dahulu.'); return; }
+                    const currentData = multiDataStore[activeDataIndex] || {};
+                    openUraianForm(currentData, 'organik');
+                }
+            });
+            
+            function toggleRkapSelect(sel, forceSelect = false) { 
+                const tr = sel.closest('tr'); const job = tr.dataset.jobName;
+                form.querySelectorAll('.js-rkap-select.selected').forEach(el => { if (el !== sel) { el.classList.remove('selected', 'u-success'); el.classList.add('u-btn--outline'); el.innerHTML = '+'; } });
+                const isSelected = sel.classList.contains('selected') && !forceSelect;
+                if (isSelected) {
+                    sel.classList.remove('selected', 'u-success'); sel.classList.add('u-btn--outline'); sel.innerHTML = '+';
+                    rkapSelectedInfo.style.display = 'none';
+                    if(multiDataStore[activeDataIndex]) { multiDataStore[activeDataIndex].rkap_job = null; }
+                } else {
+                    sel.classList.add('selected', 'u-success'); sel.classList.remove('u-btn--outline'); sel.innerHTML = '<i class="fas fa-check"></i>';
+                    rkapSelectedInfo.style.display = 'block';
+                    if(rkapSelectedName) rkapSelectedName.textContent = job;
+                    const stored = multiDataStore[activeDataIndex];
+                    const statusText = (stored && stored.uraian_status === 'Final') ? 'Tersimpan (Final)' : (stored && stored.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
+                    if(uraianStatus) uraianStatus.textContent = statusText;
+                }
+            }
+            form.addEventListener('click', function(e) { const btn = e.target.closest('.js-rkap-select'); if (btn) { e.preventDefault(); toggleRkapSelect(btn); } });
+            
+            setupSearchableDropdown(positionSearchInput, positionInput, positionSearchResults, positionsData, true);
+            setupSearchableDropdown(positionOrganikSearchInput, positionOrganikInput, positionOrganikSearchResults, positionsData, true);
+            setupSearchableDropdown(picProjectSearchInput, picProjectInput, picProjectResults, picData, false);
+            setupSearchableDropdown(picOrganikSearchInput, picOrganikInput, picOrganikResults, picData, false);
+            
+            // --- VISIBILITY & TRIGGER LOGIC ---
+            const updateVisibility = () => { 
+                const budget = budgetSourceSelect ? budgetSourceSelect.value : '';
+                const isRkap = (budget === 'RKAP');
+                const isProjectRab = (budget === 'RAB Proyek');
+
+                if (rkapSection) rkapSection.style.display = isRkap ? 'block' : 'none';
+                if (!isRkap && rkapSelectedInfo) rkapSelectedInfo.style.display = 'none'; 
+                if (projectSection) projectSection.style.display = isProjectRab ? 'block' : 'none';
+                if(positionInput) positionInput.removeAttribute('name');
+                if(positionOrganikInput) positionOrganikInput.removeAttribute('name');
+                if (isRkap) {
+                    if(positionOrganikInput) positionOrganikInput.setAttribute('name', 'position'); 
+                    const selectedRow = form.querySelector('.js-rkap-select.selected');
+                    if(selectedRow && positionOrganikInput) {
+                        positionOrganikInput.value = selectedRow.closest('tr').dataset.jobName;
+                    }
+                } else if (isProjectRab) { 
+                    if(positionInput) positionInput.setAttribute('name', 'position'); 
+                } 
+            };
+
+            if (budgetSourceSelect) {
+                budgetSourceSelect.addEventListener('change', function() {
+                    resetDynamicInputs(); 
+                    updateVisibility();
+                });
+            }
+
+            if (contractTypeSelect) {
+                contractTypeSelect.addEventListener('change', function() {
+                    const val = this.value;
+                    const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
+                    multiDataStore = {}; 
+                    resetDynamicInputs();
+                    activeDataIndex = 1;
+                    renderTabs(totalDataCount); 
+
+                    if (val === 'Organik') {
+                        if(budgetSourceSelect) budgetSourceSelect.value = 'RKAP';
+                    } else if (projectTypes.includes(val)) {
+                        if(budgetSourceSelect) budgetSourceSelect.value = 'RAB Proyek';
+                    } else {
+                        if(budgetSourceSelect) budgetSourceSelect.value = '';
+                    }
+                    updateVisibility();
+                });
+            }
+            if (kodeProjectSelect && namaProjectInput) { 
+                kodeProjectSelect.addEventListener('change', function() { 
+                    const selectedOption = this.options[this.selectedIndex]; 
+                    const nama = selectedOption.getAttribute('data-nama'); 
+                    namaProjectInput.value = nama ? nama : ''; 
+                }); 
+            }
+            updateVisibility();
+            }, 
+            initDT() { 
+                setTimeout(() => {
+                    const selectElement = document.getElementById('dt-length-0');
+                    if (selectElement && !document.getElementById('btn-export-excel')) {
+                        const container = selectElement.parentNode; 
+
+                        const currentParams = new URLSearchParams(window.location.search);
+                        const exportUrl = "{{ route('recruitment.principal-approval.export') }}?" + currentParams.toString();
+
+                        const exportBtn = document.createElement('a');
+                        exportBtn.id = 'btn-export-excel';
+                        exportBtn.href = exportUrl;
+                        exportBtn.target = '_blank';
+                        exportBtn.className = 'u-btn u-btn--brand u-btn--sm';
+                        exportBtn.style.marginLeft = '12px';
+                        exportBtn.style.display = 'inline-flex';
+                        exportBtn.style.alignItems = 'center';
+                        exportBtn.style.textDecoration = 'none';
+                        exportBtn.style.height = '32px';
+                        exportBtn.innerHTML = '<i class="fas fa-file-excel u-mr-xs"></i> Export Excel';
+
+                        container.style.display = 'flex';
+                        container.style.alignItems = 'center';
+                        container.appendChild(exportBtn);
+                    }
+                }, 800);
+            },
+            bindExternalSearch() { /* ... */ }
+        };
+        page.init();
+
+        const urlParams = new URLSearchParams(window.location.search);
+            const ticketId = urlParams.get('open_ticket_id');
+
+            if (ticketId) {
+                setTimeout(() => {
+                    const detailBtn = document.querySelector(`.js-open-detail[data-id="${ticketId}"]`);
+                    
+                    if (detailBtn) {
+                        // Scroll
+                        detailBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // efek highlight sejenak (kuning tipis)
+                        const row = detailBtn.closest('tr');
+                        if(row) {
+                            const originalBg = row.style.backgroundColor;
+                            row.style.transition = "background-color 0.5s ease";
+                            row.style.backgroundColor = "#fef3c7"; // Highlight kuning
+                            setTimeout(() => { row.style.backgroundColor = originalBg; }, 2000);
+                        }
+
+                        // Klik tombol detail secara otomatis untuk membuka modal
+                        detailBtn.click();
+                    }
+
+                    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({path: newUrl}, '', newUrl);
+                }, 800); // Delay 800ms
+            }
         });
-        return;
-      }
-      if (typeof window.DataTable !== 'undefined') {
-        this.dt = new window.DataTable('#ip-table', { responsive: true, perPageSelect: false });
-      }
-    },
-    bindExternalSearch() {
-      const ext = document.querySelector('input[name="q"]');
-      if (!ext) return;
-      const self = this; let t = null;
-      function run(v){
-        if (!self.dt) return;
-        if (self.dt.search && self.dt.draw) { self.dt.search(v).draw(); return; }
-        if (typeof self.dt.search === 'function') self.dt.search(v);
-      }
-      ext.addEventListener('input', function(e){
-        clearTimeout(t);
-        t = setTimeout(()=>run(e.target.value||''), 120);
-      });
-    }
-  };
-  page.init();
-});
 </script>
-@endsection
+@endsection 

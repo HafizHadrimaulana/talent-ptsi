@@ -2,30 +2,64 @@
 
 namespace App\Http\Controllers\Recruitment;
 
+use App\Models\Project; 
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Models\RecruitmentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+
+use App\Exports\RecruitmentRequestExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PrincipalApprovalController extends Controller
 {
+    // Tambahkan method ini di dalam class PrincipalApprovalController
+    protected function getUserJobTitle($userId)
+    {
+        // Ambil data user dulu untuk mendapatkan person_id
+        $user = DB::table('users')->where('id', $userId)->first();
+        
+        if (!$user || empty($user->person_id)) {
+            return null;
+        }
+
+        // Cari Jabatan di tabel employees berdasarkan person_id
+        $jobTitle = DB::table('employees')
+            ->join('positions', 'employees.position_id', '=', 'positions.id')
+            ->where('employees.person_id', $user->person_id) // Gunakan person_id, bukan user_id
+            ->value('positions.name');
+            
+        return $jobTitle;
+    }
     protected function stages(): array
     {
-        // Flow approval: Kepala Unit → DHC Checker → Dir SDM
         return [
             ['key' => 'kepala_unit', 'roles' => ['Kepala Unit']],
             ['key' => 'dhc_checker', 'roles' => ['DHC']],
+            ['key' => 'avp_hc_ops',  'roles' => ['AVP Human Capital Operation']], 
+            ['key' => 'vp_hc',       'roles' => ['VP Human Capital']],
             ['key' => 'dir_sdm',     'roles' => ['Dir SDM']],
         ];
     }
 
     protected function canSeeAll($user): bool
     {
-        return $user?->hasRole('Superadmin')
-            || $user?->hasRole('DHC')
-            || $user?->hasRole('Dir SDM');
+        if (!$user) return false;
+        
+        // Cek Role & Job Title agar menu muncul
+        $jobTitle = $this->getUserJobTitle($user->id);
+        
+        return $user->hasRole('Superadmin') 
+            || $user->hasRole('DHC') 
+            || $user->hasRole('Dir SDM')
+            || $user->hasRole('AVP Human Capital Operation')
+            || $user->hasRole('VP Human Capital')
+            || $jobTitle === 'AVP Human Capital Operation'
+            || $jobTitle === 'VP Human Capital';
     }
 
     protected function dhcUnitId(): ?int
@@ -51,22 +85,10 @@ class PrincipalApprovalController extends Controller
         }
     }
 
-    public function index(Request $r)
+    protected function getBaseQuery($me, $canSeeAll, $selectedUnitId)
     {
-        $me  = Auth::user();
-        $tbl = (new RecruitmentRequest())->getTable();
-
-        $canSeeAll = $this->canSeeAll($me);
-
-        $selectedUnitId = $canSeeAll
-            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
-            : (int) ($me?->unit_id);
-
-        $units = $canSeeAll
-            ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
-            : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
-
         $query = RecruitmentRequest::query();
+        $tbl = (new RecruitmentRequest())->getTable();
 
         if (!$canSeeAll && $me) {
             $isKepalaUnit = $me->hasRole('Kepala Unit');
@@ -82,7 +104,6 @@ class PrincipalApprovalController extends Controller
                         $qDraft->where('status', 'draft');
 
                         if ($isKepalaUnit) {
-                            // kepala unit tidak melihat draft milik SDM (kecuali aturan diubah)
                             $qDraft->whereRaw('1 = 0');
                         } else {
                             $qDraft->where(function ($qOwner) use ($tbl, $creatorCols, $me) {
@@ -102,21 +123,106 @@ class PrincipalApprovalController extends Controller
             $query->where('unit_id', $selectedUnitId);
         }
 
+        return $query;
+    }
+
+    public function index(Request $r)
+    {
+        $me = Auth::user();
+        $canSeeAll = $this->canSeeAll($me);
+
+        $selectedUnitId = $canSeeAll
+            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
+            : (int) ($me?->unit_id);
+
+        $units = $canSeeAll
+            ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
+            : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
+
+        $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
+
+        if ($r->filled('open_ticket_id')) {
+            $ticketId = $r->input('open_ticket_id');
+            $query->where('id', $ticketId);
+        }
+
         $list = $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc')])
-                      ->latest()->paginate(50)->withQueryString();
+                      ->latest()
+                      ->paginate(50)
+                      ->withQueryString();
+
+        $projects = Project::orderBy('project_code', 'asc')->get();
+        $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
 
         return view('recruitment.principal-approval.index', [
             'list'           => $list,
             'units'          => $units,
             'canSeeAll'      => $canSeeAll,
             'selectedUnitId' => $selectedUnitId,
+            'projects'       => $projects,  
+            'locations'      => $locations, 
         ]);
+    }
+
+    public function storeProject(Request $request)
+    {
+        $request->validate([
+            'project_code' => 'required|unique:projects,project_code',
+            'project_name' => 'required|string',
+            'location_id'  => 'required|exists:locations,id',
+            'document'     => 'required|file|mimes:pdf,doc,docx|max:5120', // Max 5MB
+        ]);
+
+        try {
+            $path = null;
+            if ($request->hasFile('document')) {
+                // Simpan di folder 'project_docs' di storage public
+                $path = $request->file('document')->store('project_docs', 'public');
+            }
+
+            $project = Project::create([
+                'project_code'  => $request->project_code,
+                'project_name'  => $request->project_name,
+                'location_id'   => $request->location_id,
+                'document_path' => $path
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $project,
+                'message'=> 'Project berhasil dibuat!'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function exportExcel(Request $r)
+    {
+        $me = Auth::user();
+        $canSeeAll = $this->canSeeAll($me);
+        
+        // Ambil filter unit jika ada
+        $selectedUnitId = $canSeeAll 
+            ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null) 
+            : (int) ($me?->unit_id);
+
+        $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
+        $query->latest();     
+        $positionsMap = DB::table('positions')->pluck('name', 'id')->toArray();
+
+        // Download Excel
+        return Excel::download(
+            new RecruitmentRequestExport($query, $positionsMap), 
+            'Daftar_Izin_Prinsip_' . date('Y-m-d_H-i') . '.xlsx'
+        );
     }
 
     public function store(Request $r)
     {
         $data = $r->validate([
-            'request_type'         => 'required|string|in:Rekrutmen,Perpanjang Kontrak', // 2 jalur sesuai flowmap
+            'request_type'         => 'required|string|in:Rekrutmen,Perpanjang Kontrak', 
             'title'                => 'required|string',
             'position'             => 'required|string',
             'headcount'            => 'required|integer|min:1',
@@ -126,6 +232,7 @@ class PrincipalApprovalController extends Controller
             'budget_source_type'   => 'nullable|string|max:100',
             'budget_ref'           => 'nullable|string',
             'publish_vacancy_pref' => 'nullable|string|max:10',
+            'details_json'         => 'nullable|string', 
         ]);
 
         $me   = Auth::user();
@@ -171,9 +278,33 @@ class PrincipalApprovalController extends Controller
             }
         }
 
+        if (!empty($data['details_json'])) {
+            try {
+                $detailsArray = json_decode($data['details_json'], true);
+                if (is_array($detailsArray)) {
+                    $insert['meta'] = ['recruitment_details' => $detailsArray];
+                }
+            } catch (\Exception $e) {
+            }
+        }
+
         $model->forceFill($insert)->save();
 
         return back()->with('ok', 'Draft Izin Prinsip berhasil dibuat.');
+    }
+
+    public function destroy(RecruitmentRequest $req)
+    {
+        $this->authorizeUnit($req->unit_id);
+
+        if (($req->status ?? null) !== 'draft') {
+            return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat dihapus.');
+        }
+
+        $req->delete();
+
+        return redirect()->route('recruitment.principal-approval.index')
+            ->with('ok', 'Draft Izin Prinsip berhasil dihapus.');
     }
 
     public function update(Request $r, RecruitmentRequest $req)
@@ -195,6 +326,7 @@ class PrincipalApprovalController extends Controller
             'budget_source_type'   => 'nullable|string|max:100',
             'budget_ref'           => 'nullable|string',
             'publish_vacancy_pref' => 'nullable|string|max:10',
+            'details_json'         => 'nullable|string',
         ]);
 
         $tbl = $req->getTable();
@@ -229,6 +361,19 @@ class PrincipalApprovalController extends Controller
             }
         }
 
+        if (!empty($data['details_json'])) {
+            try {
+                $detailsArray = json_decode($data['details_json'], true);
+                if (is_array($detailsArray)) {
+                    $currentMeta = $req->meta ?? [];
+                    $currentMeta['recruitment_details'] = $detailsArray;
+                    $update['meta'] = $currentMeta;
+                }
+            } catch (\Exception $e) {
+
+            }
+        }
+
         if (!empty($update)) {
             $req->forceFill($update)->save();
         }
@@ -248,7 +393,6 @@ class PrincipalApprovalController extends Controller
             $req->update(['status' => 'submitted']);
         }
 
-        // flow: create pending utk Kepala Unit
         $this->createPendingApproval($req, 0);
 
         if (Schema::hasColumn($req->getTable(), 'status')) {
@@ -268,14 +412,26 @@ class PrincipalApprovalController extends Controller
             abort(403);
         }
 
-        $this->closePending($req, 'approved', $r->input('note'));
+        $note = $r->input('note'); 
+        $extendedNote = $r->input('extended_note');
+
+        if (!empty($extendedNote)) {
+            $cleanNote = strip_tags($extendedNote, '<b><i><u><ol><ul><li><br><p>'); 
+            $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
+        }
+
+        // Fix: Gunakan variabel $note yang sudah diproses, bukan input mentah
+        $this->closePending($req, 'approved', $note);
 
         $isLast = $stageIdx >= (count($this->stages()) - 1);
         if ($isLast) {
             if (Schema::hasColumn($req->getTable(), 'status')) {
-                $req->update(['status' => 'approved']); // final: dasar proses rekrutmen/perpanjangan kontrak
+                $req->update(['status' => 'approved']);
             }
-            return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui.');
+            
+            $req->generateTicketNumber();
+            
+            return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui. Nomor Ticket: ' . $req->ticket_number);
         }
 
         $this->createPendingApproval($req, $stageIdx + 1);
@@ -347,6 +503,7 @@ class PrincipalApprovalController extends Controller
         $stage = $this->stages()[$stageIdx] ?? null;
         if (!$stage) return false;
 
+        // Cek Permission via Role (Spatie)
         $allowed = false;
         foreach ($stage['roles'] as $r) {
             if ($user->hasRole($r)) {
@@ -355,20 +512,34 @@ class PrincipalApprovalController extends Controller
             }
         }
 
+        // Ambil Jabatan User Realtime (Fallback jika Role tidak assigned)
+        $jobTitle = $this->getUserJobTitle($user->id);
+        $cleanJobTitle = trim(strtoupper($jobTitle));
+
+        // --- LOGIC PER STAGE ---
+
+        // Stage 1: Kepala Unit
         if ($stage['key'] === 'kepala_unit') {
-            // Kepala Unit hanya approve request unit-nya
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
 
+        // Stage 2: DHC Checker
         if ($stage['key'] === 'dhc_checker') {
             if ($allowed) return true;
             $isKepalaUnit = $user->hasRole('Kepala Unit');
-            $isKepalaUnitDhc = $isKepalaUnit
-                && $this->dhcUnitId()
-                && ((string) $user->unit_id === (string) $this->dhcUnitId());
-            return $isKepalaUnitDhc;
+            return $isKepalaUnit && $this->dhcUnitId() && ((string) $user->unit_id === (string) $this->dhcUnitId());
         }
 
+        // Stage 3: AVP Human Capital Operation
+        if ($stage['key'] === 'avp_hc_ops') {
+            return $allowed || ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
+        }
+
+        // Stage 4: VP Human Capital
+        if ($stage['key'] === 'vp_hc') {
+            return $allowed || ($cleanJobTitle === 'VP HUMAN CAPITAL');
+        }
+        
         return $allowed;
     }
 
@@ -376,13 +547,39 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         if (!$me) abort(401);
+        
+        $jobTitle = $this->getUserJobTitle($me->id);
 
-        if ($me->hasRole('Superadmin') || $me->hasRole('DHC') || $me->hasRole('Dir SDM')) {
+        if ($me->hasRole('Superadmin') 
+            || $me->hasRole('DHC') 
+            || $me->hasRole('Dir SDM')
+            || $me->hasRole('AVP Human Capital Operation') 
+            || $me->hasRole('VP Human Capital')
+            || $jobTitle === 'AVP Human Capital Operation'
+            || $jobTitle === 'VP Human Capital') {
             return;
         }
 
         if ($me->unit_id && $unitId && (string) $me->unit_id !== (string) $unitId) {
             abort(403);
         }
+    }
+
+    public function previewUraianPdf(Request $request)
+    {
+        $json = $request->input('data');
+        $d = json_decode($json, true);
+
+        if (!$d) {
+            return "Data uraian jabatan tidak valid atau kosong.";
+        }
+
+        $pdf = Pdf::loadView('pdf.uraian_jabatan', compact('d'));
+        $pdf->setPaper('a4', 'portrait');
+        
+        $safeName = preg_replace('/[^A-Za-z0-9\-]/', '_', $d['nama'] ?? 'Draft');
+        $filename = 'Uraian_Jabatan_' . $safeName . '.pdf';
+        
+        return $pdf->stream($filename);
     }
 }

@@ -1,16 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
-// Auth
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-
-// Public careers (one-page)
 use App\Http\Controllers\Public\CareersController;
 use App\Http\Controllers\Public\ApplicationController as PublicApplicationController;
-
-// Account (modal one-page actions)
 use App\Http\Controllers\Account\AccountController;
+use App\Http\Controllers\Recruitment\PrincipalApprovalController;
+use App\Http\Controllers\Recruitment\SalaryController;
+use App\Http\Controllers\Recruitment\ExternalRecruitmentController;
 
 Route::middleware('web')->group(function () {
 
@@ -28,14 +25,36 @@ Route::middleware('web')->group(function () {
     Route::middleware(['auth', 'team.scope'])->group(function () {
         Route::get('/', fn() => redirect()->route('dashboard'));
         Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
-
-        // Account (modal actions; project-local only)
         Route::post('/account/profile',  [AccountController::class, 'updateProfile'])->name('account.profile.update');
         Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
-
-        // Logout
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+        Route::post('/recruitment/uraian-jabatan/preview-pdf', [PrincipalApprovalController::class, 'previewUraianPdf'])
+        ->name('recruitment.uraian-jabatan.preview-pdf');
+        Route::group(['prefix' => 'recruitment/external', 'as' => 'recruitment.external.', 'middleware' => ['auth']], function () {
+    
+            // 1. Halaman Utama (Daftar Lowongan)
+            Route::get('/', [ExternalRecruitmentController::class, 'index'])->name('index');
+
+            // 2. Proses Submit Lamaran (Ini yang menyebabkan error Anda)
+            Route::post('/apply', [ExternalRecruitmentController::class, 'apply'])->name('apply');
+
+            // 3. API: Ambil Data Pelamar (Untuk Modal DHC)
+            Route::get('/{id}/applicants', [ExternalRecruitmentController::class, 'getApplicants'])->name('getApplicants');
+
+            // 4. Proses Update Status Pelamar (Terima/Tolak oleh DHC)
+            Route::post('/applicant/{id}/update', [ExternalRecruitmentController::class, 'updateApplicantStatus'])->name('updateApplicantStatus');
+
+        });
     });
+
+    Route::get('recruitment/principal-approval/export', [App\Http\Controllers\Recruitment\PrincipalApprovalController::class, 'exportExcel'])
+    ->name('recruitment.principal-approval.export');
+
+    Route::post('/ajax/calculate-salary', [SalaryController::class, 'calculate'])
+    ->name('api.calculate.salary');
+
+    Route::post('recruitment/project/store', [PrincipalApprovalController::class, 'storeProject'])
+    ->name('recruitment.project.store');
 
     // ====== LOAD INTERNAL / ADMIN ROUTES ======
     require __DIR__ . '/admin.php';

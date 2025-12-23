@@ -4,12 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Database\Factories\ContractFactory;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\User;
 
 class Contract extends Model
 {
@@ -54,9 +52,9 @@ class Contract extends Model
         'requires_geolocation'    => 'boolean',
     ];
 
-    protected static function newFactory()
+    public function person(): BelongsTo
     {
-        return ContractFactory::new();
+        return $this->belongsTo(Person::class, 'person_id');
     }
 
     public function unit(): BelongsTo
@@ -99,7 +97,7 @@ class Contract extends Model
         return $this->hasMany(Signature::class, 'document_id', 'document_id');
     }
 
-    public function scopeForViewer(Builder $q, User $user): Builder
+    public function scopeForViewer(Builder $q, $user): Builder
     {
         if ($user->hasRole('Superadmin')) {
             return $q;
