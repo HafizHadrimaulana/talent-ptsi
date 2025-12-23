@@ -1,1063 +1,915 @@
 @extends('layouts.app')
 
-@section('title', 'Kontrak')
+@section('title', 'Manajemen Dokumen Kontrak')
 
 @section('content')
-    @php
-        $me = auth()->user();
-        $meUnit = $me?->unit_id;
-        $canSeeAll = isset($canSeeAll) ? $canSeeAll : ($me && ($me->hasRole('Superadmin') || $me->hasRole('DHC')));
-        
-        $statusOptions = config('recruitment.contract_statuses', []);
-        $rawTypeConfig = config('recruitment.contract_types', []);
-        
-        $spkCfg = $rawTypeConfig['SPK'] ?? null;
-        $pkwtNewCfg = $rawTypeConfig['PKWT_BARU'] ?? null;
-        $pkwtExtCfg = $rawTypeConfig['PKWT_PERPANJANGAN'] ?? null;
-        $pbCfg = $rawTypeConfig['PB_PENGAKHIRAN'] ?? null;
+@php
+    $me = auth()->user();
+    $meUnit = $me?->unit_id;
+    $canSeeAll = isset($canSeeAll) ? $canSeeAll : ($me && ($me->hasRole('Superadmin') || $me->hasRole('DHC')));
+    $statusOptions = config('recruitment.contract_statuses', []);
+    $currentUnitId = $selectedUnitId ?? $meUnit;
+@endphp
 
-        $currentUnitId = $selectedUnitId ?? $meUnit;
-    @endphp
+<style>
+    .u-modal { z-index: 1050; display: none; place-items: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); padding: 1rem; }
+    .u-modal:not([hidden]) { display: grid !important; }
+    .u-modal__card { width: min(100%, 650px); max-height: 90vh; display: flex; flex-direction: column; }
+    .u-modal__card--xl { width: min(100%, 1100px); }
+    .u-modal__body { overflow-y: auto; flex: 1; padding: 1.5rem; scrollbar-width: thin; }
+    .u-bg-section { background-color: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .is-hidden { display: none !important; }
+    .currency-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.875rem; pointer-events: none; }
+    .has-prefix .u-input { padding-left: 40px; text-align: right; font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
+    .u-form-group label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.025em; margin-bottom: 0.4rem; display: block; }
+    
+    @media (max-width: 768px) {
+        .u-grid-2 { grid-template-columns: 1fr !important; }
+        .cell-actions__group { justify-content: flex-start; }
+        .u-modal__card { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
+    }
+</style>
 
-    <style>
-        .modal-card-wide { width: 95% !important; max-width: 900px !important; }
-        .u-grid-2-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        @media (max-width: 768px) { .u-grid-2-custom { grid-template-columns: 1fr; } }
-        .u-bg-light-soft { background-color: #f9fafb; }
-    </style>
-
-    <div class="u-card u-card--glass u-hover-lift">
-        <div class="u-flex u-items-center u-justify-between u-mb-md u-stack-mobile">
-            <div>
-                <h2 class="u-title u-mb-xs">Penerbitan &amp; Penandatanganan Kontrak</h2>
-                <p class="u-text-sm u-muted">
-                    Monitoring draft–submit–review–e-sign kontrak kerja.<br>
-                    <span class="u-text-xxs">Format: <code>(TYPE)-xxx/UNITCODE-mm/INISIAL-KEPALA/YYYY</code></span>
-                </p>
-            </div>
-            @can('contract.create')
-                <button type="button" class="u-btn u-btn--brand u-btn--sm u-hover-lift" data-modal-open="createContractModal">
-                    <i class="fas fa-plus u-mr-xs"></i> Draft Kontrak
-                </button>
-            @endcan
+<div class="u-card u-card--glass u-hover-lift">
+    <div class="u-flex u-items-center u-justify-between u-mb-lg u-stack-mobile">
+        <div>
+            <h2 class="u-title u-mb-xs">Dokumen Kontrak</h2>
+            <p class="u-text-sm u-muted">Manajemen SPK, PKWT, dan Perjanjian Bersama.</p>
         </div>
-
-        @if (session('success'))
-            @push('swal')
-                <script>window.toastOk('Berhasil', {!! json_encode(session('success')) !!});</script>
-            @endpush
-        @endif
-
-        @if ($errors->any())
-            <div class="u-card u-mb-md u-error">
-                <div class="u-flex u-items-center u-gap-sm u-mb-sm">
-                    <i class="u-error-icon fas fa-exclamation-circle"></i>
-                    <span class="u-font-semibold">Mohon periksa kembali isian berikut:</span>
-                </div>
-                <ul class="u-list">
-                    @foreach ($errors->all() as $e)
-                        <li class="u-item">{{ $e }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <div class="u-flex u-items-center u-gap-md u-mb-md u-stack-mobile">
-            <form method="get" class="u-flex u-items-center u-gap-md u-stack-mobile u-w-full u-flex-wrap">
-                <div class="u-flex-1-min">
-                    <label class="u-text-xs u-font-medium u-mb-xs d-block">Unit Kerja</label>
-                    @if ($canSeeAll)
-                        <select name="unit_id" class="u-input u-input--sm" onchange="this.form.submit()">
-                            <option value="">Semua Unit</option>
-                            @foreach ($units as $u)
-                                <option value="{{ $u->id }}" @selected((string)$currentUnitId === (string)$u->id)>{{ $u->name }}</option>
-                            @endforeach
-                        </select>
-                    @else
-                        <div class="u-badge u-badge--glass u-text-xs">{{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}</div>
-                        <input type="hidden" name="unit_id" value="{{ $meUnit }}">
-                    @endif
-                </div>
-                <div class="u-flex-1-min">
-                    <label class="u-text-xs u-font-medium u-mb-xs d-block">Status</label>
-                    <select name="status" class="u-input u-input--sm" onchange="this.form.submit()">
-                        <option value="">Semua Status</option>
-                        @foreach ($statusOptions as $code => $label)
-                            <option value="{{ $code }}" @selected($statusFilter == $code)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="u-flex-1-min u-w-full u-max-w-xs u-ml-auto">
-                    <label class="u-text-xs u-font-medium u-mb-xs d-block">Cari</label>
-                    <input type="search" name="q" id="contractsSearch" class="u-input u-input--sm" placeholder="No. Kontrak / Nama / Unit" value="{{ $searchFilter }}">
-                </div>
-            </form>
-        </div>
-
-        <div class="dt-wrapper u-mb-xl">
-            <div class="u-scroll-x">
-                <table id="contracts-table" class="u-table u-table-mobile" data-datatable="contracts" data-datatable-search="#contractsSearch">
-                    <thead>
-                        <tr>
-                            <th>Nomor</th>
-                            <th>Jenis</th>
-                            <th>Unit</th>
-                            <th>Periode</th>
-                            <th>Status</th>
-                            <th class="cell-actions">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($contracts as $c)
-                            <tr>
-                                <td><span class="u-badge u-badge--glass u-text-xs font-mono">{{ $c->contract_no ?: '—' }}</span></td>
-                                <td><span class="u-chip u-chip--soft">{{ $c->contract_type }}</span></td>
-                                <td>{{ $c->unit?->name ?? '—' }}</td>
-                                <td class="u-text-sm">{{ $c->start_date?->format('d M Y') }} s/d {{ $c->end_date?->format('d M Y') }}</td>
-                                <td><span class="u-badge u-badge--glass">{{ $c->status }}</span></td>
-                                <td class="cell-actions">
-                                    <div class="cell-actions__group">
-                                        <button type="button" class="u-btn u-btn--ghost u-btn--xs" data-contract-detail data-show-url="{{ route('recruitment.contracts.show', $c) }}">
-                                            <i class="fas fa-eye u-mr-xxs"></i> Detail
-                                        </button>
-                                        @if ($c->status === 'draft' && auth()->user()->can('contract.update', $c))
-                                            <button type="button" class="u-btn u-btn--primary u-btn--xs" data-contract-edit data-show-url="{{ route('recruitment.contracts.show', $c) }}" data-update-url="{{ route('recruitment.contracts.update', $c) }}">
-                                                <i class="fas fa-edit u-mr-xxs"></i> Edit
-                                            </button>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @if ($contracts instanceof \Illuminate\Pagination\AbstractPaginator)
-                <div class="u-mt-md">{{ $contracts->links() }}</div>
-            @endif
-        </div>
+        @can('contract.create')
+        <button type="button" class="u-btn u-btn--brand u-hover-lift" id="btnOpenCreate">
+            <i class="fas fa-plus u-mr-xs"></i> Buat Dokumen
+        </button>
+        @endcan
     </div>
 
-    @can('contract.create')
-    <div id="createContractModal" class="u-modal" hidden aria-modal="true" role="dialog" style="display:none;align-items:center;justify-content:center;">
-        <div class="u-modal__backdrop" data-modal-close></div>
-        <div class="u-modal__card u-modal__card--xl">
-            <div class="u-modal__head">
-                <div class="u-flex u-items-center u-gap-md">
-                    <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-file-contract"></i></div>
-                    <div><div class="u-title">Draft Kontrak Baru</div><div class="u-muted u-text-sm">Buat draft SPK, PKWT, atau PB.</div></div>
-                </div>
-                <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button>
+    @if (session('success'))
+        <div class="u-card u-p-sm u-mb-md u-success"><i class="fas fa-check-circle u-mr-sm"></i> {{ session('success') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="u-card u-p-sm u-mb-md u-error"><i class="fas fa-exclamation-triangle u-mr-sm"></i> Periksa kembali inputan Anda.</div>
+    @endif
+
+    <div class="u-card u-p-md u-mb-lg u-bg-section">
+        <form method="get" class="u-grid-2 u-gap-md" style="grid-template-columns: 1fr 1fr 1.5fr;">
+            <div>
+                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Unit Kerja</label>
+                @if ($canSeeAll)
+                    <select name="unit_id" class="u-input u-input--sm" onchange="this.form.submit()">
+                        <option value="">Semua Unit</option>
+                        @foreach ($units as $u) <option value="{{ $u->id }}" @selected((string)$currentUnitId === (string)$u->id)>{{ $u->name }}</option> @endforeach
+                    </select>
+                @else
+                    <div class="u-input u-input--sm u-bg-light u-text-muted">{{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}</div>
+                    <input type="hidden" name="unit_id" value="{{ $meUnit }}">
+                @endif
             </div>
-            <form method="POST" action="{{ route('recruitment.contracts.store') }}" class="u-modal__body u-p-md u-space-y-lg" id="createContractForm">
-                @csrf
-                <input type="hidden" name="contract_type" id="createTypeInput" value="{{ old('contract_type') }}">
-                <input type="hidden" name="mode" id="createModeInput" value="{{ old('mode') }}">
-                
-                <input type="hidden" name="source_contract_id" id="createSourceIdInput" value="{{ old('source_contract_id') }}" disabled>
-                <input type="hidden" name="employee_id" id="createEmployeeIdInput" value="{{ old('employee_id') }}" disabled>
-                <input type="hidden" name="person_id" id="createPersonIdInput" value="{{ old('person_id') }}" disabled>
+            <div>
+                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Status</label>
+                <select name="status" class="u-input u-input--sm" onchange="this.form.submit()">
+                    <option value="">Semua Status</option>
+                    @foreach ($statusOptions as $code => $label) <option value="{{ $code }}" @selected($statusFilter == $code)>{{ $label }}</option> @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Pencarian</label>
+                <div class="u-search">
+                    <i class="fas fa-search u-search__icon"></i>
+                    <input type="search" name="q" class="u-search__input" placeholder="No. Dokumen, Nama, NIK..." value="{{ $searchFilter }}">
+                </div>
+            </div>
+        </form>
+    </div>
 
-                <div class="u-space-y-sm">
-                    <label class="u-text-sm u-font-medium d-block">Pilih Jenis Kontrak</label>
-                    <div class="u-grid-2 u-stack-mobile u-gap-md">
-                        <div>
-                            <select id="createFamilySelect" class="u-input" required>
-                                <option value="">-- Pilih --</option>
-                                <option value="SPK" data-mode="new" data-hint="{{ $spkCfg['label'] ?? 'SPK' }}" @selected(old('contract_type') === 'SPK')>SPK (Offering Letter)</option>
-                                <option value="PKWT" data-mode="" data-hint="Pilih detail PKWT" @selected(in_array(old('contract_type'), ['PKWT_BARU','PKWT_PERPANJANGAN']))>PKWT</option>
-                                <option value="PB" data-mode="terminate" data-hint="{{ $pbCfg['label'] ?? 'PB' }}" @selected(old('contract_type') === 'PB_PENGAKHIRAN')>PB (Perjanjian Bersama)</option>
-                            </select>
-                            <p id="createFamilyHint" class="u-text-xs u-muted u-mt-xs"></p>
-                        </div>
-                        <div id="createSubtypeWrap" hidden>
+    <div class="dt-wrapper">
+        <div class="u-scroll-x">
+            <table id="contracts-table" class="u-table u-table-mobile">
+                <thead>
+                    <tr>
+                        <th>Dokumen</th>
+                        <th>Personil</th>
+                        <th>Posisi & Unit</th>
+                        <th>Periode / Efektif</th>
+                        <th>Status</th>
+                        <th class="cell-actions">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($contracts as $c)
+                        <tr>
+                            <td>
+                                <div class="u-font-mono u-font-bold u-text-sm">{{ $c->contract_no ?: '(Draft)' }}</div>
+                                <span class="u-badge u-badge--glass u-mt-xs">{{ $c->contract_type_label ?? $c->contract_type }}</span>
+                            </td>
+                            <td>
+                                <div class="u-flex u-items-center u-gap-sm">
+                                    <div class="u-avatar u-avatar--sm u-avatar--brand">{{ substr($c->person_name, 0, 1) }}</div>
+                                    <div>
+                                        <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
+                                        <div class="u-text-xs u-muted">
+                                            @if($c->applicant_id) <span class="u-text-brand">Pelamar</span>
+                                            @elseif($c->employee_id) {{ $c->employee_id }}
+                                            @else - @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="u-text-sm u-font-medium">{{ $c->position_name ?? '-' }}</div>
+                                <div class="u-text-xs u-muted">{{ $c->unit?->name ?? '-' }}</div>
+                            </td>
+                            <td>
+                                @if($c->contract_type === 'PB_PENGAKHIRAN')
+                                    <span class="u-text-danger u-font-bold u-text-xs">
+                                        End: {{ isset($c->remuneration_json['pb_effective_end']) ? \Carbon\Carbon::parse($c->remuneration_json['pb_effective_end'])->format('d M Y') : '-' }}
+                                    </span>
+                                @else
+                                    <div class="u-text-sm">{{ $c->start_date?->format('d M Y') }}</div>
+                                    <div class="u-text-xs u-muted">s/d {{ $c->end_date?->format('d M Y') }}</div>
+                                @endif
+                            </td>
+                            <td>
+                                @php
+                                    $bg = match($c->status) {
+                                        'draft' => 'u-badge--warn', 'review' => 'u-badge--primary',
+                                        'approved' => 'u-badge--info', 'signed' => 'u-badge--success',
+                                        'rejected' => 'u-badge--danger', default => 'u-badge--glass'
+                                    };
+                                @endphp
+                                <span class="u-badge {{ $bg }}">{{ $statusOptions[$c->status] ?? $c->status }}</span>
+                            </td>
+                            <td class="cell-actions">
+                                <div class="cell-actions__group">
+                                    <button type="button" class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-btn-detail" 
+                                        data-show-url="{{ route('recruitment.contracts.show', $c) }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    @if ($c->status === 'draft' && auth()->user()->can('contract.update', $c))
+                                        <button type="button" class="u-btn u-btn--outline u-btn--icon u-btn--sm js-btn-edit" 
+                                            data-show-url="{{ route('recruitment.contracts.show', $c) }}" 
+                                            data-update-url="{{ route('recruitment.contracts.update', $c) }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="u-empty"><div class="u-empty__icon"><i class="far fa-folder-open"></i></div>Tidak ada data dokumen ditemukan.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if ($contracts instanceof \Illuminate\Pagination\AbstractPaginator)
+            <div class="u-mt-md">{{ $contracts->links() }}</div>
+        @endif
+    </div>
+</div>
+
+@can('contract.create')
+<div id="createContractModal" class="u-modal" hidden>
+    <div class="u-modal__backdrop js-close-modal"></div>
+    <div class="u-modal__card u-modal__card--xl">
+        <div class="u-modal__head">
+            <div class="u-flex u-items-center u-gap-md">
+                <div class="u-avatar u-avatar--md u-avatar--brand"><i class="fas fa-file-contract"></i></div>
+                <div><div class="u-title">Buat Dokumen Baru</div><div class="u-muted u-text-xs">SPK / PKWT / PB</div></div>
+            </div>
+            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <form method="POST" action="{{ route('recruitment.contracts.store') }}" class="u-modal__body" id="createContractForm">
+            @csrf
+            <input type="hidden" name="contract_type" id="createTypeInput" value="{{ old('contract_type') }}">
+            <input type="hidden" name="mode" id="createModeInput" value="{{ old('mode') }}">
+            <input type="hidden" name="source_contract_id" id="createSourceIdInput" value="{{ old('source_contract_id') }}" disabled>
+            <input type="hidden" name="employee_id" id="createEmployeeIdInput" value="{{ old('employee_id') }}" disabled>
+            <input type="hidden" name="person_id" id="createPersonIdInput" value="{{ old('person_id') }}" disabled>
+
+            <div class="u-card u-p-md u-mb-md u-bg-section">
+                <div class="u-grid-2 u-gap-lg">
+                    <div class="u-form-group">
+                        <label>1. Jenis Dokumen</label>
+                        <select id="createFamilySelect" class="u-input" required>
+                            <option value="">-- Pilih Jenis --</option>
+                            <option value="SPK" data-mode="new">SPK (Offering Letter)</option>
+                            <option value="PKWT" data-mode="">PKWT (Perjanjian Kerja)</option>
+                            <option value="PB" data-mode="terminate">PB (Pengakhiran)</option>
+                        </select>
+                        <div id="createSubtypeWrap" class="u-mt-sm is-hidden">
+                            <label class="u-text-brand u-text-xs u-mb-xxs">Spesifikasi PKWT:</label>
                             <select id="createSubtypeSelect" class="u-input">
-                                <option value="">-- Detail PKWT --</option>
-                                <option value="PKWT_BARU" data-mode="new" @selected(old('contract_type') === 'PKWT_BARU')>{{ $pkwtNewCfg['label'] ?? 'PKWT Baru' }}</option>
-                                <option value="PKWT_PERPANJANGAN" data-mode="extend" @selected(old('contract_type') === 'PKWT_PERPANJANGAN')>{{ $pkwtExtCfg['label'] ?? 'PKWT Perpanjangan' }}</option>
+                                <option value="">-- Baru / Perpanjangan --</option>
+                                <option value="PKWT_BARU" data-mode="new">PKWT Baru</option>
+                                <option value="PKWT_PERPANJANGAN" data-mode="extend">PKWT Perpanjangan</option>
                             </select>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div id="createMainSection" class="u-space-y-lg" hidden>
-                    <div class="u-mt-md">
-                        <label class="u-text-sm u-font-medium u-mb-sm d-block">Unit Kerja</label>
-                        @if ($canSeeAll)
-                            <select name="unit_id" id="createUnitSelect" class="u-input" required>
-                                <option value="">-- Pilih Unit --</option>
-                                @foreach ($units as $u)
-                                    <option value="{{ $u->id }}" @selected(old('unit_id', $currentUnitId) == $u->id)>{{ $u->name }}</option>
-                                @endforeach
-                            </select>
-                        @else
-                            <input type="hidden" name="unit_id" value="{{ $meUnit }}">
-                            <div class="u-badge u-badge--glass">{{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}</div>
-                        @endif
-                    </div>
-                    
-                    <div class="u-mt-md">
-                         <label class="u-text-sm u-font-medium u-mb-sm d-block">Unit Kerja Baru <span class="u-text-xs u-muted">(Opsional, jika pindah unit)</span></label>
-                         <select name="new_unit_id" class="u-input">
-                             <option value="">-- Tidak Berubah / Sama --</option>
-                             @foreach ($units as $u)
-                                 <option value="{{ $u->id }}">{{ $u->name }}</option>
-                             @endforeach
-                         </select>
-                    </div>
+            <div id="createMainSection" class="is-hidden u-space-y-lg">
+                <div class="u-grid-2 u-gap-lg u-stack-mobile">
+                    <div>
+                        <div class="u-title u-text-sm u-mb-sm">2. Sumber Data</div>
+                        
+                        {{-- NEW RECRUIT --}}
+                        <div data-mode-section="new" class="is-hidden u-space-y-md">
+                            <div class="u-form-group">
+                                <label>Pilih Pelamar (Approved)</label>
+                                <select name="applicant_id" id="createApplicantSelect" class="u-input">
+                                    <option value="">-- Cari Pelamar --</option>
+                                    @foreach ($applicants as $a)
+                                        <option value="{{ $a->id }}" data-person-id="{{ $a->person_id }}" data-fullname="{{ $a->full_name }}" data-pos="{{ $a->position_applied }}" data-unit="{{ $a->unit_name }}" data-unit-id="{{ $a->unit_id }}">{{ $a->full_name }} — {{ $a->position_applied }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="u-form-group">
+                                <label>Unit Penempatan</label>
+                                @if ($canSeeAll)
+                                    <select name="unit_id" id="createUnitSelectNew" class="u-input"><option value="">-- Pilih Unit --</option>@foreach ($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
+                                @else
+                                    <input type="hidden" name="unit_id" value="{{ $meUnit }}" id="createUnitHiddenNew">
+                                    <input type="text" class="u-input u-bg-light" value="{{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}" readonly>
+                                @endif
+                            </div>
+                        </div>
 
-                    <div data-mode-section="new" hidden class="u-space-y-md">
-                        <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Pelamar (Approved)</label>
-                            <select name="applicant_id" id="createApplicantSelect" class="u-input">
-                                <option value="">-- Pilih Pelamar --</option>
-                                @foreach ($applicants as $a)
-                                    <option value="{{ $a->id }}" data-person-id="{{ $a->person_id }}" data-fullname="{{ $a->full_name }}" data-pos="{{ $a->position_applied ?? $a->position_name }}" data-unit="{{ $a->unit_name }}">{{ $a->full_name }} — {{ $a->position_applied }}</option>
-                                @endforeach
-                            </select>
-                            <div id="createApplicantPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
-                                <div class="u-text-xs u-muted"><span id="capName">-</span> • <span id="capPos">-</span> • <span id="capUnit">-</span></div>
+                        {{-- EXISTING --}}
+                        <div data-mode-section="existing" class="is-hidden u-space-y-md">
+                            <div class="u-form-group">
+                                <label id="labelSourceExisting">Pilih Kontrak Dasar</label>
+                                <div class="u-flex u-gap-xs u-mb-xs">
+                                    <select id="filterSourceUnit" class="u-input u-input--sm" style="width:100%"><option value="">Filter Unit (Semua)</option>@foreach ($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
+                                </div>
+                                <select id="createSourceSelect" class="u-input">
+                                    <option value="">-- Cari Karyawan (Exp 30 Hari) --</option>
+                                    @foreach ($expiringContracts as $c)
+                                        <option value="{{ $c->id }}" data-unit-id="{{ $c->unit_id }}" data-person-id="{{ $c->person_id }}" data-employee-id="{{ $c->employee_id }}" data-person="{{ $c->person_name }}" data-pos="{{ $c->position_name }}" data-unit-name="{{ $c->unit_name }}" data-start="{{ \Carbon\Carbon::parse($c->start_date)->format('d/m/Y') }}" data-end="{{ \Carbon\Carbon::parse($c->end_date)->format('d/m/Y') }}" data-nik="{{ $c->employee_id ?? '-' }}">{{ $c->person_name }} — {{ $c->position_name }} (Exp: {{ \Carbon\Carbon::parse($c->end_date)->format('d M Y') }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="u-form-group">
+                                <label>Unit Kerja Saat Ini</label>
+                                <input type="text" id="createExistingUnitName" class="u-input u-bg-light" readonly placeholder="-">
+                                <input type="hidden" name="unit_id" id="createExistingUnitId"> 
+                            </div>
+                            <div class="u-form-group" id="newUnitSection" style="display:none;">
+                                <label>Unit Kerja Baru (Jika Pindah)</label>
+                                <select name="new_unit_id" class="u-input"><option value="">-- Tidak Pindah --</option>@foreach ($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
                             </div>
                         </div>
                     </div>
 
-                    <div data-mode-section="existing" hidden class="u-space-y-md">
-                        <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak Dasar (Existing PKWT)</label>
-                            <select id="createSourceExtendSelect" class="u-input">
-                                <option value="">-- Pilih Kontrak Aktif (<=30 hari) --</option>
-                                @foreach ($expiringContracts as $c)
-                                    <option value="{{ $c->id }}" 
-                                        data-unit-id="{{ $c->unit_id }}" 
-                                        data-person-id="{{ $c->person_id }}"
-                                        data-employee-id="{{ $c->employee_id }}"
-                                        data-person="{{ $c->person_name }}" 
-                                        data-pos="{{ $c->position_name }}">
-                                        {{ $c->person_name }} — {{ $c->position_name }} ({{ $c->employee_status }}) [{{ $c->unit_name }}]
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div id="createExtendPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
-                                <div class="u-text-xs u-muted"><span id="cepName">-</span> • <span id="cepPos">-</span></div>
+                    {{-- PREVIEW CARD --}}
+                    <div>
+                        <div class="u-title u-text-sm u-mb-sm">Preview Personil</div>
+                        <div id="createPersonPreview" class="u-card u-card--glass u-p-md is-hidden">
+                            <div class="u-flex u-items-center u-gap-md u-mb-md">
+                                <div class="u-avatar u-avatar--md u-avatar--brand"><i class="fas fa-user"></i></div>
+                                <div><div class="u-font-bold" id="prevName">-</div><div class="u-text-xs u-muted" id="prevNik">-</div></div>
+                            </div>
+                            <div class="u-grid-2 u-gap-sm u-text-xs">
+                                <div><span class="u-muted">Posisi</span><div class="u-font-medium" id="prevPos">-</div></div>
+                                <div><span class="u-muted">Unit</span><div class="u-font-medium" id="prevUnit">-</div></div>
+                                <div class="u-grid-col-span-2"><span class="u-muted">Periode Lama</span><div class="u-font-medium" id="prevDate">-</div></div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div data-mode-section="terminate" hidden class="u-space-y-md">
-                        <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Kontrak PKWT Diakhiri</label>
-                            <select id="createSourceTermSelect" class="u-input">
-                                <option value="">-- Pilih Kontrak --</option>
-                                @foreach ($expiringContracts as $c)
-                                    <option value="{{ $c->id }}" data-unit-id="{{ $c->unit_id }}" data-person-id="{{ $c->person_id }}" data-employee-id="{{ $c->employee_id }}" data-person="{{ $c->person_name }}" data-pos="{{ $c->position_name }}">
-                                        {{ $c->person_name }} — {{ $c->position_name }} ({{ $c->employee_status }}) [{{ $c->unit_name }}]
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div id="createTermPreview" class="u-card u-card--glass u-p-sm u-mt-xs" hidden>
-                                <div class="u-text-xs u-muted"><span id="ctpName">-</span> • <span id="ctpPos">-</span></div>
-                            </div>
-                        </div>
-                        <div class="u-grid-2 u-stack-mobile u-gap-md">
-                            <div><label class="u-text-xs u-font-medium d-block">Efektif Pengakhiran</label><input type="date" name="pb_effective_end" class="u-input" value="{{ old('pb_effective_end') }}"></div>
-                            <div><label class="u-text-xs u-font-medium d-block">Kompensasi (Rp)</label><input type="text" name="pb_compensation_amount" class="u-input" data-rupiah="true" data-terbilang-target="pb_compensation_amount_words" value="{{ old('pb_compensation_amount') }}"></div>
-                        </div>
-                        <div><label class="u-text-xs u-font-medium d-block">Terbilang (Otomatis)</label><input type="text" name="pb_compensation_amount_words" class="u-input" readonly value="{{ old('pb_compensation_amount_words') }}"></div>
-                    </div>
-
+                <div class="u-border-t u-pt-lg">
+                    <div class="u-title u-text-sm u-mb-md">3. Detail Kontrak</div>
                     <div class="u-grid-2 u-stack-mobile u-gap-md">
-                        <div>
-                            <label class="u-text-sm u-font-medium d-block">Hubungan Kerja</label>
-                            <select name="employment_type" class="u-input">
-                                <option value="">-- Pilih --</option>
-                                @foreach ($employmentTypes as $opt)
-                                    <option value="{{ $opt['value'] }}" @selected(old('employment_type') == $opt['value'])>{{ $opt['label'] }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="u-text-sm u-font-medium d-block">Jabatan</label>
-                            <input type="text" name="position_name" class="u-input" list="positionList">
+                        <div class="u-form-group">
+                            <label>Jabatan</label>
+                            <input type="text" name="position_name" id="createPosName" class="u-input" list="positionList" placeholder="Nama Jabatan">
                             <datalist id="positionList">@foreach($positions as $p) <option value="{{ $p->name }}"> @endforeach</datalist>
                         </div>
-                    </div>
-                    
-                    <div class="u-grid-2 u-stack-mobile u-gap-md" data-mode-hide="terminate">
-                         <div><label class="u-text-sm u-font-medium d-block">Mulai</label><input type="date" name="start_date" class="u-input" value="{{ old('start_date') }}"></div>
-                         <div><label class="u-text-sm u-font-medium d-block">Selesai</label><input type="date" name="end_date" class="u-input" value="{{ old('end_date') }}"></div>
-                    </div>
-                    
-                    <div class="u-mt-md">
-                        <label class="u-text-sm u-font-medium d-block">Catatan (Opsional)</label>
-                        <input type="text" name="remarks" class="u-input" value="{{ old('remarks') }}">
-                    </div>
-
-                    <div id="createRemun" data-mode-hide="terminate" class="u-card u-card--soft u-p-md u-space-y-md u-mt-md">
-                        <div class="u-text-sm u-font-semibold">Remunerasi</div>
-                        <div class="u-grid-2 u-stack-mobile u-gap-md">
-                            <div><label class="u-text-xs d-block">Gaji Pokok</label><input type="text" name="salary_amount" class="u-input" data-rupiah="true" data-terbilang-target="salary_amount_words" value="{{ old('salary_amount') }}"><input type="text" name="salary_amount_words" class="u-input u-mt-xs" readonly value="{{ old('salary_amount_words') }}"></div>
-                            <div><label class="u-text-xs d-block">Uang Makan/Hari</label><input type="text" name="lunch_allowance_daily" class="u-input" data-rupiah="true" data-terbilang-target="lunch_allowance_words" value="{{ old('lunch_allowance_daily') }}"><input type="text" name="lunch_allowance_words" class="u-input u-mt-xs" readonly value="{{ old('lunch_allowance_words') }}"></div>
-                        </div>
-                        <details>
-                            <summary class="u-text-xs u-cursor-pointer">Tunjangan Lain</summary>
-                            <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
-                                <div><label class="u-text-xxs">T. Jabatan</label><input type="text" name="allowance_position_amount" class="u-input" data-rupiah="true" data-terbilang-target="allowance_position_words" value="{{ old('allowance_position_amount') }}"><input name="allowance_position_words" class="u-input u-mt-xxs" readonly value="{{ old('allowance_position_words') }}"></div>
-                                <div><label class="u-text-xxs">T. Komunikasi</label><input type="text" name="allowance_communication_amount" class="u-input" data-rupiah="true" data-terbilang-target="allowance_communication_words" value="{{ old('allowance_communication_amount') }}"><input name="allowance_communication_words" class="u-input u-mt-xxs" readonly value="{{ old('allowance_communication_words') }}"></div>
-                                <div><label class="u-text-xxs">T. Khusus</label><input type="text" name="allowance_special_amount" class="u-input" data-rupiah="true" data-terbilang-target="allowance_special_words" value="{{ old('allowance_special_amount') }}"><input name="allowance_special_words" class="u-input u-mt-xxs" readonly value="{{ old('allowance_special_words') }}"></div>
-                                <div><label class="u-text-xxs">Lainnya</label><input type="text" name="allowance_other_amount" class="u-input" data-rupiah="true" data-terbilang-target="allowance_other_words" value="{{ old('allowance_other_amount') }}"><input name="allowance_other_words" class="u-input u-mt-xxs" readonly value="{{ old('allowance_other_words') }}"></div>
-                            </div>
-                            <div class="u-mt-sm"><input type="text" name="allowance_other_desc" class="u-input" placeholder="Ket. Tunjangan Lain" value="{{ old('allowance_other_desc') }}"></div>
-                            <div class="u-mt-sm"><input type="text" name="other_benefits_desc" class="u-input" placeholder="Benefit Lain (BPJS dll)" value="{{ old('other_benefits_desc') }}"></div>
-                        </details>
-                    </div>
-
-                    <div class="u-flex u-gap-md u-flex-wrap u-mt-md">
-                        <label class="u-text-xs"><input type="checkbox" name="requires_draw_signature" value="1" @checked(old('requires_draw_signature', 1))> Ttd Digital</label>
-                        <label class="u-text-xs"><input type="checkbox" name="requires_camera" value="1" @checked(old('requires_camera', 1))> Kamera</label>
-                        <label class="u-text-xs"><input type="checkbox" name="requires_geolocation" value="1" @checked(old('requires_geolocation', 1))> Lokasi</label>
-                    </div>
-                </div>
-
-                <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
-                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-                    <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--soft">Simpan Draft</button>
-                    <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand">Submit</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    @endcan
-
-    <div id="editContractModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
-        <div class="u-modal__backdrop" data-modal-close></div>
-        <div class="u-modal__card u-modal__card--xl">
-            <div class="u-modal__head"><div class="u-title">Edit Draft</div><button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button></div>
-            <form method="POST" class="u-modal__body u-p-md u-space-y-lg" id="editContractForm">
-                @csrf @method('PUT')
-                <input type="hidden" name="contract_type" id="editTypeInput">
-                <input type="hidden" name="source_contract_id" id="editSourceIdInput" disabled>
-                <input type="hidden" name="mode" id="editModeInput">
-                <input type="hidden" name="employee_id" id="editEmployeeId" disabled>
-                <input type="hidden" name="person_id" id="editPersonId" disabled>
-
-                <div id="editFormContent">
-                    <div class="u-grid-2 u-stack-mobile u-gap-md">
-                        <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Unit Kerja</label>
-                            @if ($canSeeAll)
-                                <select name="unit_id" id="editContractUnitSelect" class="u-input"><option value="">Pilih Unit</option>@foreach ($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
-                            @else
-                                <input type="hidden" name="unit_id" id="editUnitIdInput">
-                                <div class="u-badge u-badge--glass" id="editUnitBadge">-</div>
-                            @endif
-                        </div>
-                        <div>
-                            <label class="u-text-sm u-font-medium u-mb-sm d-block">Unit Kerja Baru (Opsional)</label>
-                            <select name="new_unit_id" id="editNewUnitId" class="u-input">
-                                <option value="">-- Tidak Berubah --</option>
-                                @foreach ($units as $u)
-                                    <option value="{{ $u->id }}">{{ $u->name }}</option>
-                                @endforeach
+                        <div class="u-form-group">
+                            <label>Hubungan Kerja</label>
+                            <select name="employment_type" class="u-input">
+                                @foreach ($employmentTypes as $opt) <option value="{{ $opt['value'] }}" @selected(old('employment_type') == $opt['value'])>{{ $opt['label'] }}</option> @endforeach
                             </select>
                         </div>
                     </div>
-                    
-                    <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md">
-                        <div>
-                            <label class="u-text-sm u-font-medium d-block">Pelamar / Karyawan</label>
-                            <input type="text" id="editPersonName" class="u-input" readonly disabled>
-                            <input type="hidden" name="applicant_id" id="editApplicantId">
-                        </div>
-                        <div>
-                            <label class="u-text-sm u-font-medium d-block">Hubungan Kerja</label>
-                            <select name="employment_type" id="editEmploymentType" class="u-input">
-                                @foreach ($employmentTypes as $opt)
-                                    <option value="{{ $opt['value'] }}">{{ $opt['label'] }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="u-mt-md">
-                        <label class="u-text-sm u-font-medium d-block">Jabatan</label>
-                        <input type="text" name="position_name" id="editPositionName" class="u-input" list="positionListEdit">
-                        <datalist id="positionListEdit">@foreach($positions as $p) <option value="{{ $p->name }}"> @endforeach</datalist>
-                    </div>
-                    <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-md" id="editDates">
-                        <div><label class="u-text-sm d-block">Mulai</label><input type="date" name="start_date" id="editStartDate" class="u-input"></div>
-                        <div><label class="u-text-sm d-block">Selesai</label><input type="date" name="end_date" id="editEndDate" class="u-input"></div>
-                    </div>
-                    <div id="editPbFields" class="u-grid-2 u-stack-mobile u-gap-md u-mt-md" hidden>
-                        <div><label class="u-text-sm d-block">Efektif Pengakhiran</label><input type="date" name="pb_effective_end" id="editPbEnd" class="u-input"></div>
-                        <div>
-                            <label class="u-text-sm d-block">Kompensasi</label>
-                            <input type="text" name="pb_compensation_amount" id="editPbComp" class="u-input" data-rupiah="true" data-terbilang-target="editPbCompW">
-                            <input type="text" name="pb_compensation_amount_words" id="editPbCompW" class="u-input u-mt-xxs" readonly>
-                        </div>
-                    </div>
-                    <div class="u-mt-md"><label class="u-text-sm d-block">Catatan</label><input type="text" name="remarks" id="editRemarks" class="u-input"></div>
 
-                    <div id="editRemun" class="u-card u-card--soft u-p-md u-space-y-md u-mt-md">
-                        <div class="u-text-sm u-font-semibold">Remunerasi</div>
-                        <div class="u-grid-2 u-stack-mobile u-gap-md">
-                            <div><label class="u-text-xs d-block">Gaji Pokok</label><input type="text" name="salary_amount" id="editSalary" class="u-input" data-rupiah="true" data-terbilang-target="editSalaryW"><input type="text" name="salary_amount_words" id="editSalaryW" class="u-input u-mt-xs" readonly></div>
-                            <div><label class="u-text-xs d-block">Uang Makan</label><input type="text" name="lunch_allowance_daily" id="editLunch" class="u-input" data-rupiah="true" data-terbilang-target="editLunchW"><input type="text" name="lunch_allowance_words" id="editLunchW" class="u-input u-mt-xs" readonly></div>
+                    {{-- SPK/PKWT FIELDS --}}
+                    <div id="sectionPkwtSpk" class="is-hidden u-mt-md">
+                        <div class="u-grid-2 u-stack-mobile u-gap-md u-mb-md">
+                            <div class="u-form-group"><label>Mulai</label><input type="date" name="start_date" class="u-input"></div>
+                            <div class="u-form-group"><label>Selesai</label><input type="date" name="end_date" class="u-input"></div>
                         </div>
-                        <details>
-                            <summary class="u-text-xs u-cursor-pointer">Tunjangan Lain</summary>
-                            <div class="u-grid-2 u-stack-mobile u-gap-md u-mt-sm">
-                                <div><label class="u-text-xxs">T. Jabatan</label><input type="text" name="allowance_position_amount" id="editAP" class="u-input" data-rupiah="true" data-terbilang-target="editAPW"><input name="allowance_position_words" id="editAPW" class="u-input u-mt-xxs" readonly></div>
-                                <div><label class="u-text-xxs">T. Komunikasi</label><input type="text" name="allowance_communication_amount" id="editAC" class="u-input" data-rupiah="true" data-terbilang-target="editACW"><input name="allowance_communication_words" id="editACW" class="u-input u-mt-xxs" readonly></div>
-                                <div><label class="u-text-xxs">T. Khusus</label><input type="text" name="allowance_special_amount" id="editAS" class="u-input" data-rupiah="true" data-terbilang-target="editASW"><input name="allowance_special_words" id="editASW" class="u-input u-mt-xxs" readonly></div>
-                                <div><label class="u-text-xxs">Lainnya</label><input type="text" name="allowance_other_amount" id="editAO" class="u-input" data-rupiah="true" data-terbilang-target="editAOW"><input name="allowance_other_words" id="editAOW" class="u-input u-mt-xxs" readonly></div>
+                        <div class="u-bg-section u-p-md">
+                            <div class="u-text-sm u-font-bold u-mb-md u-text-brand">Rincian Remunerasi</div>
+                            <div class="u-grid-2 u-stack-mobile u-gap-lg">
+                                <div>
+                                    <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" class="u-input" data-rupiah="true" data-terbilang-target="salary_amount_words"></div><input type="text" name="salary_amount_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
+                                    <div class="u-form-group has-prefix u-mt-sm"><label>Uang Makan / Hari</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" class="u-input" data-rupiah="true" data-terbilang-target="lunch_allowance_words"></div><input type="text" name="lunch_allowance_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
+                                </div>
+                                <div>
+                                    <label>Tunjangan Lainnya</label>
+                                    <div class="u-space-y-sm has-prefix">
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" class="u-input u-input--sm" placeholder="Jabatan" data-rupiah="true"></div>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" class="u-input u-input--sm" placeholder="Komunikasi" data-rupiah="true"></div>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" class="u-input u-input--sm" placeholder="Khusus" data-rupiah="true"></div>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" class="u-input u-input--sm" placeholder="Lainnya" data-rupiah="true"></div>
+                                    </div>
+                                    <input type="text" name="other_benefits_desc" class="u-input u-input--sm u-mt-sm" placeholder="Deskripsi Benefit Lain (BPJS, dll)">
+                                </div>
                             </div>
-                            <div class="u-mt-sm"><input type="text" name="allowance_other_desc" id="editAOD" class="u-input" placeholder="Ket. Tunjangan Lain"></div>
-                            <div class="u-mt-sm"><input type="text" name="other_benefits_desc" id="editOB" class="u-input" placeholder="Benefit Lain"></div>
-                        </details>
-                    </div>
-                    <div class="u-flex u-gap-md u-flex-wrap u-mt-md">
-                        <label class="u-text-xs"><input type="checkbox" name="requires_draw_signature" id="editDraw" value="1"> Ttd Digital</label>
-                        <label class="u-text-xs"><input type="checkbox" name="requires_camera" id="editCam" value="1"> Kamera</label>
-                        <label class="u-text-xs"><input type="checkbox" name="requires_geolocation" id="editGeo" value="1"> Lokasi</label>
-                    </div>
-                </div>
-
-                <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
-                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-                    <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--soft">Simpan Draft</button>
-                    <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand">Submit</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    {{-- MODAL DETAIL KONTRAK (Clean Layout) --}}
-    <div id="detailContractModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
-        <div class="u-modal__backdrop" data-modal-close></div>
-        <div class="u-modal__card u-modal__card--xl modal-card-wide">
-            <div class="u-modal__head"><div class="u-title">Detail Kontrak</div><button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button></div>
-            <div class="u-modal__body u-p-md u-space-y-md u-bg-light-soft">
-                <div class="u-grid-2-custom">
-                    <div class="u-card u-p-md">
-                        <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Info Utama</div>
-                        <div class="u-space-y-xs">
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Nomor</span><span id="detNo" class="u-font-medium">-</span></div>
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Status</span><span id="detStatus">-</span></div>
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Unit</span><span id="detUnit">-</span></div>
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Jenis</span><span id="detType">-</span></div>
                         </div>
                     </div>
-                    <div class="u-card u-p-md">
-                         <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Detail Personil</div>
-                         <div class="u-space-y-xs">
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Nama</span><span id="detName" class="u-font-medium">-</span></div>
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Jabatan</span><span id="detPos">-</span></div>
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Periode</span><span id="detPeriod">-</span></div>
-                             <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Hubungan Kerja</span><span id="detEmpType">-</span></div>
-                         </div>
+
+                    {{-- PB FIELDS --}}
+                    <div id="sectionPb" class="is-hidden u-mt-md u-bg-section u-p-md" style="border-left: 4px solid #ef4444;">
+                        <div class="u-text-sm u-font-bold u-text-danger u-mb-md">Kompensasi Pengakhiran</div>
+                        <div class="u-grid-2 u-stack-mobile u-gap-md">
+                            <div class="u-form-group"><label>Efektif Berakhir</label><input type="date" name="pb_effective_end" class="u-input"></div>
+                            <div class="u-form-group has-prefix">
+                                <label>Nilai Kompensasi</label>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="pb_compensation_amount" class="u-input" data-rupiah="true" data-terbilang-target="pb_compensation_amount_words"></div>
+                                <input type="text" name="pb_compensation_amount_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="u-card u-card--glass u-p-sm" id="detNewUnitBox" hidden>
-                     <div class="u-text-xs u-muted">Unit Baru: <span id="detNewUnit" class="u-text-dark font-bold">-</span></div>
-                </div>
-
-                <div id="detRemunBox" class="u-card u-p-md">
-                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Rincian Remunerasi</div>
-                     <div class="u-grid-2-custom u-gap-md">
-                        <div class="u-space-y-xs">
-                            <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Gaji Pokok</span><span id="detSalary" class="u-font-medium">-</span></div>
-                            <div class="u-text-xxs u-muted u-text-right" id="detSalaryW"></div>
-                            <div class="u-flex u-justify-between"><span class="u-text-xs u-muted">Uang Makan</span><span id="detLunch" class="u-font-medium">-</span></div>
-                            <div class="u-text-xxs u-muted u-text-right" id="detLunchW"></div>
-                        </div>
-                        <div id="detAllowances" class="u-space-y-xs"></div>
+                <div class="u-border-t u-pt-md">
+                     <div class="u-form-group"><label>Catatan Tambahan</label><input type="text" name="remarks" class="u-input" placeholder="Opsional..."></div>
+                     <div class="u-flex u-gap-lg u-flex-wrap u-mt-md u-p-sm u-bg-light u-rounded">
+                          <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_draw_signature" value="1" checked> Tanda Tangan Digital</label>
+                          <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_camera" value="1" checked> Wajib Kamera</label>
+                          <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_geolocation" value="1" checked> Wajib Lokasi</label>
                      </div>
                 </div>
+            </div>
 
-                <div id="detPbBox" class="u-card u-p-md" hidden>
-                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm">Kompensasi Pengakhiran</div>
-                     <div class="u-grid-2 u-gap-md">
-                         <div><div class="u-text-xs u-muted">Nilai Kompensasi</div><div id="detPbVal" class="u-text-lg u-font-bold">-</div><div class="u-text-xxs u-muted" id="detPbValW"></div></div>
-                         <div><div class="u-text-xs u-muted">Efektif Tanggal</div><div id="detPbEff">-</div></div>
-                     </div>
-                </div>
-
-                <div id="detApprovalInfo" class="u-card u-card--glass u-p-sm" hidden>
-                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Status Approval</div>
-                     <div id="detAppStatus" class="u-text-sm u-font-medium">-</div>
-                     <div id="detAppNote" class="u-text-xs u-muted u-mt-xxs">-</div>
+            <div class="u-modal__foot u-flex u-justify-between u-items-center">
+                <div class="u-text-xs u-muted">Pastikan data sudah benar.</div>
+                <div class="u-flex u-gap-sm">
+                    <button type="button" class="u-btn u-btn--ghost js-close-modal">Batal</button>
+                    <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--outline">Simpan Draft</button>
+                    <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand">Submit Dokumen</button>
                 </div>
             </div>
-            <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
-                <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
-                
-                {{-- Secure Document Preview Link (FIXED ROUTE) --}}
-                <a href="#" id="btnPreviewDoc" target="_blank" class="u-btn u-btn--outline u-text-brand" hidden>
-                    <i class="fas fa-file-pdf u-mr-xxs"></i> Lihat Dokumen
-                </a>
-
-                <button type="button" id="btnReject" class="u-btn u-btn--danger" hidden>Reject</button>
-                <button type="button" id="btnApprove" class="u-btn u-btn--brand" hidden>Approve</button>
-                <button type="button" id="btnSign" class="u-btn u-btn--primary" hidden>Sign</button>
-            </div>
-        </div>
+        </form>
     </div>
+</div>
+@endcan
 
-    <div id="rejectModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
-        <div class="u-modal__backdrop" data-modal-close></div>
-        <div class="u-modal__card u-modal__card--sm">
-            <div class="u-modal__head">
-                <div class="u-title text-danger">Reject Kontrak</div>
-                <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button>
-            </div>
-            <form id="rejectForm" class="u-modal__body u-p-md u-space-y-md">
-                <p class="u-text-sm u-muted">Mohon berikan alasan penolakan kontrak ini.</p>
+{{-- EDIT MODAL --}}
+<div id="editContractModal" class="u-modal" hidden>
+    <div class="u-modal__backdrop js-close-modal"></div>
+    <div class="u-modal__card u-modal__card--xl">
+        <div class="u-modal__head">
+            <div class="u-title">Edit Dokumen</div>
+            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <form method="POST" class="u-modal__body" id="editContractForm">
+            @csrf @method('PUT')
+            <input type="hidden" name="contract_type" id="editTypeInput">
+            <input type="hidden" name="source_contract_id" id="editSourceIdInput">
+            <input type="hidden" name="mode" id="editModeInput">
+            <input type="hidden" name="employee_id" id="editEmployeeId">
+            <input type="hidden" name="person_id" id="editPersonId">
+            <input type="hidden" name="applicant_id" id="editApplicantId">
+
+            <div class="u-card u-card--glass u-p-md u-mb-lg u-grid-2 u-gap-md">
                 <div>
-                    <label class="u-text-xs u-font-medium d-block u-mb-xs">Alasan Reject</label>
-                    <textarea name="rejection_note" class="u-input" rows="3" required placeholder="Contoh: Gaji tidak sesuai kesepakatan..."></textarea>
+                    <div class="u-text-xs u-muted u-uppercase u-font-bold">Personil</div>
+                    <div id="editDisplayPerson" class="u-text-lg u-font-bold">-</div>
                 </div>
-                <div class="u-flex u-justify-end u-gap-sm">
-                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-                    <button type="submit" class="u-btn u-btn--danger">Konfirmasi Reject</button>
+                <div>
+                    <div class="u-text-xs u-muted u-uppercase u-font-bold">Tipe Dokumen</div>
+                    <div id="editDisplayType" class="u-badge u-badge--glass">-</div>
                 </div>
-            </form>
-        </div>
-    </div>
+            </div>
 
-    <div id="signModal" class="u-modal" hidden style="display:none;align-items:center;justify-content:center;">
-        <div class="u-modal__backdrop" data-modal-close></div>
-        <div class="u-modal__card u-modal__card--md">
-            <div class="u-modal__head"><div class="u-title">Tanda Tangan</div></div>
-            <form id="signForm" class="u-modal__body u-p-md u-space-y-md">
-                <p class="u-text-xs u-muted">Bubuhkan tanda tangan.</p>
-                <div class="u-card u-card--border u-p-xs">
-                    <canvas id="signCanvas" width="400" height="200" style="width:100%;height:200px;touch-action:none;background:#fff"></canvas>
+            <div class="u-space-y-lg">
+                <div class="u-grid-2 u-stack-mobile u-gap-md">
+                    <div class="u-form-group">
+                        <label>Unit Kerja</label>
+                        @if ($canSeeAll)
+                            <select name="unit_id" id="editUnitSelect" class="u-input"><option value="">Pilih</option>@foreach($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
+                        @else
+                            <input type="hidden" name="unit_id" id="editUnitIdHidden">
+                            <input type="text" id="editUnitDisplay" class="u-input u-bg-light" readonly>
+                        @endif
+                    </div>
+                    <div class="u-form-group"><label>Jabatan</label><input type="text" name="position_name" id="editPos" class="u-input"></div>
                 </div>
-                <div class="u-flex u-justify-between u-text-xs">
-                    <button type="button" id="clearSign" class="u-text-brand">Bersihkan</button>
-                    <span id="geoStatus" class="u-muted">Lokasi: Menunggu...</span>
+
+                <div class="u-form-group" id="editNewUnitWrapper" hidden>
+                    <label>Unit Kerja Baru (Pindah Unit)</label>
+                    <select name="new_unit_id" id="editNewUnitId" class="u-input"><option value="">-- Tidak Berubah --</option>@foreach ($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
                 </div>
-                <input type="hidden" name="signature_image">
-                <div class="u-flex u-justify-end u-gap-sm">
-                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-                    <button type="submit" class="u-btn u-btn--brand">Simpan</button>
+
+                <div id="editSectionPkwtSpk" class="is-hidden u-space-y-md">
+                    <div class="u-grid-2 u-stack-mobile u-gap-md">
+                        <div class="u-form-group"><label>Mulai</label><input type="date" name="start_date" id="editStart" class="u-input"></div>
+                        <div class="u-form-group"><label>Selesai</label><input type="date" name="end_date" id="editEnd" class="u-input"></div>
+                    </div>
+                    <div class="u-bg-section u-p-md">
+                        <div class="u-text-sm u-font-bold u-mb-md u-text-brand">Remunerasi</div>
+                        <div class="u-grid-2 u-stack-mobile u-gap-lg">
+                            <div>
+                                <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" id="editSalary" class="u-input" data-rupiah="true" data-terbilang-target="editSalaryW"></div><input id="editSalaryW" name="salary_amount_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
+                                <div class="u-form-group has-prefix u-mt-sm"><label>Uang Makan</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" id="editLunch" class="u-input" data-rupiah="true" data-terbilang-target="editLunchW"></div><input id="editLunchW" name="lunch_allowance_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
+                            </div>
+                            <div class="u-space-y-sm has-prefix">
+                                <label>Tunjangan</label>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" id="editAP" class="u-input u-input--sm" placeholder="Jabatan" data-rupiah="true"></div>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" id="editAC" class="u-input u-input--sm" placeholder="Komunikasi" data-rupiah="true"></div>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" id="editAS" class="u-input u-input--sm" placeholder="Khusus" data-rupiah="true"></div>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" id="editAO" class="u-input u-input--sm" placeholder="Lainnya" data-rupiah="true"></div>
+                                <input type="text" name="other_benefits_desc" id="editOB" class="u-input u-input--sm u-mt-sm" placeholder="Benefit Lain">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </form>
+
+                <div id="editSectionPb" class="is-hidden u-bg-section u-p-md" style="border-left: 4px solid #ef4444;">
+                     <div class="u-text-sm u-font-bold u-text-danger u-mb-md">Kompensasi Pengakhiran</div>
+                     <div class="u-grid-2 u-stack-mobile u-gap-md">
+                         <div class="u-form-group"><label>Efektif Berakhir</label><input type="date" name="pb_effective_end" id="editPbEnd" class="u-input"></div>
+                         <div class="u-form-group has-prefix">
+                             <label>Kompensasi</label>
+                             <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="pb_compensation_amount" id="editPbComp" class="u-input" data-rupiah="true" data-terbilang-target="editPbCompW"></div>
+                             <input type="text" name="pb_compensation_amount_words" id="editPbCompW" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1">
+                         </div>
+                     </div>
+                </div>
+
+                <div class="u-form-group"><label>Catatan</label><input type="text" name="remarks" id="editRemarks" class="u-input"></div>
+                <div class="u-flex u-gap-lg u-flex-wrap u-p-sm u-bg-light u-rounded">
+                    <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_draw_signature" id="editDraw" value="1"> Ttd Digital</label>
+                    <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_camera" id="editCam" value="1"> Kamera</label>
+                    <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_geolocation" id="editGeo" value="1"> Lokasi</label>
+                </div>
+            </div>
+
+            <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+                <button type="button" class="u-btn u-btn--ghost js-close-modal">Batal</button>
+                <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--outline">Simpan</button>
+                <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- DETAIL MODAL --}}
+<div id="detailContractModal" class="u-modal" hidden>
+    <div class="u-modal__backdrop js-close-modal"></div>
+    <div class="u-modal__card u-modal__card--xl">
+        <div class="u-modal__head">
+            <div class="u-title">Detail Dokumen</div>
+            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="u-modal__body u-space-y-md">
+            <div class="u-grid-2 u-gap-md u-stack-mobile">
+                <div class="u-bg-section u-p-md">
+                    <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm u-tracking-wide">Info Dokumen</div>
+                    <div class="u-space-y-sm">
+                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Nomor</span><span id="detNo" class="u-font-mono u-font-bold">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Tipe</span><span id="detType" class="u-badge u-badge--glass">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Status</span><span id="detStatus" class="u-badge">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
+                    </div>
+                </div>
+                <div class="u-bg-section u-p-md">
+                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm u-tracking-wide">Personil</div>
+                     <div class="u-space-y-sm">
+                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-lg">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
+                         <div id="detPeriodRow" class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
+                     </div>
+                </div>
+            </div>
+
+            <div class="u-card u-card--glass u-p-sm" id="detNewUnitBox" hidden>
+                  <div class="u-text-sm u-flex u-items-center"><i class="fas fa-exchange-alt u-mr-sm u-muted"></i> Pindah ke: <strong id="detNewUnit" class="u-ml-xs">-</strong></div>
+            </div>
+
+            <div id="detRemunBox" class="u-bg-section u-p-md is-hidden">
+                  <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md u-tracking-wide">Rincian Remunerasi</div>
+                  <div class="u-grid-2 u-gap-lg u-stack-mobile">
+                    <div class="u-space-y-sm">
+                        <div class="u-flex u-justify-between u-py-xs u-border-b"><span class="u-text-sm u-muted">Gaji Pokok</span><strong id="detSalary">-</strong></div>
+                        <div class="u-flex u-justify-between u-py-xs u-border-b"><span class="u-text-sm u-muted">Uang Makan</span><strong id="detLunch">-</strong></div>
+                    </div>
+                    <div id="detAllowances" class="u-space-y-xs u-text-sm"></div>
+                  </div>
+            </div>
+
+            <div id="detPbBox" class="u-bg-section u-p-md is-hidden" style="border-left: 4px solid #ef4444;">
+                  <div class="u-text-xs u-font-bold u-text-danger u-uppercase u-mb-md u-tracking-wide">Kompensasi Pengakhiran</div>
+                  <div class="u-grid-2 u-gap-lg">
+                      <div><div class="u-text-xs u-muted">Efektif Berakhir</div><div id="detPbEff" class="u-font-bold u-text-lg">-</div></div>
+                      <div><div class="u-text-xs u-muted">Nilai Kompensasi</div><div id="detPbVal" class="u-font-bold u-text-lg">-</div><div class="u-text-xs u-muted" id="detPbValW"></div></div>
+                  </div>
+            </div>
+        </div>
+        <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+            <button type="button" class="u-btn u-btn--ghost js-close-modal">Tutup</button>
+            <a href="#" id="btnPreviewDoc" target="_blank" class="u-btn u-btn--outline u-text-brand is-hidden"><i class="fas fa-file-pdf u-mr-xs"></i> Dokumen</a>
+            <button type="button" id="btnReject" class="u-btn u-btn--danger is-hidden">Reject</button>
+            <button type="button" id="btnApprove" class="u-btn u-btn--brand is-hidden">Approve</button>
+            <button type="button" id="btnSign" class="u-btn u-btn--primary is-hidden">Tanda Tangan</button>
         </div>
     </div>
+</div>
+
+<div id="rejectModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--sm"><div class="u-modal__head"><div class="u-title u-text-danger">Tolak Dokumen</div><button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button></div><form id="rejectForm" class="u-modal__body"><textarea name="rejection_note" class="u-input" rows="4" required placeholder="Alasan penolakan..."></textarea><div class="u-flex u-justify-end u-gap-sm u-mt-md"><button type="submit" class="u-btn u-btn--danger">Konfirmasi Tolak</button></div></form></div></div>
+<div id="signModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--md"><div class="u-modal__head"><div class="u-title">Tanda Tangan Digital</div></div><form id="signForm" class="u-modal__body"><div class="u-card u-card--border u-p-xs u-mb-sm"><canvas id="signCanvas" style="width:100%; height:200px; background:#fff; touch-action:none;"></canvas></div><div class="u-flex u-justify-between u-text-xs u-mb-md"><button type="button" id="clearSign" class="u-text-brand u-font-bold">Hapus / Ulangi</button><span id="geoStatus" class="u-muted">Mendeteksi Lokasi...</span></div><input type="hidden" name="signature_image"><input type="hidden" name="geo_lat"><input type="hidden" name="geo_lng"><div class="u-flex u-justify-end u-gap-sm"><button type="submit" class="u-btn u-btn--brand">Simpan & Tanda Tangan</button></div></form></div></div>
 @endsection
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const $ = (s, p=document) => p.querySelector(s);
-    const $$ = (s, p=document) => [...p.querySelectorAll(s)];
-    const csrf = $('meta[name="csrf-token"]')?.content;
-    const money = n => 'Rp. ' + (n||0).toString().replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-    const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-    const show = el => { 
-        if(el) {
-             el.hidden = false; 
-             el.style.display = 'flex'; 
-        }
+    const doc = document;
+    const select = (sel, parent=doc) => parent.querySelector(sel);
+    const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
+    const csrf = select('meta[name="csrf-token"]')?.content;
+    
+    const hide = el => { if(el) { el.hidden=true; el.style.display='none'; el.classList.add('is-hidden'); } };
+    const show = el => { if(el) { el.hidden=false; el.style.display='flex'; el.classList.remove('is-hidden'); } };
+    const showBlock = el => { if(el) { el.hidden=false; el.style.display='block'; el.classList.remove('is-hidden'); } };
+    
+    const money = n => {
+        if (!n || n == 0 || n == '0') return '-';
+        return n.toString().replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
     };
-    const hide = el => { 
-        if(el) {
-            el.hidden = true; 
-            el.style.display = 'none';
-        }
-    };
-    const text = (el, t) => el && (el.textContent = t || '-');
-
-    const safeJSON = (v) => {
-        if (!v) return {};
-        if (typeof v === 'object') return v;
-        try { return JSON.parse(v); } catch(e) { return {}; }
-    };
+    
+    const safeJSON = (v) => { try{ return JSON.parse(v)||{}; } catch(e){ return v && typeof v === 'object' ? v : {}; } };
 
     const terbilang = (n) => {
-        const h = ['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];
-        n = Math.abs(parseInt(n)) || 0;
-        if(n<12) return h[n];
-        if(n<20) return terbilang(n-10)+' belas';
-        if(n<100) return terbilang(Math.floor(n/10))+' puluh '+terbilang(n%10);
-        if(n<200) return 'seratus '+terbilang(n-100);
-        if(n<1000) return terbilang(Math.floor(n/100))+' ratus '+terbilang(n%100);
-        if(n<2000) return 'seribu '+terbilang(n-1000);
-        if(n<1000000) return terbilang(Math.floor(n/1000))+' ribu '+terbilang(n%1000);
-        if(n<1000000000) return terbilang(Math.floor(n/1000000))+' juta '+terbilang(n%1000000);
-        return terbilang(Math.floor(n/1000000000))+' miliar '+terbilang(n%1000000000);
+       const h = ['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];
+       n = Math.abs(parseInt(n)) || 0;
+       if(n<12) return h[n];
+       if(n<20) return terbilang(n-10)+' belas';
+       if(n<100) return terbilang(Math.floor(n/10))+' puluh '+terbilang(n%10);
+       if(n<200) return 'seratus '+terbilang(n-100);
+       if(n<1000) return terbilang(Math.floor(n/100))+' ratus '+terbilang(n%100);
+       if(n<2000) return 'seribu '+terbilang(n-1000);
+       if(n<1000000) return terbilang(Math.floor(n/1000))+' ribu '+terbilang(n%1000);
+       return terbilang(Math.floor(n/1000000))+' juta '+terbilang(n%1000000);
     };
 
-    const bindRupiahAndTerbilang = (root) => {
-        $$('input[data-rupiah="true"]', root).forEach(el => {
-            const targetId = el.dataset.terbilangTarget;
-            const target = targetId ? root.querySelector(`[name="${targetId}"], #${targetId}`) : null;
-            const update = () => {
-                let val = el.value.replace(/\D/g,'');
-                el.value = val ? money(val) : '';
-                if(target && val) target.value = (terbilang(val) + ' rupiah').toUpperCase();
-                else if(target) target.value = '';
+    const bindCalc = (root) => {
+        selectAll('input[data-rupiah="true"]', root).forEach(el => {
+            const tgtId = el.dataset.terbilangTarget;
+            const tgt = tgtId ? (select(`[name="${tgtId}"]`, root) || select(`#${tgtId}`, root)) : null;
+            const upd = () => {
+                let v = el.value.replace(/\D/g,'');
+                el.value = v ? money(v) : ''; 
+                if(tgt && v && v != '0') tgt.value = (terbilang(v) + ' rupiah').toUpperCase();
+                else if(tgt) tgt.value = '';
             };
-            on(el, 'input', update);
-            update(); 
+            el.addEventListener('input', upd);
         });
     };
 
-    // CREATE Logic
-    const cm = $('#createContractModal');
-    const cForm = $('#createContractForm');
-    if(cm && cForm) {
-        bindRupiahAndTerbilang(cForm);
-        const famSel = $('#createFamilySelect');
-        const subWrap = $('#createSubtypeWrap');
-        const subSel = $('#createSubtypeSelect');
-        const typeInp = $('#createTypeInput');
-        const modeInp = $('#createModeInput');
-        const mainSec = $('#createMainSection');
-        const unitSel = $('#createUnitSelect');
+    const openModal = (id) => {
+        const m = document.getElementById(id);
+        if(m) {
+             m.hidden = false; m.style.display = 'grid'; 
+             document.body.classList.add('modal-open');
+        }
+    };
+    const closeModal = (m) => {
+        if(m) { m.hidden = true; m.style.display = 'none'; document.body.classList.remove('modal-open'); }
+    };
+
+    doc.body.addEventListener('click', (e) => {
+        if(e.target.closest('.js-close-modal') || e.target.classList.contains('u-modal__backdrop')) {
+            const m = e.target.closest('.u-modal');
+            closeModal(m);
+        }
+        const btnOpen = e.target.closest('[data-modal-open]');
+        if(btnOpen) {
+            e.preventDefault();
+            openModal(btnOpen.dataset.modalOpen);
+        }
+    });
+
+    const btnCreate = select('#btnOpenCreate');
+    if(btnCreate) {
+        btnCreate.onclick = (e) => { e.preventDefault(); openModal('createContractModal'); };
         
-        const srcIdInp = $('#createSourceIdInput');
-        const empIdInp = $('#createEmployeeIdInput');
-        const perIdInp = $('#createPersonIdInput');
+        const cForm = select('#createContractForm');
+        bindCalc(cForm);
 
-        const switchSection = (mode) => {
-            $$('[data-mode-section]', cForm).forEach(el => {
-                if(el.dataset.modeSection === (mode === 'extend' ? 'existing' : mode)){
-                     el.hidden = false;
-                     el.style.display = 'block';
-                } else {
-                     el.hidden = true;
-                     el.style.display = 'none';
-                }
-            });
-            const remun = $('#createRemun');
-            if(remun) remun.hidden = (mode === 'terminate');
+        const famSel = select('#createFamilySelect');
+        const subSel = select('#createSubtypeSelect');
+        const subWrap = select('#createSubtypeWrap');
+        const srcSel = select('#createSourceSelect');
+        const filterUnit = select('#filterSourceUnit');
+        
+        const updateCreateUI = () => {
+            const mode = select('#createModeInput').value;
+            const type = select('#createTypeInput').value;
+
+            if (mode === 'new') {
+                showBlock(select('[data-mode-section="new"]'));
+                hide(select('[data-mode-section="existing"]'));
+            } else {
+                showBlock(select('[data-mode-section="existing"]'));
+                hide(select('[data-mode-section="new"]'));
+                const l = select('#labelSourceExisting');
+                if(l) l.textContent = (mode === 'terminate') ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
+                
+                if(mode === 'extend') showBlock(select('#newUnitSection'));
+                else hide(select('#newUnitSection'));
+            }
             
-            const pbSpec = $$('[data-mode-show="terminate"]', cForm);
-            pbSpec.forEach(el => el.hidden = (mode !== 'terminate'));
-
-            mainSec.hidden = false;
-            mainSec.style.display = 'block';
+            if (mode === 'terminate') {
+                hide(select('#sectionPkwtSpk'));
+                showBlock(select('#sectionPb'));
+            } else {
+                showBlock(select('#sectionPkwtSpk'));
+                hide(select('#sectionPb'));
+            }
         };
 
-        const resetSource = () => {
-             const e = $('#createExtendPreview');
-             if(e) { e.hidden = true; e.style.display = 'none'; }
-             const t = $('#createTermPreview');
-             if(t) { t.hidden = true; t.style.display = 'none'; }
-        };
-
-        on(famSel, 'change', () => {
+        famSel.addEventListener('change', () => {
             const val = famSel.value;
             const opt = famSel.options[famSel.selectedIndex];
-            $('#createFamilyHint').textContent = opt.dataset.hint || '';
-            subSel.value = '';
-            resetSource();
-            
-            if(val === 'PKWT') {
-                if(subWrap) { subWrap.hidden = false; subWrap.style.display = 'block'; }
-                if(mainSec) { mainSec.hidden = true; mainSec.style.display = 'none'; }
-                typeInp.value = '';
+            if (val === 'PKWT') {
+                showBlock(subWrap);
+                hide(select('#createMainSection'));
             } else {
-                if(subWrap) { subWrap.hidden = true; subWrap.style.display = 'none'; }
-                typeInp.value = (val === 'SPK') ? 'SPK' : 'PB_PENGAKHIRAN';
-                modeInp.value = opt.dataset.mode;
-                switchSection(opt.dataset.mode);
+                hide(subWrap);
+                if(val) {
+                    showBlock(select('#createMainSection'));
+                    select('#createTypeInput').value = (val === 'SPK') ? 'SPK' : 'PB_PENGAKHIRAN';
+                    select('#createModeInput').value = opt.dataset.mode;
+                    updateCreateUI();
+                } else {
+                    hide(select('#createMainSection'));
+                }
             }
         });
 
-        on(subSel, 'change', () => {
+        subSel.addEventListener('change', () => {
             const val = subSel.value;
             const opt = subSel.options[subSel.selectedIndex];
-            resetSource();
-            if(val) {
-                typeInp.value = val; modeInp.value = opt.dataset.mode; switchSection(opt.dataset.mode);
+            if (val) {
+                showBlock(select('#createMainSection'));
+                select('#createTypeInput').value = val;
+                select('#createModeInput').value = opt.dataset.mode;
+                updateCreateUI();
             } else {
-                if(mainSec) { mainSec.hidden = true; mainSec.style.display = 'none'; }
+                hide(select('#createMainSection'));
             }
         });
 
-        const filterSource = (uId) => {
-            ['#createSourceExtendSelect', '#createSourceTermSelect'].forEach(selId => {
-                const sel = $(selId); if(!sel) return;
-                [...sel.options].forEach(opt => {
-                    if(!opt.value) return; 
-                    const show = opt.dataset.unitId == uId;
-                    opt.hidden = !show; opt.disabled = !show;
+        const appSel = select('#createApplicantSelect');
+        appSel?.addEventListener('change', () => {
+            const o = appSel.options[appSel.selectedIndex];
+            if (appSel.value) {
+                select('#createPersonIdInput').value = o.dataset.personId;
+                select('#createPersonIdInput').disabled = false;
+                select('#createEmployeeIdInput').value = '';
+                select('#createEmployeeIdInput').disabled = true;
+                
+                select('#prevName').textContent = o.dataset.fullname;
+                select('#prevPos').textContent = o.dataset.pos;
+                select('#prevUnit').textContent = o.dataset.unit;
+                select('#prevDate').textContent = '-';
+                select('#prevNik').textContent = '-';
+                
+                showBlock(select('#createPersonPreview'));
+                
+                const uSel = select('#createUnitSelectNew');
+                if(uSel && o.dataset.unitId) uSel.value = o.dataset.unitId;
+                const uHid = select('#createUnitHiddenNew');
+                if(uHid && o.dataset.unitId) uHid.value = o.dataset.unitId;
+            } else hide(select('#createPersonPreview'));
+        });
+
+        if(filterUnit) {
+            filterUnit.addEventListener('change', () => {
+                const uId = filterUnit.value;
+                const opts = [...srcSel.options];
+                srcSel.value = ""; 
+                hide(select('#createPersonPreview'));
+                
+                opts.forEach(o => {
+                    if(!o.value) { o.hidden = false; return; }
+                    if(!uId || o.dataset.unitId == uId) { o.hidden = false; o.disabled = false; } 
+                    else { o.hidden = true; o.disabled = true; }
                 });
             });
-        };
+        }
 
-        if(unitSel) on(unitSel, 'change', () => { resetSource(); filterSource(unitSel.value); });
-        const initUnitId = unitSel ? unitSel.value : ($('input[name="unit_id"]')?.value || '');
-        if(initUnitId) filterSource(initUnitId);
-
-        on($('#createApplicantSelect'), 'change', function() {
-            const o = this.options[this.selectedIndex];
-            const p = $('#createApplicantPreview');
-            if(this.value){
-                empIdInp.value = ''; 
-                perIdInp.value = o.dataset.personId || '';
-                empIdInp.disabled = false; perIdInp.disabled = false;
-                text($('#capName'), o.dataset.fullname);
-                if(p) { p.hidden = false; p.style.display = 'block'; }
-            } else {
-                if(p) { p.hidden = true; p.style.display = 'none'; }
-            }
+        srcSel?.addEventListener('change', () => {
+            const o = srcSel.options[srcSel.selectedIndex];
+            if (srcSel.value) {
+                select('#createSourceIdInput').value = srcSel.value;
+                select('#createSourceIdInput').disabled = false;
+                select('#createPersonIdInput').value = o.dataset.personId;
+                select('#createEmployeeIdInput').value = o.dataset.employeeId;
+                select('#createPersonIdInput').disabled = false;
+                select('#createEmployeeIdInput').disabled = false;
+                
+                select('#prevName').textContent = o.dataset.person;
+                select('#prevPos').textContent = o.dataset.pos;
+                select('#prevUnit').textContent = o.dataset.unitName;
+                select('#prevNik').textContent = o.dataset.nik;
+                select('#prevDate').textContent = (o.dataset.start || '-') + ' s/d ' + (o.dataset.end || '-');
+                
+                showBlock(select('#createPersonPreview'));
+                
+                select('#createExistingUnitId').value = o.dataset.unitId;
+                select('#createExistingUnitName').value = o.dataset.unitName;
+            } else hide(select('#createPersonPreview'));
         });
-        
-        const updateSrcPreview = (sel, pId, pre) => {
-            const o = sel.options[sel.selectedIndex];
-            const p = $(pId);
-            if(sel.value) {
-                srcIdInp.value = sel.value; 
-                empIdInp.value = o.dataset.employeeId || '';
-                perIdInp.value = o.dataset.personId || '';
-                
-                srcIdInp.disabled = false; empIdInp.disabled = false; perIdInp.disabled = false;
-                
-                text($(`#${pre}Name`), o.dataset.person);
-                text($(`#${pre}Pos`), o.dataset.pos);
-                if(p) { p.hidden = false; p.style.display = 'block'; }
-            } else if(!srcIdInp.value) {
-                if(p) { p.hidden = true; p.style.display = 'none'; }
-            }
-        };
-        on($('#createSourceExtendSelect'), 'change', function(){ updateSrcPreview(this, '#createExtendPreview', 'cep'); });
-        on($('#createSourceTermSelect'), 'change', function(){ updateSrcPreview(this, '#createTermPreview', 'ctp'); });
-
-        cForm.onsubmit = (e) => {
-            const mode = modeInp.value;
-            if ((mode === 'extend' || mode === 'terminate') && !srcIdInp.value) {
-                e.preventDefault();
-                alert('Harap pilih Kontrak Dasar!');
-                return false;
-            }
-            if(srcIdInp.value) srcIdInp.disabled = false; 
-            if(empIdInp.value) empIdInp.disabled = false;
-            if(perIdInp.value) perIdInp.disabled = false;
-            
-            if(!srcIdInp.value) srcIdInp.disabled = true;
-            if(!empIdInp.value) empIdInp.disabled = true;
-            if(!perIdInp.value) perIdInp.disabled = true;
-        };
     }
 
-    let currentContract = null;
-    
-    document.addEventListener('click', async (e) => {
-        if (e.target.closest('[data-modal-close]')) {
-             const m = e.target.closest('.u-modal');
-             if(m) hide(m);
-             document.body.classList.remove('modal-open');
-             return;
-        }
-
-        const detailBtn = e.target.closest('[data-contract-detail]');
-        if(detailBtn) {
-            const url = detailBtn.dataset.showUrl;
+    doc.body.addEventListener('click', async (e) => {
+        const btnDet = e.target.closest('.js-btn-detail');
+        if(btnDet) {
+            e.preventDefault();
             try {
-                // FIXED: Better Error Handling (JSON vs HTML)
-                const resRaw = await fetch(url);
-                if (!resRaw.ok) {
-                     const errText = await resRaw.text();
-                     throw new Error(`Server Error (${resRaw.status}): ${errText.substring(0, 100)}...`);
-                }
-                const res = await resRaw.json();
-                
+                const res = await fetch(btnDet.dataset.showUrl).then(r => r.json());
                 if(!res.success) throw new Error(res.message);
                 const d = res.data;
-                currentContract = d;
-                
-                text($('#detNo'), d.contract_no);
-                text($('#detStatus'), d.status);
-                text($('#detUnit'), d.unit?.name);
-                text($('#detType'), d.contract_type_label);
-                text($('#detName'), d.person_name);
-                text($('#detPos'), d.position_name);
-                text($('#detPeriod'), `${d.start_date||'-'} s/d ${d.end_date||'-'}`);
-                text($('#detEmpType'), d.employment_type);
+                const m = safeJSON(d.remuneration_json);
+                const isPb = (d.contract_type === 'PB_PENGAKHIRAN');
 
-                const meta = safeJSON(d.remuneration_json);
-                
-                if(meta.new_unit_name) {
-                    text($('#detNewUnit'), meta.new_unit_name);
-                    const b = $('#detNewUnitBox');
-                    if(b) { b.hidden = false; b.style.display='block'; }
+                select('#detNo').textContent = d.contract_no;
+                select('#detType').textContent = d.contract_type_label;
+                select('#detStatus').textContent = d.status;
+                select('#detUnit').textContent = d.unit?.name;
+                select('#detName').textContent = d.person_name;
+                select('#detPos').textContent = d.position_name;
+                select('#detEmpType').textContent = d.employment_type;
+
+                if (isPb) {
+                    hide(select('#detRemunBox'));
+                    hide(select('#detPeriodRow'));
+                    showBlock(select('#detPbBox'));
+                    select('#detPbEff').textContent = m.pb_effective_end;
+                    select('#detPbVal').textContent = 'Rp '+money(m.pb_compensation_amount);
+                    select('#detPbValW').textContent = m.pb_compensation_amount_words;
                 } else {
-                    const b = $('#detNewUnitBox');
-                    if(b) { b.hidden = true; b.style.display='none'; }
-                }
-
-                if(d.contract_type === 'PB_PENGAKHIRAN') {
-                      const r = $('#detRemunBox'); if(r) { r.hidden = true; r.style.display='none'; }
-                      const p = $('#detPbBox'); if(p) { p.hidden = false; p.style.display='block'; }
-                      text($('#detPbVal'), money(meta.pb_compensation_amount));
-                      text($('#detPbValW'), meta.pb_compensation_amount_words);
-                      text($('#detPbEff'), meta.pb_effective_end);
-                } else {
-                      const r = $('#detRemunBox'); if(r) { r.hidden = false; r.style.display='block'; }
-                      const p = $('#detPbBox'); if(p) { p.hidden = true; p.style.display='none'; }
-                      text($('#detSalary'), money(meta.salary_amount));
-                      text($('#detSalaryW'), meta.salary_amount_words);
-                      text($('#detLunch'), money(meta.lunch_allowance_daily));
-                      text($('#detLunchW'), meta.lunch_allowance_words);
-                      
-                      const allws = [];
-                      if(meta.allowance_position_amount) allws.push(['T. Jabatan', meta.allowance_position_amount, meta.allowance_position_words]);
-                      if(meta.allowance_communication_amount) allws.push(['T. Komunikasi', meta.allowance_communication_amount, meta.allowance_communication_words]);
-                      if(meta.allowance_special_amount) allws.push(['T. Khusus', meta.allowance_special_amount, meta.allowance_special_words]);
-                      if(meta.allowance_other_amount) allws.push(['Lainnya', meta.allowance_other_amount, meta.allowance_other_words]);
-                      
-                      $('#detAllowances').innerHTML = allws.map(x => `
-                          <div class="u-flex u-justify-between u-items-center">
-                              <div>
-                                  <div class="u-text-xs u-muted">${x[0]}</div>
-                                  <div class="u-text-xxs u-muted" style="font-style: italic;">${x[2] || ''}</div>
-                              </div>
-                              <div class="u-font-medium">${money(x[1])}</div>
-                          </div>
-                      `).join('');
-                }
-
-                const appBox = $('#detApprovalInfo');
-                if(d.status === 'approved' || d.status === 'rejected' || d.status === 'signed') {
-                      if(appBox) { appBox.hidden = false; appBox.style.display='block'; }
-                      text($('#detAppStatus'), d.status); 
-                } else {
-                      if(appBox) { appBox.hidden = true; appBox.style.display='none'; }
-                }
-
-                // --- TOMBOL LIHAT DOKUMEN ---
-const btnPreview = $('#btnPreviewDoc');
-if (btnPreview) {
-  if (d.doc_url) {
-    btnPreview.hidden = false;
-    btnPreview.href = d.doc_url;
-    btnPreview.onclick = (ev) => { ev.preventDefault(); window.open(d.doc_url, '_blank', 'noopener'); };
-  } else {
-    btnPreview.hidden = true;
-    btnPreview.href = '#';
-    btnPreview.onclick = null;
-  }
-}
-
-
-                const bApp=$('#btnApprove'), bSign=$('#btnSign'), bRej=$('#btnReject');
-                if(bApp) {
-                      bApp.hidden = !d.can_approve;
-                      bApp.onclick = () => handleSignAction(d.approve_url);
-                }
-                if(bRej) bRej.hidden = !d.can_approve; 
-                if(bSign) {
-                      bSign.hidden = !d.can_sign;
-                      bSign.onclick = () => handleSignAction(d.sign_url);
+                    showBlock(select('#detRemunBox'));
+                    showBlock(select('#detPeriodRow'));
+                    hide(select('#detPbBox'));
+                    select('#detPeriod').textContent = `${d.start_date} s/d ${d.end_date}`;
+                    select('#detSalary').textContent = 'Rp '+money(m.salary_amount);
+                    select('#detLunch').textContent = 'Rp '+money(m.lunch_allowance_daily);
+                    
+                    const allws = [];
+                    if(m.allowance_position_amount) allws.push(['T. Jabatan', m.allowance_position_amount]);
+                    if(m.allowance_communication_amount) allws.push(['T. Komunikasi', m.allowance_communication_amount]);
+                    if(m.allowance_special_amount) allws.push(['T. Khusus', m.allowance_special_amount]);
+                    if(m.allowance_other_amount) allws.push(['Lainnya', m.allowance_other_amount]);
+                    
+                    select('#detAllowances').innerHTML = allws.map(x => 
+                        `<div class="u-flex u-justify-between u-py-xs u-border-b"><span class="u-muted">${x[0]}</span><strong>Rp ${money(x[1])}</strong></div>`
+                    ).join('');
                 }
                 
-                show($('#detailContractModal'));
-                document.body.classList.add('modal-open');
-            } catch(err) {
-                console.error(err);
-                alert('Gagal memuat data: ' + err.message);
-            }
-            return;
+                const boxNewUnit = select('#detNewUnitBox');
+                if(d.contract_type === 'PKWT_PERPANJANGAN' && m.new_unit_id) {
+                     showBlock(boxNewUnit);
+                     // Here ideally we need unit name, assuming backend sends it or we fetch it. 
+                     // For now simple placeholder or logic if available
+                     select('#detNewUnit').textContent = "(ID: "+m.new_unit_id+")";
+                } else hide(boxNewUnit);
+
+                const bPrev = select('#btnPreviewDoc');
+                if(d.doc_url) { show(bPrev); bPrev.style.display = 'inline-flex'; bPrev.href = d.doc_url; } else hide(bPrev);
+                
+                const bApp = select('#btnApprove');
+                if(d.can_approve) { show(bApp); bApp.onclick=()=>signAct(d.approve_url, 'Kepala Unit'); } else hide(bApp);
+
+                const bSign = select('#btnSign');
+                if(d.can_sign) { show(bSign); bSign.onclick=()=>signAct(d.sign_url, 'Kandidat'); } else hide(bSign);
+
+                const bRej = select('#btnReject');
+                if(d.can_approve) { show(bRej); bRej.onclick=()=>rejectAct(d.reject_url); } else hide(bRej);
+
+                openModal('detailContractModal');
+
+            } catch(err) { alert(err.message); }
         }
 
-        const editBtn = e.target.closest('[data-contract-edit]');
-        if(editBtn) {
-            const url = editBtn.dataset.showUrl;
+        const btnEdit = e.target.closest('.js-btn-edit');
+        if(btnEdit) {
+            e.preventDefault();
             try {
-                const resRaw = await fetch(url);
-                if (!resRaw.ok) throw new Error(`Server Error (${resRaw.status})`);
-                const res = await resRaw.json();
-                
+                const res = await fetch(btnEdit.dataset.showUrl).then(r => r.json());
                 if(!res.success) throw new Error(res.message);
-                const d = res.data;
-                const meta = safeJSON(d.remuneration_json);
-                const frm = $('#editContractForm');
-                frm.action = editBtn.dataset.updateUrl;
-                
-                $('#editTypeInput').value = d.contract_type;
-                $('#editSourceIdInput').value = d.source_contract_id || '';
-                
-                const uSel = $('#editContractUnitSelect');
-                const uHid = $('#editUnitIdInput');
-                if(uSel) uSel.value = d.unit_id;
-                else if(uHid) { uHid.value = d.unit_id; text($('#editUnitBadge'), d.unit?.name); }
-                
-                if(meta.new_unit_id) $('#editNewUnitId').value = meta.new_unit_id;
-                else $('#editNewUnitId').value = "";
+                const d = res.data; 
+                const m = safeJSON(d.remuneration_json);
+                const form = select('#editContractForm');
+                bindCalc(form);
 
-                $('#editEmployeeId').value = d.employee_id || '';
-                $('#editPersonId').value = d.person_id || '';
-                $('#editPersonName').value = d.person_name;
-                $('#editPositionName').value = d.position_name;
-                $('#editStartDate').value = d.start_date;
-                $('#editEndDate').value = d.end_date;
-                $('#editEmploymentType').value = d.employment_type;
+                form.action = btnEdit.dataset.updateUrl;
+                select('#editTypeInput').value = d.contract_type;
+                select('#editDisplayPerson').textContent = d.person_name;
+                select('#editDisplayType').textContent = d.contract_type_label;
                 
-                $('#editSalary').value = meta.salary_amount || '';
-                $('#editLunch').value = meta.lunch_allowance_daily || '';
-                $('#editAP').value = meta.allowance_position_amount || '';
-                $('#editAC').value = meta.allowance_communication_amount || '';
-                $('#editAS').value = meta.allowance_special_amount || '';
-                $('#editAO').value = meta.allowance_other_amount || '';
-                $('#editAOD').value = meta.allowance_other_desc || '';
-                $('#editOB').value = meta.other_benefits_desc || '';
-                $('#editRemarks').value = d.remarks || '';
-                
+                select('#editPos').value = d.position_name;
+                select('#editRemarks').value = d.remarks;
+                if(select('#editUnitSelect')) select('#editUnitSelect').value = d.unit_id;
+                else if(select('#editUnitIdHidden')) { select('#editUnitIdHidden').value = d.unit_id; select('#editUnitDisplay').value = d.unit?.name; }
+
                 if(d.contract_type === 'PB_PENGAKHIRAN') {
-                    const f = $('#editPbFields'); if(f) { f.hidden = false; f.style.display='grid'; }
-                    const r = $('#editRemun'); if(r) { r.hidden = true; r.style.display='none'; }
-                    const dt = $('#editDates'); if(dt) { dt.hidden = true; dt.style.display='none'; }
-                    $('#editPbEnd').value = meta.pb_effective_end || '';
-                    $('#editPbComp').value = meta.pb_compensation_amount || '';
+                    hide(select('#editSectionPkwtSpk'));
+                    showBlock(select('#editSectionPb'));
+                    select('#editPbEnd').value = m.pb_effective_end || '';
+                    select('#editPbComp').value = money(m.pb_compensation_amount);
+                    select('#editPbComp').dispatchEvent(new Event('input'));
                 } else {
-                    const f = $('#editPbFields'); if(f) { f.hidden = true; f.style.display='none'; }
-                    const r = $('#editRemun'); if(r) { r.hidden = false; r.style.display='block'; }
-                    const dt = $('#editDates'); if(dt) { dt.hidden = false; dt.style.display='grid'; }
+                    showBlock(select('#editSectionPkwtSpk'));
+                    hide(select('#editSectionPb'));
+                    select('#editStart').value = d.start_date_raw || d.start_date; 
+                    select('#editEnd').value = d.end_date_raw || d.end_date;
+                    
+                    const setM = (sel, val) => {
+                        const el = select(sel); if(!el) return;
+                        el.value = money(val);
+                        el.dispatchEvent(new Event('input'));
+                    };
+                    setM('#editSalary', m.salary_amount);
+                    setM('#editLunch', m.lunch_allowance_daily);
+                    setM('#editAP', m.allowance_position_amount);
+                    setM('#editAC', m.allowance_communication_amount);
+                    setM('#editAS', m.allowance_special_amount);
+                    setM('#editAO', m.allowance_other_amount);
+                    select('#editOB').value = m.other_benefits_desc || '';
                 }
                 
-                $('#editCam').checked = !!d.requires_camera;
-                $('#editGeo').checked = !!d.requires_geolocation;
-                $('#editDraw').checked = !!d.requires_draw_signature;
+                if(d.contract_type === 'PKWT_PERPANJANGAN') {
+                    showBlock(select('#editNewUnitWrapper'));
+                    if(m.new_unit_id) select('#editNewUnitId').value = m.new_unit_id;
+                } else {
+                    hide(select('#editNewUnitWrapper'));
+                }
 
-                bindRupiahAndTerbilang(frm);
-                show($('#editContractModal'));
-                document.body.classList.add('modal-open');
+                openModal('editContractModal');
 
-                frm.onsubmit = () => {
-                    const srcInp = $('#editSourceIdInput');
-                    if(srcInp.value) srcInp.disabled = false; else srcInp.disabled = true;
-                    
-                    const uInp = $('#editUnitIdInput'); 
-                    const uSel = $('#editContractUnitSelect'); 
-                    if(uSel && uInp) uInp.disabled = true; 
-                    
-                    const empInp = $('#editEmployeeId');
-                    const perInp = $('#editPersonId');
-                    if(empInp.value) empInp.disabled = false; else empInp.disabled = true;
-                    if(perInp.value) perInp.disabled = false; else perInp.disabled = true;
-                };
-            } catch(err) {
-                console.error(err);
-                alert('Gagal memuat data: ' + err.message);
-            }
-        }
-        
-        if (e.target.closest('[data-modal-open]')) {
-             const id = e.target.closest('[data-modal-open]').dataset.modalOpen;
-             const m = document.getElementById(id);
-             if(m) {
-                 show(m);
-                 document.body.classList.add('modal-open');
-             }
+            } catch(err) { alert(err.message); }
         }
     });
 
-    const handleSignAction = (actionUrl) => {
-        const sm = $('#signModal');
-        const sf = $('#signForm');
-        const cvs = $('#signCanvas');
+    const signAct = (url, role) => {
+        const m = select('#signModal');
+        const f = select('#signForm');
+        const cvs = select('#signCanvas');
+        
+        cvs.width = cvs.offsetWidth;
+        cvs.height = 200;
+        
         const ctx = cvs.getContext('2d');
         ctx.clearRect(0,0,cvs.width,cvs.height);
-        ctx.lineWidth = 2; ctx.strokeStyle = '#000';
-        let isDraw = false;
         
-        const getPos = (e) => {
-            const r = cvs.getBoundingClientRect();
-            const scaleX = cvs.width / r.width;
-            const scaleY = cvs.height / r.height;
-
-            const clientX = (e.clientX || (e.touches && e.touches[0].clientX));
-            const clientY = (e.clientY || (e.touches && e.touches[0].clientY));
-
-            return {
-                x: (clientX - r.left) * scaleX,
-                y: (clientY - r.top) * scaleY
-            };
-        };
-
-        const start = (e) => { isDraw=true; ctx.beginPath(); const p=getPos(e); ctx.moveTo(p.x, p.y); e.preventDefault(); };
-        const move = (e) => { if(!isDraw)return; const p=getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
-        const end = () => { isDraw=false; };
+        let isDown=false;
+        const getXY=(e)=>{const r=cvs.getBoundingClientRect(); return {x:(e.clientX||e.touches[0].clientX)-r.left, y:(e.clientY||e.touches[0].clientY)-r.top}};
+        const down=(e)=>{isDown=true; ctx.beginPath(); const p=getXY(e); ctx.moveTo(p.x,p.y); e.preventDefault();};
+        const move=(e)=>{if(!isDown)return; const p=getXY(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault();};
+        const up=()=>{isDown=false;};
         
-        ['mousedown','touchstart'].forEach(ev=>cvs.addEventListener(ev, start, {passive: false}));
-        ['mousemove','touchmove'].forEach(ev=>cvs.addEventListener(ev, move, {passive: false}));
-        ['mouseup','touchend','mouseleave'].forEach(ev=>cvs.addEventListener(ev, end));
-        
-        $('#clearSign').onclick = () => ctx.clearRect(0,0,cvs.width,cvs.height);
+        ['mousedown','touchstart'].forEach(ev=>cvs.addEventListener(ev,down,{passive:false}));
+        ['mousemove','touchmove'].forEach(ev=>cvs.addEventListener(ev,move,{passive:false}));
+        ['mouseup','touchend'].forEach(ev=>cvs.addEventListener(ev,up));
+        select('#clearSign').onclick = () => ctx.clearRect(0,0,cvs.width,cvs.height);
 
-        if(navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(p => {
-                $('[name="geo_lat"]', sf).value = p.coords.latitude;
-                $('[name="geo_lng"]', sf).value = p.coords.longitude;
-                $('[name="geo_accuracy"]', sf).value = p.coords.accuracy;
-                $('#geoStatus').textContent = 'Lokasi: OK';
-                $('#geoStatus').className = 'u-text-success';
-            }, () => {
-                $('#geoStatus').textContent = 'Lokasi: Gagal (lanjut tanpa lokasi?)';
-                $('#geoStatus').className = 'u-text-danger';
-            });
-        } else {
-            $('#geoStatus').textContent = 'Lokasi: Tidak diperlukan';
-        }
-
-        sf.onsubmit = async (e) => {
+        f.onsubmit = async (e) => {
             e.preventDefault();
-            if(currentContract.requires_draw_signature) {
-                const empty = !ctx.getImageData(0,0,cvs.width,cvs.height).data.some(c=>c!==0);
-                if(empty) { alert('Tanda tangan wajib diisi!'); return; }
-                $('[name="signature_image"]', sf).value = cvs.toDataURL();
-            }
-            
-            const btn = $('button[type="submit"]', sf);
-            const orig = btn.innerHTML;
-            btn.disabled = true; btn.innerHTML = 'Memproses...';
-
+            select('[name="signature_image"]', f).value = cvs.toDataURL();
+            const fd = new FormData(f);
             try {
-                const fd = new FormData(sf);
-                const res = await fetch(actionUrl, {
-                    method: 'POST',
-                    headers: {'X-CSRF-TOKEN': csrf, 'Accept': 'application/json'},
-                    body: fd
-                });
-                const j = await res.json();
-                if(res.ok) {
-                    window.toastOk('Berhasil', j.message);
-                    setTimeout(() => location.reload(), 1000);
-                } else throw new Error(j.message || 'Gagal memproses');
-            } catch(err) {
-                alert(err.message);
-                btn.disabled = false; btn.innerHTML = orig;
-            }
+                const r = await fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':csrf, 'Accept':'application/json'}, body:fd});
+                const j = await r.json();
+                if(r.ok) { window.toastOk('Berhasil', j.message); setTimeout(()=>location.reload(),1000); }
+                else throw new Error(j.message);
+            } catch(err) { alert(err.message); }
         };
-        show(sm);
-        document.body.classList.add('modal-open');
+        openModal('signModal');
     };
-    
-    on($('#btnReject'), 'click', () => {
-        const rm = $('#rejectModal');
-        const rf = $('#rejectForm');
-        rf.onsubmit = async (e) => {
+
+    const rejectAct = (url) => {
+        const m = select('#rejectModal');
+        const f = select('#rejectForm');
+        f.onsubmit = async (e) => {
             e.preventDefault();
-            if(!confirm('Yakin reject kontrak ini?')) return;
-            const fd = new FormData(rf);
-            const res = await fetch(currentContract.reject_url, {
-                method: 'POST',
-                headers: {'X-CSRF-TOKEN': csrf, 'Accept': 'application/json'},
-                body: fd
-            });
-            const j = await res.json();
-            if(res.ok) {
-                window.toastOk('Berhasil', 'Kontrak direject.');
-                setTimeout(() => location.reload(), 1000);
-            } else alert('Gagal reject: ' + (j.message || 'Unknown error'));
+            if(!confirm('Yakin reject?')) return;
+            const fd = new FormData(f);
+            try {
+                const r = await fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':csrf, 'Accept':'application/json'}, body:fd});
+                const j = await r.json();
+                if(r.ok) { window.toastOk('Berhasil', 'Direject.'); setTimeout(()=>location.reload(),1000); }
+                else throw new Error(j.message);
+            } catch(err) { alert(err.message); }
         };
-        show(rm);
-        document.body.classList.add('modal-open');
-    });
+        openModal('rejectModal');
+    }
 });
 </script>
 @endpush
