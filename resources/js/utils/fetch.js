@@ -6,8 +6,6 @@ export async function getJSON(url) {
         throw new Error(`GET ${url} failed with status ${response.status}`);
     }
 
-    console.log("response", response);
-
     const data = await response.json();
     return data;
 }

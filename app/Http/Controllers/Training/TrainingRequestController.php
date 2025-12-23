@@ -99,7 +99,7 @@ class TrainingRequestController extends Controller
                     'approval-training-karyawan' => [
                         'buttons' => [],
                         'tables' => [
-                            'sdm-unit-table',
+                            'training-request-table',
                         ],
                     ],
 
@@ -132,7 +132,7 @@ class TrainingRequestController extends Controller
                         ],
                         'show_download_template' => true,
                         'tables' => [
-                            'sdm-unit-table',
+                            'training-request-table',
                         ],
                     ]
                 ],
@@ -147,7 +147,7 @@ class TrainingRequestController extends Controller
                     'training-request' => [
                         'buttons' => [],
                         'tables' => [
-                            'sdm-unit-table',
+                            'training-request-table',
                         ],
                     ]
                 ],
@@ -177,7 +177,7 @@ class TrainingRequestController extends Controller
                     'training-request' => [
                         'buttons' => [],
                         'tables' => [
-                            'sdm-unit-table',
+                            'training-request-table',
                         ],
                     ]
                 ],
@@ -343,67 +343,64 @@ class TrainingRequestController extends Controller
     {
         try {
             $user = auth()->user();
-
-            $perPage = $request->input('per_page', 20);
+            $perPage = $request->input('per_page', 10);
             $page = $request->input('page', 1);
+            $search = $request->input('search');
 
-            /**
-             * ======================================
-             * BASE QUERY
-             * ======================================
-             */
             $query = TrainingReference::with('unit')
                 ->orderBy('created_at', 'desc');
 
-            /**
-             * ======================================
-             * AKSES BERDASARKAN ROLE
-             * ======================================
-             */
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('judul_sertifikasi', 'like', "%{$search}%")
+                    ->orWhere('penyelenggara', 'like', "%{$search}%")
+                    ->orWhereHas('unit', function($qu) use ($search) {
+                        $qu->where('name', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            // 🔒 AKSES ROLE
             if (!$user->hasRole('DHC')) {
-                // 🔒 Selain DHC → hanya unit sendiri
                 $query->where('unit_id', $user->unit_id);
             }
 
-            /**
-             * ======================================
-             * PAGINATION
-             * ======================================
-             */
             $data = $query->paginate($perPage, ['*'], 'page', $page);
-
-            Log::info("Fetch data LNA berhasil.", [
-                "user_id" => $user->id,
-                "roles"   => $user->getRoleNames()->toArray(),
-                "unit_id" => $user->unit_id,
-                "total"   => $data->total()
-            ]);
 
             /**
              * ======================================
              * MAPPING RESPONSE
              * ======================================
              */
-            $mappedItems = collect($data->items())->map(function ($item) {
-                return [
-                    "id" => $item->id,
-                    "judul_sertifikasi" => $item->judul_sertifikasi,
-                    "unit_id" => $item->unit_id,
-                    "unit_kerja" => $item->unit->name ?? "-",
-                    "penyelenggara" => $item->penyelenggara,
-                    "jumlah_jam" => $item->jumlah_jam,
-                    "waktu_pelaksanaan" => $item->waktu_pelaksanaan,
-                    "biaya_pelatihan" => $item->biaya_pelatihan,
-                    "uhpd" => $item->uhpd,
-                    "biaya_akomodasi" => $item->biaya_akomodasi,
-                    "estimasi_total_biaya" => $item->estimasi_total_biaya,
-                    "nama_proyek" => $item->nama_proyek,
-                    "jenis_portofolio" => $item->jenis_portofolio,
-                    "fungsi" => $item->fungsi,
-                    "status_training_reference" => $item->status_training_reference,
-                    "created_at" => $item->created_at,
-                ];
-            });
+            $items = $data->getCollection(); // Mengambil collection dari paginator
+
+            if ($items->isEmpty()) {
+                $mappedItems = [];
+            } else {
+                $mappedItems = $items->map(function ($item) {
+                    return [
+                        "id"                => $item->id,
+                        "judul_sertifikasi" => $item->judul_sertifikasi ?? "-",
+                        "unit_id"           => $item->unit_id,
+                        "unit_kerja"        => optional($item->unit)->name ?? "-",
+                        "penyelenggara"     => $item->penyelenggara ?? "-",
+                        "jumlah_jam"        => $item->jumlah_jam ?? 0,
+                        "waktu_pelaksanaan" => $item->waktu_pelaksanaan,
+                        "biaya_pelatihan"   => $item->biaya_pelatihan ?? 0,
+                        "uhpd"              => $item->uhpd ?? 0,
+                        "biaya_akomodasi"   => $item->biaya_akomodasi ?? 0,
+                        "estimasi_total_biaya" => $item->estimasi_total_biaya ?? 0,
+                        "nama_proyek"       => $item->nama_proyek ?? "-",
+                        "jenis_portofolio"  => $item->jenis_portofolio ?? "-",
+                        "fungsi"            => $item->fungsi ?? "-",
+                        "status_training_reference" => $item->status_training_reference,
+                        "created_at"        => $item->created_at ? $item->created_at->format('Y-m-d H:i:s') : null,
+                    ];
+                })->toArray(); // Pastikan diconvert ke array
+            }
+
+            Log::info("Jumlah data mentah: " . count($data->items()));
+            Log::info("Isi data mentah: ", $data->items());
 
             return response()->json([
                 "status" => "success",

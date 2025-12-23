@@ -1,13 +1,28 @@
-import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
 import { initGetDataTable } from "./training-approval/getData";
-import { initInputHandler } from "./training-approval/handler/inputHandler";
-import { initUpdateJenisPelatihanHandler } from "./training-approval/handler/updateJenisPelatihanHandler";
-import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
 import { initModalHandler } from "../../utils/modal";
+import { initInputHandler } from "./training-approval/handler/inputHandler";
 import { initInputLnaHandler } from "./training-approval/handler/inputLnaHandler";
-// import { initAllApprovalHandler, initBulkApprovalHandler } from "./training-approval/handler/approveHandler";
+import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
+import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
 
 const TRAINING_CONFIG = {
+    tableDefinitions: {
+        "data-lna-table": {
+            columns: [
+                'no', 'judul_sertifikasi', 'unit_kerja', 'penyelenggara', 
+                'jumlah_jam', 'waktu_pelaksanaan', 'biaya_pelatihan', 
+                'uhpd', 'biaya_akomodasi', 'estimasi_total_biaya', 
+                'nama_proyek', 'jenis_portofolio', 'fungsi', 
+                'status_training_reference', 'actions'
+            ],
+            apiEndpoint: (unitId) => `/training/training-request/get-data-lna`
+        },
+        "training-request-table": {
+            columns: ['no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'
+            ],
+            apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
+        }
+    },
     tables: {
         selector: ".training-table",
         dataAttributes: {
@@ -16,7 +31,7 @@ const TRAINING_CONFIG = {
         },
     },
     tabs: {
-        container: "#dhc-tabs",
+        container: "#training-tabs",
         panelSelector: ".u-tabs__panel",
         activeClass: "is-active",
         hiddenClass: "hidden",
@@ -67,59 +82,26 @@ const getGlobalVariable = (variableName, defaultValue = null) => {
 const initializeTrainingTables = () => {
     const tables = document.querySelectorAll(TRAINING_CONFIG.tables.selector);
 
-    if (tables.length === 0) {
-        console.warn("No training tables found");
-        return;
-    }
-
     tables.forEach((table) => {
-        const tableBody = table.querySelector("tbody");
-        if (!tableBody) {
-            console.warn("Training table without tbody found", table);
-            return;
-        }
+        const tableId = table.id;
+        const tableDef = TRAINING_CONFIG.tableDefinitions[tableId];
+        
+        if (!tableDef) return;
 
-        // Get configuration from data attributes or global variables
-        const userRole =
-            table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.role) ||
-            window.currentUserRole;
-        const unitId =
-            table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.unitId) ||
-            window.userUnitId;
-
-        if (!userRole) {
-            console.error("User role not defined for training table", table);
-            return;
-        }
-
-        if (ROLES_REQUIRING_UNIT_ID.includes(userRole) && !unitId) {
-            console.error(`Unit ID is required for role: ${userRole}`, table);
-            tableBody.innerHTML = `<tr><td colspan="20" class="text-center text-red-500">Error: Unit ID is required for ${userRole} role</td></tr>`;
-            return;
-        }
-
-        console.log(
-            `Initializing training table for role: ${userRole}, unitId: ${
-                unitId || "not required"
-            }`
-        );
+        const userRole = table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.role) || window.currentUserRole;
+        const unitId = table.getAttribute(TRAINING_CONFIG.tables.dataAttributes.unitId) || window.userUnitId;
 
         try {
-            initGetDataTable(tableBody, userRole, unitId);
+            initGetDataTable(tableId, { unitId: window.currentUnitId });
 
-            // Initialize update handler for DHC role
-            if (userRole === "DHC") {
-                initUpdateJenisPelatihanHandler(tableBody);
-            }
         } catch (error) {
-            console.error("Error initializing training table:", error);
-            tableBody.innerHTML = `<tr><td colspan="20" class="text-center text-red-500">Error initializing table</td></tr>`;
+            console.error(`Gagal inisialisasi tabel ${tableId}:`, error);
         }
     });
 };
 
 const initializeTabs = () => {
-    const container = document.querySelector("#dhc-tabs");
+    const container = document.querySelector("#training-tabs");
     if (!container) return; // bukan DHC atau tabs belum dirender
 
     const buttons = container.querySelectorAll(".u-tabs__item");

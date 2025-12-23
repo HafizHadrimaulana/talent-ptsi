@@ -195,14 +195,14 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         // Route::delete('delete/{id}', [TrainingMonitoringController::class,'destroy'])
         //     ->name('delete');
 
-        Route::post('monitoring/{id}/approve', [TrainingMonitoringController::class,'approveStatus'])
-            ->name('monitoring.approveStatus');
-        Route::post('monitoring/{id}/reject', [TrainingMonitoringController::class,'rejectTrainingRequest'])
-            ->name('monitoring.rejectStatus');
-        Route::post('all-approve', [TrainingMonitoringController::class,'updateAllStatus'])
-            ->name('allApprove');
-        Route::post('bulk-approve', [TrainingMonitoringController::class,'bulkApprove'])
-            ->name('bulkApprove');
+        // Route::post('monitoring/{id}/approve', [TrainingMonitoringController::class,'approveStatus'])
+        //     ->name('monitoring.approveStatus');
+        // Route::post('monitoring/{id}/reject', [TrainingMonitoringController::class,'rejectTrainingRequest'])
+        //     ->name('monitoring.rejectStatus');
+        // Route::post('all-approve', [TrainingMonitoringController::class,'updateAllStatus'])
+        //     ->name('allApprove');
+        // Route::post('bulk-approve', [TrainingMonitoringController::class,'bulkApprove'])
+        //     ->name('bulkApprove');
 
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');

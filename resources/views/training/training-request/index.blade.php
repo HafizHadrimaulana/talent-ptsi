@@ -13,7 +13,7 @@
     @if (!empty($ui['tabs']) && count($ui['tabs']) > 1)
         <div class="mx-4 u-mb-xl">
             <div
-                id="dhc-tabs"
+                id="training-tabs"
                 class="u-tabs__list flex font-medium"
             >
                 <div class="flex space-x-4 border-b-2 border-slate-300">

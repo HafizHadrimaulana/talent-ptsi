@@ -2,7 +2,7 @@
     class="u-table u-table-mobile training-table training-table-lna" data-role="{{ Auth::user()->getRoleNames()->first() }}" data-dt>
     <thead>
         <tr>
-            <th>No</th>
+            <th>No1111</th>
             <th>Judul Sertifikasi</th>
             <th>Unit</th>
             <th>Penyelenggara</th>

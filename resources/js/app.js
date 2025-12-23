@@ -1,4 +1,5 @@
 import './bootstrap';
+import { initGetDataTable } from './pages/training/training-approval/getData';
 import { initDataTables, bindExternalSearch } from './plugins/datatables';
 
 import $ from 'jquery';
@@ -214,6 +215,34 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   })();
+
+  // ================================
+  // DataTables: Training / LNA
+  // ================================
+  const trainingTables = document.querySelectorAll('.training-table');
+  if (trainingTables.length > 0) {
+    trainingTables.forEach(table => {
+      const tableBody = table.querySelector('tbody');
+      const userRole = table.dataset.role;
+      const unitId = table.dataset.unitId;
+
+      // Panggil fungsi yang menggunakan initDataTables di dalamnya
+      initGetDataTable(tableBody, { 
+        role: userRole, 
+        unitId: unitId 
+      });
+    });
+
+    // Integrasi External Search jika ada input pencarian khusus training
+    if (document.querySelector('#trainingSearchInput')) {
+      bindExternalSearch({
+        searchSelector: '#trainingSearchInput',
+        buttonSelector: '#trainingSearchForm [type="submit"]',
+        tableSelector: '.training-table', // akan apply ke semua tabel training yang aktif
+        delay: 250,
+      });
+    }
+  }
 
   // ================================
   // Modal Detail Employee (iOS glass)
