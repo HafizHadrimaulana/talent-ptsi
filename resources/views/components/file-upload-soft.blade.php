@@ -4,14 +4,7 @@
     <div class="relative w-full bg-white border border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors group cursor-pointer overflow-hidden">
         
         {{-- INPUT FILE --}}
-        {{-- onchange memanggil fungsi JS dengan parameter nama input --}}
-        <input type="file" 
-               name="{{ $name }}" 
-               id="input_{{ $name }}"
-               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" 
-               accept=".pdf,.jpg,.jpeg,.png"
-               onchange="updateFilePreview('{{ $name }}')">
-        
+        <input type="file" name="{{ $name }}" id="input_{{ $name }}"class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" accept=".pdf,.jpg,.jpeg,.png" onchange="updateFilePreview('{{ $name }}')">
         {{-- 1. TAMPILAN DEFAULT (Placeholder) --}}
         <div id="placeholder_{{ $name }}" class="flex flex-col items-center transition-all duration-300">
             <div class="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
@@ -22,7 +15,6 @@
         </div>
 
         {{-- 2. TAMPILAN SAAT FILE DIPILIH (Preview Nama File) --}}
-        {{-- Hidden by default --}}
         <div id="info_{{ $name }}" class="hidden flex flex-col items-center animate-fade-in relative z-10">
             <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mb-2 text-blue-500">
                 <i class="fas fa-file-alt text-xl"></i>

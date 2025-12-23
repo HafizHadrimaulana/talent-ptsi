@@ -2,7 +2,6 @@
 @section('title', 'Biodata Pelamar')
 
 @section('content')
-<div class="min-h-screen bg-white pb-24">
     <div class="u-card u-card--glass u-hover-lift">
         
         {{-- Header --}}
@@ -32,49 +31,29 @@
         {{-- TABS NAVIGATION --}}
         <div class="bg-gray-100 p-1.5 rounded-xl flex overflow-x-auto mb-8 gap-1 no-scrollbar sticky top-4 z-30 shadow-sm border border-gray-200">
             @php
-                $tabs = [
-                    'data-diri' => 'Data Diri',
-                    'alamat' => 'Alamat',
-                    'pendidikan' => 'Pendidikan',
-                    'keluarga' => 'Data Keluarga',
-                    'pengalaman' => 'Pengalaman Kerja',
-                    'organisasi' => 'Organisasi',
-                    'skill' => 'Skill',
-                    'sertifikasi' => 'Sertifikasi',
-                    'dokumen' => 'Data Pendukung',
-                    'lamaran' => 'Lamaran Anda'
-                ];
+                $tabs = ['data-diri' => 'Data Diri','alamat' => 'Alamat','pendidikan' => 'Pendidikan','keluarga' => 'Data Keluarga','pengalaman' => 'Pengalaman Kerja','organisasi' => 'Organisasi','skill' => 'Skill','sertifikasi' => 'Sertifikasi','dokumen' => 'Data Pendukung','lamaran' => 'Lamaran Anda'];
             @endphp
             @foreach($tabs as $id => $label)
-                <button type="button" onclick="switchTab('{{ $id }}')" 
-                        id="tab-btn-{{ $id }}"
-                        class="px-4 py-2.5 text-sm font-semibold rounded-lg whitespace-nowrap transition-all duration-200 {{ $loop->first ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200' }}">
-                    {{ $label }}
-                </button>
+                <button type="button" onclick="switchTab('{{ $id }}')" id="tab-btn-{{ $id }}" class="px-4 py-2.5 text-sm font-semibold rounded-lg whitespace-nowrap transition-all duration-200 {{ $loop->first ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200' }}">{{ $label }}</button>
             @endforeach
         </div>
-
         <form action="{{ route('recruitment.applicant-data.update') }}" method="POST" enctype="multipart/form-data">
             @csrf
-            
             <div class="bg-white rounded-3xl p-2 min-h-[500px]">
-                
                 {{-- 1. DATA DIRI --}}
                 <div id="tab-data-diri" class="tab-content block">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
                         <div class="md:col-span-2 space-y-6">
                             <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Informasi Dasar</h3>
-                            
                             @include('components.input-soft', ['label' => 'NIK (KTP)', 'name' => 'nik', 'val' => $person->nik, 'ph' => '16 digit NIK'])
                             @include('components.input-soft', ['label' => 'Email', 'name' => 'email', 'val' => $person->email, 'readonly' => true])
                             @include('components.input-soft', ['label' => 'Nama Lengkap', 'name' => 'full_name', 'val' => $person->full_name])
-                            @include('components.input-soft', ['label' => 'No. HP / WA', 'name' => 'phone', 'val' => $person->phone])
-                            
+                            @include('components.input-soft', ['label' => 'No. HP / WA', 'name' => 'phone', 'val' => $person->phone, 'ph' => '08xxxxxxxxxx']) 
                             {{-- Contoh Select Gender di index.blade.php --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-block u-text-sm u-font-medium u-mb-sm text-gray-700">Jenis Kelamin</label>
                                 <select name="gender" class="u-input w-full">
-                                    <option value="">Pilih Gender</option>
+                                    <option value="">Pilih Jenis Kelamin</option>
                                     <option value="Laki-laki" {{ $person->gender == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
                                     <option value="Perempuan" {{ $person->gender == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
                                 </select>
@@ -84,13 +63,11 @@
                             
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-block u-text-sm u-font-medium u-mb-sm text-gray-700">Tanggal Lahir</label>
-                                <input type="date" name="date_of_birth" 
-                                    value="{{ $person->date_of_birth ? $person->date_of_birth->format('Y-m-d') : '' }}" 
-                                    class="u-input w-full">
+                                <input type="date" name="date_of_birth" value="{{ $person->date_of_birth ? $person->date_of_birth->format('Y-m-d') : '' }}" class="u-input w-full">
                             </div>
 
                             @include('components.input-soft', ['label' => 'Agama', 'name' => 'religion', 'val' => $person->religion])
-                            @include('components.input-soft', ['label' => 'Status Nikah', 'name' => 'marital_status', 'val' => $person->marital_status, 'ph' => 'Lajang / Menikah'])
+                            @include('components.input-soft', ['label' => 'Status Nikah', 'name' => 'marital_status', 'val' => $person->marital_status, 'ph' => 'Lajang / Menikah / Duda / Janda'])
                             @include('components.input-soft', ['label' => 'Tinggi Badan (cm)', 'name' => 'height', 'val' => $person->height, 'type' => 'number'])
                             @include('components.input-soft', ['label' => 'Berat Badan (kg)', 'name' => 'weight', 'val' => $person->weight, 'type' => 'number'])
                             
@@ -106,9 +83,7 @@
                                 <div class="w-48 h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group-hover:border-blue-400 transition-all shadow-sm">
                                     
                                     {{-- 1. IMAGE PREVIEW (Tampil jika ada di DB atau baru diupload) --}}
-                                    <img id="photo_preview" 
-                                         src="{{ $person->photo_path ? Storage::url($person->photo_path) : '#' }}" 
-                                         class="w-full h-full object-cover absolute inset-0 z-0 {{ $person->photo_path ? '' : 'hidden' }}">
+                                    <img id="photo_preview" src="{{ $person->photo_path ? Storage::url($person->photo_path) : '#' }}" class="w-full h-full object-cover absolute inset-0 z-0 {{ $person->photo_path ? '' : 'hidden' }}">
                                     
                                     {{-- 2. PLACEHOLDER ICON (Tampil jika gambar kosong) --}}
                                     <div id="photo_placeholder" class="flex flex-col items-center z-0 {{ $person->photo_path ? 'hidden' : '' }}">
@@ -119,10 +94,7 @@
                                     </div>
 
                                     {{-- 3. INPUT FILE (Transparan di atas segalanya) --}}
-                                    <input type="file" name="photo_file" id="photo_input" 
-                                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                                           accept="image/png, image/jpeg, image/jpg"
-                                           onchange="handlePhotoUpload(this)">
+                                    <input type="file" name="photo_file" id="photo_input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/png, image/jpeg, image/jpg"onchange="handlePhotoUpload(this)">
                                 </div>
                                 
                                 {{-- Label Hover Edit (Hanya muncul jika sudah ada foto) --}}
@@ -282,6 +254,7 @@
                         @include('components.file-upload-soft', ['label' => 'Transkrip Nilai', 'name' => 'transcripts_file', 'path' => $person->transcripts_path])
                         @include('components.file-upload-soft', ['label' => 'SKCK', 'name' => 'skck_file', 'path' => $person->skck_path])
                         @include('components.file-upload-soft', ['label' => 'Sertifikat TOEFL/IELTS', 'name' => 'toefl_file', 'path' => $person->toefl_path])
+                        @include('components.file-upload-soft', ['label' => 'Sertifikat Pendukung Lainnya', 'name' => 'other_cert_file', 'path' => $person->other_cert_path])
                     </div>
                 </div>
 
@@ -310,23 +283,23 @@
                                         {{-- KOLOM POSISI --}}
                                         <td class="px-6 py-5">
                                             <div class="flex items-start gap-3">
-                                                <div class="mt-1">
-                                                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                                                        {{ substr($app->recruitmentRequest->positionObj->name ?? $app->recruitmentRequest->title ?? 'U', 0, 1) }}
-                                                    </div>
-                                                </div>
                                                 <div>
                                                     <div class="font-bold text-gray-800 text-sm group-hover:text-blue-700 transition-colors">
-                                                        {{-- LOGIKA PERBAIKAN: --}}
-                                                        {{-- 1. Coba ambil Nama dari Master Jabatan --}}
-                                                        {{-- 2. Jika gagal, ambil Judul Lowongan (Title) --}}
-                                                        {{-- 3. Jika gagal, ambil kolom position (terakhir) --}}
-                                                        {{ 
-                                                            $app->recruitmentRequest->positionObj->name 
-                                                            ?? $app->recruitmentRequest->title 
-                                                            ?? $app->recruitmentRequest->position 
-                                                            ?? '-' 
-                                                        }}
+                                                        @php
+                                                            $req = $app->recruitmentRequest;
+                                                            $displayName = '-';
+                                                            if ($req->positionObj) {
+                                                                $displayName = $req->positionObj->name;
+                                                            }
+                                                            elseif (isset($positionsMap[$req->position])) {
+                                                                $displayName = $positionsMap[$req->position];
+                                                            }
+                                                            else {
+                                                                $displayName = $req->position;
+                                                            }
+                                                        @endphp
+
+                                                        {{ $displayName }}
                                                     </div>
                                                     <div class="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                                         <i class="fas fa-building text-gray-300"></i>
@@ -339,10 +312,10 @@
                                         {{-- KOLOM TANGGAL --}}
                                         <td class="px-4 py-5 text-center whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-600">
-                                                {{ $app->created_at->format('d M Y') }}
+                                                {{ $app->created_at->timezone('Asia/Jakarta')->format('d M Y') }}
                                             </div>
                                             <div class="text-[10px] text-gray-400">
-                                                {{ $app->created_at->format('H:i') }} WIB
+                                                {{ $app->created_at->timezone('Asia/Jakarta')->format('H:i') }} WIB
                                             </div>
                                         </td>
 
@@ -405,8 +378,6 @@
             </div>
         </form>
     </div>
-</div>
-
 
 <script>
     function handlePhotoUpload(input) {
@@ -426,9 +397,9 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 preview.src = e.target.result;
-                preview.classList.remove('hidden');     // Tampilkan gambar
-                placeholder.classList.add('hidden');    // Sembunyikan ikon kamera
-                overlay.classList.remove('hidden');     // Aktifkan overlay hover
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                overlay.classList.remove('hidden');
             }
             reader.readAsDataURL(file);
         }
@@ -461,7 +432,6 @@
 
     /**
      * Fungsi untuk Preview Nama File Dokumen
-     * @param {string} inputName - Nama atribute 'name' pada input (contoh: 'cv_file')
      */
     function updateFilePreview(inputName) {
         const input = document.getElementById('input_' + inputName);
@@ -470,18 +440,12 @@
         const filenameText = document.getElementById('filename_' + inputName);
 
         if (input.files && input.files[0]) {
-            // Ambil nama file
             const file = input.files[0];
-            
-            // Set teks nama file
             filenameText.textContent = file.name;
-
-            // Sembunyikan placeholder, tampilkan info file baru
             placeholder.classList.add('hidden');
             info.classList.remove('hidden');
             info.classList.add('flex');
         } else {
-            // Jika user cancel pilih file, kembalikan ke awal
             placeholder.classList.remove('hidden');
             info.classList.add('hidden');
             info.classList.remove('flex');

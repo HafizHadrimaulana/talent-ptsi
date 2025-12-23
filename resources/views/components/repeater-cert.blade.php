@@ -11,31 +11,26 @@
         {{-- Judul Sertifikasi --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Judul Sertifikasi</label>
-            <input type="text" name="cert_list[{{$idx}}][name]" value="{{ $cert['name'] ?? '' }}" 
-                   class="u-input w-full" placeholder="Contoh: BNSP HR Manager, TOEFL ITP">
+            <input type="text" name="cert_list[{{$idx}}][name]" value="{{ $cert['name'] ?? '' }}" class="u-input w-full" placeholder="Contoh: BNSP HR Manager, TOEFL ITP">
         </div>
 
         {{-- Penyelenggara --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Penyelenggara</label>
-            <input type="text" name="cert_list[{{$idx}}][organizer]" value="{{ $cert['organizer'] ?? '' }}" 
-                   class="u-input w-full" placeholder="Lembaga penerbit sertifikat">
+            <input type="text" name="cert_list[{{$idx}}][organizer]" value="{{ $cert['organizer'] ?? '' }}" class="u-input w-full" placeholder="Lembaga penerbit sertifikat">
         </div>
 
         {{-- Tanggal --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Tanggal Mulai</label>
-                <input type="date" name="cert_list[{{$idx}}][start_date]" value="{{ $cert['start_date'] ?? '' }}" 
-                       class="u-input w-full">
+                <input type="date" name="cert_list[{{$idx}}][start_date]" value="{{ $cert['start_date'] ?? '' }}" class="u-input w-full">
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Berlaku Hingga</label>
-                <input type="date" name="cert_list[{{$idx}}][end_date]" value="{{ $cert['end_date'] ?? '' }}" 
-                       class="u-input w-full">
+                <input type="date" name="cert_list[{{$idx}}][end_date]" value="{{ $cert['end_date'] ?? '' }}" class="u-input w-full">
                 <label class="flex items-center gap-2 mt-2 cursor-pointer">
-                    <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" 
-                           onclick="this.parentElement.previousElementSibling.disabled = this.checked"> 
+                    <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" onclick="this.parentElement.previousElementSibling.disabled = this.checked"> 
                     <span class="text-xs text-gray-500">Berlaku Seumur Hidup</span>
                 </label>
             </div>

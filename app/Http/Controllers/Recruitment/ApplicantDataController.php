@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\RecruitmentApplicant;
 use App\Models\Person; 
 use Illuminate\Support\Facades\Storage;
+use App\Models\Position; // Pastikan Model Position di-import
 
 class ApplicantDataController extends Controller
 {
@@ -37,13 +38,21 @@ class ApplicantDataController extends Controller
 
         $person = $user->person; // Data diambil dari tabel persons
 
-        // Ambil data lamaran untuk tab "Lamaran Anda"
-        $applications = RecruitmentApplicant::with('recruitmentRequest.positionObj') 
+        // 2. AMBIL MAPPING POSISI (PENTING UNTUK PERBAIKAN TAMPILAN)
+        // Ini akan membuat array [id => nama], contoh: [29 => 'Inspector', 30 => 'Staff']
+        $positionsMap = Position::pluck('name', 'id')->toArray();
+
+        // 3. Ambil data lamaran untuk tab "Lamaran Anda"
+        $applications = RecruitmentApplicant::with([
+                'recruitmentRequest.positionObj', // Load relasi jabatan
+                'recruitmentRequest.unit'         // Load relasi unit
+            ]) 
             ->where('user_id', $user->id)
             ->latest()
             ->get();
 
-        return view('recruitment.applicant_data.index', compact('user', 'person', 'applications'));
+        // Kirim $positionsMap ke view
+        return view('recruitment.applicant_data.index', compact('user', 'person', 'applications', 'positionsMap'));
     }
 
     public function update(Request $request)
@@ -86,35 +95,33 @@ class ApplicantDataController extends Controller
         $person->province_domicile = $request->province_domicile;
 
         // --- UPDATE DATA JSON (REPEATER) ---
-        // Gunakan array_values() untuk mereset index agar tersimpan sebagai Array JSON [{}, {}] yang rapi
-        // Sesuaikan filter field-nya!
         
-        // 1. Pendidikan (Cek 'name' sekolah)
+        // 1. Pendidikan
         $person->education_history = array_values(array_filter($request->education_list ?? [], function($i) {
-            return !empty($i['name']) || !empty($i['level']); // Simpan jika Nama ATAU Jenjang terisi
+            return !empty($i['name']) || !empty($i['level']);
         }));
 
-        // 2. Keluarga (Cek 'name')
+        // 2. Keluarga
         $person->family_data = array_values(array_filter($request->family_list ?? [], function($i) {
             return !empty($i['name']); 
         }));
 
-        // 3. Pengalaman Kerja (Cek 'company') -> INI YANG SEBELUMNYA SALAH
+        // 3. Pengalaman Kerja
         $person->work_experience = array_values(array_filter($request->work_list ?? [], function($i) {
-            return !empty($i['company']); // Field di repeater-work adalah 'company', bukan 'name'
+            return !empty($i['company']);
         }));
 
-        // 4. Organisasi (Cek 'name')
+        // 4. Organisasi
         $person->organization_experience = array_values(array_filter($request->org_list ?? [], function($i) {
             return !empty($i['name']);
         }));
 
-        // 5. Skill (Cek 'name')
+        // 5. Skill
         $person->skills = array_values(array_filter($request->skill_list ?? [], function($i) {
             return !empty($i['name']);
         }));
 
-        // 6. Sertifikasi (Cek 'name')
+        // 6. Sertifikasi
         $person->certifications = array_values(array_filter($request->cert_list ?? [], function($i) {
             return !empty($i['name']);
         }));

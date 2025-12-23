@@ -37,6 +37,47 @@
         </div> 
     @endif
 
+    {{-- TOOLBAR PENCARIAN & LIMIT --}}
+    <form method="GET" action="{{ route('recruitment.external.index') }}" class="u-flex u-justify-between u-items-center u-mb-md u-flex-wrap u-gap-sm">
+        
+        {{-- Show Entries --}}
+        <div class="u-flex u-items-center u-gap-xs">
+            <span class="u-text-sm u-muted">Show</span>
+            <select name="per_page" class="u-input u-input--sm u-w-auto" onchange="this.form.submit()">
+                <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
+                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
+                <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
+                <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
+            </select>
+            <span class="u-text-sm u-muted">entries</span>
+        </div>
+
+        {{-- Search Box Wrapper --}}
+        <div class="u-relative u-w-full md:u-w-64" style="position: relative; display: flex; align-items: center;">
+            
+            {{-- 1. ICON SEARCH (KIRI) --}}
+            <i class="fas fa-search u-text-muted" 
+               style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 10;"></i>
+
+            {{-- 2. INPUT FIELD --}}
+            <input type="text" name="q" value="{{ request('q') }}" 
+                   class="u-input u-input--sm" 
+                   style="width: 100%; padding-left: 38px; padding-right: 38px;" 
+                   placeholder="Cari..."
+                   onkeydown="if(event.key === 'Enter') this.form.submit()">
+
+            {{-- 3. ICON CLEAR (KANAN) --}}
+            @if(request('q'))
+                <a href="{{ route('recruitment.external.index') }}" 
+                   class="u-text-danger hover:u-text-dark"
+                   style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; cursor: pointer; text-decoration: none;"
+                   title="Hapus pencarian">
+                    <i class="fas fa-times"></i>
+                </a>
+            @endif
+        </div>
+    </form>
+
     <div class="u-overflow-auto">
         <table class="u-table" id="ext-table">
             <thead>
@@ -77,8 +118,6 @@
                                 
                                 {{ $displayPosition }}
                             </div>
-                            
-                            <!-- <div class="u-text-2xs u-muted">Approved: {{ $row->updated_at->format('d M Y') }}</div> -->
                         </td>
                         <td>{{ $row->unit->name ?? '-' }}</td>
                         <td>{{ $row->headcount }} Orang</td>

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Models\RecruitmentRequest;   
+use App\Models\RecruitmentRequest;    
 use App\Models\RecruitmentApplicant; 
 use App\Models\Position;
 
@@ -16,27 +16,48 @@ class ExternalRecruitmentController extends Controller
     {
         $me = Auth::user();
         
-        // Sesuaikan 'DHC' atau 'Superadmin' sebagai user pusat yang bisa lihat semua
+        // 1. Cek Role User
         $isCentralHR = $me->hasAnyRole(['Superadmin', 'DHC', 'VP Human Capital']); 
-        
-        // Cek apakah user adalah Pelamar
         $isPelamar = $me->hasRole('Pelamar'); 
-
-        // Cek apakah user adalah Admin SDM Unit (Punya Unit ID tapi bukan Pusat)
         $isUnitHR = !$isCentralHR && !$isPelamar && $me->unit_id;
 
-        // QUERY DATA LOWONGAN
+        // 2. Ambil Parameter Filter & Pagination
+        $q = $request->input('q');             // Kata kunci pencarian
+        $perPage = $request->input('per_page', 10); // Default 10 data per halaman
+
+        // 3. Query Dasar
         $query = RecruitmentRequest::with(['unit', 'applicants', 'positionObj']) 
             ->where('type', 'Rekrutmen')
-            ->where(function($q) {
-                $q->where('status', 'approved')
+            ->where(function($qq) {
+                $qq->where('status', 'approved')
                 ->orWhere('status', 'like', '%Selesai%') 
                 ->orWhere('status', 'Final');
             });
 
-        // LOGIKA FILTER UNIT (POV Admin Unit vs Pelamar/Pusat)
+        // 4. Logika Pencarian (Search Box)
+        if ($q) {
+            $query->where(function($sub) use ($q) {
+                // A. Cari berdasarkan Nomor Tiket
+                $sub->where('ticket_number', 'like', "%{$q}%")
+                
+                    // B. Cari berdasarkan NAMA POSISI (Masuk ke tabel positions)
+                    ->orWhereHas('positionObj', function($p) use ($q) {
+                        $p->where('name', 'like', "%{$q}%");
+                    })
+
+                    // C. Fallback: Cari di kolom position tabel utama (untuk jaga-jaga atau search ID)
+                    ->orWhere('position', 'like', "%{$q}%")
+
+                    // D. Cari berdasarkan NAMA UNIT
+                    ->orWhereHas('unit', function($u) use ($q) {
+                        $u->where('name', 'like', "%{$q}%");
+                    });
+            });
+        }
+
+        // 5. Logika Filter Unit (Berdasarkan Role)
         
-        // Jika Pelamar atau Orang Pusat (DHC), TAMPILKAN SEMUA (kecuali difilter manual)
+        // Jika Pelamar atau Orang Pusat (DHC), TAMPILKAN SEMUA (kecuali difilter manual via URL)
         if ($request->filled('unit_id')) {
             $query->where('unit_id', $request->unit_id);
         }
@@ -46,9 +67,13 @@ class ExternalRecruitmentController extends Controller
             $query->where('unit_id', $me->unit_id);
         }
 
-        $vacancies = $query->orderBy('updated_at', 'desc')->paginate(10);
+        // 6. Eksekusi Pagination
+        // Gunakan $perPage dari input user
+        $vacancies = $query->orderBy('updated_at', 'desc')
+                           ->paginate($perPage)
+                           ->withQueryString(); // Agar parameter search tidak hilang saat klik page 2
 
-        // Data Lamaran Saya (Khusus POV Pelamar untuk tombol "Lihat Status")
+        // 7. Data Pendukung Lainnya
         $myApplications = [];
         if ($isPelamar) {
             $myApplications = RecruitmentApplicant::where('user_id', $me->id)
@@ -59,14 +84,14 @@ class ExternalRecruitmentController extends Controller
 
         return view('recruitment.external.index', [
             'list'           => $vacancies,
-            'isDHC'          => ($isCentralHR || $isUnitHR), // akses fitur kelola pelamar
+            'isDHC'          => ($isCentralHR || $isUnitHR), 
             'isPelamar'      => $isPelamar,
             'myApplications' => $myApplications,
             'positionsMap'   => $positionsMap
         ]);
     }
 
-    // --- FUNGSI APPLY & UPDATE STATUS ---
+    // --- FUNGSI LAINNYA TIDAK PERLU DIUBAH (SAMA SEPERTI SEBELUMNYA) ---
 
     public function apply(Request $request)
     {

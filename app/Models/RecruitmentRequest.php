@@ -95,6 +95,6 @@ class RecruitmentRequest extends Model
 
     public function positionObj()
     {        
-        return $this->belongsTo(\App\Models\Position::class, 'position_id');
+        return $this->belongsTo(\App\Models\Position::class, 'position');
     }
 }

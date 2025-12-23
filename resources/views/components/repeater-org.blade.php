@@ -12,13 +12,11 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Nama Organisasi</label>
-                <input type="text" name="org_list[{{$idx}}][name]" value="{{ $org['name'] ?? '' }}" 
-                       class="u-input w-full" placeholder="BEM Universitas / Komunitas X">
+                <input type="text" name="org_list[{{$idx}}][name]" value="{{ $org['name'] ?? '' }}" class="u-input w-full" placeholder="BEM Universitas / Komunitas X">
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Jabatan / Peran</label>
-                <input type="text" name="org_list[{{$idx}}][position]" value="{{ $org['position'] ?? '' }}" 
-                       class="u-input w-full" placeholder="Ketua / Anggota / Sekretaris">
+                <input type="text" name="org_list[{{$idx}}][position]" value="{{ $org['position'] ?? '' }}" class="u-input w-full" placeholder="Ketua / Anggota / Sekretaris">
             </div>
         </div>
 
@@ -26,21 +24,18 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Tahun Mulai</label>
-                <input type="number" name="org_list[{{$idx}}][start_year]" value="{{ $org['start_year'] ?? '' }}" 
-                       class="u-input w-full" placeholder="YYYY">
+                <input type="number" name="org_list[{{$idx}}][start_year]" value="{{ $org['start_year'] ?? '' }}" class="u-input w-full" placeholder="YYYY">
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Tahun Selesai</label>
-                <input type="number" name="org_list[{{$idx}}][end_year]" value="{{ $org['end_year'] ?? '' }}" 
-                       class="u-input w-full" placeholder="YYYY">
+                <input type="number" name="org_list[{{$idx}}][end_year]" value="{{ $org['end_year'] ?? '' }}" class="u-input w-full" placeholder="YYYY">
             </div>
         </div>
 
         {{-- Deskripsi Kegiatan --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Deskripsi Kegiatan</label>
-            <textarea name="org_list[{{$idx}}][desc]" class="u-input w-full h-20 py-2" 
-                      placeholder="Jelaskan peran dan kontribusi Anda di organisasi ini...">{{ $org['desc'] ?? '' }}</textarea>
+            <textarea name="org_list[{{$idx}}][desc]" class="u-input w-full h-20 py-2" placeholder="Jelaskan peran dan kontribusi Anda di organisasi ini...">{{ $org['desc'] ?? '' }}</textarea>
         </div>
     </div>
 </div>

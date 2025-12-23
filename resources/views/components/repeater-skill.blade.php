@@ -11,16 +11,13 @@
         {{-- Nama Skill --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Skill</label>
-            <input type="text" name="skill_list[{{$idx}}][name]" value="{{ $skill['name'] ?? '' }}" 
-                   class="u-input w-full" placeholder="Contoh: Microsoft Excel, Public Speaking, Laravel">
+            <input type="text" name="skill_list[{{$idx}}][name]" value="{{ $skill['name'] ?? '' }}" class="u-input w-full" placeholder="Contoh: Microsoft Excel, Public Speaking, Laravel">
         </div>
 
         {{-- Deskripsi --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Deskripsi</label>
-            <textarea name="skill_list[{{$idx}}][desc]" 
-                      class="u-input w-full h-24 py-2" 
-                      placeholder="Jelaskan tingkat penguasaan atau detail skill ini...">{{ $skill['desc'] ?? '' }}</textarea>
+            <textarea name="skill_list[{{$idx}}][desc]" class="u-input w-full h-24 py-2" placeholder="Jelaskan tingkat penguasaan atau detail skill ini...">{{ $skill['desc'] ?? '' }}</textarea>
         </div>
     </div>
 </div>

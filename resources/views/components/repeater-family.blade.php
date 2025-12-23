@@ -13,8 +13,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Nama Lengkap</label>
-                <input type="text" name="family_list[{{$idx}}][name]" value="{{ $fam['name'] ?? '' }}" 
-                       class="u-input w-full" placeholder="Nama Anggota Keluarga">
+                <input type="text" name="family_list[{{$idx}}][name]" value="{{ $fam['name'] ?? '' }}" class="u-input w-full" placeholder="Nama Anggota Keluarga">
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Hubungan</label>
@@ -38,13 +37,11 @@
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Tempat Lahir</label>
-                <input type="text" name="family_list[{{$idx}}][pob]" value="{{ $fam['pob'] ?? '' }}" 
-                       class="u-input w-full" placeholder="Kota Lahir">
+                <input type="text" name="family_list[{{$idx}}][pob]" value="{{ $fam['pob'] ?? '' }}" class="u-input w-full" placeholder="Kota Lahir">
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Tanggal Lahir</label>
-                <input type="date" name="family_list[{{$idx}}][dob]" value="{{ $fam['dob'] ?? '' }}" 
-                       class="u-input w-full">
+                <input type="date" name="family_list[{{$idx}}][dob]" value="{{ $fam['dob'] ?? '' }}" class="u-input w-full">
             </div>
         </div>
 
@@ -61,8 +58,7 @@
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Pekerjaan</label>
-                <input type="text" name="family_list[{{$idx}}][job]" value="{{ $fam['job'] ?? '' }}" 
-                       class="u-input w-full" placeholder="Pekerjaan saat ini">
+                <input type="text" name="family_list[{{$idx}}][job]" value="{{ $fam['job'] ?? '' }}" class="u-input w-full" placeholder="Pekerjaan saat ini">
             </div>
         </div>
     </div>
