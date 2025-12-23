@@ -42,4 +42,12 @@ class TrainingRequest extends Model
             'person_id'         // employee.person_id
         );
     }
+
+    public function approvals()
+    {
+        return $this->hasMany(
+            TrainingRequestApproval::class,
+            'training_request_id'
+        );
+    }
 }
