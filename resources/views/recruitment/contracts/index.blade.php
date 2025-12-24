@@ -12,21 +12,62 @@
 @endphp
 
 <style>
-    .u-modal { z-index: 1050; display: none; place-items: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); padding: 1rem; }
-    .u-modal:not([hidden]) { display: grid !important; }
-    .u-modal__card { width: min(100%, 650px); max-height: 90vh; display: flex; flex-direction: column; }
+    /* --- MODAL & LAYOUT --- */
+    .u-modal {
+        z-index: 1050; display: none; position: fixed; inset: 0;
+        background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+        padding: 1rem;
+        align-items: center; justify-content: center;
+    }
+    .u-modal:not([hidden]) { display: flex !important; }
+
+    .u-modal__card {
+        width: min(100%, 650px); max-height: 90vh; display: flex; flex-direction: column;
+        background-color: var(--surface-1);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
     .u-modal__card--xl { width: min(100%, 1100px); }
+
+    .u-modal__head { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .u-modal__body { overflow-y: auto; flex: 1; padding: 1.5rem; scrollbar-width: thin; }
-    .u-bg-section { background-color: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-md); }
-    .is-hidden { display: none !important; }
+    .u-modal__foot { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); background-color: var(--surface-2); }
+
+    /* --- SECTIONS & CARD --- */
+    .u-bg-section { background-color: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); }
+    .section-divider { border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; font-weight: 700; color: var(--muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
+
+    /* --- FORMS & INPUTS --- */
+    /* Memberikan jarak antar form-group lebih lega */
+    .u-form-group { margin-bottom: 1.5rem; } 
+    .u-form-group label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.025em; margin-bottom: 0.5rem; display: block; }
     .currency-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.875rem; pointer-events: none; }
     .has-prefix .u-input { padding-left: 40px; text-align: right; font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
-    .u-form-group label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.025em; margin-bottom: 0.4rem; display: block; }
-    
+    /* Helper untuk jarak bottom manual jika tidak pakai form-group */
+    .u-mb-input-gap { margin-bottom: 1.25rem; }
+
+    /* --- TABLE --- */
+    .u-table th, .u-table td { padding: 1rem 1.25rem; }
+    /* FIX: Warna teks header diubah menjadi terang agar terlihat di background gelap */
+    .u-table thead th { 
+        border-bottom: 2px solid var(--border); 
+        color: rgba(255, 255, 255, 0.9); /* Warna putih transparan */
+        font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; 
+    }
+    .u-table tbody td { border-bottom: 1px solid var(--border); vertical-align: middle; }
+
+    /* --- UTILS --- */
+    .is-hidden { display: none !important; }
+    .u-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+
+    /* --- RESPONSIVE --- */
     @media (max-width: 768px) {
-        .u-grid-2 { grid-template-columns: 1fr !important; }
+        .u-grid-2 { grid-template-columns: 1fr !important; gap: 1rem; }
         .cell-actions__group { justify-content: flex-start; }
         .u-modal__card { width: 100%; height: 100%; max-height: 100vh; border-radius: 0; }
+        .u-stack-mobile { flex-direction: column; align-items: stretch; gap: 1rem; }
     }
 </style>
 
@@ -37,7 +78,7 @@
             <p class="u-text-sm u-muted">Manajemen SPK, PKWT, dan Perjanjian Bersama.</p>
         </div>
         @can('contract.create')
-        <button type="button" class="u-btn u-btn--brand u-hover-lift" id="btnOpenCreate">
+        <button type="button" class="u-btn u-btn--brand u-hover-lift u-shadow-sm" id="btnOpenCreate" style="border-radius: 999px; padding-left: 1.5rem; padding-right: 1.5rem;">
             <i class="fas fa-plus u-mr-xs"></i> Buat Dokumen
         </button>
         @endcan
@@ -91,7 +132,7 @@
                         <th>Posisi & Unit</th>
                         <th>Periode / Efektif</th>
                         <th>Status</th>
-                        <th class="cell-actions">Aksi</th>
+                        <th class="cell-actions" width="100">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -102,13 +143,13 @@
                                 <span class="u-badge u-badge--glass u-mt-xs">{{ $c->contract_type_label ?? $c->contract_type }}</span>
                             </td>
                             <td>
+                                {{-- FIX: Icon Avatar dihapus, hanya menyisakan nama dan detail --}}
                                 <div class="u-flex u-items-center u-gap-sm">
-                                    <div class="u-avatar u-avatar--sm u-avatar--brand">{{ substr($c->person_name, 0, 1) }}</div>
                                     <div>
                                         <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
-                                        <div class="u-text-xs u-muted">
-                                            @if($c->applicant_id) <span class="u-text-brand">Pelamar</span>
-                                            @elseif($c->employee_id) {{ $c->employee_id }}
+                                        <div class="u-text-xs u-muted u-mt-xxs">
+                                            @if($c->applicant_id) <span class="u-text-brand"><i class="fas fa-user-check u-mr-xxs"></i> Pelamar</span>
+                                            @elseif($c->employee_id) <i class="fas fa-id-badge u-mr-xxs"></i> {{ $c->employee_id }}
                                             @else - @endif
                                         </div>
                                     </div>
@@ -124,8 +165,8 @@
                                         End: {{ isset($c->remuneration_json['pb_effective_end']) ? \Carbon\Carbon::parse($c->remuneration_json['pb_effective_end'])->format('d M Y') : '-' }}
                                     </span>
                                 @else
-                                    <div class="u-text-sm">{{ $c->start_date?->format('d M Y') }}</div>
-                                    <div class="u-text-xs u-muted">s/d {{ $c->end_date?->format('d M Y') }}</div>
+                                    <div class="u-text-sm">{{ $c->start_date?->format('d/m/Y') }}</div>
+                                    <div class="u-text-xs u-muted">s/d {{ $c->end_date?->format('d/m/Y') }}</div>
                                 @endif
                             </td>
                             <td>
@@ -141,14 +182,14 @@
                             <td class="cell-actions">
                                 <div class="cell-actions__group">
                                     <button type="button" class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-btn-detail" 
-                                        data-show-url="{{ route('recruitment.contracts.show', $c) }}">
+                                        data-show-url="{{ route('recruitment.contracts.show', $c) }}" title="Lihat Detail">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     @if ($c->status === 'draft' && auth()->user()->can('contract.update', $c))
                                         <button type="button" class="u-btn u-btn--outline u-btn--icon u-btn--sm js-btn-edit" 
                                             data-show-url="{{ route('recruitment.contracts.show', $c) }}" 
-                                            data-update-url="{{ route('recruitment.contracts.update', $c) }}">
-                                            <i class="fas fa-edit"></i>
+                                            data-update-url="{{ route('recruitment.contracts.update', $c) }}" title="Edit">
+                                            <i class="fas fa-pencil-alt"></i>
                                         </button>
                                     @endif
                                 </div>
@@ -166,6 +207,7 @@
     </div>
 </div>
 
+{{-- CREATE MODAL --}}
 @can('contract.create')
 <div id="createContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
@@ -173,9 +215,9 @@
         <div class="u-modal__head">
             <div class="u-flex u-items-center u-gap-md">
                 <div class="u-avatar u-avatar--md u-avatar--brand"><i class="fas fa-file-contract"></i></div>
-                <div><div class="u-title">Buat Dokumen Baru</div><div class="u-muted u-text-xs">SPK / PKWT / PB</div></div>
+                <div><div class="u-title">Buat Dokumen Baru</div><div class="u-muted u-text-sm">SPK / PKWT / PB</div></div>
             </div>
-            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+            <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
         </div>
         
         <form method="POST" action="{{ route('recruitment.contracts.store') }}" class="u-modal__body" id="createContractForm">
@@ -186,17 +228,18 @@
             <input type="hidden" name="employee_id" id="createEmployeeIdInput" value="{{ old('employee_id') }}" disabled>
             <input type="hidden" name="person_id" id="createPersonIdInput" value="{{ old('person_id') }}" disabled>
 
-            <div class="u-card u-p-md u-mb-md u-bg-section">
-                <div class="u-grid-2 u-gap-lg">
+            <div class="u-card u-p-lg u-mb-lg u-bg-section">
+                <div class="section-divider"><i class="fas fa-layer-group u-text-brand"></i> 1. Jenis Dokumen</div>
+                <div class="u-grid-2">
                     <div class="u-form-group">
-                        <label>1. Jenis Dokumen</label>
+                        <label>Pilih Jenis</label>
                         <select id="createFamilySelect" class="u-input" required>
                             <option value="">-- Pilih Jenis --</option>
                             <option value="SPK" data-mode="new">SPK (Offering Letter)</option>
                             <option value="PKWT" data-mode="">PKWT (Perjanjian Kerja)</option>
                             <option value="PB" data-mode="terminate">PB (Pengakhiran)</option>
                         </select>
-                        <div id="createSubtypeWrap" class="u-mt-sm is-hidden">
+                        <div id="createSubtypeWrap" class="u-mt-md is-hidden">
                             <label class="u-text-brand u-text-xs u-mb-xxs">Spesifikasi PKWT:</label>
                             <select id="createSubtypeSelect" class="u-input">
                                 <option value="">-- Baru / Perpanjangan --</option>
@@ -208,13 +251,14 @@
                 </div>
             </div>
 
-            <div id="createMainSection" class="is-hidden u-space-y-lg">
-                <div class="u-grid-2 u-gap-lg u-stack-mobile">
+            <div id="createMainSection" class="is-hidden u-space-y-xl">
+                <div class="u-grid-2 u-stack-mobile">
+                    {{-- LEFT COL: SOURCE --}}
                     <div>
-                        <div class="u-title u-text-sm u-mb-sm">2. Sumber Data</div>
+                        <div class="section-divider"><i class="fas fa-database u-text-brand"></i> 2. Sumber Data</div>
                         
                         {{-- NEW RECRUIT --}}
-                        <div data-mode-section="new" class="is-hidden u-space-y-md">
+                        <div data-mode-section="new" class="is-hidden u-space-y-lg">
                             <div class="u-form-group">
                                 <label>Pilih Pelamar (Approved)</label>
                                 <select name="applicant_id" id="createApplicantSelect" class="u-input">
@@ -236,10 +280,10 @@
                         </div>
 
                         {{-- EXISTING --}}
-                        <div data-mode-section="existing" class="is-hidden u-space-y-md">
+                        <div data-mode-section="existing" class="is-hidden u-space-y-lg">
                             <div class="u-form-group">
                                 <label id="labelSourceExisting">Pilih Kontrak Dasar</label>
-                                <div class="u-flex u-gap-xs u-mb-xs">
+                                <div class="u-flex u-gap-xs u-mb-sm">
                                     <select id="filterSourceUnit" class="u-input u-input--sm" style="width:100%"><option value="">Filter Unit (Semua)</option>@foreach ($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
                                 </div>
                                 <select id="createSourceSelect" class="u-input">
@@ -261,26 +305,26 @@
                         </div>
                     </div>
 
-                    {{-- PREVIEW CARD --}}
+                    {{-- RIGHT COL: PREVIEW --}}
                     <div>
-                        <div class="u-title u-text-sm u-mb-sm">Preview Personil</div>
-                        <div id="createPersonPreview" class="u-card u-card--glass u-p-md is-hidden">
-                            <div class="u-flex u-items-center u-gap-md u-mb-md">
-                                <div class="u-avatar u-avatar--md u-avatar--brand"><i class="fas fa-user"></i></div>
-                                <div><div class="u-font-bold" id="prevName">-</div><div class="u-text-xs u-muted" id="prevNik">-</div></div>
+                        <div class="section-divider"><i class="fas fa-id-card u-text-brand"></i> Preview Personil</div>
+                        <div id="createPersonPreview" class="u-card u-card--glass u-p-lg is-hidden">
+                            <div class="u-flex u-items-center u-gap-md u-mb-lg">
+                                <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-user"></i></div>
+                                <div><div class="u-font-bold u-text-lg" id="prevName">-</div><div class="u-text-sm u-muted u-font-mono" id="prevNik">-</div></div>
                             </div>
-                            <div class="u-grid-2 u-gap-sm u-text-xs">
-                                <div><span class="u-muted">Posisi</span><div class="u-font-medium" id="prevPos">-</div></div>
-                                <div><span class="u-muted">Unit</span><div class="u-font-medium" id="prevUnit">-</div></div>
-                                <div class="u-grid-col-span-2"><span class="u-muted">Periode Lama</span><div class="u-font-medium" id="prevDate">-</div></div>
+                            <div class="u-grid-2 u-gap-md u-text-sm">
+                                <div><span class="u-muted u-text-xs u-uppercase u-font-bold">Posisi</span><div class="u-font-medium u-mt-xxs" id="prevPos">-</div></div>
+                                <div><span class="u-muted u-text-xs u-uppercase u-font-bold">Unit</span><div class="u-font-medium u-mt-xxs" id="prevUnit">-</div></div>
+                                <div class="u-grid-col-span-2 u-border-t u-pt-md"><span class="u-muted u-text-xs u-uppercase u-font-bold">Periode Lama</span><div class="u-font-medium u-mt-xxs" id="prevDate">-</div></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="u-border-t u-pt-lg">
-                    <div class="u-title u-text-sm u-mb-md">3. Detail Kontrak</div>
-                    <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div class="u-border-t u-pt-xl">
+                    <div class="section-divider"><i class="fas fa-file-signature u-text-brand"></i> 3. Detail Kontrak</div>
+                    <div class="u-grid-2 u-stack-mobile">
                         <div class="u-form-group">
                             <label>Jabatan</label>
                             <input type="text" name="position_name" id="createPosName" class="u-input" list="positionList" placeholder="Nama Jabatan">
@@ -295,62 +339,73 @@
                     </div>
 
                     {{-- SPK/PKWT FIELDS --}}
-                    <div id="sectionPkwtSpk" class="is-hidden u-mt-md">
-                        <div class="u-grid-2 u-stack-mobile u-gap-md u-mb-md">
+                    <div id="sectionPkwtSpk" class="is-hidden u-mt-lg">
+                        <div class="u-grid-2 u-stack-mobile u-mb-lg">
                             <div class="u-form-group"><label>Mulai</label><input type="date" name="start_date" class="u-input"></div>
                             <div class="u-form-group"><label>Selesai</label><input type="date" name="end_date" class="u-input"></div>
                         </div>
-                        <div class="u-bg-section u-p-md">
-                            <div class="u-text-sm u-font-bold u-mb-md u-text-brand">Rincian Remunerasi</div>
-                            <div class="u-grid-2 u-stack-mobile u-gap-lg">
-                                <div>
-                                    <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" class="u-input" data-rupiah="true" data-terbilang-target="salary_amount_words"></div><input type="text" name="salary_amount_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
-                                    <div class="u-form-group has-prefix u-mt-sm"><label>Uang Makan / Hari</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" class="u-input" data-rupiah="true" data-terbilang-target="lunch_allowance_words"></div><input type="text" name="lunch_allowance_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
+                        <div class="u-bg-section u-p-lg">
+                            <div class="section-divider u-text-brand">Rincian Remunerasi</div>
+                            <div class="u-grid-2 u-stack-mobile">
+                                {{-- FIX: Jarak antar field diperlebar (u-space-y-lg dan u-mt-md) --}}
+                                <div class="u-space-y-lg">
+                                    <div class="u-form-group has-prefix">
+                                        <label>Gaji Pokok</label>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" class="u-input" data-rupiah="true" data-terbilang-target="salary_amount_words"></div>
+                                        <input type="text" name="salary_amount_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
+                                    </div>
+                                    <div class="u-form-group has-prefix">
+                                        <label>Uang Makan / Hari</label>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" class="u-input" data-rupiah="true" data-terbilang-target="lunch_allowance_words"></div>
+                                        <input type="text" name="lunch_allowance_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
+                                    </div>
                                 </div>
                                 <div>
-                                    <label>Tunjangan Lainnya</label>
-                                    <div class="u-space-y-sm has-prefix">
-                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" class="u-input u-input--sm" placeholder="Jabatan" data-rupiah="true"></div>
-                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" class="u-input u-input--sm" placeholder="Komunikasi" data-rupiah="true"></div>
-                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" class="u-input u-input--sm" placeholder="Khusus" data-rupiah="true"></div>
-                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" class="u-input u-input--sm" placeholder="Lainnya" data-rupiah="true"></div>
+                                    <label class="u-mb-sm u-block u-text-xs u-font-bold u-muted u-uppercase">Tunjangan Lainnya</label>
+                                    {{-- FIX: Jarak antar input tunjangan diperlebar menggunakan u-mb-input-gap --}}
+                                    <div class="has-prefix">
+                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
+                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
+                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
+                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" class="u-input" placeholder="Lainnya" data-rupiah="true"></div>
                                     </div>
-                                    <input type="text" name="other_benefits_desc" class="u-input u-input--sm u-mt-sm" placeholder="Deskripsi Benefit Lain (BPJS, dll)">
+                                    <input type="text" name="other_benefits_desc" class="u-input u-mt-lg" placeholder="Deskripsi Benefit Lain (BPJS, dll)">
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {{-- PB FIELDS --}}
-                    <div id="sectionPb" class="is-hidden u-mt-md u-bg-section u-p-md" style="border-left: 4px solid #ef4444;">
-                        <div class="u-text-sm u-font-bold u-text-danger u-mb-md">Kompensasi Pengakhiran</div>
-                        <div class="u-grid-2 u-stack-mobile u-gap-md">
+                    <div id="sectionPb" class="is-hidden u-mt-lg u-bg-section u-p-lg" style="border-left: 4px solid var(--danger);">
+                        <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
+                        <div class="u-grid-2 u-stack-mobile">
                             <div class="u-form-group"><label>Efektif Berakhir</label><input type="date" name="pb_effective_end" class="u-input"></div>
                             <div class="u-form-group has-prefix">
                                 <label>Nilai Kompensasi</label>
+                                {{-- FIX: Jarak antara input dan terbilang diperlebar (u-mt-md) --}}
                                 <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="pb_compensation_amount" class="u-input" data-rupiah="true" data-terbilang-target="pb_compensation_amount_words"></div>
-                                <input type="text" name="pb_compensation_amount_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1">
+                                <input type="text" name="pb_compensation_amount_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="u-border-t u-pt-md">
+                <div class="u-border-t u-pt-lg">
                      <div class="u-form-group"><label>Catatan Tambahan</label><input type="text" name="remarks" class="u-input" placeholder="Opsional..."></div>
-                     <div class="u-flex u-gap-lg u-flex-wrap u-mt-md u-p-sm u-bg-light u-rounded">
-                          <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_draw_signature" value="1" checked> Tanda Tangan Digital</label>
-                          <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_camera" value="1" checked> Wajib Kamera</label>
-                          <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_geolocation" value="1" checked> Wajib Lokasi</label>
+                     <div class="u-flex u-gap-lg u-flex-wrap u-mt-lg u-p-md u-bg-section">
+                          <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_draw_signature" value="1" checked> Tanda Tangan Digital</label>
+                          <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_camera" value="1" checked> Wajib Kamera</label>
+                          <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_geolocation" value="1" checked> Wajib Lokasi</label>
                      </div>
                 </div>
             </div>
 
             <div class="u-modal__foot u-flex u-justify-between u-items-center">
-                <div class="u-text-xs u-muted">Pastikan data sudah benar.</div>
+                <div class="u-text-sm u-muted"><i class="fas fa-info-circle u-mr-xs"></i> Pastikan data sudah benar sebelum submit.</div>
                 <div class="u-flex u-gap-sm">
-                    <button type="button" class="u-btn u-btn--ghost js-close-modal">Batal</button>
-                    <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--outline">Simpan Draft</button>
-                    <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand">Submit Dokumen</button>
+                    <button type="button" class="u-btn u-btn--ghost js-close-modal" style="border-radius: 999px;">Batal</button>
+                    <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--outline" style="border-radius: 999px;">Simpan Draft</button>
+                    <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand u-shadow-sm" style="border-radius: 999px;">Submit Dokumen</button>
                 </div>
             </div>
         </form>
@@ -364,7 +419,7 @@
     <div class="u-modal__card u-modal__card--xl">
         <div class="u-modal__head">
             <div class="u-title">Edit Dokumen</div>
-            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+            <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
         </div>
         <form method="POST" class="u-modal__body" id="editContractForm">
             @csrf @method('PUT')
@@ -375,19 +430,19 @@
             <input type="hidden" name="person_id" id="editPersonId">
             <input type="hidden" name="applicant_id" id="editApplicantId">
 
-            <div class="u-card u-card--glass u-p-md u-mb-lg u-grid-2 u-gap-md">
+            <div class="u-card u-card--glass u-p-lg u-mb-xl u-grid-2">
                 <div>
-                    <div class="u-text-xs u-muted u-uppercase u-font-bold">Personil</div>
-                    <div id="editDisplayPerson" class="u-text-lg u-font-bold">-</div>
+                    <div class="u-text-xs u-muted u-uppercase u-font-bold u-mb-xs">Personil</div>
+                    <div id="editDisplayPerson" class="u-text-xl u-font-bold">-</div>
                 </div>
                 <div>
-                    <div class="u-text-xs u-muted u-uppercase u-font-bold">Tipe Dokumen</div>
-                    <div id="editDisplayType" class="u-badge u-badge--glass">-</div>
+                    <div class="u-text-xs u-muted u-uppercase u-font-bold u-mb-xs">Tipe Dokumen</div>
+                    <div id="editDisplayType" class="u-badge u-badge--glass u-text-sm">-</div>
                 </div>
             </div>
 
-            <div class="u-space-y-lg">
-                <div class="u-grid-2 u-stack-mobile u-gap-md">
+            <div class="u-space-y-xl">
+                <div class="u-grid-2 u-stack-mobile">
                     <div class="u-form-group">
                         <label>Unit Kerja</label>
                         @if ($canSeeAll)
@@ -405,54 +460,59 @@
                     <select name="new_unit_id" id="editNewUnitId" class="u-input"><option value="">-- Tidak Berubah --</option>@foreach ($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach</select>
                 </div>
 
-                <div id="editSectionPkwtSpk" class="is-hidden u-space-y-md">
-                    <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div id="editSectionPkwtSpk" class="is-hidden u-space-y-lg">
+                    <div class="u-grid-2 u-stack-mobile">
                         <div class="u-form-group"><label>Mulai</label><input type="date" name="start_date" id="editStart" class="u-input"></div>
                         <div class="u-form-group"><label>Selesai</label><input type="date" name="end_date" id="editEnd" class="u-input"></div>
                     </div>
-                    <div class="u-bg-section u-p-md">
-                        <div class="u-text-sm u-font-bold u-mb-md u-text-brand">Remunerasi</div>
-                        <div class="u-grid-2 u-stack-mobile u-gap-lg">
-                            <div>
-                                <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" id="editSalary" class="u-input" data-rupiah="true" data-terbilang-target="editSalaryW"></div><input id="editSalaryW" name="salary_amount_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
-                                <div class="u-form-group has-prefix u-mt-sm"><label>Uang Makan</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" id="editLunch" class="u-input" data-rupiah="true" data-terbilang-target="editLunchW"></div><input id="editLunchW" name="lunch_allowance_words" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1"></div>
+                    <div class="u-bg-section u-p-lg">
+                        <div class="section-divider u-text-brand">Remunerasi</div>
+                        <div class="u-grid-2 u-stack-mobile">
+                            {{-- FIX: Jarak antar field diperlebar --}}
+                            <div class="u-space-y-lg">
+                                <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" id="editSalary" class="u-input" data-rupiah="true" data-terbilang-target="editSalaryW"></div><input id="editSalaryW" name="salary_amount_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1"></div>
+                                <div class="u-form-group has-prefix"><label>Uang Makan</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" id="editLunch" class="u-input" data-rupiah="true" data-terbilang-target="editLunchW"></div><input id="editLunchW" name="lunch_allowance_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1"></div>
                             </div>
-                            <div class="u-space-y-sm has-prefix">
-                                <label>Tunjangan</label>
-                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" id="editAP" class="u-input u-input--sm" placeholder="Jabatan" data-rupiah="true"></div>
-                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" id="editAC" class="u-input u-input--sm" placeholder="Komunikasi" data-rupiah="true"></div>
-                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" id="editAS" class="u-input u-input--sm" placeholder="Khusus" data-rupiah="true"></div>
-                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" id="editAO" class="u-input u-input--sm" placeholder="Lainnya" data-rupiah="true"></div>
-                                <input type="text" name="other_benefits_desc" id="editOB" class="u-input u-input--sm u-mt-sm" placeholder="Benefit Lain">
+                            <div class="has-prefix">
+                                <label class="u-mb-sm u-block u-text-xs u-font-bold u-muted u-uppercase">Tunjangan</label>
+                                {{-- FIX: Jarak antar input tunjangan diperlebar menggunakan u-mb-input-gap --}}
+                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" id="editAP" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
+                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" id="editAC" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
+                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" id="editAS" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
+                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" id="editAO" class="u-input" placeholder="Lainnya" data-rupiah="true"></div>
+                                <input type="text" name="other_benefits_desc" id="editOB" class="u-input u-mt-lg" placeholder="Benefit Lain">
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="editSectionPb" class="is-hidden u-bg-section u-p-md" style="border-left: 4px solid #ef4444;">
-                     <div class="u-text-sm u-font-bold u-text-danger u-mb-md">Kompensasi Pengakhiran</div>
-                     <div class="u-grid-2 u-stack-mobile u-gap-md">
+                <div id="editSectionPb" class="is-hidden u-bg-section u-p-lg" style="border-left: 4px solid var(--danger);">
+                     <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
+                     <div class="u-grid-2 u-stack-mobile">
                          <div class="u-form-group"><label>Efektif Berakhir</label><input type="date" name="pb_effective_end" id="editPbEnd" class="u-input"></div>
                          <div class="u-form-group has-prefix">
                              <label>Kompensasi</label>
+                             {{-- FIX: Jarak antara input dan terbilang diperlebar (u-mt-md) --}}
                              <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="pb_compensation_amount" id="editPbComp" class="u-input" data-rupiah="true" data-terbilang-target="editPbCompW"></div>
-                             <input type="text" name="pb_compensation_amount_words" id="editPbCompW" class="u-input u-input--sm u-mt-xs u-bg-light" readonly tabindex="-1">
+                             <input type="text" name="pb_compensation_amount_words" id="editPbCompW" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
                          </div>
                      </div>
                 </div>
 
-                <div class="u-form-group"><label>Catatan</label><input type="text" name="remarks" id="editRemarks" class="u-input"></div>
-                <div class="u-flex u-gap-lg u-flex-wrap u-p-sm u-bg-light u-rounded">
-                    <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_draw_signature" id="editDraw" value="1"> Ttd Digital</label>
-                    <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_camera" id="editCam" value="1"> Kamera</label>
-                    <label class="u-flex u-items-center u-gap-xs u-text-xs u-font-bold"><input type="checkbox" name="requires_geolocation" id="editGeo" value="1"> Lokasi</label>
+                <div class="u-border-t u-pt-lg">
+                    <div class="u-form-group"><label>Catatan</label><input type="text" name="remarks" id="editRemarks" class="u-input"></div>
+                    <div class="u-flex u-gap-lg u-flex-wrap u-p-md u-bg-section u-mt-lg">
+                        <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_draw_signature" id="editDraw" value="1"> Ttd Digital</label>
+                        <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_camera" id="editCam" value="1"> Kamera</label>
+                        <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_geolocation" id="editGeo" value="1"> Lokasi</label>
+                    </div>
                 </div>
             </div>
 
             <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
-                <button type="button" class="u-btn u-btn--ghost js-close-modal">Batal</button>
-                <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--outline">Simpan</button>
-                <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand">Submit</button>
+                <button type="button" class="u-btn u-btn--ghost js-close-modal" style="border-radius: 999px;">Batal</button>
+                <button type="submit" name="submit_action" value="draft" class="u-btn u-btn--outline" style="border-radius: 999px;">Simpan</button>
+                <button type="submit" name="submit_action" value="submit" class="u-btn u-btn--brand u-shadow-sm" style="border-radius: 999px;">Submit</button>
             </div>
         </form>
     </div>
@@ -463,66 +523,69 @@
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
         <div class="u-modal__head">
-            <div class="u-title">Detail Dokumen</div>
-            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+            <div class="u-flex u-items-center u-gap-md">
+                <div class="u-avatar u-avatar--md u-avatar--brand"><i class="fas fa-info-circle"></i></div>
+                <div class="u-title">Detail Dokumen</div>
+            </div>
+            <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
         </div>
-        <div class="u-modal__body u-space-y-md">
-            <div class="u-grid-2 u-gap-md u-stack-mobile">
-                <div class="u-bg-section u-p-md">
-                    <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm u-tracking-wide">Info Dokumen</div>
-                    <div class="u-space-y-sm">
-                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Nomor</span><span id="detNo" class="u-font-mono u-font-bold">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Tipe</span><span id="detType" class="u-badge u-badge--glass">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Status</span><span id="detStatus" class="u-badge">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
+        <div class="u-modal__body u-space-y-xl">
+            <div class="u-grid-2 u-stack-mobile">
+                <div class="u-bg-section u-p-lg">
+                    <div class="section-divider">Info Dokumen</div>
+                    <div class="u-space-y-md">
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nomor</span><span id="detNo" class="u-font-mono u-font-bold u-text-md">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Tipe</span><span id="detType" class="u-badge u-badge--glass">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Status</span><span id="detStatus" class="u-badge">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
                     </div>
                 </div>
-                <div class="u-bg-section u-p-md">
-                     <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-sm u-tracking-wide">Personil</div>
-                     <div class="u-space-y-sm">
-                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-lg">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
-                         <div id="detPeriodRow" class="u-flex u-justify-between u-items-center"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
+                <div class="u-bg-section u-p-lg">
+                     <div class="section-divider">Personil</div>
+                     <div class="u-space-y-md">
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-xl">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
+                         <div id="detPeriodRow" class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
                      </div>
                 </div>
             </div>
 
-            <div class="u-card u-card--glass u-p-sm" id="detNewUnitBox" hidden>
-                  <div class="u-text-sm u-flex u-items-center"><i class="fas fa-exchange-alt u-mr-sm u-muted"></i> Pindah ke: <strong id="detNewUnit" class="u-ml-xs">-</strong></div>
+            <div class="u-card u-card--glass u-p-md" id="detNewUnitBox" hidden>
+                  <div class="u-text-sm u-flex u-items-center"><i class="fas fa-exchange-alt u-mr-sm u-text-brand"></i> Pindah ke: <strong id="detNewUnit" class="u-ml-xs u-text-md">-</strong></div>
             </div>
 
-            <div id="detRemunBox" class="u-bg-section u-p-md is-hidden">
-                  <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md u-tracking-wide">Rincian Remunerasi</div>
-                  <div class="u-grid-2 u-gap-lg u-stack-mobile">
-                    <div class="u-space-y-sm">
-                        <div class="u-flex u-justify-between u-py-xs u-border-b"><span class="u-text-sm u-muted">Gaji Pokok</span><strong id="detSalary">-</strong></div>
-                        <div class="u-flex u-justify-between u-py-xs u-border-b"><span class="u-text-sm u-muted">Uang Makan</span><strong id="detLunch">-</strong></div>
+            <div id="detRemunBox" class="u-bg-section u-p-lg is-hidden">
+                  <div class="section-divider">Rincian Remunerasi</div>
+                  <div class="u-grid-2 u-stack-mobile">
+                    <div class="u-space-y-md">
+                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Gaji Pokok</span><strong id="detSalary" class="u-text-md">-</strong></div>
+                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Uang Makan</span><strong id="detLunch" class="u-text-md">-</strong></div>
                     </div>
-                    <div id="detAllowances" class="u-space-y-xs u-text-sm"></div>
+                    <div id="detAllowances" class="u-space-y-sm u-text-sm"></div>
                   </div>
             </div>
 
-            <div id="detPbBox" class="u-bg-section u-p-md is-hidden" style="border-left: 4px solid #ef4444;">
-                  <div class="u-text-xs u-font-bold u-text-danger u-uppercase u-mb-md u-tracking-wide">Kompensasi Pengakhiran</div>
-                  <div class="u-grid-2 u-gap-lg">
-                      <div><div class="u-text-xs u-muted">Efektif Berakhir</div><div id="detPbEff" class="u-font-bold u-text-lg">-</div></div>
-                      <div><div class="u-text-xs u-muted">Nilai Kompensasi</div><div id="detPbVal" class="u-font-bold u-text-lg">-</div><div class="u-text-xs u-muted" id="detPbValW"></div></div>
+            <div id="detPbBox" class="u-bg-section u-p-lg is-hidden" style="border-left: 4px solid var(--danger);">
+                  <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
+                  <div class="u-grid-2">
+                      <div><div class="u-text-sm u-muted u-mb-xs">Efektif Berakhir</div><div id="detPbEff" class="u-font-bold u-text-xl">-</div></div>
+                      <div><div class="u-text-sm u-muted u-mb-xs">Nilai Kompensasi</div><div id="detPbVal" class="u-font-bold u-text-xl u-text-brand">-</div><div class="u-text-sm u-muted u-mt-xs" id="detPbValW"></div></div>
                   </div>
             </div>
         </div>
         <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
-            <button type="button" class="u-btn u-btn--ghost js-close-modal">Tutup</button>
-            <a href="#" id="btnPreviewDoc" target="_blank" class="u-btn u-btn--outline u-text-brand is-hidden"><i class="fas fa-file-pdf u-mr-xs"></i> Dokumen</a>
-            <button type="button" id="btnReject" class="u-btn u-btn--danger is-hidden">Reject</button>
-            <button type="button" id="btnApprove" class="u-btn u-btn--brand is-hidden">Approve</button>
-            <button type="button" id="btnSign" class="u-btn u-btn--primary is-hidden">Tanda Tangan</button>
+            <button type="button" class="u-btn u-btn--ghost js-close-modal" style="border-radius: 999px;">Tutup</button>
+            <a href="#" id="btnPreviewDoc" target="_blank" class="u-btn u-btn--outline u-text-brand is-hidden" style="border-radius: 999px;"><i class="fas fa-file-pdf u-mr-xs"></i> Dokumen</a>
+            <button type="button" id="btnReject" class="u-btn u-btn--danger is-hidden" style="border-radius: 999px;">Reject</button>
+            <button type="button" id="btnApprove" class="u-btn u-btn--brand u-shadow-sm is-hidden" style="border-radius: 999px;">Approve</button>
+            <button type="button" id="btnSign" class="u-btn u-btn--primary u-shadow-sm is-hidden" style="border-radius: 999px;">Tanda Tangan</button>
         </div>
     </div>
 </div>
 
-<div id="rejectModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--sm"><div class="u-modal__head"><div class="u-title u-text-danger">Tolak Dokumen</div><button class="u-btn u-btn--ghost u-btn--sm js-close-modal"><i class="fas fa-times"></i></button></div><form id="rejectForm" class="u-modal__body"><textarea name="rejection_note" class="u-input" rows="4" required placeholder="Alasan penolakan..."></textarea><div class="u-flex u-justify-end u-gap-sm u-mt-md"><button type="submit" class="u-btn u-btn--danger">Konfirmasi Tolak</button></div></form></div></div>
-<div id="signModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--md"><div class="u-modal__head"><div class="u-title">Tanda Tangan Digital</div></div><form id="signForm" class="u-modal__body"><div class="u-card u-card--border u-p-xs u-mb-sm"><canvas id="signCanvas" style="width:100%; height:200px; background:#fff; touch-action:none;"></canvas></div><div class="u-flex u-justify-between u-text-xs u-mb-md"><button type="button" id="clearSign" class="u-text-brand u-font-bold">Hapus / Ulangi</button><span id="geoStatus" class="u-muted">Mendeteksi Lokasi...</span></div><input type="hidden" name="signature_image"><input type="hidden" name="geo_lat"><input type="hidden" name="geo_lng"><div class="u-flex u-justify-end u-gap-sm"><button type="submit" class="u-btn u-btn--brand">Simpan & Tanda Tangan</button></div></form></div></div>
+<div id="rejectModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--sm"><div class="u-modal__head"><div class="u-title u-text-danger">Tolak Dokumen</div><button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button></div><form id="rejectForm" class="u-modal__body"><textarea name="rejection_note" class="u-input" rows="4" required placeholder="Alasan penolakan..."></textarea><div class="u-flex u-justify-end u-gap-sm u-mt-lg"><button type="submit" class="u-btn u-btn--danger" style="border-radius: 999px;">Konfirmasi Tolak</button></div></form></div></div>
+<div id="signModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--md"><div class="u-modal__head"><div class="u-title">Tanda Tangan Digital</div><button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button></div><form id="signForm" class="u-modal__body"><div class="u-card u-card--border u-p-xs u-mb-md"><canvas id="signCanvas" style="width:100%; height:200px; background:var(--surface-1); touch-action:none; border-radius: var(--radius-sm);"></canvas></div><div class="u-flex u-justify-between u-text-xs u-mb-lg"><button type="button" id="clearSign" class="u-text-brand u-font-bold u-pointer">Hapus / Ulangi</button><span id="geoStatus" class="u-muted">Mendeteksi Lokasi...</span></div><input type="hidden" name="signature_image"><input type="hidden" name="geo_lat"><input type="hidden" name="geo_lng"><div class="u-flex u-justify-end u-gap-sm"><button type="submit" class="u-btn u-btn--brand u-shadow-sm" style="border-radius: 999px;">Simpan & Tanda Tangan</button></div></form></div></div>
 @endsection
 
 @push('scripts')
@@ -574,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const openModal = (id) => {
         const m = document.getElementById(id);
         if(m) {
-             m.hidden = false; m.style.display = 'grid'; 
+             m.hidden = false; m.style.display = 'flex'; 
              document.body.classList.add('modal-open');
         }
     };
@@ -769,16 +832,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(m.allowance_other_amount) allws.push(['Lainnya', m.allowance_other_amount]);
                     
                     select('#detAllowances').innerHTML = allws.map(x => 
-                        `<div class="u-flex u-justify-between u-py-xs u-border-b"><span class="u-muted">${x[0]}</span><strong>Rp ${money(x[1])}</strong></div>`
+                        `<div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-muted">${x[0]}</span><strong>Rp ${money(x[1])}</strong></div>`
                     ).join('');
                 }
                 
                 const boxNewUnit = select('#detNewUnitBox');
                 if(d.contract_type === 'PKWT_PERPANJANGAN' && m.new_unit_id) {
-                     showBlock(boxNewUnit);
-                     // Here ideally we need unit name, assuming backend sends it or we fetch it. 
-                     // For now simple placeholder or logic if available
-                     select('#detNewUnit').textContent = "(ID: "+m.new_unit_id+")";
+                      showBlock(boxNewUnit);
+                      // Here ideally we need unit name, assuming backend sends it or we fetch it. 
+                      // For now simple placeholder or logic if available
+                      select('#detNewUnit').textContent = "(ID: "+m.new_unit_id+")";
                 } else hide(boxNewUnit);
 
                 const bPrev = select('#btnPreviewDoc');
