@@ -98,7 +98,7 @@ class ApplicantDataController extends Controller
         
         // 1. Pendidikan
         $person->education_history = array_values(array_filter($request->education_list ?? [], function($i) {
-            return !empty($i['name']) || !empty($i['level']);
+            return !empty($i['name']); 
         }));
 
         // 2. Keluarga
@@ -136,6 +136,7 @@ class ApplicantDataController extends Controller
             'skck_file' => 'skck_path',
             'health_file' => 'health_cert_path',
             'toefl_file' => 'toefl_path',
+            'other_doc_file'   => 'other_doc_path',
         ];
 
         foreach ($files as $inputName => $dbColumn) {

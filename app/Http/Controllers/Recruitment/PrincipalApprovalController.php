@@ -420,7 +420,6 @@ class PrincipalApprovalController extends Controller
             $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
         }
 
-        // Fix: Gunakan variabel $note yang sudah diproses, bukan input mentah
         $this->closePending($req, 'approved', $note);
 
         $isLast = $stageIdx >= (count($this->stages()) - 1);

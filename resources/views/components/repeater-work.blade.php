@@ -48,7 +48,7 @@
             </div>
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Tahun Selesai</label>
-                <input type="number" name="work_list[{{$idx}}][end_year]" value="{{ $work['end_year'] ?? '' }}" class="u-input w-full" placeholder="YYYY (Isi 'Sekarang' jika aktif)">
+                <input type="number" name="work_list[{{$idx}}][end_year]" value="{{ $work['end_year'] ?? '' }}" class="u-input w-full" placeholder="YYYY (Kosongkan jika masih aktif)">
             </div>
         </div>
 

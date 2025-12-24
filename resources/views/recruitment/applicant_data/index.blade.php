@@ -76,16 +76,16 @@
                             @include('components.input-soft', ['label' => 'Instagram URL', 'name' => 'instagram_url', 'val' => $person->instagram_url])
                         </div>
 
-                        {{-- Foto Profil di Kanan --}}
+                        {{-- Foto Profil --}}
                         <div class="md:col-span-1 flex flex-col items-center pt-8">
                             <div class="relative group">
                                 {{-- Container Foto --}}
                                 <div class="w-48 h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group-hover:border-blue-400 transition-all shadow-sm">
                                     
-                                    {{-- 1. IMAGE PREVIEW (Tampil jika ada di DB atau baru diupload) --}}
+                                    {{-- 1. IMAGE PREVIEW --}}
                                     <img id="photo_preview" src="{{ $person->photo_path ? Storage::url($person->photo_path) : '#' }}" class="w-full h-full object-cover absolute inset-0 z-0 {{ $person->photo_path ? '' : 'hidden' }}">
                                     
-                                    {{-- 2. PLACEHOLDER ICON (Tampil jika gambar kosong) --}}
+                                    {{-- 2. PLACEHOLDER ICON --}}
                                     <div id="photo_placeholder" class="flex flex-col items-center z-0 {{ $person->photo_path ? 'hidden' : '' }}">
                                         <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-2 text-gray-400 group-hover:text-blue-500 transition-colors">
                                             <i class="fas fa-camera text-xl"></i>
@@ -93,11 +93,10 @@
                                         <span class="text-xs text-gray-400 font-bold group-hover:text-blue-500">Upload Foto</span>
                                     </div>
 
-                                    {{-- 3. INPUT FILE (Transparan di atas segalanya) --}}
+                                    {{-- 3. INPUT FILE --}}
                                     <input type="file" name="photo_file" id="photo_input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/png, image/jpeg, image/jpg"onchange="handlePhotoUpload(this)">
                                 </div>
                                 
-                                {{-- Label Hover Edit (Hanya muncul jika sudah ada foto) --}}
                                 <div id="photo_overlay" class="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 hover:opacity-100 pointer-events-none z-20 transition-opacity {{ $person->photo_path ? '' : 'hidden' }}">
                                     <span class="text-white text-xs font-bold"><i class="fas fa-pen"></i> Ganti Foto</span>
                                 </div>
@@ -105,12 +104,9 @@
 
                             {{-- STATUS TEXT --}}
                             <div class="mt-4 text-center w-48">
-                                {{-- Nama File yang Di-upload --}}
                                 <p id="photo_filename" class="text-xs font-bold text-green-600 truncate mb-1 hidden animate-fade-in">
                                     <i class="fas fa-check-circle"></i> Foto terupload
                                 </p>
-                                
-                                {{-- Instruksi --}}
                                 <p class="text-[10px] text-gray-400 leading-tight">
                                     Format: JPG/PNG, Max 2MB.<br>Disarankan rasio 3:4 (Formal).
                                 </p>
@@ -141,14 +137,14 @@
 
                 {{-- 3. PENDIDIKAN (Repeater) --}}
                 <div id="tab-pendidikan" class="tab-content hidden">
-                    <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Riwayat Pendidikan</h3>
+                    <h3 class="font-bold text-lg text-gray-800 mb-6">Riwayat Pendidikan</h3>
+                    <h5 class="u-block u-text-sm u-font-bold u-mb-sm text-yellow-500 mb-4 border-b pb-2">!! Data paling atas adalah Pendidikan Terakhir !!</h5>
                     
                     <div id="education-container">
                         @php $edus = $person->education_history ?? []; @endphp
                         @foreach($edus as $idx => $edu)
                             @include('components.repeater-education', ['idx' => $idx, 'edu' => $edu])
                         @endforeach
-                        {{-- Template Kosong untuk JS (Hidden) --}}
                         <div id="education-template" class="hidden">
                             @include('components.repeater-education', ['idx' => 'INDEX', 'edu' => []])
                         </div>
@@ -254,7 +250,7 @@
                         @include('components.file-upload-soft', ['label' => 'Transkrip Nilai', 'name' => 'transcripts_file', 'path' => $person->transcripts_path])
                         @include('components.file-upload-soft', ['label' => 'SKCK', 'name' => 'skck_file', 'path' => $person->skck_path])
                         @include('components.file-upload-soft', ['label' => 'Sertifikat TOEFL/IELTS', 'name' => 'toefl_file', 'path' => $person->toefl_path])
-                        @include('components.file-upload-soft', ['label' => 'Sertifikat Pendukung Lainnya', 'name' => 'other_cert_file', 'path' => $person->other_cert_path])
+                        @include('components.file-upload-soft', ['label' => 'Dokumen Pendukung Lainnya', 'name' => 'other_doc_file', 'path' => $person->other_doc_path])
                     </div>
                 </div>
 
@@ -389,7 +385,7 @@
         if (input.files && input.files[0]) {
             const file = input.files[0];
 
-            // 1. Tampilkan Nama File (Status Upload)
+            // 1. Tampilkan Nama File
             filenameText.innerHTML = `<i class="fas fa-check-circle"></i> File: ${file.name}`;
             filenameText.classList.remove('hidden');
             
@@ -421,7 +417,6 @@
     function addRepeater(type) {
         const container = document.getElementById(type + '-container');
         const template = document.getElementById(type + '-template').innerHTML;
-        // Ganti placeholder INDEX dengan timestamp agar unik
         const newHtml = template.replace(/INDEX/g, Date.now());
         container.insertAdjacentHTML('beforeend', newHtml);
     }
@@ -430,9 +425,6 @@
         btn.closest('.repeater-item').remove();
     }
 
-    /**
-     * Fungsi untuk Preview Nama File Dokumen
-     */
     function updateFilePreview(inputName) {
         const input = document.getElementById('input_' + inputName);
         const placeholder = document.getElementById('placeholder_' + inputName);

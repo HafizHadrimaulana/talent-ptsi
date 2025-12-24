@@ -58,6 +58,9 @@ Route::middleware('web')->group(function () {
             // 4. Proses Update Status Pelamar (Terima/Tolak oleh DHC)
             Route::post('/applicant/{id}/update', [ExternalRecruitmentController::class, 'updateApplicantStatus'])->name('updateApplicantStatus');
 
+            // 5. Tampilkan Biodata Pelamar (Readonly untuk DHC dan SDM Unit)
+            Route::get('/applicant/{id}/biodata', [ExternalRecruitmentController::class, 'showApplicantBiodata'])->name('applicant.biodata');
+
         });
     });
 

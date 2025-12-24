@@ -3,13 +3,11 @@
 
 @section('content')
 <style>
-    /* Styling Header Tabel */
     #ext-table thead tr { background: linear-gradient(90deg, #1e3a8a 0%, #10b981 100%) !important; color: white; }
     #ext-table thead th { color: white !important; border: none; padding: 12px; font-weight:700; text-transform:uppercase; font-size:0.8rem; }
     #ext-table thead th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
     #ext-table thead th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
     
-    /* Styling Badge Status Pelamar */
     .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; display:inline-block;}
     .st-screening { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
     .st-interview { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
@@ -37,7 +35,7 @@
         </div> 
     @endif
 
-    {{-- TOOLBAR PENCARIAN & LIMIT --}}
+    {{-- PAGINATION --}}
     <form method="GET" action="{{ route('recruitment.external.index') }}" class="u-flex u-justify-between u-items-center u-mb-md u-flex-wrap u-gap-sm">
         
         {{-- Show Entries --}}
@@ -54,24 +52,10 @@
 
         {{-- Search Box Wrapper --}}
         <div class="u-relative u-w-full md:u-w-64" style="position: relative; display: flex; align-items: center;">
-            
-            {{-- 1. ICON SEARCH (KIRI) --}}
-            <i class="fas fa-search u-text-muted" 
-               style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 10;"></i>
-
-            {{-- 2. INPUT FIELD --}}
-            <input type="text" name="q" value="{{ request('q') }}" 
-                   class="u-input u-input--sm" 
-                   style="width: 100%; padding-left: 38px; padding-right: 38px;" 
-                   placeholder="Cari..."
-                   onkeydown="if(event.key === 'Enter') this.form.submit()">
-
-            {{-- 3. ICON CLEAR (KANAN) --}}
+            <i class="fas fa-search u-text-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 10;"></i>
+            <input type="text" name="q" value="{{ request('q') }}" class="u-input u-input--sm" style="width: 100%; padding-left: 38px; padding-right: 38px;" placeholder="Cari..." onkeydown="if(event.key === 'Enter') this.form.submit()">
             @if(request('q'))
-                <a href="{{ route('recruitment.external.index') }}" 
-                   class="u-text-danger hover:u-text-dark"
-                   style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; cursor: pointer; text-decoration: none;"
-                   title="Hapus pencarian">
+                <a href="{{ route('recruitment.external.index') }}" class="u-text-danger hover:u-text-dark" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; cursor: pointer; text-decoration: none;" title="Hapus pencarian">
                     <i class="fas fa-times"></i>
                 </a>
             @endif
@@ -93,29 +77,21 @@
             <tbody>
                 @forelse($list as $row)
                     <tr>
-                        {{-- MENAMPILKAN TICKET NUMBER DARI recruitment_requests --}}
                         <td><span class="u-badge u-badge--glass">{{ $row->ticket_number ?? '-' }}</span></td>
-                        
                         <td>
-                            {{-- MENAMPILKAN NAMA POSISI --}}
                             <div class="u-font-bold">
                                 @php
                                     $displayPosition = '-';
-
-                                    // Cek Relasi Model (jika position_id terisi)
                                     if ($row->positionObj) {
                                         $displayPosition = $row->positionObj->name;
                                     } 
-                                    // Cek Map Posisi (jika kolom position berisi ID Angka "29")
                                     elseif (isset($positionsMap[$row->position])) {
                                         $displayPosition = $positionsMap[$row->position];
                                     }
-                                    // Tampilkan apa adanya (jika kolom position berisi teks manual)
                                     else {
                                         $displayPosition = $row->position;
                                     }
                                 @endphp
-                                
                                 {{ $displayPosition }}
                             </div>
                         </td>
@@ -140,11 +116,9 @@
                             @elseif($isPelamar)
                                 {{-- POV PELAMAR --}}
                                 @php
-                                    // Cek apakah user ini sudah melamar tiket ini
                                     $hasApplied = in_array($row->id, $myApplications);
                                     $myApp = $row->applicants->where('user_id', auth()->id())->first();
                                 @endphp
-
                                 @if($hasApplied)
                                     <button class="u-btn u-btn--sm u-btn--ghost u-text-brand" 
                                             onclick="openMyStatusModal('{{ $myApp->status }}', '{{ $myApp->interview_schedule }}', '{{ $myApp->hr_notes }}')">
@@ -178,7 +152,6 @@
         </div>
         <form action="{{ route('recruitment.external.apply') }}" method="POST" enctype="multipart/form-data">
             @csrf
-            {{-- ID TIKET DISIMPAN DISINI --}}
             <input type="hidden" name="recruitment_request_id" id="apply_ticket_id">
             
             <div class="u-modal__body u-p-md u-space-y-md">
@@ -318,6 +291,20 @@
     </div>
 </div>
 
+{{-- MODAL BIODATA READONLY --}}
+<div id="biodataModal" class="u-modal" style="z-index: 2200;" hidden>
+    <div class="u-modal__card modal-card-wide" style="max-width: 700px;">
+        <div class="u-modal__head">
+            <div class="u-title">Biodata Pelamar</div>
+            <button class="u-btn u-btn--ghost u-btn--sm" onclick="closeModal('biodataModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="u-modal__body u-p-md" id="biodataModalContent">
+            {{-- Content akan di-load via AJAX --}}
+            <div class="u-text-center u-p-lg"><i class="fas fa-spinner fa-spin fa-2x u-text-muted"></i></div>
+        </div>
+    </div>
+</div>
+
 <script>
     // --- POV PELAMAR ---
     function openApplyModal(id, position, ticket) {
@@ -333,7 +320,7 @@
         const noteEl = document.getElementById('hr_notes_display');
         
         badge.textContent = status;
-        badge.className = 'status-badge'; // reset
+        badge.className = 'status-badge';
         
         if(status.includes('Interview')) {
             badge.classList.add('st-interview');
@@ -373,7 +360,6 @@
                 }
 
                 data.data.forEach(app => {
-                    // Logic Badge Status
                     let badgeClass = 'st-screening';
                     if(app.status.includes('Interview')) badgeClass = 'st-interview';
                     if(app.status === 'Passed') badgeClass = 'st-passed';
@@ -400,9 +386,15 @@
                             <td><span class="status-badge ${badgeClass}">${app.status}</span></td>
                             <td><div class="u-text-xs">${dateShow}</div></td>
                             <td>
-                                <button class="u-btn u-btn--xs u-btn--outline" onclick="openUpdateStatus(${app.id}, '${app.status}')">
-                                    <i class="fas fa-edit"></i> Proses
-                                </button>
+                                <div class="u-flex u-gap-xs u-justify-end">
+                                    <button class="u-btn u-btn--xs u-btn--info u-btn--outline" onclick="openBiodataModal(${app.id})" title="Lihat Biodata Lengkap">
+                                        <i class="fas fa-id-card"></i> Bio
+                                    </button>
+
+                                    <button class="u-btn u-btn--xs u-btn--outline" onclick="openUpdateStatus(${app.id}, '${app.status}')" title="Update Status">  
+                                        <i class="fas fa-edit"></i> Proses
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -445,6 +437,47 @@
         if(document.querySelectorAll('.u-modal:not([hidden])').length === 0) {
             document.body.classList.remove('modal-open');
         }
+    }
+
+    function openBiodataModal(applicantId) {
+        const modal = document.getElementById('biodataModal');
+        const content = document.getElementById('biodataModalContent');
+        
+        // Tampilkan modal dengan loading state
+        content.innerHTML = '<div class="u-text-center u-p-lg"><i class="fas fa-circle-notch fa-spin fa-2x u-text-brand"></i><div class="u-mt-sm u-text-muted">Memuat data...</div></div>';
+        openModal('biodataModal');
+
+        // Fetch Partial View
+        fetch(`/recruitment/external/applicant/${applicantId}/biodata`)
+            .then(response => response.text()) // Kita minta text (HTML), bukan JSON
+            .then(html => {
+                content.innerHTML = html;
+            })
+            .catch(err => {
+                content.innerHTML = '<div class="u-text-center u-text-danger u-p-md">Gagal memuat data biodata.</div>';
+                console.error(err);
+            });
+    }
+    function showBioTab(tabId, btn) {
+        // 1. Sembunyikan semua konten tab
+        const allContents = document.querySelectorAll('.bio-content');
+        allContents.forEach(el => {
+            el.style.display = 'none';
+            el.classList.add('hidden');
+        });
+
+        // 2. Tampilkan konten tab yang dipilih
+        const target = document.getElementById('tab-' + tabId);
+        if(target) {
+            target.style.display = 'block';
+            target.classList.remove('hidden');
+        }
+
+        // 3. Update style tombol aktif
+        const allBtns = document.querySelectorAll('.bio-tab-btn');
+        allBtns.forEach(b => b.classList.remove('active'));
+        
+        if(btn) btn.classList.add('active');
     }
 </script>
 @endsection

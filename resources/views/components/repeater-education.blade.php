@@ -8,13 +8,15 @@
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Jenjang</label>
             <select name="education_list[{{$idx}}][level]" class="u-input w-full">
-                <option value="SMA">SMA</option>
-                <option value="D3">D3/D4</option>
-                <option value="S1">S1</option>
-                <option value="S2">S2</option>
-                <option value="S3">S3</option>
+                {{-- TAMBAHKAN BARIS INI: Opsi default kosong --}}
+                <option value="" disabled {{ ($edu['level'] ?? '') == '' ? 'selected' : '' }}>Pilih Jenjang</option>
+                
+                <option value="SMA" {{ ($edu['level'] ?? '') == 'SMA' ? 'selected' : '' }}>SMA</option>
+                <option value="D3" {{ ($edu['level'] ?? '') == 'D3' ? 'selected' : '' }}>D3/D4</option>
+                <option value="S1" {{ ($edu['level'] ?? '') == 'S1' ? 'selected' : '' }}>S1</option>
+                <option value="S2" {{ ($edu['level'] ?? '') == 'S2' ? 'selected' : '' }}>S2</option>
+                <option value="S3" {{ ($edu['level'] ?? '') == 'S3' ? 'selected' : '' }}>S3</option>
             </select>
-            <!-- <input type="text" name="education_list[{{$idx}}][level]" value="{{ $edu['level'] ?? '' }}" placeholder="Contoh: S1" class="u-input w-full"> -->
         </div>
 
         {{-- Nama Sekolah --}}

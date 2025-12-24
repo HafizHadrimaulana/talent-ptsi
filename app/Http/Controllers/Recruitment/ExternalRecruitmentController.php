@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\RecruitmentRequest;    
 use App\Models\RecruitmentApplicant; 
 use App\Models\Position;
+use App\Models\Person;
 
 class ExternalRecruitmentController extends Controller
 {
@@ -150,5 +151,21 @@ class ExternalRecruitmentController extends Controller
         $app->save();
 
         return redirect()->back()->with('ok', 'Status pelamar berhasil diperbarui.');
+    }
+
+    public function showApplicantBiodata($applicantId)
+    {
+        // 1. Cari data lamaran beserta user dan person-nya
+        $applicant = RecruitmentApplicant::with('user.person')->findOrFail($applicantId);
+        
+        // 2. Ambil data Person
+        $person = $applicant->user->person;
+
+        if (!$person) {
+            return '<div class="u-p-md u-text-center u-text-danger">Data Biodata belum dilengkapi pelamar.</div>';
+        }
+
+        // 3. Return Partial View (Kita akan buat file view ini di langkah selanjutnya)
+        return view('recruitment.external.components.biodata-readonly', compact('person', 'applicant'));
     }
 }
