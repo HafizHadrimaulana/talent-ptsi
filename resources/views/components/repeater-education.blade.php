@@ -8,9 +8,7 @@
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Jenjang</label>
             <select name="education_list[{{$idx}}][level]" class="u-input w-full">
-                {{-- TAMBAHKAN BARIS INI: Opsi default kosong --}}
                 <option value="" disabled {{ ($edu['level'] ?? '') == '' ? 'selected' : '' }}>Pilih Jenjang</option>
-                
                 <option value="SMA" {{ ($edu['level'] ?? '') == 'SMA' ? 'selected' : '' }}>SMA</option>
                 <option value="D3" {{ ($edu['level'] ?? '') == 'D3' ? 'selected' : '' }}>D3/D4</option>
                 <option value="S1" {{ ($edu['level'] ?? '') == 'S1' ? 'selected' : '' }}>S1</option>

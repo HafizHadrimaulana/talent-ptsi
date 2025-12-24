@@ -15,9 +15,9 @@
     }
     .bio-tab-btn:hover { background-color: #f8fafc; color: #334155; }
     .bio-tab-btn.active {
-        color: #00A29A;
-        border-bottom-color: #00A29A;
-        background-color: #f0fdfa;
+        color: #268bffff;
+        border-bottom-color: #268bffff;
+        background-color: #e9f5faff;
     }
     
     .bio-label { font-size: 11px; color: #64748b; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
@@ -25,7 +25,7 @@
     .bio-section-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
 </style>
 
-<div class="flex flex-col" style="height: 75vh;"> 
+<div class="u-card u-card--glass u-hover-lift" style="height: 75vh;"> 
     <div class="flex items-start gap-6 p-6 bg-white border-b shrink-0">
         <div class="w-24 h-32 shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
             @if($person->photo_path)

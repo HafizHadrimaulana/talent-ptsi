@@ -449,7 +449,7 @@
 
         // Fetch Partial View
         fetch(`/recruitment/external/applicant/${applicantId}/biodata`)
-            .then(response => response.text()) // Kita minta text (HTML), bukan JSON
+            .then(response => response.text())
             .then(html => {
                 content.innerHTML = html;
             })
@@ -459,21 +459,18 @@
             });
     }
     function showBioTab(tabId, btn) {
-        // 1. Sembunyikan semua konten tab
         const allContents = document.querySelectorAll('.bio-content');
         allContents.forEach(el => {
             el.style.display = 'none';
             el.classList.add('hidden');
         });
 
-        // 2. Tampilkan konten tab yang dipilih
         const target = document.getElementById('tab-' + tabId);
         if(target) {
             target.style.display = 'block';
             target.classList.remove('hidden');
         }
 
-        // 3. Update style tombol aktif
         const allBtns = document.querySelectorAll('.bio-tab-btn');
         allBtns.forEach(b => b.classList.remove('active'));
         

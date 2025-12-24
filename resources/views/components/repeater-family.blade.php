@@ -1,5 +1,4 @@
 <div class="repeater-item bg-gray-50 p-6 rounded-2xl mb-6 border border-gray-100 relative transition-all hover:shadow-sm">
-    {{-- Tombol Hapus --}}
     <button type="button" onclick="removeRow(this)" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors">
         <i class="fas fa-trash-alt"></i>
     </button>
@@ -9,7 +8,7 @@
     </h4>
 
     <div class="space-y-4">
-        {{-- Baris 1: Nama & Hubungan --}}
+        {{-- Nama & Hubungan --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Nama Lengkap</label>
@@ -26,7 +25,7 @@
             </div>
         </div>
 
-        {{-- Baris 2: JK & TTL --}}
+        {{-- JK & TTL --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Jenis Kelamin</label>
@@ -45,7 +44,7 @@
             </div>
         </div>
 
-        {{-- Baris 3: Pendidikan & Pekerjaan --}}
+        {{-- Pendidikan & Pekerjaan --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="u-space-y-sm">
                 <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Pendidikan Terakhir</label>
