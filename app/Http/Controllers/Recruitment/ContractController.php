@@ -136,12 +136,16 @@ class ContractController extends Controller
             }
             $c->remuneration_json = $meta;
             $c->status = ($v['submit_action'] === 'submit') ? 'review' : 'draft';
+            
+            // GENERATE NUMBER FIX
             if ($c->status === 'review') {
                 $c->contract_no = $this->generateContractNumber($c);
             }
+            
             $c->created_by_user_id = $request->user()->id;
             $c->created_by_person_id = $request->user()->person_id;
             $c->save();
+            
             $this->ensureDocumentRecord($c);
             if ($c->status === 'review') {
                 $this->createApproval($c, $request->user());
@@ -247,7 +251,13 @@ class ContractController extends Controller
         set_time_limit(600);
         ini_set('memory_limit', '512M');
         $needsDraw = ($contract->requires_draw_signature == 1 || $contract->requires_draw_signature === true);
-        $data = $request->validate(['note' => 'nullable', 'signature_image' => ($needsDraw ? 'required' : 'nullable')]);
+        $data = $request->validate([
+            'note' => 'nullable',
+            'signature_image' => ($needsDraw ? 'required' : 'nullable'),
+            'geo_lat' => 'nullable|string',
+            'geo_lng' => 'nullable|string',
+            'snapshot_image' => 'nullable|string',
+        ]);
         DB::beginTransaction();
         try {
             if ($role === 'Kepala Unit') {
@@ -263,7 +273,12 @@ class ContractController extends Controller
             $this->ensureDocumentRecord($contract);
             Signature::create([
                 'document_id' => $contract->document_id, 'signer_person_id' => $request->user()->person_id, 'signer_user_id' => $request->user()->id,
-                'signer_role' => $role, 'signature_draw_data' => $data['signature_image'] ?? null, 'signed_at' => now()
+                'signer_role' => $role, 'signed_at' => now(),
+                'signature_draw_data' => $data['signature_image'] ?? null,
+                'geo_lat' => $data['geo_lat'] ?? null,
+                'geo_lng' => $data['geo_lng'] ?? null,
+                'snapshot_data' => $data['snapshot_image'] ?? null,
+                'ip_address' => $request->ip()
             ]);
             $contract->update(['status' => $status]);
             $contract->loadMissing('document');
@@ -272,7 +287,7 @@ class ContractController extends Controller
             }
             $this->generatePdfFile($contract);
             DB::commit();
-            return response()->json(['success' => true]);
+            return response()->json(['success' => true, 'message' => 'Berhasil ditandatangani.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal: ' . $e->getMessage()], 500);
@@ -349,7 +364,6 @@ class ContractController extends Controller
         if ($p) {
             $d['name'] = $p->full_name ?? $p->name ?? 'Kandidat';
             $d['address'] = $p->address ?? $p->domicile_address ?? '-';
-            // TRY TO GET REAL NIK FROM IDENTITIES
             $realNik = DB::table('identities')->where('person_id', $p->id)->whereIn('system', ['nik', 'ktp', 'e_ktp'])->value('external_id');
             $d['nik'] = $realNik ?? $p->nik_hash ?? $p->nik ?? '-';
             $d['pob'] = $p->place_of_birth ?? $p->pob ?? '-';
@@ -394,12 +408,11 @@ class ContractController extends Controller
                 if ($pos) return $pos;
             }
         }
-        return 'Kepala Unit'; // Fallback
+        return 'Kepala Unit';
     }
 
     protected function guessHeadTitle(User $u)
     {
-        // Deprecated, use getUserJobTitle instead
         return $this->getUserJobTitle($u);
     }
 
@@ -410,23 +423,44 @@ class ContractController extends Controller
         $uCode = $c->unit?->code ?? 'UNIT';
         $romanMonth = $this->getRomanMonth(now()->month);
         $year = now()->year;
+        
         $defaultHead = (string)(config('recruitment.numbering.default_head_code') ?? 'XX');
         $headCode = $defaultHead;
+        
         $headUnit = $this->resolveHeadUnit($c->unit);
         $head = $this->getUnitHeadUser($headUnit);
+        
         if ($head && $head->person && ($head->person->full_name ?? null)) {
             $ini = $this->initialsFromName($head->person->full_name);
             if ($ini) $headCode = $ini;
         }
+
         $base = "/{$uCode}-{$romanMonth}/{$headCode}/{$year}";
-        $last = Contract::where('contract_no', 'like', "%{$base}")->orderByDesc('contract_no')->value('contract_no');
+        
+        // 1. Get the latest record (ignoring soft deletes if applicable, using DB::table)
+        $last = DB::table('contracts')
+            ->where('contract_no', 'like', "%{$base}")
+            ->orderByRaw('LENGTH(contract_no) DESC')
+            ->orderBy('contract_no', 'desc')
+            ->value('contract_no');
+
         $seq = 1;
         if ($last) {
             $parts = explode('/', $last);
             $nums = explode('-', $parts[0] ?? '');
             $seq = ((int)end($nums)) + 1;
         }
-        return sprintf("%s-%03d%s", $code, $seq, $base);
+
+        // 2. Loop until a unique number is found
+        do {
+            $candidate = sprintf("%s-%03d%s", $code, $seq, $base);
+            $exists = DB::table('contracts')->where('contract_no', $candidate)->exists();
+            if ($exists) {
+                $seq++;
+            }
+        } while ($exists);
+
+        return $candidate;
     }
 
     protected function initialsFromName($name)
@@ -503,7 +537,6 @@ class ContractController extends Controller
         $tplKey = (string)($template->code ?? '');
         $m = (array)(data_get($cfg, "templates.{$tplKey}.margin_cm") ?? data_get($cfg, 'margin_cm') ?? []);
 
-        // STANDARD MARGIN: 3.5cm Top/Bottom for ALL templates
         $m['top'] = 3.5;
         $m['bottom'] = 3.5;
 
@@ -519,7 +552,7 @@ class ContractController extends Controller
         $font = (array)(data_get($cfg, "templates.{$tplKey}.font") ?? data_get($cfg, 'font') ?? []);
         $ff = (string)($font['family'] ?? 'Tahoma');
         $fs = (float)($font['size_pt'] ?? 11);
-        $lh = (float)($font['line_height'] ?? 1.3); // Normalized Spacing
+        $lh = (float)($font['line_height'] ?? 1.3); 
         $titleSize = (float)($font['title_size_pt'] ?? 14);
         $pa = (float)($font['paragraph_after_pt'] ?? 6);
 
@@ -542,7 +575,6 @@ class ContractController extends Controller
         $tplCss = preg_replace('~@page\s*[^{]*\{.*?\}~is', '', $tplCss);
         $tplCss = preg_replace('~\b(html|body)\b\s*\{.*?\}~is', '', $tplCss);
 
-        // BG LOGIC: Img 1.0 (Full), Body White Transparant (0.88)
         $css = "@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}{$fontFaceCss}
         body{margin:0;padding:0;font-family:'{$finalFamily}',{$ff},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:rgba(255,255,255,0.88);}
         .letterhead-img{position:fixed;top:-{$mt}cm;left:-{$ml}cm;width:{$pw}cm;height:{$ph}cm;z-index:-9999;opacity:1.0;}

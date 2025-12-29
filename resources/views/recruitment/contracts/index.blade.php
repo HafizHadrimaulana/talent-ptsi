@@ -80,7 +80,17 @@
         <div class="u-card u-p-sm u-mb-md u-success"><i class="fas fa-check-circle u-mr-sm"></i> {{ session('success') }}</div>
     @endif
     @if ($errors->any())
-        <div class="u-card u-p-sm u-mb-md u-error"><i class="fas fa-exclamation-triangle u-mr-sm"></i> Periksa kembali inputan Anda.</div>
+        <div class="u-card u-p-sm u-mb-md u-error">
+            <div class="u-flex u-items-center u-gap-sm">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span class="u-font-bold">Gagal Disimpan:</span>
+            </div>
+            <ul class="u-mt-xs u-ml-lg" style="list-style-type: disc;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
     @endif
 
     <div class="u-card u-p-md u-mb-lg u-bg-section">
@@ -618,7 +628,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
     const csrf = select('meta[name="csrf-token"]')?.content;
     
-    // Utilities
     const hide = el => { if(el) { el.hidden=true; el.style.display='none'; el.classList.add('is-hidden'); } };
     const show = el => { if(el) { el.hidden=false; el.style.display='flex'; el.classList.remove('is-hidden'); } };
     const showBlock = el => { if(el) { el.hidden=false; el.style.display='block'; el.classList.remove('is-hidden'); } };
@@ -637,9 +646,6 @@ document.addEventListener('DOMContentLoaded', () => {
        return terbilang(Math.floor(n/1000000))+' juta '+terbilang(n%1000000);
     };
 
-    // --- LOGIC UTAMA ---
-
-    // 1. Calculator Binding
     const bindCalc = (root) => {
         selectAll('input[data-rupiah="true"]', root).forEach(el => {
             const tgtId = el.dataset.terbilangTarget;
@@ -652,7 +658,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // 2. Modal Logic
     const openModal = (id) => {
         const m = document.getElementById(id);
         if(m) { m.hidden = false; m.style.display = 'flex'; document.body.classList.add('modal-open'); }
@@ -668,7 +673,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(btn) { e.preventDefault(); openModal(btn.dataset.modalOpen); }
     });
 
-    // 3. Create Modal Logic
     const btnCreate = select('#btnOpenCreate');
     if(btnCreate) {
         btnCreate.onclick = (e) => { e.preventDefault(); openModal('createContractModal'); };
@@ -679,15 +683,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const srcSel = select('#createSourceSelect');
         const filterUnit = select('#filterSourceUnit');
         
+        const toggleInputs = (container, shouldEnable) => {
+            if(!container) return;
+            const inputs = container.querySelectorAll('input, select, textarea');
+            inputs.forEach(el => el.disabled = !shouldEnable);
+        };
+
         const updateUI = () => {
             const mode = select('#createModeInput').value;
             const isNew = (mode === 'new');
             const isTerm = (mode === 'terminate');
             
-            isNew ? showBlock(select('[data-mode-section="new"]')) : hide(select('[data-mode-section="new"]'));
-            !isNew ? showBlock(select('[data-mode-section="existing"]')) : hide(select('[data-mode-section="existing"]'));
+            const secNew = select('[data-mode-section="new"]');
+            const secExist = select('[data-mode-section="existing"]');
             
-            if(!isNew) select('#labelSourceExisting').textContent = isTerm ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
+            if(isNew) {
+                showBlock(secNew); toggleInputs(secNew, true);
+                hide(secExist); toggleInputs(secExist, false);
+            } else {
+                hide(secNew); toggleInputs(secNew, false);
+                showBlock(secExist); toggleInputs(secExist, true);
+                select('#labelSourceExisting').textContent = isTerm ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
+            }
+            
             (mode === 'extend') ? showBlock(select('#newUnitSection')) : hide(select('#newUnitSection'));
 
             if (isTerm) { hide(select('#sectionPkwtSpk')); showBlock(select('#sectionPb')); }
@@ -773,9 +791,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 4. Edit, Detail, & Sign Actions
     doc.body.addEventListener('click', async (e) => {
-        // DETAIL BUTTON
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) {
             e.preventDefault();
@@ -794,7 +810,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#detPos').textContent = d.position_name;
                 select('#detEmpType').textContent = d.employment_type;
 
-                // Status Badge Color
                 if(d.progress) {
                     const cMap = {'Waiting':'u-badge--glass', 'Approved':'u-badge--success', 'Signed':'u-badge--success', 'Rejected':'u-badge--danger', 'Pending':'u-badge--warn'};
                     select('#progKaUnit').textContent = d.progress.ka_unit;
@@ -835,7 +850,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(err) { alert(err.message); }
         }
 
-        // EDIT BUTTON
         const btnEdit = e.target.closest('.js-btn-edit');
         if(btnEdit) {
             e.preventDefault();
@@ -882,7 +896,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 5. SIGN ACTION (OPTIMIZED)
     const signAct = (url, role) => {
         const m = select('#signModal');
         const f = select('#signForm');
@@ -892,7 +905,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnSubmit = select('#btnSubmitSign');
         const geoStat = select('#geoStatus');
         
-        // Reset UI
         f.reset();
         select('[name="signature_image"]').value = '';
         select('[name="geo_lat"]').value = '';
@@ -901,7 +913,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         openModal('signModal');
 
-        // Fix Canvas Size (Delay to allow modal render)
         setTimeout(() => {
             cvs.width = cvs.offsetWidth;
             cvs.height = 200;
@@ -912,13 +923,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.clearRect(0, 0, cvs.width, cvs.height);
         }, 150);
 
-        // --- GEOLOCATION LOGIC (FALLBACK) ---
         geoStat.textContent = "Mendeteksi Lokasi...";
         geoStat.className = "u-text-sm u-font-medium u-text-muted";
         
         const getGeo = (highAccuracy) => {
             if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
                  geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS untuk Lokasi!</span>';
+                 console.warn("Skipping geo check due to non-secure context");
                  return;
             }
             if (!("geolocation" in navigator)) {
@@ -938,7 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 (err) => {
                     if (highAccuracy && err.code !== 1) {
                         geoStat.textContent = "Mencoba akurasi rendah...";
-                        getGeo(false); // Retry with low accuracy
+                        getGeo(false); 
                     } else {
                         let msg = "Gagal mendeteksi lokasi.";
                         if(err.code === 1) msg = "Izin lokasi ditolak browser.";
@@ -950,11 +961,10 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         };
 
-        getGeo(true); // Start with high accuracy
+        getGeo(true); 
 
-        // --- CAMERA LOGIC ---
         let streamObj = null;
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.isSecureContext) {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === 'localhost')) {
             showBlock(camSec);
             select('#cameraPlaceholder').hidden = false;
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -968,14 +978,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Wajib HTTPS";
                 });
         } else {
-            hide(camSec); // Hide if not supported or not secure
+            hide(camSec); 
         }
 
-        // --- DRAWING LOGIC (OPTIMIZED FOR PERFORMANCE) ---
         let isDown = false;
         let hasSigned = false;
         const ctx = cvs.getContext('2d');
-        // Cache rect untuk menghindari kalkulasi layout berulang
         let rect = cvs.getBoundingClientRect(); 
 
         const getXY = (e) => {
@@ -986,7 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const drawStart = (e) => {
             isDown = true;
-            rect = cvs.getBoundingClientRect(); // Recalculate once on start
+            rect = cvs.getBoundingClientRect(); 
             ctx.beginPath();
             const p = getXY(e);
             ctx.moveTo(p.x, p.y);
@@ -994,27 +1002,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const drawMove = (e) => {
             if (!isDown) return;
-            e.preventDefault(); // Prevent scrolling on mobile
+            e.preventDefault(); 
             const p = getXY(e);
             ctx.lineTo(p.x, p.y);
             ctx.stroke();
-            // REMOVED checkReady() from here to fix lag
         };
 
         const drawEnd = () => { 
             if(isDown) {
                 isDown = false;
                 hasSigned = true;
-                checkReady(); // Check only on mouse up
+                checkReady(); 
             }
         };
 
-        // Mouse Events
         cvs.onmousedown = drawStart;
         cvs.onmousemove = drawMove;
         window.addEventListener('mouseup', drawEnd);
 
-        // Touch Events
         cvs.ontouchstart = drawStart;
         cvs.ontouchmove = drawMove;
         window.addEventListener('touchend', drawEnd);
