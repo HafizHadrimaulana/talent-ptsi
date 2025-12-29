@@ -12,7 +12,6 @@
 @endphp
 
 <style>
-    /* --- MODAL & LAYOUT --- */
     .u-modal {
         z-index: 1050; display: none; position: fixed; inset: 0;
         background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
@@ -35,34 +34,27 @@
     .u-modal__body { overflow-y: auto; flex: 1; padding: 1.5rem; scrollbar-width: thin; }
     .u-modal__foot { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); background-color: var(--surface-2); }
 
-    /* --- SECTIONS & CARD --- */
     .u-bg-section { background-color: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); }
     .section-divider { border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; font-weight: 700; color: var(--muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
 
-    /* --- FORMS & INPUTS --- */
-    /* Memberikan jarak antar form-group lebih lega */
     .u-form-group { margin-bottom: 1.5rem; } 
     .u-form-group label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.025em; margin-bottom: 0.5rem; display: block; }
     .currency-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.875rem; pointer-events: none; }
     .has-prefix .u-input { padding-left: 40px; text-align: right; font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
-    /* Helper untuk jarak bottom manual jika tidak pakai form-group */
     .u-mb-input-gap { margin-bottom: 1.25rem; }
 
-    /* --- TABLE --- */
     .u-table th, .u-table td { padding: 1rem 1.25rem; }
-    /* FIX: Warna teks header diubah menjadi terang agar terlihat di background gelap */
     .u-table thead th { 
         border-bottom: 2px solid var(--border); 
-        color: rgba(255, 255, 255, 0.9); /* Warna putih transparan */
+        color: rgba(255, 255, 255, 0.9);
         font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; 
     }
     .u-table tbody td { border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .cell-actions__group { display: flex; gap: 0.5rem; align-items: center; }
 
-    /* --- UTILS --- */
     .is-hidden { display: none !important; }
     .u-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
 
-    /* --- RESPONSIVE --- */
     @media (max-width: 768px) {
         .u-grid-2 { grid-template-columns: 1fr !important; gap: 1rem; }
         .cell-actions__group { justify-content: flex-start; }
@@ -92,7 +84,7 @@
     @endif
 
     <div class="u-card u-p-md u-mb-lg u-bg-section">
-        <form method="get" class="u-grid-2 u-gap-md" style="grid-template-columns: 1fr 1fr 1.5fr;">
+        <form method="get" class="u-grid-2 u-gap-md" style="grid-template-columns: 1fr 1fr;">
             <div>
                 <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Unit Kerja</label>
                 @if ($canSeeAll)
@@ -112,13 +104,6 @@
                     @foreach ($statusOptions as $code => $label) <option value="{{ $code }}" @selected($statusFilter == $code)>{{ $label }}</option> @endforeach
                 </select>
             </div>
-            <div>
-                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Pencarian</label>
-                <div class="u-search">
-                    <i class="fas fa-search u-search__icon"></i>
-                    <input type="search" name="q" class="u-search__input" placeholder="No. Dokumen, Nama, NIK..." value="{{ $searchFilter }}">
-                </div>
-            </div>
         </form>
     </div>
 
@@ -132,7 +117,7 @@
                         <th>Posisi & Unit</th>
                         <th>Periode / Efektif</th>
                         <th>Status</th>
-                        <th class="cell-actions" width="100">Aksi</th>
+                        <th class="cell-actions" width="140">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -143,7 +128,6 @@
                                 <span class="u-badge u-badge--glass u-mt-xs">{{ $c->contract_type_label ?? $c->contract_type }}</span>
                             </td>
                             <td>
-                                {{-- FIX: Icon Avatar dihapus, hanya menyisakan nama dan detail --}}
                                 <div class="u-flex u-items-center u-gap-sm">
                                     <div>
                                         <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
@@ -191,6 +175,12 @@
                                             data-update-url="{{ route('recruitment.contracts.update', $c) }}" title="Edit">
                                             <i class="fas fa-pencil-alt"></i>
                                         </button>
+                                        <form action="{{ route('recruitment.contracts.destroy', $c) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus draft ini?');" style="display:inline;">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="u-btn u-btn--danger u-btn--icon u-btn--sm" title="Hapus">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
                                     @endif
                                 </div>
                             </td>
@@ -207,7 +197,6 @@
     </div>
 </div>
 
-{{-- CREATE MODAL --}}
 @can('contract.create')
 <div id="createContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
@@ -253,11 +242,9 @@
 
             <div id="createMainSection" class="is-hidden u-space-y-xl">
                 <div class="u-grid-2 u-stack-mobile">
-                    {{-- LEFT COL: SOURCE --}}
                     <div>
                         <div class="section-divider"><i class="fas fa-database u-text-brand"></i> 2. Sumber Data</div>
                         
-                        {{-- NEW RECRUIT --}}
                         <div data-mode-section="new" class="is-hidden u-space-y-lg">
                             <div class="u-form-group">
                                 <label>Pilih Pelamar (Approved)</label>
@@ -279,7 +266,6 @@
                             </div>
                         </div>
 
-                        {{-- EXISTING --}}
                         <div data-mode-section="existing" class="is-hidden u-space-y-lg">
                             <div class="u-form-group">
                                 <label id="labelSourceExisting">Pilih Kontrak Dasar</label>
@@ -305,7 +291,6 @@
                         </div>
                     </div>
 
-                    {{-- RIGHT COL: PREVIEW --}}
                     <div>
                         <div class="section-divider"><i class="fas fa-id-card u-text-brand"></i> Preview Personil</div>
                         <div id="createPersonPreview" class="u-card u-card--glass u-p-lg is-hidden">
@@ -338,7 +323,6 @@
                         </div>
                     </div>
 
-                    {{-- SPK/PKWT FIELDS --}}
                     <div id="sectionPkwtSpk" class="is-hidden u-mt-lg">
                         <div class="u-grid-2 u-stack-mobile u-mb-lg">
                             <div class="u-form-group"><label>Mulai</label><input type="date" name="start_date" class="u-input"></div>
@@ -347,27 +331,17 @@
                         <div class="u-bg-section u-p-lg">
                             <div class="section-divider u-text-brand">Rincian Remunerasi</div>
                             <div class="u-grid-2 u-stack-mobile">
-                                {{-- FIX: Jarak antar field diperlebar (u-space-y-lg dan u-mt-md) --}}
                                 <div class="u-space-y-lg">
-                                    <div class="u-form-group has-prefix">
-                                        <label>Gaji Pokok</label>
-                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" class="u-input" data-rupiah="true" data-terbilang-target="salary_amount_words"></div>
-                                        <input type="text" name="salary_amount_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
-                                    </div>
-                                    <div class="u-form-group has-prefix">
-                                        <label>Uang Makan / Hari</label>
-                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" class="u-input" data-rupiah="true" data-terbilang-target="lunch_allowance_words"></div>
-                                        <input type="text" name="lunch_allowance_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
-                                    </div>
+                                    <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" class="u-input" data-rupiah="true" data-terbilang-target="salary_amount_words"></div><input type="text" name="salary_amount_words" class="u-input u-input--sm u-mt-sm u-bg-light" readonly tabindex="-1"></div>
+                                    <div class="u-form-group has-prefix"><label>Uang Makan / Hari</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" class="u-input" data-rupiah="true" data-terbilang-target="lunch_allowance_words"></div><input type="text" name="lunch_allowance_words" class="u-input u-input--sm u-mt-sm u-bg-light" readonly tabindex="-1"></div>
                                 </div>
                                 <div>
-                                    <label class="u-mb-sm u-block u-text-xs u-font-bold u-muted u-uppercase">Tunjangan Lainnya</label>
-                                    {{-- FIX: Jarak antar input tunjangan diperlebar menggunakan u-mb-input-gap --}}
-                                    <div class="has-prefix">
-                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
-                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
-                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
-                                        <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" class="u-input" placeholder="Lainnya" data-rupiah="true"></div>
+                                    <label>Tunjangan Lainnya</label>
+                                    <div class="u-space-y-md has-prefix">
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
+                                        <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" class="u-input" placeholder="Lainnya" data-rupiah="true"></div>
                                     </div>
                                     <input type="text" name="other_benefits_desc" class="u-input u-mt-lg" placeholder="Deskripsi Benefit Lain (BPJS, dll)">
                                 </div>
@@ -375,28 +349,26 @@
                         </div>
                     </div>
 
-                    {{-- PB FIELDS --}}
                     <div id="sectionPb" class="is-hidden u-mt-lg u-bg-section u-p-lg" style="border-left: 4px solid var(--danger);">
                         <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
                         <div class="u-grid-2 u-stack-mobile">
                             <div class="u-form-group"><label>Efektif Berakhir</label><input type="date" name="pb_effective_end" class="u-input"></div>
                             <div class="u-form-group has-prefix">
                                 <label>Nilai Kompensasi</label>
-                                {{-- FIX: Jarak antara input dan terbilang diperlebar (u-mt-md) --}}
                                 <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="pb_compensation_amount" class="u-input" data-rupiah="true" data-terbilang-target="pb_compensation_amount_words"></div>
-                                <input type="text" name="pb_compensation_amount_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
+                                <input type="text" name="pb_compensation_amount_words" class="u-input u-input--sm u-mt-sm u-bg-light" readonly tabindex="-1">
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="u-border-t u-pt-lg">
-                     <div class="u-form-group"><label>Catatan Tambahan</label><input type="text" name="remarks" class="u-input" placeholder="Opsional..."></div>
-                     <div class="u-flex u-gap-lg u-flex-wrap u-mt-lg u-p-md u-bg-section">
-                          <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_draw_signature" value="1" checked> Tanda Tangan Digital</label>
-                          <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_camera" value="1" checked> Wajib Kamera</label>
-                          <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_geolocation" value="1" checked> Wajib Lokasi</label>
-                     </div>
+                      <div class="u-form-group"><label>Catatan Tambahan</label><input type="text" name="remarks" class="u-input" placeholder="Opsional..."></div>
+                      <div class="u-flex u-gap-lg u-flex-wrap u-mt-lg u-p-md u-bg-section">
+                           <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_draw_signature" value="1" checked> Tanda Tangan Digital</label>
+                           <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_camera" value="1" checked> Wajib Kamera</label>
+                           <label class="u-flex u-items-center u-gap-sm u-text-sm u-font-bold u-muted u-pointer"><input type="checkbox" name="requires_geolocation" value="1" checked> Wajib Lokasi</label>
+                      </div>
                 </div>
             </div>
 
@@ -413,7 +385,6 @@
 </div>
 @endcan
 
-{{-- EDIT MODAL --}}
 <div id="editContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -468,18 +439,16 @@
                     <div class="u-bg-section u-p-lg">
                         <div class="section-divider u-text-brand">Remunerasi</div>
                         <div class="u-grid-2 u-stack-mobile">
-                            {{-- FIX: Jarak antar field diperlebar --}}
                             <div class="u-space-y-lg">
-                                <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" id="editSalary" class="u-input" data-rupiah="true" data-terbilang-target="editSalaryW"></div><input id="editSalaryW" name="salary_amount_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1"></div>
-                                <div class="u-form-group has-prefix"><label>Uang Makan</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" id="editLunch" class="u-input" data-rupiah="true" data-terbilang-target="editLunchW"></div><input id="editLunchW" name="lunch_allowance_words" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1"></div>
+                                <div class="u-form-group has-prefix"><label>Gaji Pokok</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="salary_amount" id="editSalary" class="u-input" data-rupiah="true" data-terbilang-target="editSalaryW"></div><input id="editSalaryW" name="salary_amount_words" class="u-input u-input--sm u-mt-sm u-bg-light" readonly tabindex="-1"></div>
+                                <div class="u-form-group has-prefix"><label>Uang Makan</label><div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" id="editLunch" class="u-input" data-rupiah="true" data-terbilang-target="editLunchW"></div><input id="editLunchW" name="lunch_allowance_words" class="u-input u-input--sm u-mt-sm u-bg-light" readonly tabindex="-1"></div>
                             </div>
-                            <div class="has-prefix">
-                                <label class="u-mb-sm u-block u-text-xs u-font-bold u-muted u-uppercase">Tunjangan</label>
-                                {{-- FIX: Jarak antar input tunjangan diperlebar menggunakan u-mb-input-gap --}}
-                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" id="editAP" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
-                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" id="editAC" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
-                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" id="editAS" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
-                                <div class="u-mb-input-gap" style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" id="editAO" class="u-input" placeholder="Lainnya" data-rupiah="true"></div>
+                            <div class="u-space-y-md has-prefix">
+                                <label>Tunjangan</label>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" id="editAP" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" id="editAC" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" id="editAS" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
+                                <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" id="editAO" class="u-input" placeholder="Lainnya" data-rupiah="true"></div>
                                 <input type="text" name="other_benefits_desc" id="editOB" class="u-input u-mt-lg" placeholder="Benefit Lain">
                             </div>
                         </div>
@@ -487,16 +456,15 @@
                 </div>
 
                 <div id="editSectionPb" class="is-hidden u-bg-section u-p-lg" style="border-left: 4px solid var(--danger);">
-                     <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
-                     <div class="u-grid-2 u-stack-mobile">
-                         <div class="u-form-group"><label>Efektif Berakhir</label><input type="date" name="pb_effective_end" id="editPbEnd" class="u-input"></div>
-                         <div class="u-form-group has-prefix">
-                             <label>Kompensasi</label>
-                             {{-- FIX: Jarak antara input dan terbilang diperlebar (u-mt-md) --}}
-                             <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="pb_compensation_amount" id="editPbComp" class="u-input" data-rupiah="true" data-terbilang-target="editPbCompW"></div>
-                             <input type="text" name="pb_compensation_amount_words" id="editPbCompW" class="u-input u-input--sm u-mt-md u-bg-light" readonly tabindex="-1">
-                         </div>
-                     </div>
+                      <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
+                      <div class="u-grid-2 u-stack-mobile">
+                          <div class="u-form-group"><label>Efektif Berakhir</label><input type="date" name="pb_effective_end" id="editPbEnd" class="u-input"></div>
+                          <div class="u-form-group has-prefix">
+                              <label>Kompensasi</label>
+                              <div style="position:relative"><span class="currency-prefix">Rp</span><input type="text" name="pb_compensation_amount" id="editPbComp" class="u-input" data-rupiah="true" data-terbilang-target="editPbCompW"></div>
+                              <input type="text" name="pb_compensation_amount_words" id="editPbCompW" class="u-input u-input--sm u-mt-sm u-bg-light" readonly tabindex="-1">
+                          </div>
+                      </div>
                 </div>
 
                 <div class="u-border-t u-pt-lg">
@@ -518,7 +486,6 @@
     </div>
 </div>
 
-{{-- DETAIL MODAL --}}
 <div id="detailContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -541,13 +508,13 @@
                     </div>
                 </div>
                 <div class="u-bg-section u-p-lg">
-                     <div class="section-divider">Personil</div>
-                     <div class="u-space-y-md">
-                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-xl">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
-                         <div id="detPeriodRow" class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
-                     </div>
+                      <div class="section-divider">Personil</div>
+                      <div class="u-space-y-md">
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-xl">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
+                          <div id="detPeriodRow" class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
+                      </div>
                 </div>
             </div>
 
@@ -573,6 +540,14 @@
                       <div><div class="u-text-sm u-muted u-mb-xs">Nilai Kompensasi</div><div id="detPbVal" class="u-font-bold u-text-xl u-text-brand">-</div><div class="u-text-sm u-muted u-mt-xs" id="detPbValW"></div></div>
                   </div>
             </div>
+            
+            <div class="u-bg-section u-p-lg">
+                 <div class="section-divider">Approval Progress</div>
+                 <div class="u-space-y-md">
+                     <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Kepala Unit (Approve & Sign)</span><span id="progKaUnit" class="u-badge u-badge--glass">Waiting</span></div>
+                     <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Kandidat (Sign)</span><span id="progCand" class="u-badge u-badge--glass">Waiting</span></div>
+                 </div>
+            </div>
         </div>
         <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
             <button type="button" class="u-btn u-btn--ghost js-close-modal" style="border-radius: 999px;">Tutup</button>
@@ -585,7 +560,54 @@
 </div>
 
 <div id="rejectModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--sm"><div class="u-modal__head"><div class="u-title u-text-danger">Tolak Dokumen</div><button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button></div><form id="rejectForm" class="u-modal__body"><textarea name="rejection_note" class="u-input" rows="4" required placeholder="Alasan penolakan..."></textarea><div class="u-flex u-justify-end u-gap-sm u-mt-lg"><button type="submit" class="u-btn u-btn--danger" style="border-radius: 999px;">Konfirmasi Tolak</button></div></form></div></div>
-<div id="signModal" class="u-modal" hidden><div class="u-modal__backdrop js-close-modal"></div><div class="u-modal__card u-modal__card--md"><div class="u-modal__head"><div class="u-title">Tanda Tangan Digital</div><button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button></div><form id="signForm" class="u-modal__body"><div class="u-card u-card--border u-p-xs u-mb-md"><canvas id="signCanvas" style="width:100%; height:200px; background:var(--surface-1); touch-action:none; border-radius: var(--radius-sm);"></canvas></div><div class="u-flex u-justify-between u-text-xs u-mb-lg"><button type="button" id="clearSign" class="u-text-brand u-font-bold u-pointer">Hapus / Ulangi</button><span id="geoStatus" class="u-muted">Mendeteksi Lokasi...</span></div><input type="hidden" name="signature_image"><input type="hidden" name="geo_lat"><input type="hidden" name="geo_lng"><div class="u-flex u-justify-end u-gap-sm"><button type="submit" class="u-btn u-btn--brand u-shadow-sm" style="border-radius: 999px;">Simpan & Tanda Tangan</button></div></form></div></div>
+
+<div id="signModal" class="u-modal" hidden>
+    <div class="u-modal__backdrop js-close-modal"></div>
+    <div class="u-modal__card u-modal__card--md">
+        <div class="u-modal__head">
+            <div class="u-title">Tanda Tangan & Verifikasi</div>
+            <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <form id="signForm" class="u-modal__body">
+            <div id="cameraSection" class="u-mb-md is-hidden">
+                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Verifikasi Wajah</label>
+                <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 360px;">
+                    <video id="cameraStream" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <div id="cameraPlaceholder" class="u-text-white u-text-sm">Menghubungkan Kamera...</div>
+                </div>
+            </div>
+
+            <div class="u-mb-md">
+                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Tanda Tangan Digital</label>
+                <div class="u-card u-card--border u-p-xs" style="background: #fff;">
+                    <canvas id="signCanvas" style="width: 100%; height: 200px; touch-action: none; cursor: crosshair; display: block;"></canvas>
+                </div>
+                <div class="u-flex u-justify-between u-text-xs u-mt-xs">
+                    <button type="button" id="clearSign" class="u-text-brand u-font-bold u-pointer" style="border:none; background:none;">Hapus Tanda Tangan</button>
+                </div>
+            </div>
+
+            <div class="u-card u-p-sm u-bg-light u-mb-lg u-flex u-items-center u-gap-sm">
+                <i class="fas fa-map-marker-alt u-text-muted" id="geoIcon"></i>
+                <div class="u-flex-1">
+                    <div class="u-text-xs u-font-bold u-muted">Lokasi Saat Ini</div>
+                    <div id="geoStatus" class="u-text-sm u-font-medium">Menunggu Izin Lokasi...</div>
+                </div>
+            </div>
+
+            <input type="hidden" name="signature_image">
+            <input type="hidden" name="snapshot_image"> 
+            <input type="hidden" name="geo_lat">
+            <input type="hidden" name="geo_lng">
+
+            <div class="u-flex u-justify-end u-gap-sm">
+                <button type="button" class="u-btn u-btn--ghost js-close-modal" style="border-radius: 999px;">Batal</button>
+                <button type="submit" id="btnSubmitSign" class="u-btn u-btn--brand u-shadow-sm" style="border-radius: 999px;" disabled>Simpan & Tanda Tangan</button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -596,17 +618,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
     const csrf = select('meta[name="csrf-token"]')?.content;
     
+    // Utilities
     const hide = el => { if(el) { el.hidden=true; el.style.display='none'; el.classList.add('is-hidden'); } };
     const show = el => { if(el) { el.hidden=false; el.style.display='flex'; el.classList.remove('is-hidden'); } };
     const showBlock = el => { if(el) { el.hidden=false; el.style.display='block'; el.classList.remove('is-hidden'); } };
-    
-    const money = n => {
-        if (!n || n == 0 || n == '0') return '-';
-        return n.toString().replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-    };
-    
+    const money = n => (!n || n == 0) ? '-' : n.toString().replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
     const safeJSON = (v) => { try{ return JSON.parse(v)||{}; } catch(e){ return v && typeof v === 'object' ? v : {}; } };
-
     const terbilang = (n) => {
        const h = ['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];
        n = Math.abs(parseInt(n)) || 0;
@@ -620,112 +637,84 @@ document.addEventListener('DOMContentLoaded', () => {
        return terbilang(Math.floor(n/1000000))+' juta '+terbilang(n%1000000);
     };
 
+    // --- LOGIC UTAMA ---
+
+    // 1. Calculator Binding
     const bindCalc = (root) => {
         selectAll('input[data-rupiah="true"]', root).forEach(el => {
             const tgtId = el.dataset.terbilangTarget;
-            const tgt = tgtId ? (select(`[name="${tgtId}"]`, root) || select(`#${tgtId}`, root)) : null;
-            const upd = () => {
+            el.addEventListener('input', () => {
                 let v = el.value.replace(/\D/g,'');
                 el.value = v ? money(v) : ''; 
-                if(tgt && v && v != '0') tgt.value = (terbilang(v) + ' rupiah').toUpperCase();
-                else if(tgt) tgt.value = '';
-            };
-            el.addEventListener('input', upd);
+                const tgt = tgtId ? (select(`[name="${tgtId}"]`, root) || select(`#${tgtId}`, root)) : null;
+                if(tgt) tgt.value = (v && v != '0') ? (terbilang(v) + ' rupiah').toUpperCase() : '';
+            });
         });
     };
 
+    // 2. Modal Logic
     const openModal = (id) => {
         const m = document.getElementById(id);
-        if(m) {
-             m.hidden = false; m.style.display = 'flex'; 
-             document.body.classList.add('modal-open');
-        }
+        if(m) { m.hidden = false; m.style.display = 'flex'; document.body.classList.add('modal-open'); }
     };
     const closeModal = (m) => {
         if(m) { m.hidden = true; m.style.display = 'none'; document.body.classList.remove('modal-open'); }
     };
-
     doc.body.addEventListener('click', (e) => {
         if(e.target.closest('.js-close-modal') || e.target.classList.contains('u-modal__backdrop')) {
-            const m = e.target.closest('.u-modal');
-            closeModal(m);
+            closeModal(e.target.closest('.u-modal'));
         }
-        const btnOpen = e.target.closest('[data-modal-open]');
-        if(btnOpen) {
-            e.preventDefault();
-            openModal(btnOpen.dataset.modalOpen);
-        }
+        const btn = e.target.closest('[data-modal-open]');
+        if(btn) { e.preventDefault(); openModal(btn.dataset.modalOpen); }
     });
 
+    // 3. Create Modal Logic
     const btnCreate = select('#btnOpenCreate');
     if(btnCreate) {
         btnCreate.onclick = (e) => { e.preventDefault(); openModal('createContractModal'); };
-        
-        const cForm = select('#createContractForm');
-        bindCalc(cForm);
+        bindCalc(select('#createContractForm'));
 
         const famSel = select('#createFamilySelect');
         const subSel = select('#createSubtypeSelect');
-        const subWrap = select('#createSubtypeWrap');
         const srcSel = select('#createSourceSelect');
         const filterUnit = select('#filterSourceUnit');
         
-        const updateCreateUI = () => {
+        const updateUI = () => {
             const mode = select('#createModeInput').value;
-            const type = select('#createTypeInput').value;
-
-            if (mode === 'new') {
-                showBlock(select('[data-mode-section="new"]'));
-                hide(select('[data-mode-section="existing"]'));
-            } else {
-                showBlock(select('[data-mode-section="existing"]'));
-                hide(select('[data-mode-section="new"]'));
-                const l = select('#labelSourceExisting');
-                if(l) l.textContent = (mode === 'terminate') ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
-                
-                if(mode === 'extend') showBlock(select('#newUnitSection'));
-                else hide(select('#newUnitSection'));
-            }
+            const isNew = (mode === 'new');
+            const isTerm = (mode === 'terminate');
             
-            if (mode === 'terminate') {
-                hide(select('#sectionPkwtSpk'));
-                showBlock(select('#sectionPb'));
-            } else {
-                showBlock(select('#sectionPkwtSpk'));
-                hide(select('#sectionPb'));
-            }
+            isNew ? showBlock(select('[data-mode-section="new"]')) : hide(select('[data-mode-section="new"]'));
+            !isNew ? showBlock(select('[data-mode-section="existing"]')) : hide(select('[data-mode-section="existing"]'));
+            
+            if(!isNew) select('#labelSourceExisting').textContent = isTerm ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
+            (mode === 'extend') ? showBlock(select('#newUnitSection')) : hide(select('#newUnitSection'));
+
+            if (isTerm) { hide(select('#sectionPkwtSpk')); showBlock(select('#sectionPb')); }
+            else { showBlock(select('#sectionPkwtSpk')); hide(select('#sectionPb')); }
         };
 
         famSel.addEventListener('change', () => {
             const val = famSel.value;
-            const opt = famSel.options[famSel.selectedIndex];
-            if (val === 'PKWT') {
-                showBlock(subWrap);
-                hide(select('#createMainSection'));
-            } else {
-                hide(subWrap);
+            if (val === 'PKWT') { showBlock(select('#createSubtypeWrap')); hide(select('#createMainSection')); }
+            else {
+                hide(select('#createSubtypeWrap'));
                 if(val) {
                     showBlock(select('#createMainSection'));
                     select('#createTypeInput').value = (val === 'SPK') ? 'SPK' : 'PB_PENGAKHIRAN';
-                    select('#createModeInput').value = opt.dataset.mode;
-                    updateCreateUI();
-                } else {
-                    hide(select('#createMainSection'));
-                }
+                    select('#createModeInput').value = famSel.options[famSel.selectedIndex].dataset.mode;
+                    updateUI();
+                } else hide(select('#createMainSection'));
             }
         });
 
         subSel.addEventListener('change', () => {
-            const val = subSel.value;
-            const opt = subSel.options[subSel.selectedIndex];
-            if (val) {
+            if (subSel.value) {
                 showBlock(select('#createMainSection'));
-                select('#createTypeInput').value = val;
-                select('#createModeInput').value = opt.dataset.mode;
-                updateCreateUI();
-            } else {
-                hide(select('#createMainSection'));
-            }
+                select('#createTypeInput').value = subSel.value;
+                select('#createModeInput').value = subSel.options[subSel.selectedIndex].dataset.mode;
+                updateUI();
+            } else hide(select('#createMainSection'));
         });
 
         const appSel = select('#createApplicantSelect');
@@ -734,17 +723,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (appSel.value) {
                 select('#createPersonIdInput').value = o.dataset.personId;
                 select('#createPersonIdInput').disabled = false;
-                select('#createEmployeeIdInput').value = '';
                 select('#createEmployeeIdInput').disabled = true;
                 
                 select('#prevName').textContent = o.dataset.fullname;
                 select('#prevPos').textContent = o.dataset.pos;
                 select('#prevUnit').textContent = o.dataset.unit;
                 select('#prevDate').textContent = '-';
-                select('#prevNik').textContent = '-';
                 
                 showBlock(select('#createPersonPreview'));
-                
                 const uSel = select('#createUnitSelectNew');
                 if(uSel && o.dataset.unitId) uSel.value = o.dataset.unitId;
                 const uHid = select('#createUnitHiddenNew');
@@ -752,46 +738,44 @@ document.addEventListener('DOMContentLoaded', () => {
             } else hide(select('#createPersonPreview'));
         });
 
-        if(filterUnit) {
+        if(filterUnit && srcSel) {
             filterUnit.addEventListener('change', () => {
                 const uId = filterUnit.value;
-                const opts = [...srcSel.options];
-                srcSel.value = ""; 
-                hide(select('#createPersonPreview'));
-                
-                opts.forEach(o => {
+                [...srcSel.options].forEach(o => {
                     if(!o.value) { o.hidden = false; return; }
                     if(!uId || o.dataset.unitId == uId) { o.hidden = false; o.disabled = false; } 
                     else { o.hidden = true; o.disabled = true; }
                 });
+                srcSel.value = ""; hide(select('#createPersonPreview'));
+            });
+
+            srcSel.addEventListener('change', () => {
+                const o = srcSel.options[srcSel.selectedIndex];
+                if (srcSel.value) {
+                    select('#createSourceIdInput').value = srcSel.value;
+                    select('#createSourceIdInput').disabled = false;
+                    select('#createPersonIdInput').value = o.dataset.personId;
+                    select('#createPersonIdInput').disabled = false;
+                    select('#createEmployeeIdInput').value = o.dataset.employeeId;
+                    select('#createEmployeeIdInput').disabled = false;
+                    
+                    select('#prevName').textContent = o.dataset.person;
+                    select('#prevPos').textContent = o.dataset.pos;
+                    select('#prevUnit').textContent = o.dataset.unitName;
+                    select('#prevNik').textContent = o.dataset.nik;
+                    select('#prevDate').textContent = (o.dataset.start||'-') + ' s/d ' + (o.dataset.end||'-');
+                    
+                    showBlock(select('#createPersonPreview'));
+                    select('#createExistingUnitId').value = o.dataset.unitId;
+                    select('#createExistingUnitName').value = o.dataset.unitName;
+                } else hide(select('#createPersonPreview'));
             });
         }
-
-        srcSel?.addEventListener('change', () => {
-            const o = srcSel.options[srcSel.selectedIndex];
-            if (srcSel.value) {
-                select('#createSourceIdInput').value = srcSel.value;
-                select('#createSourceIdInput').disabled = false;
-                select('#createPersonIdInput').value = o.dataset.personId;
-                select('#createEmployeeIdInput').value = o.dataset.employeeId;
-                select('#createPersonIdInput').disabled = false;
-                select('#createEmployeeIdInput').disabled = false;
-                
-                select('#prevName').textContent = o.dataset.person;
-                select('#prevPos').textContent = o.dataset.pos;
-                select('#prevUnit').textContent = o.dataset.unitName;
-                select('#prevNik').textContent = o.dataset.nik;
-                select('#prevDate').textContent = (o.dataset.start || '-') + ' s/d ' + (o.dataset.end || '-');
-                
-                showBlock(select('#createPersonPreview'));
-                
-                select('#createExistingUnitId').value = o.dataset.unitId;
-                select('#createExistingUnitName').value = o.dataset.unitName;
-            } else hide(select('#createPersonPreview'));
-        });
     }
 
+    // 4. Edit, Detail, & Sign Actions
     doc.body.addEventListener('click', async (e) => {
+        // DETAIL BUTTON
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) {
             e.preventDefault();
@@ -810,17 +794,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#detPos').textContent = d.position_name;
                 select('#detEmpType').textContent = d.employment_type;
 
+                // Status Badge Color
+                if(d.progress) {
+                    const cMap = {'Waiting':'u-badge--glass', 'Approved':'u-badge--success', 'Signed':'u-badge--success', 'Rejected':'u-badge--danger', 'Pending':'u-badge--warn'};
+                    select('#progKaUnit').textContent = d.progress.ka_unit;
+                    select('#progKaUnit').className = `u-badge ${cMap[d.progress.ka_unit]||'u-badge--glass'}`;
+                    select('#progCand').textContent = d.progress.candidate;
+                    select('#progCand').className = `u-badge ${cMap[d.progress.candidate]||'u-badge--glass'}`;
+                }
+
                 if (isPb) {
-                    hide(select('#detRemunBox'));
-                    hide(select('#detPeriodRow'));
-                    showBlock(select('#detPbBox'));
+                    hide(select('#detRemunBox')); hide(select('#detPeriodRow')); showBlock(select('#detPbBox'));
                     select('#detPbEff').textContent = m.pb_effective_end;
                     select('#detPbVal').textContent = 'Rp '+money(m.pb_compensation_amount);
                     select('#detPbValW').textContent = m.pb_compensation_amount_words;
                 } else {
-                    showBlock(select('#detRemunBox'));
-                    showBlock(select('#detPeriodRow'));
-                    hide(select('#detPbBox'));
+                    showBlock(select('#detRemunBox')); showBlock(select('#detPeriodRow')); hide(select('#detPbBox'));
                     select('#detPeriod').textContent = `${d.start_date} s/d ${d.end_date}`;
                     select('#detSalary').textContent = 'Rp '+money(m.salary_amount);
                     select('#detLunch').textContent = 'Rp '+money(m.lunch_allowance_daily);
@@ -830,37 +819,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(m.allowance_communication_amount) allws.push(['T. Komunikasi', m.allowance_communication_amount]);
                     if(m.allowance_special_amount) allws.push(['T. Khusus', m.allowance_special_amount]);
                     if(m.allowance_other_amount) allws.push(['Lainnya', m.allowance_other_amount]);
-                    
-                    select('#detAllowances').innerHTML = allws.map(x => 
-                        `<div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-muted">${x[0]}</span><strong>Rp ${money(x[1])}</strong></div>`
-                    ).join('');
+                    select('#detAllowances').innerHTML = allws.map(x => `<div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-muted">${x[0]}</span><strong>Rp ${money(x[1])}</strong></div>`).join('');
                 }
                 
-                const boxNewUnit = select('#detNewUnitBox');
-                if(d.contract_type === 'PKWT_PERPANJANGAN' && m.new_unit_id) {
-                      showBlock(boxNewUnit);
-                      // Here ideally we need unit name, assuming backend sends it or we fetch it. 
-                      // For now simple placeholder or logic if available
-                      select('#detNewUnit').textContent = "(ID: "+m.new_unit_id+")";
-                } else hide(boxNewUnit);
+                const boxNew = select('#detNewUnitBox');
+                if(d.contract_type === 'PKWT_PERPANJANGAN' && m.new_unit_id) { showBlock(boxNew); select('#detNewUnit').textContent = "(ID: "+m.new_unit_id+")"; } 
+                else hide(boxNew);
 
-                const bPrev = select('#btnPreviewDoc');
-                if(d.doc_url) { show(bPrev); bPrev.style.display = 'inline-flex'; bPrev.href = d.doc_url; } else hide(bPrev);
-                
-                const bApp = select('#btnApprove');
-                if(d.can_approve) { show(bApp); bApp.onclick=()=>signAct(d.approve_url, 'Kepala Unit'); } else hide(bApp);
-
-                const bSign = select('#btnSign');
-                if(d.can_sign) { show(bSign); bSign.onclick=()=>signAct(d.sign_url, 'Kandidat'); } else hide(bSign);
-
-                const bRej = select('#btnReject');
-                if(d.can_approve) { show(bRej); bRej.onclick=()=>rejectAct(d.reject_url); } else hide(bRej);
+                const bPrev = select('#btnPreviewDoc'); d.doc_url ? (show(bPrev), bPrev.style.display='inline-flex', bPrev.href=d.doc_url) : hide(bPrev);
+                const bApp = select('#btnApprove'); d.can_approve ? (show(bApp), bApp.onclick=()=>signAct(d.approve_url, 'Kepala Unit')) : hide(bApp);
+                const bSign = select('#btnSign'); d.can_sign ? (show(bSign), bSign.onclick=()=>signAct(d.sign_url, 'Kandidat')) : hide(bSign);
+                const bRej = select('#btnReject'); d.can_approve ? (show(bRej), bRej.onclick=()=>rejectAct(d.reject_url)) : hide(bRej);
 
                 openModal('detailContractModal');
-
             } catch(err) { alert(err.message); }
         }
 
+        // EDIT BUTTON
         const btnEdit = e.target.closest('.js-btn-edit');
         if(btnEdit) {
             e.preventDefault();
@@ -883,78 +858,210 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if(select('#editUnitIdHidden')) { select('#editUnitIdHidden').value = d.unit_id; select('#editUnitDisplay').value = d.unit?.name; }
 
                 if(d.contract_type === 'PB_PENGAKHIRAN') {
-                    hide(select('#editSectionPkwtSpk'));
-                    showBlock(select('#editSectionPb'));
+                    hide(select('#editSectionPkwtSpk')); showBlock(select('#editSectionPb'));
                     select('#editPbEnd').value = m.pb_effective_end || '';
-                    select('#editPbComp').value = money(m.pb_compensation_amount);
-                    select('#editPbComp').dispatchEvent(new Event('input'));
+                    const el = select('#editPbComp'); el.value = money(m.pb_compensation_amount); el.dispatchEvent(new Event('input'));
                 } else {
-                    showBlock(select('#editSectionPkwtSpk'));
-                    hide(select('#editSectionPb'));
+                    showBlock(select('#editSectionPkwtSpk')); hide(select('#editSectionPb'));
                     select('#editStart').value = d.start_date_raw || d.start_date; 
                     select('#editEnd').value = d.end_date_raw || d.end_date;
                     
-                    const setM = (sel, val) => {
-                        const el = select(sel); if(!el) return;
-                        el.value = money(val);
-                        el.dispatchEvent(new Event('input'));
-                    };
-                    setM('#editSalary', m.salary_amount);
-                    setM('#editLunch', m.lunch_allowance_daily);
-                    setM('#editAP', m.allowance_position_amount);
-                    setM('#editAC', m.allowance_communication_amount);
-                    setM('#editAS', m.allowance_special_amount);
-                    setM('#editAO', m.allowance_other_amount);
+                    const setM = (sel, val) => { const el = select(sel); if(el){ el.value = money(val); el.dispatchEvent(new Event('input')); }};
+                    setM('#editSalary', m.salary_amount); setM('#editLunch', m.lunch_allowance_daily);
+                    setM('#editAP', m.allowance_position_amount); setM('#editAC', m.allowance_communication_amount);
+                    setM('#editAS', m.allowance_special_amount); setM('#editAO', m.allowance_other_amount);
                     select('#editOB').value = m.other_benefits_desc || '';
                 }
                 
-                if(d.contract_type === 'PKWT_PERPANJANGAN') {
-                    showBlock(select('#editNewUnitWrapper'));
-                    if(m.new_unit_id) select('#editNewUnitId').value = m.new_unit_id;
-                } else {
-                    hide(select('#editNewUnitWrapper'));
-                }
+                const boxNew = select('#editNewUnitWrapper');
+                if(d.contract_type === 'PKWT_PERPANJANGAN') { showBlock(boxNew); if(m.new_unit_id) select('#editNewUnitId').value = m.new_unit_id; }
+                else hide(boxNew);
 
                 openModal('editContractModal');
-
             } catch(err) { alert(err.message); }
         }
     });
 
+    // 5. SIGN ACTION (OPTIMIZED)
     const signAct = (url, role) => {
         const m = select('#signModal');
         const f = select('#signForm');
         const cvs = select('#signCanvas');
+        const vid = select('#cameraStream');
+        const camSec = select('#cameraSection');
+        const btnSubmit = select('#btnSubmitSign');
+        const geoStat = select('#geoStatus');
         
-        cvs.width = cvs.offsetWidth;
-        cvs.height = 200;
+        // Reset UI
+        f.reset();
+        select('[name="signature_image"]').value = '';
+        select('[name="geo_lat"]').value = '';
+        select('[name="geo_lng"]').value = '';
+        btnSubmit.disabled = true;
         
+        openModal('signModal');
+
+        // Fix Canvas Size (Delay to allow modal render)
+        setTimeout(() => {
+            cvs.width = cvs.offsetWidth;
+            cvs.height = 200;
+            const ctx = cvs.getContext('2d');
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+        }, 150);
+
+        // --- GEOLOCATION LOGIC (FALLBACK) ---
+        geoStat.textContent = "Mendeteksi Lokasi...";
+        geoStat.className = "u-text-sm u-font-medium u-text-muted";
+        
+        const getGeo = (highAccuracy) => {
+            if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                 geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS untuk Lokasi!</span>';
+                 return;
+            }
+            if (!("geolocation" in navigator)) {
+                geoStat.textContent = "Browser tidak support lokasi.";
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    select('[name="geo_lat"]').value = pos.coords.latitude;
+                    select('[name="geo_lng"]').value = pos.coords.longitude;
+                    geoStat.textContent = `Lat: ${pos.coords.latitude.toFixed(5)}, Lng: ${pos.coords.longitude.toFixed(5)}`;
+                    geoStat.className = "u-text-sm u-font-medium u-text-success";
+                    select('#geoIcon').className = "fas fa-map-marker-alt u-text-success";
+                    checkReady();
+                },
+                (err) => {
+                    if (highAccuracy && err.code !== 1) {
+                        geoStat.textContent = "Mencoba akurasi rendah...";
+                        getGeo(false); // Retry with low accuracy
+                    } else {
+                        let msg = "Gagal mendeteksi lokasi.";
+                        if(err.code === 1) msg = "Izin lokasi ditolak browser.";
+                        geoStat.textContent = msg;
+                        geoStat.className = "u-text-sm u-font-medium u-text-danger";
+                    }
+                },
+                { enableHighAccuracy: highAccuracy, timeout: 20000, maximumAge: 0 }
+            );
+        };
+
+        getGeo(true); // Start with high accuracy
+
+        // --- CAMERA LOGIC ---
+        let streamObj = null;
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.isSecureContext) {
+            showBlock(camSec);
+            select('#cameraPlaceholder').hidden = false;
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+                .then((stream) => {
+                    streamObj = stream;
+                    vid.srcObject = stream;
+                    select('#cameraPlaceholder').hidden = true;
+                })
+                .catch((err) => {
+                    console.error("Camera Error:", err);
+                    select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Wajib HTTPS";
+                });
+        } else {
+            hide(camSec); // Hide if not supported or not secure
+        }
+
+        // --- DRAWING LOGIC (OPTIMIZED FOR PERFORMANCE) ---
+        let isDown = false;
+        let hasSigned = false;
         const ctx = cvs.getContext('2d');
-        ctx.clearRect(0,0,cvs.width,cvs.height);
-        
-        let isDown=false;
-        const getXY=(e)=>{const r=cvs.getBoundingClientRect(); return {x:(e.clientX||e.touches[0].clientX)-r.left, y:(e.clientY||e.touches[0].clientY)-r.top}};
-        const down=(e)=>{isDown=true; ctx.beginPath(); const p=getXY(e); ctx.moveTo(p.x,p.y); e.preventDefault();};
-        const move=(e)=>{if(!isDown)return; const p=getXY(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault();};
-        const up=()=>{isDown=false;};
-        
-        ['mousedown','touchstart'].forEach(ev=>cvs.addEventListener(ev,down,{passive:false}));
-        ['mousemove','touchmove'].forEach(ev=>cvs.addEventListener(ev,move,{passive:false}));
-        ['mouseup','touchend'].forEach(ev=>cvs.addEventListener(ev,up));
-        select('#clearSign').onclick = () => ctx.clearRect(0,0,cvs.width,cvs.height);
+        // Cache rect untuk menghindari kalkulasi layout berulang
+        let rect = cvs.getBoundingClientRect(); 
+
+        const getXY = (e) => {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        };
+
+        const drawStart = (e) => {
+            isDown = true;
+            rect = cvs.getBoundingClientRect(); // Recalculate once on start
+            ctx.beginPath();
+            const p = getXY(e);
+            ctx.moveTo(p.x, p.y);
+        };
+
+        const drawMove = (e) => {
+            if (!isDown) return;
+            e.preventDefault(); // Prevent scrolling on mobile
+            const p = getXY(e);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            // REMOVED checkReady() from here to fix lag
+        };
+
+        const drawEnd = () => { 
+            if(isDown) {
+                isDown = false;
+                hasSigned = true;
+                checkReady(); // Check only on mouse up
+            }
+        };
+
+        // Mouse Events
+        cvs.onmousedown = drawStart;
+        cvs.onmousemove = drawMove;
+        window.addEventListener('mouseup', drawEnd);
+
+        // Touch Events
+        cvs.ontouchstart = drawStart;
+        cvs.ontouchmove = drawMove;
+        window.addEventListener('touchend', drawEnd);
+
+        select('#clearSign').onclick = () => {
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            hasSigned = false;
+            btnSubmit.disabled = true;
+        };
+
+        function checkReady() {
+            const locOk = select('[name="geo_lat"]').value !== "";
+            if (locOk && hasSigned) btnSubmit.disabled = false;
+        }
 
         f.onsubmit = async (e) => {
             e.preventDefault();
-            select('[name="signature_image"]', f).value = cvs.toDataURL();
+            select('[name="signature_image"]').value = cvs.toDataURL('image/png');
+
+            if (streamObj && !camSec.classList.contains('is-hidden')) {
+                const snapCanvas = document.createElement('canvas');
+                snapCanvas.width = vid.videoWidth;
+                snapCanvas.height = vid.videoHeight;
+                snapCanvas.getContext('2d').drawImage(vid, 0, 0);
+                select('[name="snapshot_image"]').value = snapCanvas.toDataURL('image/jpeg', 0.8);
+            }
+
             const fd = new FormData(f);
+            if (streamObj) streamObj.getTracks().forEach(track => track.stop());
+
             try {
-                const r = await fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':csrf, 'Accept':'application/json'}, body:fd});
+                const r = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: fd
+                });
                 const j = await r.json();
-                if(r.ok) { window.toastOk('Berhasil', j.message); setTimeout(()=>location.reload(),1000); }
-                else throw new Error(j.message);
-            } catch(err) { alert(err.message); }
+                if (r.ok) {
+                    alert('Berhasil!');
+                    closeModal(m);
+                    setTimeout(() => location.reload(), 1000);
+                } else throw new Error(j.message || 'Terjadi kesalahan');
+            } catch (err) { alert(err.message); }
         };
-        openModal('signModal');
+        
+        const cleanup = () => { if (streamObj) streamObj.getTracks().forEach(track => track.stop()); };
+        m.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', cleanup));
     };
 
     const rejectAct = (url) => {
@@ -967,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const r = await fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':csrf, 'Accept':'application/json'}, body:fd});
                 const j = await r.json();
-                if(r.ok) { window.toastOk('Berhasil', 'Direject.'); setTimeout(()=>location.reload(),1000); }
+                if(r.ok) { alert('Berhasil direject.'); setTimeout(()=>location.reload(),1000); }
                 else throw new Error(j.message);
             } catch(err) { alert(err.message); }
         };

@@ -9,13 +9,11 @@ use App\Http\Controllers\Admin\Access\PermissionController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Self\ProfileController;
 
-// Recruitment (internal)
 use App\Http\Controllers\Recruitment\MonitoringController as RecruitmentMonitoringController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController as RecruitmentApprovalController;
 use App\Http\Controllers\Recruitment\ContractController;
 use App\Http\Controllers\Recruitment\PublishingController;
 
-// Training (internal, optional)
 use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
     PrincipalApprovalController as TrainingApprovalController,
@@ -23,7 +21,6 @@ use App\Http\Controllers\Training\{
     TrainingRequestController
 };
 
-// Back Office Org (Directorates & Units)
 use App\Http\Controllers\Admin\Org\OrgController;
 
 Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
@@ -81,11 +78,11 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('contracts', [ContractController::class, 'index'])->middleware('permission:contract.view')->name('contracts.index');
         Route::get('contracts/{contract}', [ContractController::class, 'show'])->middleware('permission:contract.view')->name('contracts.show');
         
-        // --- ROUTE BARU UNTUK DOKUMEN AMAN ---
+        Route::delete('contracts/{contract}', [ContractController::class, 'destroy'])->middleware('permission:contract.delete')->name('contracts.destroy');
+
         Route::get('contracts/{contract}/document', [ContractController::class, 'document'])
             ->middleware('permission:contract.view')
             ->name('contracts.document');
-        // -------------------------------------
 
         Route::post('contracts', [ContractController::class, 'store'])->middleware('permission:contract.create')->name('contracts.store');
         Route::put('contracts/{contract}', [ContractController::class, 'update'])->middleware('permission:contract.update')->name('contracts.update');
@@ -103,7 +100,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
     Route::prefix('training')->name('training.')->group(function () {
 
-        // Dashboard
         Route::get('dashboard', [TrainingDashboardController::class,'index'])
             ->middleware('permission:training.view')->name('dashboard');
         Route::get('dashboard/data-evaluation', [TrainingDashboardController::class,'getDataEvaluation'])
@@ -125,8 +121,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
             ->name('dashboard.update-realisasi-date');
 
-        // Training Request
-        //// dhc unit
         Route::get('training-request', [TrainingRequestController::class, 'index'])
             ->name('training-request');
         Route::post('training-request/import-lna', [TrainingRequestController::class, 'importLna'])
@@ -152,7 +146,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('training-request/get-approval-pengajuan-training', [TrainingRequestController::class, 'getApprovalPengajuanTraining'])
             ->name('training-request.get-approval-pengajuan-training');
 
-        //// sdm unit
         Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
             ->name('training-request');
         Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])
@@ -165,9 +158,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.input-training-request');
         Route::post('training-request/import-training', [TrainingRequestController::class, 'importTraining'])
             ->name('training-request.import-training');
-        // END
-            
-        // Kepala Unit
+
         Route::post('training-request/{id}/approve-training-request', [TrainingRequestController::class,'approveTrainingRequest'])
             ->name('training-request.approve-training-request');
         Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
@@ -178,41 +169,12 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('training-request/{id}/reject-training-pengajuan', [TrainingRequestController::class,'rejectTrainingReference'])
             ->name('training-request.reject-training-pengajuan');
 
-        // Monitoring
-        // Route::get('monitoring', fn () => view('training.monitoring.monitoring'))
-        //     ->middleware('permission:training.view')->name('monitoring');
-        // Route::post('import', [TrainingMonitoringController::class,'import'])
-        //     ->name('import');
-        
-        // Route::get('list', [TrainingMonitoringController::class,'list'])
-        //     ->name('list');
-        // Route::post('input', [TrainingMonitoringController::class,'input'])
-        //     ->name('input');
-        // Route::get('edit/{id}/get-data', [TrainingMonitoringController::class,'getEditData'])
-        //     ->name('get-data');
-        // Route::post('edit/{id}', [TrainingMonitoringController::class,'update'])
-        //     ->name('update');
-        // Route::delete('delete/{id}', [TrainingMonitoringController::class,'destroy'])
-        //     ->name('delete');
-
-        // Route::post('monitoring/{id}/approve', [TrainingMonitoringController::class,'approveStatus'])
-        //     ->name('monitoring.approveStatus');
-        // Route::post('monitoring/{id}/reject', [TrainingMonitoringController::class,'rejectTrainingRequest'])
-        //     ->name('monitoring.rejectStatus');
-        // Route::post('all-approve', [TrainingMonitoringController::class,'updateAllStatus'])
-        //     ->name('allApprove');
-        // Route::post('bulk-approve', [TrainingMonitoringController::class,'bulkApprove'])
-        //     ->name('bulkApprove');
-
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');
-        // END 
-        
-        // Self Learning
+
         Route::get('self-learning', fn () => view('training.self-learning.index'))
             ->middleware('permission:training.view')->name('self-learning');
 
-        // Principal Approval
         Route::get('principal-approval', fn () => view('training.principal-approval.principal-approval'))
             ->middleware('permission:training.view')->name('principal-approval');
     });
