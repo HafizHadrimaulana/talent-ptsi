@@ -12,18 +12,11 @@ class RolesPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Reset cache Spatie di awal
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // Hapus role usang yang tidak dipakai lagi (idempotent)
         DB::table('roles')->where('name', 'VP DHC')->delete();
 
         DB::transaction(function () {
-
-            // ============================================================
-            // A) Dedup PERMISSIONS per (name, guard) → keep id terkecil
-            //    Pindahkan pivots lalu hapus duplikat (idempotent)
-            // ============================================================
             $permGroups = DB::table('permissions')
                 ->select('name','guard_name', DB::raw('MIN(id) as keep_id'), DB::raw('COUNT(*) as cnt'))
                 ->groupBy('name','guard_name')
@@ -46,20 +39,11 @@ class RolesPermissionsSeeder extends Seeder
                 DB::table('permissions')->whereIn('id', $dupIds)->delete();
             }
 
-            // ============================================================
-            // B) Rename role lama "GM/VP Unit" → "Kepala Unit" (jika ada)
-            // ============================================================
             DB::table('roles')
                 ->where('name', 'GM/VP Unit')
                 ->where('guard_name', 'web')
                 ->update(['name' => 'Kepala Unit']);
 
-            // ============================================================
-            // C) Helper konsolidasi role per name (guard=web)
-            //    - pilih keeper: global (unit_id NULL) kalau ada, else id terkecil
-            //    - pindahkan seluruh pivots ke keeper, hapus sisanya
-            //    - return instance Role keeper
-            // ============================================================
             $keepRole = function(string $name): Role {
                 $rows = DB::table('roles')
                     ->where('name', $name)
@@ -86,16 +70,12 @@ class RolesPermissionsSeeder extends Seeder
                 return $role;
             };
 
-            // ============================================================
-            // D) Pastikan role FINAL ada & terkonsolidasi (tanpa VP DHC)
-            // ============================================================
             $finalRoles = ['Superadmin','DHC','Dir SDM','SDM Unit','Kepala Unit','Karyawan','Pelamar'];
             $role = [];
             foreach ($finalRoles as $rn) {
                 $role[$rn] = $keepRole($rn);
             }
 
-            // (Safety) Bila masih ada nama role yang dobel, konsolidasi ulang
             $roleGroups = DB::table('roles')
                 ->select('name','guard_name', DB::raw('COUNT(*) as cnt'))
                 ->groupBy('name','guard_name')
@@ -106,32 +86,14 @@ class RolesPermissionsSeeder extends Seeder
                 $role[$g->name] = $keepRole($g->name);
             }
 
-            // ============================================================
-            // E) Ensure PERMISSIONS exist (tambahkan org.*)
-            // ============================================================
             $perms = [
-                // Users / RBAC
                 'users.view','users.create','users.update','users.delete','rbac.view','rbac.assign',
-
-                // Directory / Employees
                 'employees.view',
-
-                // Organization Master (Directorates & Units)
                 'org.view','org.create','org.update','org.delete',
-
-                // Recruitment
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit','recruitment.approve','recruitment.reject',
-
-                //External Recruitment
                 'recruitment.external.view','recruitment.external.apply','recruitment.external.manage',
-
-                // Contracts
-                'contract.view','contract.create','contract.update','contract.approve','contract.sign',
-
-                // Training
+                'contract.view','contract.create','contract.update','contract.delete','contract.approve','contract.sign',
                 'training.view',
-
-                // Reports
                 'reports.export',
 
                 // Applicant 
@@ -143,23 +105,17 @@ class RolesPermissionsSeeder extends Seeder
                 Permission::firstOrCreate(['name' => $p, 'guard_name' => 'web']);
             }
 
-            // ============================================================
-            // F) Sync permission per role (idempotent)
-            // ============================================================
-            // Superadmin: semua
             $role['Superadmin']->syncPermissions(Permission::all());
 
-            // DHC — checker/admin pusat
             $role['DHC']->syncPermissions([
                 'users.view','rbac.view','rbac.assign',
                 'employees.view',
                 'org.view','org.create','org.update','org.delete',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.approve','recruitment.reject',
-                'contract.view','contract.create','contract.update','contract.approve',
+                'contract.view','contract.create','contract.update','contract.delete','contract.approve',
                 'training.view','reports.export','recruitment.external.view','recruitment.external.manage',
             ]);
 
-            // Dir SDM — approver final
             $role['Dir SDM']->syncPermissions([
                 'employees.view',
                 'org.view','org.update',
@@ -168,17 +124,15 @@ class RolesPermissionsSeeder extends Seeder
                 'training.view','reports.export',
             ]);
 
-            // SDM Unit — maker/submitter
             $role['SDM Unit']->syncPermissions([
                 'users.view',
                 'employees.view',
                 'org.view','org.create','org.update',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit',
-                'contract.view','contract.create','contract.update',
+                'contract.view','contract.create','contract.update','contract.delete',
                 'training.view','reports.export','recruitment.external.view','recruitment.external.manage',
             ]);
 
-            // Kepala Unit — approver tahap 1 (unit-scoped)
             $role['Kepala Unit']->syncPermissions([
                 'employees.view',
                 'org.view',
@@ -187,7 +141,6 @@ class RolesPermissionsSeeder extends Seeder
                 'training.view',
             ]);
 
-            // Karyawan — minimal
             $role['Karyawan']->syncPermissions([
                 'employees.view','training.view',
             ]);
@@ -199,7 +152,6 @@ class RolesPermissionsSeeder extends Seeder
             ]);
         });
 
-        // Reset cache Spatie di akhir
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
