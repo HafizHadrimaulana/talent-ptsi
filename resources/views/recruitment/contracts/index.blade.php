@@ -521,6 +521,8 @@
                       <div class="section-divider">Personil</div>
                       <div class="u-space-y-md">
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-xl">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK (Employee ID)</span><span id="detNik" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK (KTP)</span><span id="detNikReal" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
                           <div id="detPeriodRow" class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
@@ -555,7 +557,7 @@
                  <div class="section-divider">Approval Progress</div>
                  <div class="u-space-y-md">
                      <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Kepala Unit (Approve & Sign)</span><span id="progKaUnit" class="u-badge u-badge--glass">Waiting</span></div>
-                     <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Kandidat (Sign)</span><span id="progCand" class="u-badge u-badge--glass">Waiting</span></div>
+                     <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted" id="roleLabel">Kandidat (Sign)</span><span id="progCand" class="u-badge u-badge--glass">Waiting</span></div>
                  </div>
             </div>
         </div>
@@ -628,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
     const csrf = select('meta[name="csrf-token"]')?.content;
     
+    // Utilities
     const hide = el => { if(el) { el.hidden=true; el.style.display='none'; el.classList.add('is-hidden'); } };
     const show = el => { if(el) { el.hidden=false; el.style.display='flex'; el.classList.remove('is-hidden'); } };
     const showBlock = el => { if(el) { el.hidden=false; el.style.display='block'; el.classList.remove('is-hidden'); } };
@@ -646,6 +649,9 @@ document.addEventListener('DOMContentLoaded', () => {
        return terbilang(Math.floor(n/1000000))+' juta '+terbilang(n%1000000);
     };
 
+    // --- LOGIC UTAMA ---
+
+    // 1. Calculator Binding
     const bindCalc = (root) => {
         selectAll('input[data-rupiah="true"]', root).forEach(el => {
             const tgtId = el.dataset.terbilangTarget;
@@ -658,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // 2. Modal Logic
     const openModal = (id) => {
         const m = document.getElementById(id);
         if(m) { m.hidden = false; m.style.display = 'flex'; document.body.classList.add('modal-open'); }
@@ -673,6 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(btn) { e.preventDefault(); openModal(btn.dataset.modalOpen); }
     });
 
+    // 3. Create Modal Logic
     const btnCreate = select('#btnOpenCreate');
     if(btnCreate) {
         btnCreate.onclick = (e) => { e.preventDefault(); openModal('createContractModal'); };
@@ -791,7 +799,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 4. Edit, Detail Actions
     doc.body.addEventListener('click', async (e) => {
+        // DETAIL BUTTON
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) {
             e.preventDefault();
@@ -807,15 +817,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#detStatus').textContent = d.status;
                 select('#detUnit').textContent = d.unit?.name;
                 select('#detName').textContent = d.person_name;
+                select('#detNik').textContent = d.candidate_nik; 
+                select('#detNikReal').textContent = d.candidate_nik_real; 
                 select('#detPos').textContent = d.position_name;
                 select('#detEmpType').textContent = d.employment_type;
 
+                // Status Badge Color
                 if(d.progress) {
                     const cMap = {'Waiting':'u-badge--glass', 'Approved':'u-badge--success', 'Signed':'u-badge--success', 'Rejected':'u-badge--danger', 'Pending':'u-badge--warn'};
                     select('#progKaUnit').textContent = d.progress.ka_unit;
                     select('#progKaUnit').className = `u-badge ${cMap[d.progress.ka_unit]||'u-badge--glass'}`;
                     select('#progCand').textContent = d.progress.candidate;
                     select('#progCand').className = `u-badge ${cMap[d.progress.candidate]||'u-badge--glass'}`;
+                }
+                
+                // Dynamic Role Label
+                if(d.target_role_label) {
+                    select('#roleLabel').textContent = `${d.target_role_label} (Sign)`;
                 }
 
                 if (isPb) {
@@ -850,6 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(err) { alert(err.message); }
         }
 
+        // EDIT BUTTON
         const btnEdit = e.target.closest('.js-btn-edit');
         if(btnEdit) {
             e.preventDefault();
@@ -896,6 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 5. SIGN ACTION (OPTIMIZED & ROBUST)
     const signAct = (url, role) => {
         const m = select('#signModal');
         const f = select('#signForm');
@@ -905,6 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnSubmit = select('#btnSubmitSign');
         const geoStat = select('#geoStatus');
         
+        // Reset UI
         f.reset();
         select('[name="signature_image"]').value = '';
         select('[name="geo_lat"]').value = '';
@@ -913,6 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         openModal('signModal');
 
+        // Fix Canvas Size (Delay to allow modal render)
         setTimeout(() => {
             cvs.width = cvs.offsetWidth;
             cvs.height = 200;
@@ -923,13 +945,17 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.clearRect(0, 0, cvs.width, cvs.height);
         }, 150);
 
+        // --- GEOLOCATION LOGIC (FALLBACK) ---
         geoStat.textContent = "Mendeteksi Lokasi...";
         geoStat.className = "u-text-sm u-font-medium u-text-muted";
         
         const getGeo = (highAccuracy) => {
+            // Cek Secure Context (Wajib HTTPS kecuali localhost)
             if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
                  geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS untuk Lokasi!</span>';
+                 // Pada mode dev tanpa HTTPS, kita bypass saja agar tetap bisa testing tombol submit
                  console.warn("Skipping geo check due to non-secure context");
+                 // checkReady(); // Uncomment jika ingin bypass validasi lokasi
                  return;
             }
             if (!("geolocation" in navigator)) {
@@ -949,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 (err) => {
                     if (highAccuracy && err.code !== 1) {
                         geoStat.textContent = "Mencoba akurasi rendah...";
-                        getGeo(false); 
+                        getGeo(false); // Retry with low accuracy
                     } else {
                         let msg = "Gagal mendeteksi lokasi.";
                         if(err.code === 1) msg = "Izin lokasi ditolak browser.";
@@ -961,9 +987,11 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         };
 
-        getGeo(true); 
+        getGeo(true); // Start with high accuracy
 
+        // --- CAMERA LOGIC ---
         let streamObj = null;
+        // Hanya nyalakan kamera jika secure context
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === 'localhost')) {
             showBlock(camSec);
             select('#cameraPlaceholder').hidden = false;
@@ -978,9 +1006,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Wajib HTTPS";
                 });
         } else {
-            hide(camSec); 
+            hide(camSec); // Hide if not supported or not secure
         }
 
+        // --- DRAWING LOGIC (OPTIMIZED) ---
         let isDown = false;
         let hasSigned = false;
         const ctx = cvs.getContext('2d');

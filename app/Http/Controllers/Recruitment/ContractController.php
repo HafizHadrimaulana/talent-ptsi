@@ -16,25 +16,32 @@ class ContractController extends Controller
         $user = $request->user();
         $isSuperadmin = $user->hasRole('Superadmin');
         $isDhc = $user->hasRole('DHC');
+        $isEmployee = $user->hasRole('Karyawan');
         $canSeeAll = $isSuperadmin || $isDhc;
         $userUnitId = (int)($user->unit_id ?? 0);
+        $userEmployeeId = $user->employee_id;
         
         $isApproverOnly = $user->can('contract.approve') && !$user->can('contract.update');
         $selectedUnitId = $canSeeAll ? ($request->filled('unit_id') ? (int)$request->integer('unit_id') : null) : $userUnitId;
 
         $query = Contract::with(['unit', 'employee', 'document', 'person', 'applicant'])->orderByDesc('created_at');
 
-        // Filter Logic
-        if ($selectedUnitId) {
-            $query->where('unit_id', $selectedUnitId);
-        } elseif ($isDhc && !$isSuperadmin) {
-            $query->whereHas('unit', fn($q) => $q->where('category', 'ENABLER'));
-        } elseif ($isSuperadmin) {
-            $query->whereHas('unit', fn($q) => $q->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']));
-        }
-
-        if ($isApproverOnly) {
-            $query->where('status', '!=', 'draft');
+        if ($isEmployee && !$isSuperadmin && !$isDhc && !$isApproverOnly) {
+             // UPDATE: Hanya muncul jika status Approved atau Signed
+             $query->where('employee_id', $userEmployeeId)
+                   ->whereIn('status', ['approved', 'signed']); 
+        } else {
+            if ($selectedUnitId) {
+                $query->where('unit_id', $selectedUnitId);
+            } elseif ($isDhc && !$isSuperadmin) {
+                $query->whereHas('unit', fn($q) => $q->where('category', 'ENABLER'));
+            } elseif ($isSuperadmin) {
+                $query->whereHas('unit', fn($q) => $q->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']));
+            }
+    
+            if ($isApproverOnly) {
+                $query->where('status', '!=', 'draft');
+            }
         }
 
         if ($request->filled('status')) {
@@ -43,7 +50,6 @@ class ContractController extends Controller
 
         $contracts = $query->paginate(25)->withQueryString();
 
-        // Data Preparation for View
         $unitsQuery = Unit::query();
         if ($isSuperadmin) {
             $unitsQuery->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
@@ -52,16 +58,19 @@ class ContractController extends Controller
         }
         $units = $canSeeAll ? $unitsQuery->orderBy('name')->get(['id', 'name']) : Unit::where('id', $selectedUnitId)->get(['id', 'name']);
 
-        $expiringQuery = DB::table('portfolio_histories AS ph')
-            ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
-            ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
-            ->select('ph.id', 'ph.person_id', 'e.employee_id', 'ph.title AS position_name', 'ph.start_date', 'ph.end_date', 'e.employee_status', 'e.unit_id', 'u.name AS unit_name', DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name"))
-            ->where('ph.category', 'job')->whereNotNull('ph.end_date')->whereDate('ph.end_date', '>=', now())->whereDate('ph.end_date', '<=', now()->addDays(30));
+        $expiringContracts = collect();
+        if (!$isEmployee) {
+            $expiringQuery = DB::table('portfolio_histories AS ph')
+                ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
+                ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
+                ->select('ph.id', 'ph.person_id', 'e.employee_id', 'ph.title AS position_name', 'ph.start_date', 'ph.end_date', 'e.employee_status', 'e.unit_id', 'u.name AS unit_name', DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name"))
+                ->where('ph.category', 'job')->whereNotNull('ph.end_date')->whereDate('ph.end_date', '>=', now())->whereDate('ph.end_date', '<=', now()->addDays(30));
 
-        if (!$canSeeAll && $userUnitId) {
-            $expiringQuery->where('e.unit_id', $userUnitId);
+            if (!$canSeeAll && $userUnitId) {
+                $expiringQuery->where('e.unit_id', $userUnitId);
+            }
+            $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
         }
-        $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
 
         return view('recruitment.contracts.index', [
             'contracts' => $contracts,
@@ -137,7 +146,6 @@ class ContractController extends Controller
             $c->remuneration_json = $meta;
             $c->status = ($v['submit_action'] === 'submit') ? 'review' : 'draft';
             
-            // GENERATE NUMBER FIX
             if ($c->status === 'review') {
                 $c->contract_no = $this->generateContractNumber($c);
             }
@@ -339,17 +347,35 @@ class ContractController extends Controller
         $kaUnitStatus = 'Waiting';
         $candStatus = 'Waiting';
 
-        if($contract->status === 'approved') { $kaUnitStatus = 'Approved'; $candStatus = 'Pending'; }
-        if($contract->status === 'signed') { $kaUnitStatus = 'Approved'; $candStatus = 'Signed'; }
-        if($contract->status === 'rejected') { $kaUnitStatus = 'Rejected'; }
+        if ($contract->status === 'approved') {
+            $kaUnitStatus = 'Approved';
+            $candStatus = 'Pending';
+        } elseif ($contract->status === 'signed') {
+            $kaUnitStatus = 'Approved';
+            $candStatus = 'Signed';
+        } elseif ($contract->status === 'rejected') {
+            $kaUnitStatus = 'Rejected';
+            $candStatus = '-';
+        }
+        
+        $me = auth()->user();
+        $canSign = $me->can('contract.sign') && $contract->status === 'approved';
+        if ($canSign && $me->hasRole('Karyawan') && $contract->employee_id !== $me->employee_id) {
+            $canSign = false;
+        }
+
+        $targetRole = (in_array($contract->contract_type, ['PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN'])) ? 'Pegawai' : 'Kandidat';
 
         return response()->json(['success' => true, 'data' => array_merge($contract->toArray(), [
             'contract_type_label' => $typeCfg['label'] ?? $contract->contract_type, 'person_name' => $cand['name'],
             'start_date' => $contract->start_date?->format('d M Y'), 'end_date' => $contract->end_date?->format('d M Y'),
             'remuneration_json' => $meta, 'can_approve' => auth()->user()->can('contract.approve') && $contract->status === 'review',
-            'can_sign' => auth()->user()->can('contract.sign') && $contract->status === 'approved',
+            'can_sign' => $canSign,
             'doc_url' => $docUrl, 'approve_url' => route('recruitment.contracts.approve', $contract), 'sign_url' => route('recruitment.contracts.sign', $contract),
             'reject_url' => route('recruitment.contracts.reject', $contract),
+            'candidate_nik' => $cand['nik'] ?? '-',
+            'candidate_nik_real' => $cand['nik_real'] ?? '-',
+            'target_role_label' => $targetRole,
             'progress' => [
                 'ka_unit' => $kaUnitStatus,
                 'candidate' => $candStatus
@@ -360,12 +386,13 @@ class ContractController extends Controller
     protected function resolveCandidate(Contract $c)
     {
         $p = $c->person ?? ($c->person_id ? Person::find($c->person_id) : ($c->applicant ?? ($c->applicant_id ? Applicant::find($c->applicant_id) : null)));
-        $d = ['name' => 'Kandidat', 'address' => '-', 'nik' => '-', 'pob' => '-', 'dob' => '-', 'gender' => '-'];
+        $d = ['name' => 'Kandidat', 'address' => '-', 'nik' => '-', 'nik_real' => '-', 'pob' => '-', 'dob' => '-', 'gender' => '-'];
         if ($p) {
             $d['name'] = $p->full_name ?? $p->name ?? 'Kandidat';
             $d['address'] = $p->address ?? $p->domicile_address ?? '-';
             $realNik = DB::table('identities')->where('person_id', $p->id)->whereIn('system', ['nik', 'ktp', 'e_ktp'])->value('external_id');
-            $d['nik'] = $realNik ?? $p->nik_hash ?? $p->nik ?? '-';
+            $d['nik'] = $c->employee_id ?? '-'; 
+            $d['nik_real'] = $realNik ?? $p->nik_hash ?? $p->nik ?? '-'; 
             $d['pob'] = $p->place_of_birth ?? $p->pob ?? '-';
             $d['dob'] = $p->date_of_birth ? Carbon::parse($p->date_of_birth)->translatedFormat('d F Y') : '-';
             $g = strtoupper($p->gender ?? '');
@@ -437,7 +464,6 @@ class ContractController extends Controller
 
         $base = "/{$uCode}-{$romanMonth}/{$headCode}/{$year}";
         
-        // 1. Get the latest record (ignoring soft deletes if applicable, using DB::table)
         $last = DB::table('contracts')
             ->where('contract_no', 'like', "%{$base}")
             ->orderByRaw('LENGTH(contract_no) DESC')
@@ -451,7 +477,6 @@ class ContractController extends Controller
             $seq = ((int)end($nums)) + 1;
         }
 
-        // 2. Loop until a unique number is found
         do {
             $candidate = sprintf("%s-%03d%s", $code, $seq, $base);
             $exists = DB::table('contracts')->where('contract_no', $candidate)->exists();
