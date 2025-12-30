@@ -396,24 +396,39 @@ class ContractController extends Controller
         $isPowerUser = $user->hasRole(['Superadmin', 'SDM Unit', 'DHC']);
         
         if ($headSig && ($isPowerUser || $headSig->signer_person_id == $user->person_id)) {
+             $tz = $this->resolveIndonesianTimezone($headSig->geo_lng);
              $geo['head'] = [
                  'lat' => $headSig->geo_lat, 
                  'lng' => $headSig->geo_lng, 
-                 'ts' => $headSig->signed_at->format('d M H:i'),
+                 'ts' => Carbon::parse($headSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
                  'name' => 'Kepala Unit'
             ];
         }
 
         if ($candSig && ($isPowerUser || $candSig->signer_person_id == $user->person_id)) {
+             $tz = $this->resolveIndonesianTimezone($candSig->geo_lng);
              $geo['candidate'] = [
                  'lat' => $candSig->geo_lat, 
                  'lng' => $candSig->geo_lng, 
-                 'ts' => $candSig->signed_at->format('d M H:i'),
+                 'ts' => Carbon::parse($candSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
                  'name' => 'Kandidat/Pegawai'
             ];
         }
 
         return $geo;
+    }
+
+    protected function resolveIndonesianTimezone($lng)
+    {
+        $lng = (float) $lng;
+        // Approximation: WIB < 114.5 (ish), WITA < 125, WIT > 125
+        if ($lng > 125.0) {
+            return ['zone' => 'Asia/Jayapura', 'abbr' => 'WIT'];
+        } elseif ($lng > 114.5) {
+            return ['zone' => 'Asia/Makassar', 'abbr' => 'WITA'];
+        } else {
+            return ['zone' => 'Asia/Jakarta', 'abbr' => 'WIB'];
+        }
     }
 
     protected function resolveCandidate(Contract $c)
