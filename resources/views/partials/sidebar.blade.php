@@ -148,7 +148,7 @@
             </a>
             @endif
 
-            @if($isSuper || $user?->can('training.view'))
+            @if($isSuper || $user?->can('training.management.view'))
             <a class="nav-item nav-child {{ request()->routeIs('training.training-management')?'active':'' }}"
               href="{{ Route::has('training.training-management') ? route('training.training-management') : '#' }}">
               <span class="icon">🗂️</span><span class="label">Training Management</span>

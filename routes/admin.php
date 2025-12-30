@@ -148,8 +148,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.get-approval-pengajuan-training');
 
         //// sdm unit
-        Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])
-            ->name('training-request.training-reference');
+        Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])->middleware('permission:training.view')->name('training-request.training-reference');
         Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])
             ->name('training-request.get-employee-by-unit');
         Route::get('training-request/{id}/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])
@@ -165,8 +164,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.reject-training-request');
         
         // TRAINING MANAGEMENT
-        Route::get('training-management', [TrainingManagementController::class, 'index'])
-            ->name('training-management');
+        Route::get('training-management', [TrainingManagementController::class, 'index'])->middleware('permission:training.management.view')->name('training-management');
         Route::post('training-management/{id}/approve-training-submission', [TrainingManagementController::class,'approveTrainingSubmission']);
         Route::post('training-management/{id}/reject-training-submission', [TrainingManagementController::class,'rejectTrainingSubmission']);
         

@@ -70,7 +70,7 @@ class RolesPermissionsSeeder extends Seeder
                 return $role;
             };
 
-            $finalRoles = ['Superadmin','DHC','Dir SDM','SDM Unit','Kepala Unit','Karyawan','Pelamar'];
+            $finalRoles = ['Superadmin','DHC','Dir SDM','SDM Unit','Kepala Unit','Karyawan','Pelamar', 'AVP', 'DBS Unit'];
             $role = [];
             foreach ($finalRoles as $rn) {
                 $role[$rn] = $keepRole($rn);
@@ -93,7 +93,8 @@ class RolesPermissionsSeeder extends Seeder
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit','recruitment.approve','recruitment.reject',
                 'recruitment.external.view','recruitment.external.apply','recruitment.external.manage',
                 'contract.view','contract.create','contract.update','contract.delete','contract.approve','contract.sign',
-                'training.view',
+                'training.view', 
+                'training.management.view', 'training.management.approve',
                 'reports.export',
 
                 // Applicant 
@@ -113,7 +114,9 @@ class RolesPermissionsSeeder extends Seeder
                 'org.view','org.create','org.update','org.delete',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.approve','recruitment.reject',
                 'contract.view','contract.create','contract.update','contract.delete','contract.approve',
-                'training.view','reports.export','recruitment.external.view','recruitment.external.manage',
+                'reports.export','recruitment.external.view','recruitment.external.manage',
+                'training.view', 
+                'training.management.view', 'training.management.approve', 
             ]);
 
             $role['Dir SDM']->syncPermissions([
@@ -130,7 +133,9 @@ class RolesPermissionsSeeder extends Seeder
                 'org.view','org.create','org.update',
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit',
                 'contract.view','contract.create','contract.update','contract.delete',
-                'training.view','reports.export','recruitment.external.view','recruitment.external.manage',
+                'reports.export','recruitment.external.view','recruitment.external.manage',
+                'training.view',
+                'training.management.view', 
             ]);
 
             $role['Kepala Unit']->syncPermissions([
@@ -139,6 +144,17 @@ class RolesPermissionsSeeder extends Seeder
                 'recruitment.view','recruitment.approve','recruitment.reject',
                 'contract.view','contract.approve',
                 'training.view',
+                'training.management.view', 'training.management.approve',
+            ]);
+
+            $role['AVP']->syncPermissions([
+                'training.view',
+                'training.management.view', 'training.management.approve',
+            ]);
+
+            $role['DBS Unit']->syncPermissions([
+                'training.view',
+                'training.management.view',
             ]);
 
             $role['Karyawan']->syncPermissions([
