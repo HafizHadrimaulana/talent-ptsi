@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\TrainingRequest;
 use App\Models\TrainingRequestApproval;
+use App\Models\TrainingReference;
 
 use Illuminate\Support\Facades\Log;
 
@@ -233,6 +234,133 @@ class TrainingManagementController extends Controller
             ]);
 
             DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Data ID {$id} berhasil direject oleh {$role}.",
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Reject failed", [
+                'id' => $id,
+                'role' => $role ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat menolak data.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function approveTrainingReference($id)
+    {
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
+
+        try {
+            $trainingReference = TrainingReference::findOrFail($id);
+
+            if (in_array($trainingReference->status_training_reference, ['active', 'rejected'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Data ini sudah final dan tidak dapat di-approve.',
+                ], 400);
+            }
+
+            $nextStatus = match ($role) {
+                'DBS Unit' => $trainingReference->status_training_reference === 'pending'
+                    ? 'in_review_dhc'
+                    : null,
+
+                'DHC' => $trainingReference->status_training_reference === 'in_review_dhc'
+                    ? 'active'
+                    : null,
+
+                default => null,
+            };
+
+            if (!$nextStatus) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Anda tidak memiliki hak untuk approve pada status ini.',
+                ], 403);
+            }
+
+            $trainingReference->update([
+                'status_training_reference' => $nextStatus,
+                // 'approved_by'               => $user->id,
+                // 'approved_at'               => now(),
+            ]);
+
+            Log::info('Training reference approved', [
+                'training_reference_id' => $id,
+                'from_status' => $trainingReference->getOriginal('status_training_reference'),
+                'to_status'   => $nextStatus,
+                'role'        => $role,
+                'user_id'     => $user->id,
+            ]);
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => "Data berhasil di-approve oleh {$role}.",
+                'data' => [
+                    'id' => $trainingReference->id,
+                    'status' => $nextStatus,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Approve error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    public function rejectTrainingReference($id)
+    {
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
+        
+        try {
+            $trainingReference = TrainingReference::findOrFail($id);
+
+            // Jika sudah final, tidak boleh reject
+            if (in_array($trainingReference->status_training_reference, ['active', 'rejected'])) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Data ini sudah final dan tidak dapat direject.',
+                ], 400);
+            }
+
+            // validasi
+            $allowedReject = match ($role) {
+                'DBS Unit' => $trainingReference->status_training_reference === 'pending',
+                'DHC'      => $trainingReference->status_training_reference === 'in_review_dhc',
+                default    => false,
+            };
+
+            if (!$allowedReject) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Anda tidak memiliki hak untuk menolak data ini.',
+                ], 403);
+            }
+
+            // update
+            $trainingReference->update([
+                'status_training_reference' => 'rejected',
+                // 'rejected_reason'        => $request->input('reason'), // optional
+            ]);
+
+            Log::info('Training reference rejected', [
+                'training_reference_id' => $id,
+                'role' => $role,
+                'user_id' => $user->id,
+            ]);
 
             return response()->json([
                 'status' => 'success',

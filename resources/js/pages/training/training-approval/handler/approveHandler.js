@@ -65,6 +65,6 @@ export const executeApprove = async (id, reloadCallback, note) => {
  * Approve Referensi (Pengajuan Training / LNA)
  */
 export const executeApproveReference = async (id, reloadCallback, note) => {
-    const url = `/training/training-request/${id}/approve-pengajuan`;
+    const url = `/training/training-management/${id}/approve-training-reference`;
     await processApproval(url, reloadCallback, "menerima pengajuan", note);
 };

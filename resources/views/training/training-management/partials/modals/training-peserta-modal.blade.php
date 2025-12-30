@@ -80,10 +80,6 @@
                         {{-- Card Dokumen --}}
                         <div class="u-card u-p-md">
                             <h3 class="u-text-xs u-font-bold u-uppercase u-mb-sm text-brand">Dokumen</h3>
-                            <div class="u-p-sm u-rounded-sm bg-orange-50 border border-orange-100 u-mb-sm">
-                                <label class="u-text-xs text-orange-700 u-uppercase font-bold">No Pengajuan</label>
-                                <div class="u-font-bold detail-no"># -</div>
-                            </div>
                             <div class="detail-lampiran_penawaran u-text-sm">
                                 <span class="u-muted italic">Tidak ada lampiran</span>
                             </div>

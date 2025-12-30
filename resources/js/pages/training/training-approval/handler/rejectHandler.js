@@ -56,6 +56,6 @@ export const executeReject = async (id, reloadCallback, note) => {
 };
 
 export const executeRejectPengajuan = async (id, reloadCallback, note) => {
-    const url = `/training/training-request/${id}/reject-pengajuan`;
+    const url = `/training/training-management/${id}/reject-training-pengajuan`;
     await processRejection(url, "Tolak Pengajuan Training?", reloadCallback, note);
 };
