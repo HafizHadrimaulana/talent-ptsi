@@ -26,7 +26,46 @@ class TrainingRequestController extends Controller
 
     public function index()
     {
-        return view('training.training-request.index');
+        $user = auth()->user();
+        $employeeId = $user->employee?->id;
+
+        if (!$employeeId) {
+            return redirect()->back()->with('error', 'Data karyawan tidak ditemukan.');
+        }
+
+        // 1. Hitung Statistik
+        // Total Pelatihan: Semua pengajuan yang masuk tahap review
+        $totalPelatihan = TrainingRequest::where('employee_id', $employeeId)
+            ->whereIn('status_approval_training', [
+                'in_review_gmvp', 
+                'in_review_dhc', 
+                'in_review_avpdhc', 
+                'in_review_vpdhc',
+                'approved'
+            ])->count();
+
+        // Sedang Berjalan: Status 'approved' (atau tambahkan status lain jika ada)
+        $sedangBerjalan = TrainingRequest::where('employee_id', $employeeId)
+            ->where('status_approval_training', 'approved')
+            ->count();
+
+        // Selesai/Lulus: Tergantung logika bisnis Anda, biasanya status final
+        $selesaiPelatihan = TrainingRequest::where('employee_id', $employeeId)
+            ->where('status_approval_training', 'completed') // Sesuaikan nama status final Anda
+            ->count();
+
+        // 2. Ambil Data Tabel (dengan Pagination agar ringan)
+        $listTraining = TrainingRequest::with(['trainingReference'])
+            ->where('employee_id', $employeeId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('training.training-request.index', compact(
+            'totalPelatihan', 
+            'sedangBerjalan', 
+            'selesaiPelatihan', 
+            'listTraining'
+        ));
     }
     
     // Import LNA

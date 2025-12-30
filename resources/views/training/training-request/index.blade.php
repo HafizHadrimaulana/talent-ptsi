@@ -12,23 +12,23 @@
         </div>
     </div>
 
-    {{-- ===== QUICK STATS (Dummy) ===== --}}
+    {{-- ===== QUICK STATS (Dynamic) ===== --}}
     <div class="grid grid-cols-1 md:grid-cols-3 u-gap-md u-mb-xl">
         <div class="u-card u-p-md border-l-4 border-blue-500 bg-blue-50/50">
             <div class="u-muted u-text-xs u-uppercase u-font-bold">Total Pelatihan</div>
-            <div class="u-text-xl u-font-bold text-blue-700">12</div>
+            <div class="u-text-xl u-font-bold text-blue-700">{{ $totalPelatihan }}</div>
         </div>
         <div class="u-card u-p-md border-l-4 border-yellow-500 bg-yellow-50/50">
             <div class="u-muted u-text-xs u-uppercase u-font-bold">Sedang Berjalan</div>
-            <div class="u-text-xl u-font-bold text-yellow-700">2</div>
+            <div class="u-text-xl u-font-bold text-yellow-700">{{ $sedangBerjalan }}</div>
         </div>
         <div class="u-card u-p-md border-l-4 border-green-500 bg-green-50/50">
             <div class="u-muted u-text-xs u-uppercase u-font-bold">Selesai/Lulus</div>
-            <div class="u-text-xl u-font-bold text-green-700">10</div>
+            <div class="u-text-xl u-font-bold text-green-700">{{ $selesaiPelatihan }}</div>
         </div>
     </div>
 
-    {{-- ===== TAB PANELS (BUTTON + TABLE ADA DI DALAM) ===== --}}
+    {{-- ===== TABLE SECTION ===== --}}
     <div class="dt-wrapper mb-4">
         <table id="table-training-karyawan" class="u-table w-full">
             <thead>
@@ -41,48 +41,55 @@
                 </tr>
             </thead>
             <tbody>
-                {{-- Data Dummy --}}
+                @forelse($listTraining as $item)
                 <tr>
                     <td>
-                        <div class="u-font-bold text-gray-800">Advanced Laravel Architecture</div>
-                        <div class="u-text-xxs u-muted">ID: #TR-2025-001</div>
+                        <div class="u-font-bold text-gray-800">
+                            {{ $item->trainingReference->judul_sertifikasi ?? 'Custom Training' }}
+                        </div>
+                        <div class="u-text-xxs u-muted">ID: #TR-{{ str_pad($item->id, 5, '0', STR_PAD_LEFT) }}</div>
                     </td>
-                    <td><span class="u-text-xs">15 Jan - 20 Jan 2025</span></td>
-                    <td><span class="u-badge bg-green-100 text-green-700">Completed</span></td>
-                    <td class="u-muted italic u-text-xs">Belum Tersedia</td>
+                    <td>
+                        <span class="u-text-xs">
+                            {{ \Carbon\Carbon::parse($item->start_date)->format('d M') }} - 
+                            {{ \Carbon\Carbon::parse($item->end_date)->format('d M Y') }}
+                        </span>
+                    </td>
+                    <td>
+                        @php
+                            $badgeClass = match($item->status_approval_training) {
+                                'approved' => 'bg-blue-100 text-blue-700',
+                                'completed' => 'bg-green-100 text-green-700',
+                                'rejected' => 'bg-red-100 text-red-700',
+                                default => 'bg-yellow-100 text-yellow-700',
+                            };
+                        @endphp
+                        <span class="u-badge {{ $badgeClass }}">
+                            {{ str_replace('_', ' ', strtoupper($item->status_approval_training)) }}
+                        </span>
+                    </td>
+                    <td>
+                        @if($item->lampiran_sertifikat) {{-- Asumsi ada kolom ini --}}
+                            <a href="{{ asset('storage/'.$item->lampiran_sertifikat) }}" class="u-text-xs text-brand u-font-bold">
+                                <i class="fas fa-download u-mr-xs"></i>Sertifikat.pdf
+                            </a>
+                        @else
+                            <span class="u-muted italic u-text-xs">Belum Tersedia</span>
+                        @endif
+                    </td>
                     <td class="text-center">
-                        <button class="u-btn u-btn--ghost u-btn--sm btn-detail" data-id="1">
+                        <button class="u-btn u-btn--ghost u-btn--sm btn-detail" data-id="{{ $item->id }}">
                             <i class="fas fa-eye"></i>
                         </button>
                     </td>
                 </tr>
+                @empty
                 <tr>
-                    <td>
-                        <div class="u-font-bold text-gray-800">UI/UX Design Specialist</div>
-                        <div class="u-text-xxs u-muted">ID: #TR-2024-098</div>
-                    </td>
-                    <td><span class="u-text-xs">10 Des - 12 Des 2024</span></td>
-                    <td><span class="u-badge bg-green-100 text-green-700">Completed</span></td>
-                    <td>
-                        <a href="#" class="u-text-xs text-brand u-font-bold">
-                            <i class="fas fa-download u-mr-xs"></i>Sertifikat.pdf
-                        </a>
-                    </td>
-                    <td class="text-center">
-                        <button class="u-btn u-btn--ghost u-btn--sm btn-detail" data-id="2">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </td>
+                    <td colspan="5" class="u-text-center u-py-lg u-muted">Belum ada riwayat pelatihan.</td>
                 </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
-
 </div>
-
 @endsection
-
-@push('scripts')
-
-@vite('resources/js/pages/training/index.js')
-@endpush
