@@ -33,7 +33,7 @@ class AuthenticatedSessionController extends Controller
 
         $newlyProvisioned = false;
 
-        // 1) Cari user by email → kalau nggak ada, coba by employee/id_sitms → auto-provision user dari Employee (hanya sekali di sini)
+        // 1) Cari user by email → kalau nggak ada, coba by employee/id_sitms
         $user = User::query()->where('email', $login)->first();
 
         if (!$user) {
@@ -52,10 +52,8 @@ class AuthenticatedSessionController extends Controller
                         $user->person_id   = $emp->person_id ?? null;
                         $user->employee_id = $emp->employee_id;
                         $user->unit_id     = $emp->unit_id;
-                        // === name harus full_name, bukan email ===
                         $user->name        = $this->resolveDisplayNameFromEmployee($emp);
-                        $user->email       = $emp->email; // bisa null
-                        // default password (silakan ganti via UI)
+                        $user->email       = $emp->email;
                         $user->password    = Hash::make('password');
                         $user->save();
 
@@ -97,16 +95,23 @@ class AuthenticatedSessionController extends Controller
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId($user->unit_id);
 
-        // 4) Sinkronisasi display name → paksa full_name kalau name kosong/berbentuk email
+        // 4) Sinkronisasi display name
         $this->syncDisplayNameFromHR($user);
 
-        // 5) HANYA SAAT AUTO-PROVISION (dibuat otomatis dari Employee), assign initial roles.
-        //    TIDAK ada auto-role setiap login normal → agar role "Karyawan" tidak balik lagi setelah dihapus manual.
+        // 5) Provision Initial Roles (Hanya saat auto-create user dari Employee)
         if ($newlyProvisioned) {
             $this->provisionInitialRoles($user);
         }
 
-        return redirect()->intended(route('dashboard'));
+        // === LOGIKA REDIRECT DISINI ===
+        if ($user->hasRole('Pelamar')) {
+            // Arahkan ke Dashboard Data Pelamar
+            return redirect()->route('recruitment.applicant-data.index')
+                ->with('ok', 'Selamat datang! Silakan lengkapi data diri Anda.');
+        } else {
+            // Arahkan user internal ke dashboard biasa
+            return redirect()->intended(route('dashboard'));
+        }
     }
 
     public function destroy(Request $request)
@@ -119,9 +124,6 @@ class AuthenticatedSessionController extends Controller
 
     // ================= Helpers =================
 
-    /**
-     * Ambil nama tampilan dari HR tables (prioritas persons.full_name, fallback ke employees.full_name, lalu label generik).
-     */
     private function resolveDisplayNameFromEmployee(?Employee $emp): string
     {
         if (!$emp) return 'User';
@@ -141,9 +143,6 @@ class AuthenticatedSessionController extends Controller
         return 'User';
     }
 
-    /**
-     * Kalau user->name kosong atau terlihat seperti email, sinkronkan dengan full_name dari HR.
-     */
     private function syncDisplayNameFromHR(User $user): void
     {
         $needsUpdate = false;
@@ -151,7 +150,6 @@ class AuthenticatedSessionController extends Controller
         if (empty($user->name)) {
             $needsUpdate = true;
         } else {
-            // jika name terlihat seperti email, kita ganti ke full_name
             if (filter_var($user->name, FILTER_VALIDATE_EMAIL)) {
                 $needsUpdate = true;
             }
@@ -173,10 +171,6 @@ class AuthenticatedSessionController extends Controller
         }
     }
 
-    /**
-     * Assign initial roles saat user diprovision OTOMATIS di login pertama.
-     * Tidak dipanggil saat login normal. Additive dan unit-scoped.
-     */
     private function provisionInitialRoles(User $user): void
     {
         $emp = Employee::query()->where('employee_id', $user->employee_id)->first();
@@ -184,7 +178,6 @@ class AuthenticatedSessionController extends Controller
 
         $targets = $this->decideRoleNames($job);
 
-        // Pastikan default "Karyawan" ikut saat provisioning awal (sesuai kebijakan awalmu).
         if (!in_array('Karyawan', $targets, true)) {
             array_unshift($targets, 'Karyawan');
         }
@@ -198,7 +191,6 @@ class AuthenticatedSessionController extends Controller
         foreach ($targets as $roleName) {
             $registrar->setPermissionsTeamId($currentUnitId);
 
-            // Cari role sesuai unit scope (teams=true)
             $role = Role::query()
                 ->where(function ($q) use ($currentUnitId) {
                     $q->whereNull('unit_id')->orWhere('unit_id', $currentUnitId);
@@ -218,7 +210,6 @@ class AuthenticatedSessionController extends Controller
                 $role->save();
             }
 
-            // Cegah duplikasi pivot (Spatie teams)
             $already = DB::table('model_has_roles')
                 ->where('model_type', User::class)
                 ->where('model_id', $user->id)
@@ -250,15 +241,12 @@ class AuthenticatedSessionController extends Controller
 
         $roles = ['Karyawan'];
 
-        // GM variants
         if (preg_match('/(?:(?:general)\s*manager|\bgm\b)/u', $t)) {
             $roles[] = 'Kepala Unit';
         }
-        // VP variants
         if (preg_match('/(?:vice\s*president|\bvp\b|v\.p\.|vp\s*\/\s*gm|wakil\s*presiden)/u', $t)) {
             $roles[] = 'Kepala Unit';
         }
-        // Head of Unit
         if (preg_match('/kepala\s*unit|unit\s*head|head\s*of\s*unit/u', $t)) {
             $roles[] = 'Kepala Unit';
         }

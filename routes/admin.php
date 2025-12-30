@@ -13,7 +13,8 @@ use App\Http\Controllers\Recruitment\MonitoringController as RecruitmentMonitori
 use App\Http\Controllers\Recruitment\PrincipalApprovalController as RecruitmentApprovalController;
 use App\Http\Controllers\Recruitment\ContractController;
 use App\Http\Controllers\Recruitment\PublishingController;
-
+use App\Http\Controllers\Recruitment\ApplicantDataController;
+use App\Http\Controllers\Public\CareerController;
 use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
     PrincipalApprovalController as TrainingApprovalController,
@@ -42,7 +43,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->group(function () {
-        Route::get('employees',      [EmployeeController::class, 'index'])->middleware('permission:employees.view')->name('employees.index');
+        Route::get('employees',       [EmployeeController::class, 'index'])->middleware('permission:employees.view')->name('employees.index');
         Route::get('employees/{id}', [EmployeeController::class, 'show'])->middleware('permission:employees.view')->name('employees.show');
         Route::get('employees/positions/options', [EmployeeController::class, 'positionOptions'])->middleware('permission:employees.view')->name('employees.positions.options');
     });
@@ -188,5 +189,20 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('contracts', function () { return view('reports.contracts'); })->name('contracts');
         Route::get('recruitment', function () { return view('reports.recruitment'); })->name('recruitment');
         Route::get('training', function () { return view('reports.training'); })->name('training');
-     });
+    });
+    
+    // Biodata & Status
+    Route::prefix('recruitment/applicant-data')
+        ->name('recruitment.applicant-data.')
+        ->middleware('permission:applicant.data.view') // Permission baru
+        ->group(function () {
+            Route::get('/', [ApplicantDataController::class, 'index'])->name('index');
+            Route::post('/update', [ApplicantDataController::class, 'update'])->name('update');
+        });
+
+    // Cari Lowongan (Versi Login)
+    Route::get('careers', [CareerController::class, 'index'])
+        ->middleware('permission:careers.view') // Permission baru
+        ->name('careers.index');
+
 });

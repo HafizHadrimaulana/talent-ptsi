@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\RecruitmentRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth; // Added this line
 
 class CareersController extends Controller
 {
@@ -29,6 +30,11 @@ class CareersController extends Controller
         $activeJob = null;
         if ($slug = $r->string('job')->toString()) {
             $activeJob = RecruitmentRequest::where('is_published', true)->where('slug',$slug)->first();
+
+            // Added redirection logic here
+            if ($activeJob && !Auth::check()) {
+                return redirect()->route('register');
+            }
         }
 
         return view('public.careers.index', compact('jobs','activeJob'));

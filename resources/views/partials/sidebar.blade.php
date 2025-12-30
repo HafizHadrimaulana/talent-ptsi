@@ -1,32 +1,40 @@
 <!-- ===== Sidebar ===== -->
 <aside class="sidebar glass" id="sidebar" aria-label="Primary navigation" data-scroll-area>
+  @php
+    $user = auth()->user();
+    
+    // Helper roles
+    $roleNames = $user ? $user->getRoleNames() : collect([]);
+
+    // Definisikan Variable $isPelamar
+    $isPelamar = $user && $user->hasRole('Pelamar');
+    
+    // Cek Superadmin
+    $isSuper = $roleNames->contains(fn($r)=> in_array(strtolower($r), ['superadmin','super-admin','admin','administrator']));
+
+    // Logika Tampilan
+    $showMain = !$isPelamar; // Sembunyikan dashboard utama jika pelamar
+
+    // Tampilkan menu Recruitment jika Superadmin, Pelamar, atau punya permission
+    $showRecruitment = $isSuper || $isPelamar || $user?->hasAnyPermission(['recruitment.view','contract.view']);
+    
+    $showTraining = !$isPelamar && ($isSuper || $user?->hasAnyPermission(['training.view']));
+    $showSettings = !$isPelamar && ($user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view')));
+    $showMaster   = !$isPelamar && ($isSuper || ($user && $user->can('org.view')));
+
+    $printedAnySection = false;
+    
+    // Deteksi Menu Aktif
+    $recOpen = str_starts_with(request()->route()->getName() ?? '', 'recruitment.') || str_starts_with(request()->route()->getName() ?? '', 'careers.');
+    $trOpen  = str_starts_with(request()->route()->getName() ?? '', 'training.');
+    $acOpen  = request()->routeIs('admin.users.*') || request()->routeIs('admin.roles.*') || request()->routeIs('admin.permissions.*') || request()->routeIs('admin.employees.*');
+    $mdOpen  = request()->routeIs('admin.org.*');
+  @endphp
   <div class="brand">
     <a href="{{ route('dashboard') }}" class="brand-link" aria-label="Dashboard">
       <img src="{{ Vite::asset('resources/images/sapahc.png') }}" alt="Logo" class="logo">
     </a>
   </div>
-
-  @php
-    $isSuper = $roleNames->contains(fn($r)=> in_array(strtolower($r), ['superadmin','super-admin','admin','administrator']));
-    $showMain = true;
-    $showRecruitment = $isSuper || $user?->hasAnyPermission(['recruitment.view','contract.view']);
-    $showTraining = $isSuper || $user?->hasAnyPermission(['training.view']);
-    $showSettings = $user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view'));
-
-    // Master Data visibility (org.*)
-    $showMaster = $isSuper || ($user && $user->can('org.view'));
-
-    $printedAnySection = false;
-    $recOpen = str_starts_with(request()->route()->getName() ?? '', 'recruitment.');
-    $trOpen  = str_starts_with(request()->route()->getName() ?? '', 'training.');
-    $acOpen  = request()->routeIs('admin.users.*')
-             || request()->routeIs('admin.roles.*')
-             || request()->routeIs('admin.permissions.*')
-             || request()->routeIs('admin.employees.*');
-
-    // open state for Master Data
-    $mdOpen  = request()->routeIs('admin.org.*');
-  @endphp
 
   @if($showMain)
     <nav class="nav-section">
@@ -58,6 +66,18 @@
         <div id="nav-recruitment"
              class="nav-children {{ $recOpen ? 'open' : '' }}"
              data-accordion-panel="nav-recruitment">
+             @if($isPelamar || $isSuper)
+                <a class="nav-item nav-child {{ request()->routeIs('recruitment.applicant-data.*') ? 'active' : '' }}"
+                    href="{{ route('recruitment.applicant-data.index') }}">
+                  <span class="icon">👤</span><span class="label">Biodata & Status</span>
+                </a>
+
+                {{-- Link Cari Lowongan (Opsional untuk Superadmin, Wajib untuk Pelamar) --}}
+                <a class="nav-item nav-child {{ request()->routeIs('careers.*') ? 'active' : '' }}"
+                    href="{{ route('careers.index') }}">
+                  <span class="icon">💼</span><span class="label">Cari Lowongan</span>
+                </a>
+              @endif
           @if($isSuper || $user?->can('recruitment.view'))
             <a class="nav-item nav-child {{ request()->routeIs('recruitment.monitoring')?'active':'' }}"
                href="{{ \Illuminate\Support\Facades\Route::has('recruitment.monitoring') ? route('recruitment.monitoring') : '#' }}">
