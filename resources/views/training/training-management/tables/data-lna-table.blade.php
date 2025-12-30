@@ -1,5 +1,5 @@
 <table id="data-lna-table"
-    class="u-table u-table-mobile training-table training-table-lna" data-role="{{ Auth::user()->getRoleNames()->first() }}" data-dt>
+    class="u-table u-table-mobile training-table training-table-lna" data-dt>
     <thead>
         <tr>
             <th>No</th>

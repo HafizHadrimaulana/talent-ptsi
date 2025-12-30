@@ -3,11 +3,7 @@ import { deleteJSON } from "@/utils/fetch";
 /**
  * Inisialisasi event handler untuk tombol hapus
  */
-export function initDeleteHandler(tableBody, reloadCallback) {
-    // 1. Bersihkan listener lama untuk mencegah duplikasi (pola prevent duplicate)
-    // Jika menggunakan Vanilla JS, kita harus memastikan listener tidak menumpuk.
-    // Cara termudah adalah memastikan listener hanya dipasang SEKALI atau menggunakan jQuery .off()
-    
+export function executeDelete(tableBody, reloadCallback) {
     const handleDelete = async (e) => {
         const button = e.target.closest("button[data-action='delete']");
         if (!button) return;

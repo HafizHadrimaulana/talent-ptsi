@@ -20,7 +20,8 @@ use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
     PrincipalApprovalController as TrainingApprovalController,
     DashboardController as TrainingDashboardController,
-    TrainingRequestController
+    TrainingRequestController,
+    TrainingManagementController
 };
 
 // Back Office Org (Directorates & Units)
@@ -153,8 +154,8 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.get-approval-pengajuan-training');
 
         //// sdm unit
-        Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
-            ->name('training-request');
+        // Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
+        //     ->name('training-request');
         Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])
             ->name('training-request.training-reference');
         Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])
@@ -177,32 +178,14 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.approve-training-reference');
         Route::post('training-request/{id}/reject-training-pengajuan', [TrainingRequestController::class,'rejectTrainingReference'])
             ->name('training-request.reject-training-pengajuan');
-
-        // Monitoring
-        // Route::get('monitoring', fn () => view('training.monitoring.monitoring'))
-        //     ->middleware('permission:training.view')->name('monitoring');
-        // Route::post('import', [TrainingMonitoringController::class,'import'])
-        //     ->name('import');
         
-        // Route::get('list', [TrainingMonitoringController::class,'list'])
-        //     ->name('list');
-        // Route::post('input', [TrainingMonitoringController::class,'input'])
-        //     ->name('input');
-        // Route::get('edit/{id}/get-data', [TrainingMonitoringController::class,'getEditData'])
-        //     ->name('get-data');
-        // Route::post('edit/{id}', [TrainingMonitoringController::class,'update'])
-        //     ->name('update');
-        // Route::delete('delete/{id}', [TrainingMonitoringController::class,'destroy'])
-        //     ->name('delete');
-
-        // Route::post('monitoring/{id}/approve', [TrainingMonitoringController::class,'approveStatus'])
-        //     ->name('monitoring.approveStatus');
-        // Route::post('monitoring/{id}/reject', [TrainingMonitoringController::class,'rejectTrainingRequest'])
-        //     ->name('monitoring.rejectStatus');
-        // Route::post('all-approve', [TrainingMonitoringController::class,'updateAllStatus'])
-        //     ->name('allApprove');
-        // Route::post('bulk-approve', [TrainingMonitoringController::class,'bulkApprove'])
-        //     ->name('bulkApprove');
+        // TRAINING MANAGEMENT
+        Route::get('training-management', [TrainingManagementController::class, 'index'])
+            ->name('training-management');
+        Route::post('training-management/{id}/approve-training-submission', [TrainingManagementController::class,'approveTrainingSubmission']);
+        Route::post('training-management/{id}/reject-training-submission', [TrainingManagementController::class,'rejectTrainingSubmission']);
+        
+        // END
 
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');

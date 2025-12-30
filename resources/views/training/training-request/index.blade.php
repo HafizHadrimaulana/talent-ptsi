@@ -5,97 +5,84 @@
 <div class="u-card u-card--glass u-hover-lift">
 
     {{-- ===== HEADER ===== --}}
-    <div class="u-flex u-items-center u-justify-between u-mb-md">
-        <h2 class="u-title">Training Request</h2>
+    <div class="u-flex u-items-center u-justify-between u-mb-lg">
+        <div>
+            <h2 class="u-title">Riwayat Pelatihan Saya</h2>
+            <p class="u-muted u-text-sm">Pantau status pengajuan dan riwayat sertifikasi Anda.</p>
+        </div>
     </div>
 
-    {{-- ===== TABS ===== --}}
-    @if (!empty($ui['tabs']) && count($ui['tabs']) > 1)
-        <div class="mx-4 u-mb-xl">
-            <div
-                id="training-tabs"
-                class="u-tabs__list flex font-medium"
-            >
-                <div class="flex space-x-4 border-b-2 border-slate-300">
-                    @foreach ($ui['tabs'] as $tab)
-                        <button
-                            type="button"
-                            data-tab="{{ $tab }}"
-                            class="u-tabs__item pb-2 -mb-0.5 border-b-2 whitespace-nowrap
-                                {{ $activeTab === $tab
-                                    ? 'border-blue-600 text-slate-900 font-semibold'
-                                    : 'border-transparent text-slate-500' }}"
-                        >
-                            {{ $ui['tab_labels'][$tab] ?? ucwords(str_replace('-', ' ', $tab)) }}
-                        </button>
-                    @endforeach
-                </div>
-            </div>
+    {{-- ===== QUICK STATS (Dummy) ===== --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 u-gap-md u-mb-xl">
+        <div class="u-card u-p-md border-l-4 border-blue-500 bg-blue-50/50">
+            <div class="u-muted u-text-xs u-uppercase u-font-bold">Total Pelatihan</div>
+            <div class="u-text-xl u-font-bold text-blue-700">12</div>
         </div>
-    @endif
+        <div class="u-card u-p-md border-l-4 border-yellow-500 bg-yellow-50/50">
+            <div class="u-muted u-text-xs u-uppercase u-font-bold">Sedang Berjalan</div>
+            <div class="u-text-xl u-font-bold text-yellow-700">2</div>
+        </div>
+        <div class="u-card u-p-md border-l-4 border-green-500 bg-green-50/50">
+            <div class="u-muted u-text-xs u-uppercase u-font-bold">Selesai/Lulus</div>
+            <div class="u-text-xl u-font-bold text-green-700">10</div>
+        </div>
+    </div>
 
     {{-- ===== TAB PANELS (BUTTON + TABLE ADA DI DALAM) ===== --}}
     <div class="dt-wrapper mb-4">
-        <div class="u-tabs__panels">
-            @foreach ($ui['tabs'] as $tab)
-                @php
-                    $tabConfig = $ui['tab_configs'][$tab] ?? [];
-                @endphp
-
-                <div
-                    id="tab-{{ $tab }}"
-                    class="u-tabs__panel {{ $activeTab === $tab ? '' : 'hidden' }}"
-                >
-
-                    {{-- ===== ACTION BUTTONS PER TAB ===== --}}
-                    <div class="flex gap-4 justify-between u-py-sm">
-                        @if (!empty($tabConfig['buttons']))
-                            <div class="flex gap-2">
-                                @foreach ($tabConfig['buttons'] as $button)
-                                    @includeIf('training.training-request.partials.buttons.' . $button)
-                                @endforeach
-                            </div>
-                            
-                            @if (
-                                in_array('import', $tabConfig['buttons']) &&
-                                ($tabConfig['show_download_template'] ?? false)
-                            )
-                                <button
-                                    type="button"
-                                    class="btn-download-template u-btn u-btn--outline u-hover-lift"
-                                >
-                                    Download Template Excel
-                                </button>
-                            @endif
-                        @endif
-                    </div>
-                    <div class="u-scroll-x">
-                        {{-- ===== TABLES ===== --}}
-                        @foreach ($tabConfig['tables'] ?? [] as $table)
-                            @include('training.training-request.partials.tables.' . $table)
-                        @endforeach
-
-                    </div>
-                </div>
-            @endforeach
-        </div>
+        <table id="table-training-karyawan" class="u-table w-full">
+            <thead>
+                <tr>
+                    <th>Judul Pelatihan</th>
+                    <th>Periode</th>
+                    <th>Status</th>
+                    <th>Hasil/Sertifikat</th>
+                    <th class="text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{-- Data Dummy --}}
+                <tr>
+                    <td>
+                        <div class="u-font-bold text-gray-800">Advanced Laravel Architecture</div>
+                        <div class="u-text-xxs u-muted">ID: #TR-2025-001</div>
+                    </td>
+                    <td><span class="u-text-xs">15 Jan - 20 Jan 2025</span></td>
+                    <td><span class="u-badge bg-green-100 text-green-700">Completed</span></td>
+                    <td class="u-muted italic u-text-xs">Belum Tersedia</td>
+                    <td class="text-center">
+                        <button class="u-btn u-btn--ghost u-btn--sm btn-detail" data-id="1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="u-font-bold text-gray-800">UI/UX Design Specialist</div>
+                        <div class="u-text-xxs u-muted">ID: #TR-2024-098</div>
+                    </td>
+                    <td><span class="u-text-xs">10 Des - 12 Des 2024</span></td>
+                    <td><span class="u-badge bg-green-100 text-green-700">Completed</span></td>
+                    <td>
+                        <a href="#" class="u-text-xs text-brand u-font-bold">
+                            <i class="fas fa-download u-mr-xs"></i>Sertifikat.pdf
+                        </a>
+                    </td>
+                    <td class="text-center">
+                        <button class="u-btn u-btn--ghost u-btn--sm btn-detail" data-id="2">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
 </div>
 
-{{-- ===== MODALS ===== --}}
-@include('training.training-request.modals.input-modal')
-@include('training.training-request.modals.lna-input-modal')
-@include('training.training-request.modals.lna-detail-modal')
-@include('training.training-request.modals.import-modal')
-@include('training.training-request.modals.edit-modal')
-
 @endsection
 
 @push('scripts')
-<script>
-    window.uiConfig = @json($ui);
-</script>
 
 @vite('resources/js/pages/training/index.js')
 @endpush

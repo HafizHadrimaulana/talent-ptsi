@@ -1,16 +1,21 @@
-<table id="training-request-table"
-    class="u-table u-table-mobile training-table" data-role="SDM Unit" data-dt>
+<table id="approval-pengajuan-training-table"
+    class="u-table u-table-mobile training-table approval-pengajuan-training" data-dt>
     <thead>
         <tr>
             <th>No</th>
             <th>Judul Sertifikasi</th>
-            <th>Peserta</th>
-            <th>Tanggal Mulai</th>
-            <th>Tanggal Berakhir</th>
-            <th>Realisasi Biaya Pelatihan</th>
+            <th>Unit</th>
+            <th>Penyelenggara</th>
+            <th>Jumlah Jam</th>
+            <th>Waktu Pelaksanaan</th>
+            <th>Biaya Pelatihan</th>
+            <th>UHPD</th>
+            <th>Biaya Akomodasi</th>
             <th>Estimasi Total Biaya</th>
-            <th>Status Lampiran Penawaran</th>
-            <th>Status Approval</th>
+            <th>Nama Proyek</th>
+            <th>Jenis Portofolio</th>
+            <th>Fungsi</th>
+            <th>Status</th>
             <th class="cell-actions">Aksi</th>
         </tr>
     </thead>

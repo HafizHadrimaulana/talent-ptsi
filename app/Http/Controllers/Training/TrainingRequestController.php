@@ -24,210 +24,9 @@ class TrainingRequestController extends Controller
         $this->importService = $importService;
     }
 
-    // Display a listing of the resource.
-    public function index(Request $request)
+    public function index()
     {
-        $user = auth()->user();
-        $role = $user->getRoleNames()->first();
-    
-        // ======================================
-        // Privilege "lihat semua unit"
-        // ======================================
-        $hasRoleAll = $user->hasRole(['Superadmin', 'DHC']);
-
-        // Deteksi Head Office (fleksibel by code/name)
-        $hoUnitId = DB::table('units')
-            ->select('id')
-            ->where(function ($q) {
-                $q->where('code', 'HO')
-                  ->orWhere('code', 'HEADOFFICE')
-                  ->orWhere('name', 'SI Head Office')
-                  ->orWhere('name', 'Head Office')
-                  ->orWhere('name', 'LIKE', '%Head Office%');
-            })
-            ->value('id');
-
-        $isHeadOfficeUser = $hoUnitId && $user?->unit_id == $hoUnitId;
-        $canSeeAll = $hasRoleAll || $isHeadOfficeUser;
-
-        // ======================================
-        // Resolve selected unit (query ?unit_id= )
-        // ======================================
-        $selectedUnitId = null;
-        if ($canSeeAll) {
-            $selectedUnitId = $request->filled('unit_id')
-                ? (int) $request->integer('unit_id')
-                : null; // null = all units
-        } else {
-            $selectedUnitId = (int) ($user?->unit_id);
-        }
-
-        // ======================================
-        // Unit options untuk dropdown
-        // ======================================
-        $unitsQ = DB::table('units')->select('id', 'name')->orderBy('name');
-        $units  = $canSeeAll
-            ? $unitsQ->get()
-            : $unitsQ->where('id', $user?->unit_id)->get();
-        
-            
-        Log::info("Unit ID: " . $selectedUnitId);
-        Log::info("Unit: " . $units);
-
-        // |--------------------------------------------------------------------------
-        // |  UI CONFIG
-        // |--------------------------------------------------------------------------
-        $uiMap = [
-
-            'DHC' => [
-                'tabs' => ['update-data-LNA', 'approval-training-karyawan', 'approval-pengajuan-training'],
-                'default_tab' => 'update-data-LNA',
-
-                'tab_configs' => [
-
-                    'update-data-LNA' => [
-                        'buttons' => [
-                            'import',
-                            'lna-input',
-                        ],
-                        'show_download_template' => true,
-                        'tables' => [
-                            'data-lna-table',
-                        ],
-                    ],
-
-                    'approval-training-karyawan' => [
-                        'buttons' => [],
-                        'tables' => [
-                            'training-request-table',
-                        ],
-                    ],
-
-                    'approval-pengajuan-training' => [
-                        'buttons' => [],
-                        'tables' => [
-                            'approval-pengajuan-training-table',
-                        ],
-                    ]
-                ],
-            ],
-
-            'SDM Unit' => [
-                'tabs' => ['pengajuan-pelatihan', 'data-LNA'],
-                'default_tab' => 'pengajuan-pelatihan',
-
-                'tab_configs' => [
-
-                    'data-LNA' => [
-                        'buttons' => ['lna-input'],
-                        'tables' => [
-                            'data-lna-table',
-                        ],
-                    ],
-
-                    'pengajuan-pelatihan' => [
-                        'buttons' => [
-                            'import',
-                            'training-input'
-                        ],
-                        'show_download_template' => true,
-                        'tables' => [
-                            'training-request-table',
-                        ],
-                    ]
-                ],
-            ],
-
-            'Kepala Unit' => [
-                'tabs' => ['training-request'],
-                'default_tab' => 'training-request',
-
-                'tab_configs' => [
-
-                    'training-request' => [
-                        'buttons' => [],
-                        'tables' => [
-                            'training-request-table',
-                        ],
-                    ]
-                ],
-            ],
-
-            'DBS Unit' => [
-                'tabs' => ['approval-pengajuan-training'],
-                'default_tab' => 'approval-pengajuan-training',
-
-                'tab_configs' => [
-
-                   'approval-pengajuan-training' => [
-                        'buttons' => [],
-                        'tables' => [
-                            'approval-pengajuan-training-table',
-                        ],
-                    ]
-                ],
-            ],
-
-            'AVP' => [
-                'tabs' => ['training-request'],
-                'default_tab' => 'training-request',
-
-                'tab_configs' => [
-
-                    'training-request' => [
-                        'buttons' => [],
-                        'tables' => [
-                            'training-request-table',
-                        ],
-                    ]
-                ],
-            ],
-
-            'Superadmin' => [
-                'tabs' => ['lna', 'training'],
-                'default_tab' => 'training',
-
-                'buttons' => [
-                    'training_import',
-                ],
-
-                'tables' => [
-                    'lna' => 'training-request-table',
-                    'training' => 'training-table',
-                ],
-            ],
-        ];
-
-        /*
-        |--------------------------------------------------------------------------
-        | Fallback jika role tidak dikenali
-        |--------------------------------------------------------------------------
-        */
-        $ui = $uiMap[$role] ?? [
-            'tabs' => [],
-            'buttons' => [],
-            'tables' => [
-                'default-table',
-            ],
-        ];
-
-        $activeTab = $request->get('tab', $ui['default_tab'] ?? null);
-
-        Log::info('training.index.ui', [
-            'role' => $role,
-            'activeTab' => $activeTab,
-            'canSeeAll' => $canSeeAll,
-            'selectedUnitId' => $selectedUnitId,
-        ]);
-
-        Log::info("Role index: " . $role);
-    
-        return view('training.training-request.index', [
-            'ui' => $ui,
-            'activeTab' => $activeTab,
-            'units' => $units,
-            'selectedUnitId' => $selectedUnitId,
-        ]);
+        return view('training.training-request.index');
     }
     
     // Import LNA
@@ -690,6 +489,17 @@ class TrainingRequestController extends Controller
             $user  = auth()->user();
             $roles = $user->getRoleNames()->toArray();
 
+            // 1. Setup Query Dasar dengan Eager Loading
+            // Memastikan semua relasi termasuk riwayat approval ditarik sekaligus
+            $query = TrainingRequest::with([
+                'trainingReference',
+                'employee.person',
+                'employee.unit',
+                'approvals' => function($q) {
+                    $q->orderBy('created_at', 'desc'); 
+                }
+            ]);
+
             Log::info('training.getTrainingRequestList.user', [
                 'user_id' => $user->id,
                 'roles'   => $roles,
@@ -699,18 +509,12 @@ class TrainingRequestController extends Controller
             $perPage = $request->input('per_page', 12);
             $page    = $request->input('page', 1);
 
-            $query = TrainingRequest::with([
-                'trainingReference',
-                'employee.person',
-                'employee.unit'
-            ]);
-
             /**
              * ==================================================
              * RULE AKSES UNIT
              * ==================================================
              */
-            $isDHC              = $user->hasRole('DHC');
+            $isDHC            = $user->hasRole('DHC');
             $isAvpOrKepalaUnit  = $user->hasAnyRole(['AVP', 'Kepala Unit']);
             $isHumanCapital     = $this->isHumanCapital($user);
 
@@ -732,7 +536,6 @@ class TrainingRequestController extends Controller
             $allowedStatuses = [];
 
             if (!in_array('SDM Unit', $roles)) {
-
                 if (in_array('Kepala Unit', $roles) && !$isHumanCapital) {
                     $allowedStatuses = ['in_review_gmvp'];
                 }
@@ -747,22 +550,30 @@ class TrainingRequestController extends Controller
                 }
             }
 
-            // Terapkan filter status jika ada
             if (!empty($allowedStatuses)) {
                 $query->whereIn('status_approval_training', $allowedStatuses);
             }
 
             /**
              * ==================================================
-             * FETCH DATA
+             * FETCH DATA (Eksekusi Query)
              * ==================================================
              */
+            // Cukup panggil paginate satu kali di akhir rangkaian builder
             $trainingRequest = $query
                 ->orderBy('id', 'asc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
+            // Debugging Log: Cek apakah item pertama punya approval
+            $sampleApprovalCount = 0;
+            if ($trainingRequest->count() > 0) {
+                $sampleApprovalCount = $trainingRequest->items()[0]->approvals->count();
+            }
+
             Log::info("Fetch data training request berhasil.", [
-                "total" => $trainingRequest->total()
+                "total_data" => $trainingRequest->total(),
+                "sample_id" => $trainingRequest->count() > 0 ? $trainingRequest->items()[0]->id : null,
+                "sample_approval_count" => $sampleApprovalCount
             ]);
 
             return response()->json([
@@ -778,12 +589,13 @@ class TrainingRequestController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('getTrainingRequestList error', [
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 "status" => "error",
-                "message" => $e->getMessage()
+                "message" => "Terjadi kesalahan saat mengambil data."
             ], 500);
         }
     }
@@ -896,34 +708,6 @@ class TrainingRequestController extends Controller
                 "status" => "error",
                 "message" => $e->getMessage(),
             ], 500);
-        }
-    }
-
-    public function approveTrainingRequest($id)
-    {
-        $trainingRequest = TrainingRequest::find($id);
-        Log::info('training request', $trainingRequest->toArray());
-        if (!$trainingRequest) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Data tidak ditemukan.',
-            ], 404);
-        }
-
-        $user = auth()->user();
-        
-        try {
-            $this->processApproval($trainingRequest, 'approve');
-            return response()->json([
-                'status' => 'success',
-                'message' => "Data ID {$id} berhasil di-approve oleh {$user->name}.",
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Approve error', ['error' => $e->getMessage()]);
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 400);
         }
     }
 
@@ -1124,7 +908,7 @@ class TrainingRequestController extends Controller
                 'jenis_portofolio' => $item->jenis_portofolio,
                 'fungsi' => $item->fungsi,
 
-                // ✅ hanya nama unit
+                // hanya nama unit
                 'unit_kerja' => $item->unit?->name,
             ]
         ]);
@@ -1304,95 +1088,6 @@ class TrainingRequestController extends Controller
         );
 
         return $result;
-    }
-
-    private function processApproval(TrainingRequest $trainingRequest, string $action): void 
-    {
-        $currentStatus = $trainingRequest->status_approval_training;
-        $user          = auth()->user();
-        $roleNames     = $user->getRoleNames()->toArray();
-        $isHumanCapital = $this->isHumanCapital($user);
-
-        Log::info('Process approval', [
-            'training_id' => $trainingRequest->id,
-            'current_status' => $currentStatus,
-            'roles' => $roleNames,
-            'isHumanCapital' => $isHumanCapital,
-            'action' => $action,
-        ]);
-
-        /**
-         * =========================================
-         * APPROVAL FLOW CONFIG (SINGLE SOURCE)
-         * =========================================
-         */
-        $approvalFlow = [
-            'in_review_gmvp' => [
-                'next' => 'in_review_dhc',
-                'canApprove' => fn () =>
-                    in_array('Kepala Unit', $roleNames) && !$isHumanCapital,
-            ],
-
-            'in_review_dhc' => [
-                'next' => 'in_review_avpdhc',
-                'canApprove' => fn () =>
-                    in_array('DHC', $roleNames),
-            ],
-
-            'in_review_avpdhc' => [
-                'next' => 'in_review_vpdhc',
-                'canApprove' => fn () =>
-                    in_array('AVP', $roleNames) && $isHumanCapital,
-            ],
-
-            'in_review_vpdhc' => [
-                'next' => 'approved',
-                'canApprove' => fn () =>
-                    in_array('Kepala Unit', $roleNames) && $isHumanCapital, // VP DHC
-            ],
-        ];
-
-        /**
-         * =========================================
-         * REJECT
-         * =========================================
-         */
-        if ($action === 'reject') {
-            $trainingRequest->update([
-                'status_approval_training' => 'rejected',
-                'updated_at' => now()
-            ]);
-
-            Log::warning('Training rejected', [
-                'training_id' => $trainingRequest->id,
-            ]);
-            return;
-        }
-
-        /**
-         * =========================================
-         * APPROVE
-         * =========================================
-         */
-        if (!isset($approvalFlow[$currentStatus])) {
-            throw new \Exception("Status {$currentStatus} tidak valid.");
-        }
-
-        $step = $approvalFlow[$currentStatus];
-
-        if (!$step['canApprove']()) {
-            throw new \Exception("User tidak berhak approve status {$currentStatus}");
-        }
-
-        $trainingRequest->update([
-            'status_approval_training' => $step['next'],
-            'updated_at' => now()
-        ]);
-
-        Log::info('Training approved', [
-            'from' => $currentStatus,
-            'to'   => $step['next'],
-        ]);
     }
 
     private function cleanRupiah($value)
