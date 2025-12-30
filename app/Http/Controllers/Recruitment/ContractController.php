@@ -27,7 +27,6 @@ class ContractController extends Controller
         $query = Contract::with(['unit', 'employee', 'document', 'person', 'applicant'])->orderByDesc('created_at');
 
         if ($isEmployee && !$isSuperadmin && !$isDhc && !$isApproverOnly) {
-             // UPDATE: Hanya muncul jika status Approved atau Signed
              $query->where('employee_id', $userEmployeeId)
                    ->whereIn('status', ['approved', 'signed']); 
         } else {
@@ -366,6 +365,8 @@ class ContractController extends Controller
 
         $targetRole = (in_array($contract->contract_type, ['PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN'])) ? 'Pegawai' : 'Kandidat';
 
+        $geoData = $this->getGeoData($contract, $me);
+
         return response()->json(['success' => true, 'data' => array_merge($contract->toArray(), [
             'contract_type_label' => $typeCfg['label'] ?? $contract->contract_type, 'person_name' => $cand['name'],
             'start_date' => $contract->start_date?->format('d M Y'), 'end_date' => $contract->end_date?->format('d M Y'),
@@ -376,11 +377,43 @@ class ContractController extends Controller
             'candidate_nik' => $cand['nik'] ?? '-',
             'candidate_nik_real' => $cand['nik_real'] ?? '-',
             'target_role_label' => $targetRole,
+            'geolocation' => $geoData,
             'progress' => [
                 'ka_unit' => $kaUnitStatus,
                 'candidate' => $candStatus
             ]
         ])]);
+    }
+
+    protected function getGeoData(Contract $contract, User $user)
+    {
+        $signatures = Signature::where('document_id', $contract->document_id)->get();
+        $headSig = $signatures->where('signer_role', 'Kepala Unit')->last();
+        $candSig = $signatures->whereIn('signer_role', ['Kandidat', 'Pegawai'])->last();
+
+        $geo = ['head' => null, 'candidate' => null];
+        
+        $isPowerUser = $user->hasRole(['Superadmin', 'SDM Unit', 'DHC']);
+        
+        if ($headSig && ($isPowerUser || $headSig->signer_person_id == $user->person_id)) {
+             $geo['head'] = [
+                 'lat' => $headSig->geo_lat, 
+                 'lng' => $headSig->geo_lng, 
+                 'ts' => $headSig->signed_at->format('d M H:i'),
+                 'name' => 'Kepala Unit'
+            ];
+        }
+
+        if ($candSig && ($isPowerUser || $candSig->signer_person_id == $user->person_id)) {
+             $geo['candidate'] = [
+                 'lat' => $candSig->geo_lat, 
+                 'lng' => $candSig->geo_lng, 
+                 'ts' => $candSig->signed_at->format('d M H:i'),
+                 'name' => 'Kandidat/Pegawai'
+            ];
+        }
+
+        return $geo;
     }
 
     protected function resolveCandidate(Contract $c)
@@ -436,11 +469,6 @@ class ContractController extends Controller
             }
         }
         return 'Kepala Unit';
-    }
-
-    protected function guessHeadTitle(User $u)
-    {
-        return $this->getUserJobTitle($u);
     }
 
     protected function generateContractNumber(Contract $c): string

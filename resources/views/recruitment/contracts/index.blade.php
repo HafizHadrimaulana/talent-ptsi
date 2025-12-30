@@ -11,6 +11,9 @@
     $currentUnitId = $selectedUnitId ?? $meUnit;
 @endphp
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
 <style>
     .u-modal {
         z-index: 1050; display: none; position: fixed; inset: 0;
@@ -30,8 +33,8 @@
     }
     .u-modal__card--xl { width: min(100%, 1100px); }
 
-    .u-modal__head { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .u-modal__body { overflow-y: auto; flex: 1; padding: 1.5rem; scrollbar-width: thin; }
+    .u-modal__head { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface-1); }
+    .u-modal__body { overflow-y: auto; flex: 1; padding: 1.5rem; scrollbar-width: thin; background: var(--surface-1); }
     .u-modal__foot { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); background-color: var(--surface-2); }
 
     .u-bg-section { background-color: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); }
@@ -54,6 +57,8 @@
 
     .is-hidden { display: none !important; }
     .u-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+
+    .map-container { height: 250px; width: 100%; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); z-index: 1; }
 
     @media (max-width: 768px) {
         .u-grid-2 { grid-template-columns: 1fr !important; gap: 1rem; }
@@ -553,6 +558,24 @@
                   </div>
             </div>
             
+            <div id="detMapSection" class="is-hidden">
+                <div class="u-bg-section u-p-lg">
+                    <div class="section-divider"><i class="fas fa-map-marked-alt u-text-brand"></i> Verifikasi Lokasi</div>
+                    <div class="u-grid-2 u-stack-mobile">
+                        <div id="wrapperMapHead" class="is-hidden">
+                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Lokasi Kepala Unit (Saat Approval)</div>
+                            <div id="map-head" class="map-container"></div>
+                            <div class="u-text-xs u-muted u-mt-xs text-right" id="ts-head"></div>
+                        </div>
+                        <div id="wrapperMapCand" class="is-hidden">
+                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Lokasi Kandidat/Pegawai (Saat Ttd)</div>
+                            <div id="map-cand" class="map-container"></div>
+                            <div class="u-text-xs u-muted u-mt-xs text-right" id="ts-cand"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="u-bg-section u-p-lg">
                  <div class="section-divider">Approval Progress</div>
                  <div class="u-space-y-md">
@@ -630,7 +653,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
     const csrf = select('meta[name="csrf-token"]')?.content;
     
-    // Utilities
     const hide = el => { if(el) { el.hidden=true; el.style.display='none'; el.classList.add('is-hidden'); } };
     const show = el => { if(el) { el.hidden=false; el.style.display='flex'; el.classList.remove('is-hidden'); } };
     const showBlock = el => { if(el) { el.hidden=false; el.style.display='block'; el.classList.remove('is-hidden'); } };
@@ -649,9 +671,8 @@ document.addEventListener('DOMContentLoaded', () => {
        return terbilang(Math.floor(n/1000000))+' juta '+terbilang(n%1000000);
     };
 
-    // --- LOGIC UTAMA ---
+    let maps = {}; 
 
-    // 1. Calculator Binding
     const bindCalc = (root) => {
         selectAll('input[data-rupiah="true"]', root).forEach(el => {
             const tgtId = el.dataset.terbilangTarget;
@@ -664,7 +685,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // 2. Modal Logic
     const openModal = (id) => {
         const m = document.getElementById(id);
         if(m) { m.hidden = false; m.style.display = 'flex'; document.body.classList.add('modal-open'); }
@@ -680,7 +700,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(btn) { e.preventDefault(); openModal(btn.dataset.modalOpen); }
     });
 
-    // 3. Create Modal Logic
     const btnCreate = select('#btnOpenCreate');
     if(btnCreate) {
         btnCreate.onclick = (e) => { e.preventDefault(); openModal('createContractModal'); };
@@ -799,9 +818,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 4. Edit, Detail Actions
+    const initMap = (divId, lat, lng) => {
+        if (!lat || !lng) return;
+        if (maps[divId]) { maps[divId].remove(); delete maps[divId]; }
+        
+        setTimeout(() => {
+            const el = document.getElementById(divId);
+            if (!el) return;
+            const map = L.map(divId).setView([lat, lng], 15);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            L.marker([lat, lng]).addTo(map);
+            maps[divId] = map;
+            map.invalidateSize();
+        }, 300); 
+    };
+
     doc.body.addEventListener('click', async (e) => {
-        // DETAIL BUTTON
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) {
             e.preventDefault();
@@ -822,7 +856,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#detPos').textContent = d.position_name;
                 select('#detEmpType').textContent = d.employment_type;
 
-                // Status Badge Color
                 if(d.progress) {
                     const cMap = {'Waiting':'u-badge--glass', 'Approved':'u-badge--success', 'Signed':'u-badge--success', 'Rejected':'u-badge--danger', 'Pending':'u-badge--warn'};
                     select('#progKaUnit').textContent = d.progress.ka_unit;
@@ -831,7 +864,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     select('#progCand').className = `u-badge ${cMap[d.progress.candidate]||'u-badge--glass'}`;
                 }
                 
-                // Dynamic Role Label
                 if(d.target_role_label) {
                     select('#roleLabel').textContent = `${d.target_role_label} (Sign)`;
                 }
@@ -864,11 +896,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bSign = select('#btnSign'); d.can_sign ? (show(bSign), bSign.onclick=()=>signAct(d.sign_url, 'Kandidat')) : hide(bSign);
                 const bRej = select('#btnReject'); d.can_approve ? (show(bRej), bRej.onclick=()=>rejectAct(d.reject_url)) : hide(bRej);
 
+                // --- MAPS LOGIC ---
+                const geo = d.geolocation || {};
+                const mapSec = select('#detMapSection');
+                const wHead = select('#wrapperMapHead');
+                const wCand = select('#wrapperMapCand');
+                
+                if (geo.head || geo.candidate) showBlock(mapSec); else hide(mapSec);
+                
+                if (geo.head) {
+                    showBlock(wHead);
+                    select('#ts-head').textContent = `Ditandatangani: ${geo.head.ts}`;
+                    initMap('map-head', geo.head.lat, geo.head.lng);
+                } else hide(wHead);
+
+                if (geo.candidate) {
+                    showBlock(wCand);
+                    select('#ts-cand').textContent = `Ditandatangani: ${geo.candidate.ts}`;
+                    initMap('map-cand', geo.candidate.lat, geo.candidate.lng);
+                } else hide(wCand);
+
                 openModal('detailContractModal');
             } catch(err) { alert(err.message); }
         }
 
-        // EDIT BUTTON
         const btnEdit = e.target.closest('.js-btn-edit');
         if(btnEdit) {
             e.preventDefault();
@@ -915,7 +966,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 5. SIGN ACTION (OPTIMIZED & ROBUST)
     const signAct = (url, role) => {
         const m = select('#signModal');
         const f = select('#signForm');
@@ -925,7 +975,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnSubmit = select('#btnSubmitSign');
         const geoStat = select('#geoStatus');
         
-        // Reset UI
         f.reset();
         select('[name="signature_image"]').value = '';
         select('[name="geo_lat"]').value = '';
@@ -934,7 +983,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         openModal('signModal');
 
-        // Fix Canvas Size (Delay to allow modal render)
         setTimeout(() => {
             cvs.width = cvs.offsetWidth;
             cvs.height = 200;
@@ -945,17 +993,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.clearRect(0, 0, cvs.width, cvs.height);
         }, 150);
 
-        // --- GEOLOCATION LOGIC (FALLBACK) ---
         geoStat.textContent = "Mendeteksi Lokasi...";
         geoStat.className = "u-text-sm u-font-medium u-text-muted";
         
         const getGeo = (highAccuracy) => {
-            // Cek Secure Context (Wajib HTTPS kecuali localhost)
             if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
                  geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS untuk Lokasi!</span>';
-                 // Pada mode dev tanpa HTTPS, kita bypass saja agar tetap bisa testing tombol submit
                  console.warn("Skipping geo check due to non-secure context");
-                 // checkReady(); // Uncomment jika ingin bypass validasi lokasi
                  return;
             }
             if (!("geolocation" in navigator)) {
@@ -975,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 (err) => {
                     if (highAccuracy && err.code !== 1) {
                         geoStat.textContent = "Mencoba akurasi rendah...";
-                        getGeo(false); // Retry with low accuracy
+                        getGeo(false); 
                     } else {
                         let msg = "Gagal mendeteksi lokasi.";
                         if(err.code === 1) msg = "Izin lokasi ditolak browser.";
@@ -987,11 +1031,9 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         };
 
-        getGeo(true); // Start with high accuracy
+        getGeo(true); 
 
-        // --- CAMERA LOGIC ---
         let streamObj = null;
-        // Hanya nyalakan kamera jika secure context
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === 'localhost')) {
             showBlock(camSec);
             select('#cameraPlaceholder').hidden = false;
@@ -1006,10 +1048,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Wajib HTTPS";
                 });
         } else {
-            hide(camSec); // Hide if not supported or not secure
+            hide(camSec); 
         }
 
-        // --- DRAWING LOGIC (OPTIMIZED) ---
         let isDown = false;
         let hasSigned = false;
         const ctx = cvs.getContext('2d');
