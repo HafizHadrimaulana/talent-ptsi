@@ -9,13 +9,12 @@ use App\Http\Controllers\Admin\Access\PermissionController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Self\ProfileController;
 
-// Recruitment (internal)
 use App\Http\Controllers\Recruitment\MonitoringController as RecruitmentMonitoringController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController as RecruitmentApprovalController;
 use App\Http\Controllers\Recruitment\ContractController;
 use App\Http\Controllers\Recruitment\PublishingController;
-
-// Training (internal, optional)
+use App\Http\Controllers\Recruitment\ApplicantDataController;
+use App\Http\Controllers\Public\CareerController;
 use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
     DashboardController as TrainingDashboardController,
@@ -23,7 +22,6 @@ use App\Http\Controllers\Training\{
     TrainingManagementController
 };
 
-// Back Office Org (Directorates & Units)
 use App\Http\Controllers\Admin\Org\OrgController;
 
 Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
@@ -45,7 +43,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->group(function () {
-        Route::get('employees',      [EmployeeController::class, 'index'])->middleware('permission:employees.view')->name('employees.index');
+        Route::get('employees',       [EmployeeController::class, 'index'])->middleware('permission:employees.view')->name('employees.index');
         Route::get('employees/{id}', [EmployeeController::class, 'show'])->middleware('permission:employees.view')->name('employees.show');
         Route::get('employees/positions/options', [EmployeeController::class, 'positionOptions'])->middleware('permission:employees.view')->name('employees.positions.options');
     });
@@ -81,11 +79,11 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('contracts', [ContractController::class, 'index'])->middleware('permission:contract.view')->name('contracts.index');
         Route::get('contracts/{contract}', [ContractController::class, 'show'])->middleware('permission:contract.view')->name('contracts.show');
         
-        // --- ROUTE BARU UNTUK DOKUMEN AMAN ---
+        Route::delete('contracts/{contract}', [ContractController::class, 'destroy'])->middleware('permission:contract.delete')->name('contracts.destroy');
+
         Route::get('contracts/{contract}/document', [ContractController::class, 'document'])
             ->middleware('permission:contract.view')
             ->name('contracts.document');
-        // -------------------------------------
 
         Route::post('contracts', [ContractController::class, 'store'])->middleware('permission:contract.create')->name('contracts.store');
         Route::put('contracts/{contract}', [ContractController::class, 'update'])->middleware('permission:contract.update')->name('contracts.update');
@@ -103,7 +101,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
     Route::prefix('training')->name('training.')->group(function () {
 
-        // Dashboard
         Route::get('dashboard', [TrainingDashboardController::class,'index'])
             ->middleware('permission:training.view')->name('dashboard');
         Route::get('dashboard/data-evaluation', [TrainingDashboardController::class,'getDataEvaluation'])
@@ -125,8 +122,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
             ->name('dashboard.update-realisasi-date');
 
-        // Training Request
-        //// dhc unit
         Route::get('training-request', [TrainingRequestController::class, 'index'])
             ->name('training-request');
         Route::post('training-request/import-lna', [TrainingRequestController::class, 'importLna'])
@@ -163,9 +158,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.input-training-request');
         Route::post('training-request/import-training', [TrainingRequestController::class, 'importTraining'])
             ->name('training-request.import-training');
-        // END
-            
-        // Kepala Unit
+
         Route::post('training-request/{id}/approve-training-request', [TrainingRequestController::class,'approveTrainingRequest'])
             ->name('training-request.approve-training-request');
         Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
@@ -185,13 +178,10 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');
-        // END 
-        
-        // Self Learning
+
         Route::get('self-learning', fn () => view('training.self-learning.index'))
             ->middleware('permission:training.view')->name('self-learning');
 
-        // Principal Approval
         Route::get('principal-approval', fn () => view('training.principal-approval.principal-approval'))
             ->middleware('permission:training.view')->name('principal-approval');
     });
@@ -205,5 +195,20 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('contracts', function () { return view('reports.contracts'); })->name('contracts');
         Route::get('recruitment', function () { return view('reports.recruitment'); })->name('recruitment');
         Route::get('training', function () { return view('reports.training'); })->name('training');
-     });
+    });
+    
+    // Biodata & Status
+    Route::prefix('recruitment/applicant-data')
+        ->name('recruitment.applicant-data.')
+        ->middleware('permission:applicant.data.view') // Permission baru
+        ->group(function () {
+            Route::get('/', [ApplicantDataController::class, 'index'])->name('index');
+            Route::post('/update', [ApplicantDataController::class, 'update'])->name('update');
+        });
+
+    // Cari Lowongan (Versi Login)
+    Route::get('careers', [CareerController::class, 'index'])
+        ->middleware('permission:careers.view') // Permission baru
+        ->name('careers.index');
+
 });
