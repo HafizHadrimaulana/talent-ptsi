@@ -18,7 +18,6 @@ use App\Http\Controllers\Recruitment\PublishingController;
 // Training (internal, optional)
 use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
-    PrincipalApprovalController as TrainingApprovalController,
     DashboardController as TrainingDashboardController,
     TrainingRequestController,
     TrainingManagementController
