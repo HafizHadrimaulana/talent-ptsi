@@ -17,22 +17,16 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class PrincipalApprovalController extends Controller
 {
-    // Tambahkan method ini di dalam class PrincipalApprovalController
     protected function getUserJobTitle($userId)
     {
-        // Ambil data user dulu untuk mendapatkan person_id
-        $user = DB::table('users')->where('id', $userId)->first();
-        
+        $user = DB::table('users')->where('id', $userId)->first();   
         if (!$user || empty($user->person_id)) {
             return null;
         }
-
-        // Cari Jabatan di tabel employees berdasarkan person_id
         $jobTitle = DB::table('employees')
             ->join('positions', 'employees.position_id', '=', 'positions.id')
             ->where('employees.person_id', $user->person_id) // Gunakan person_id, bukan user_id
-            ->value('positions.name');
-            
+            ->value('positions.name');   
         return $jobTitle;
     }
     protected function stages(): array
@@ -49,10 +43,7 @@ class PrincipalApprovalController extends Controller
     protected function canSeeAll($user): bool
     {
         if (!$user) return false;
-        
-        // Cek Role & Job Title agar menu muncul
         $jobTitle = $this->getUserJobTitle($user->id);
-        
         return $user->hasRole('Superadmin') 
             || $user->hasRole('DHC') 
             || $user->hasRole('Dir SDM')
@@ -66,13 +57,11 @@ class PrincipalApprovalController extends Controller
     {
         static $cache = null;
         if ($cache !== null) return $cache;
-
         $cache = DB::table('units')->where(function ($q) {
             $q->where('code', 'DHC')
               ->orWhere('name', 'Divisi Human Capital')
               ->orWhere('name', 'like', 'Divisi Human Capital%');
         })->value('id');
-
         return $cache ? (int) $cache : null;
     }
 
@@ -89,20 +78,15 @@ class PrincipalApprovalController extends Controller
     {
         $query = RecruitmentRequest::query();
         $tbl = (new RecruitmentRequest())->getTable();
-
         if (!$canSeeAll && $me) {
             $isKepalaUnit = $me->hasRole('Kepala Unit');
-
             $query->where(function ($q) use ($me, $tbl, $isKepalaUnit) {
                 $q->where('unit_id', $me->unit_id);
-
                 $q->where(function ($qq) use ($tbl, $me, $isKepalaUnit) {
                     $qq->whereNull('status')->orWhere('status', '!=', 'draft');
-
                     $creatorCols = ['requested_by', 'requested_by_user_id', 'created_by', 'created_by_user_id'];
                     $qq->orWhere(function ($qDraft) use ($tbl, $creatorCols, $me, $isKepalaUnit) {
                         $qDraft->where('status', 'draft');
-
                         if ($isKepalaUnit) {
                             $qDraft->whereRaw('1 = 0');
                         } else {
@@ -122,7 +106,6 @@ class PrincipalApprovalController extends Controller
         if ($selectedUnitId && $this->has($tbl, 'unit_id')) {
             $query->where('unit_id', $selectedUnitId);
         }
-
         return $query;
     }
 
@@ -130,15 +113,12 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         $canSeeAll = $this->canSeeAll($me);
-
         $selectedUnitId = $canSeeAll
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
             : (int) ($me?->unit_id);
-
         $units = $canSeeAll
             ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
             : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
-
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
 
         if ($r->filled('open_ticket_id')) {
@@ -170,13 +150,12 @@ class PrincipalApprovalController extends Controller
             'project_code' => 'required|unique:projects,project_code',
             'project_name' => 'required|string',
             'location_id'  => 'required|exists:locations,id',
-            'document'     => 'required|file|mimes:pdf,doc,docx|max:5120', // Max 5MB
+            'document'     => 'required|file|mimes:pdf,doc,docx|max:5120',
         ]);
 
         try {
             $path = null;
             if ($request->hasFile('document')) {
-                // Simpan di folder 'project_docs' di storage public
                 $path = $request->file('document')->store('project_docs', 'public');
             }
 
@@ -202,17 +181,13 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         $canSeeAll = $this->canSeeAll($me);
-        
-        // Ambil filter unit jika ada
         $selectedUnitId = $canSeeAll 
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null) 
             : (int) ($me?->unit_id);
-
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
         $query->latest();     
         $positionsMap = DB::table('positions')->pluck('name', 'id')->toArray();
 
-        // Download Excel
         return Excel::download(
             new RecruitmentRequestExport($query, $positionsMap), 
             'Daftar_Izin_Prinsip_' . date('Y-m-d_H-i') . '.xlsx'
@@ -237,26 +212,20 @@ class PrincipalApprovalController extends Controller
 
         $me   = Auth::user();
         $meId = Auth::id();
-
         $model = new RecruitmentRequest();
         $tbl   = $model->getTable();
-
         $pick = function (array $cands) use ($tbl) {
             foreach ($cands as $c) {
                 if (Schema::hasColumn($tbl, $c)) return $c;
             }
             return null;
         };
-
         $insert = [];
-
         if ($this->has($tbl, 'unit_id'))  $insert['unit_id'] = $me?->unit_id;
         if ($this->has($tbl, 'status'))   $insert['status']  = 'draft';
-
         if ($col = $pick(['requested_by', 'requested_by_user_id', 'created_by', 'created_by_user_id'])) {
             $insert[$col] = $meId;
         }
-
         $map = [
             'request_type'         => ['request_type', 'type'],
             'title'                => ['title', 'job_title', 'name'],
@@ -269,7 +238,6 @@ class PrincipalApprovalController extends Controller
             'budget_ref'           => ['budget_ref', 'rkap_ref', 'rab_ref', 'budget_reference'],
             'publish_vacancy_pref' => ['publish_vacancy_pref', 'publish_pref', 'publish_vacancy'],
         ];
-
         foreach ($map as $key => $cands) {
             if (!array_key_exists($key, $data)) continue;
             if ($data[$key] === null || $data[$key] === '') continue;
@@ -284,25 +252,19 @@ class PrincipalApprovalController extends Controller
                 if (is_array($detailsArray)) {
                     $insert['meta'] = ['recruitment_details' => $detailsArray];
                 }
-            } catch (\Exception $e) {
-            }
+            } catch (\Exception $e) {}
         }
-
         $model->forceFill($insert)->save();
-
         return back()->with('ok', 'Draft Izin Prinsip berhasil dibuat.');
     }
 
     public function destroy(RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
-
         if (($req->status ?? null) !== 'draft') {
             return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat dihapus.');
         }
-
         $req->delete();
-
         return redirect()->route('recruitment.principal-approval.index')
             ->with('ok', 'Draft Izin Prinsip berhasil dihapus.');
     }
@@ -310,11 +272,9 @@ class PrincipalApprovalController extends Controller
     public function update(Request $r, RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
-
         if (($req->status ?? null) !== 'draft') {
             return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat diedit.');
         }
-
         $data = $r->validate([
             'request_type'         => 'required|string|in:Rekrutmen,Perpanjang Kontrak',
             'title'                => 'required|string',
@@ -328,18 +288,14 @@ class PrincipalApprovalController extends Controller
             'publish_vacancy_pref' => 'nullable|string|max:10',
             'details_json'         => 'nullable|string',
         ]);
-
         $tbl = $req->getTable();
-
         $pick = function (array $cands) use ($tbl) {
             foreach ($cands as $c) {
                 if (Schema::hasColumn($tbl, $c)) return $c;
             }
             return null;
         };
-
         $update = [];
-
         $map = [
             'request_type'         => ['request_type', 'type'],
             'title'                => ['title', 'job_title', 'name'],
@@ -352,7 +308,6 @@ class PrincipalApprovalController extends Controller
             'budget_ref'           => ['budget_ref', 'rkap_ref', 'rab_ref', 'budget_reference'],
             'publish_vacancy_pref' => ['publish_vacancy_pref', 'publish_pref', 'publish_vacancy'],
         ];
-
         foreach ($map as $key => $cands) {
             if (!array_key_exists($key, $data)) continue;
             if ($data[$key] === null || $data[$key] === '') continue;
@@ -360,7 +315,6 @@ class PrincipalApprovalController extends Controller
                 $update[$col] = $data[$key];
             }
         }
-
         if (!empty($data['details_json'])) {
             try {
                 $detailsArray = json_decode($data['details_json'], true);
@@ -369,36 +323,27 @@ class PrincipalApprovalController extends Controller
                     $currentMeta['recruitment_details'] = $detailsArray;
                     $update['meta'] = $currentMeta;
                 }
-            } catch (\Exception $e) {
-
-            }
+            } catch (\Exception $e) {}
         }
-
         if (!empty($update)) {
             $req->forceFill($update)->save();
         }
-
         return back()->with('ok', 'Draft Izin Prinsip berhasil diperbarui.');
     }
 
     public function submit(RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
-
         if (($req->status ?? null) !== 'draft') {
             return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat disubmit.');
         }
-
         if (Schema::hasColumn($req->getTable(), 'status')) {
             $req->update(['status' => 'submitted']);
         }
-
         $this->createPendingApproval($req, 0);
-
         if (Schema::hasColumn($req->getTable(), 'status')) {
             $req->update(['status' => 'in_review']);
         }
-
         return back()->with('ok', 'Permintaan dikirim ke Kepala Unit.');
     }
 
@@ -411,28 +356,22 @@ class PrincipalApprovalController extends Controller
         if (!$this->canActOnStage(Auth::user(), $stageIdx, $req->unit_id)) {
             abort(403);
         }
-
         $note = $r->input('note'); 
         $extendedNote = $r->input('extended_note');
-
         if (!empty($extendedNote)) {
             $cleanNote = strip_tags($extendedNote, '<b><i><u><ol><ul><li><br><p>'); 
             $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
         }
-
         $this->closePending($req, 'approved', $note);
-
         $isLast = $stageIdx >= (count($this->stages()) - 1);
         if ($isLast) {
             if (Schema::hasColumn($req->getTable(), 'status')) {
                 $req->update(['status' => 'approved']);
-            }
-            
+            }        
             $req->generateTicketNumber();
-            
+
             return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui. Nomor Ticket: ' . $req->ticket_number);
         }
-
         $this->createPendingApproval($req, $stageIdx + 1);
         return back()->with('ok', 'Disetujui dan diteruskan ke approver berikutnya.');
     }
@@ -446,13 +385,10 @@ class PrincipalApprovalController extends Controller
         if (!$this->canActOnStage(Auth::user(), $stageIdx, $req->unit_id)) {
             abort(403);
         }
-
         $this->closePending($req, 'rejected', $r->input('note'));
-
         if (Schema::hasColumn($req->getTable(), 'status')) {
             $req->update(['status' => 'rejected']);
         }
-
         return back()->with('ok', 'Permintaan ditolak.');
     }
 
@@ -469,12 +405,7 @@ class PrincipalApprovalController extends Controller
         $rel = $req->approvals();
         $m   = $rel->getRelated()->newInstance();
         $stageKey = $this->stages()[$stageIdx]['key'] ?? ('stage_' . $stageIdx);
-
-        $m->forceFill([
-            'status' => 'pending',
-            'note'   => "[stage={$stageKey}]",
-        ]);
-
+        $m->forceFill(['status' => 'pending','note'   => "[stage={$stageKey}]",]);
         $rel->save($m);
     }
 
@@ -498,11 +429,8 @@ class PrincipalApprovalController extends Controller
     {
         if (!$user) return false;
         if ($user->hasRole('Superadmin')) return true;
-
         $stage = $this->stages()[$stageIdx] ?? null;
         if (!$stage) return false;
-
-        // Cek Permission via Role (Spatie)
         $allowed = false;
         foreach ($stage['roles'] as $r) {
             if ($user->hasRole($r)) {
@@ -510,35 +438,22 @@ class PrincipalApprovalController extends Controller
                 break;
             }
         }
-
-        // Ambil Jabatan User Realtime (Fallback jika Role tidak assigned)
         $jobTitle = $this->getUserJobTitle($user->id);
         $cleanJobTitle = trim(strtoupper($jobTitle));
-
-        // --- LOGIC PER STAGE ---
-
-        // Stage 1: Kepala Unit
         if ($stage['key'] === 'kepala_unit') {
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
-
-        // Stage 2: DHC Checker
         if ($stage['key'] === 'dhc_checker') {
             if ($allowed) return true;
             $isKepalaUnit = $user->hasRole('Kepala Unit');
             return $isKepalaUnit && $this->dhcUnitId() && ((string) $user->unit_id === (string) $this->dhcUnitId());
         }
-
-        // Stage 3: AVP Human Capital Operation
         if ($stage['key'] === 'avp_hc_ops') {
             return $allowed || ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
         }
-
-        // Stage 4: VP Human Capital
         if ($stage['key'] === 'vp_hc') {
             return $allowed || ($cleanJobTitle === 'VP HUMAN CAPITAL');
         }
-        
         return $allowed;
     }
 
@@ -546,9 +461,7 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         if (!$me) abort(401);
-        
         $jobTitle = $this->getUserJobTitle($me->id);
-
         if ($me->hasRole('Superadmin') 
             || $me->hasRole('DHC') 
             || $me->hasRole('Dir SDM')
@@ -568,17 +481,13 @@ class PrincipalApprovalController extends Controller
     {
         $json = $request->input('data');
         $d = json_decode($json, true);
-
         if (!$d) {
             return "Data uraian jabatan tidak valid atau kosong.";
         }
-
         $pdf = Pdf::loadView('pdf.uraian_jabatan', compact('d'));
         $pdf->setPaper('a4', 'portrait');
-        
         $safeName = preg_replace('/[^A-Za-z0-9\-]/', '_', $d['nama'] ?? 'Draft');
         $filename = 'Uraian_Jabatan_' . $safeName . '.pdf';
-        
         return $pdf->stream($filename);
     }
 }

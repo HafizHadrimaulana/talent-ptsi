@@ -35,6 +35,7 @@ return [
 'SPK'=>['margin_cm'=>['top'=>3.5013,'right'=>2.54,'bottom'=>3.2508,'left'=>2.54]],
 'PKWT'=>['margin_cm'=>['top'=>3.5560,'right'=>2.3107,'bottom'=>3.3020,'left'=>2.3107]],
 'PB'=>['margin_cm'=>['top'=>2.7005,'right'=>2.5012,'bottom'=>2.7005,'left'=>2.5012]],
+'BIODATA' => ['margin_cm' => ['top' => 3.5, 'right' => 2.0, 'bottom' => 2.8, 'left' => 2.0]],
 ],
 'font'=>['family'=>'Tahoma','size_pt'=>11,'title_size_pt'=>14,'line_height'=>1.15,'paragraph_after_pt'=>3,'regular_file'=>'app/fonts/tahoma.ttf','bold_file'=>'app/fonts/tahomabd.ttf'],
 'dompdf'=>['dpi'=>96,'isRemoteEnabled'=>true,'isHtml5ParserEnabled'=>true],

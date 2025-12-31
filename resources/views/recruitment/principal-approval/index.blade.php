@@ -5,68 +5,31 @@
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
 
 <style>
-    #createApprovalModal {
-        z-index: 1050 !important;
-    }
-    
-    #uraianModal {
-        z-index: 2000 !important; 
-        background-color: rgba(0, 0, 0, 0.5); 
-        display: none;
-        align-items: center;
-        justify-content: center;
-        position: fixed;
-        inset: 0;
-    }
-    
-    #uraianModal:not([hidden]) {
-        display: flex !important;
-    }
-
-    #noteEditorModal {
-        z-index: 2050 !important; 
-        background-color: rgba(0, 0, 0, 0.5); 
-        /* Flexbox centering magic - Wajib ada */
-        display: none; 
-        align-items: center; 
-        justify-content: center; 
-        position: fixed; 
-        inset: 0;
-    }
-
-    #noteEditorModal:not([hidden]) {
-        display: flex !important;
-    }
-
+    #createApprovalModal {z-index: 1050 !important;}
+    #uraianModal {z-index: 2000 !important; background-color: rgba(0, 0, 0, 0.5); display: none;align-items: center; justify-content: center; position: fixed; inset: 0; }
+    #uraianModal:not([hidden]) {display: flex !important;}
+    #noteEditorModal {z-index: 2050 !important; background-color: rgba(0, 0, 0, 0.5); display: none; align-items: center; justify-content: center; position: fixed; inset: 0;}
+    #noteEditorModal:not([hidden]) {display: flex !important;}
     #detailApprovalModal { z-index: 1060 !important; }
-
     .modal-card-wide { width: 95% !important; max-width: 1000px !important; max-height: 90vh; display: flex; flex-direction: column; }
     .u-modal__body { overflow-y: auto; }
-    
     .uj-section-title { font-weight: 700; font-size: 0.95rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; margin-bottom: 1rem; color: #374151; text-transform: uppercase; background-color: #f3f4f6; padding: 8px; margin-top: 10px; }
     .uj-label { font-size: 0.85rem; font-weight: 600; color: #4b5563; margin-bottom: 0.25rem; display: block; }
-    
     .u-grid-2-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (max-width: 768px) { .u-grid-2-custom { grid-template-columns: 1fr; } }
-
-    /* --- CKEditor Styles --- */
     .ck-editor__editable_inline { min-height: 200px; max-height: 400px; }
     .ck.ck-balloon-panel { z-index: 2060 !important; }
 </style>
-
 @php
   use Illuminate\Support\Facades\DB;
   use Illuminate\Support\Facades\Gate;
   use Illuminate\Support\Facades\Auth;
-  
   $me       = auth()->user();
   $meUnit = $me ? $me->unit_id : null;
   $meUnitName = $meUnit ? DB::table('units')->where('id', $meUnit)->value('name') : '';
-
   $canSeeAll       = isset($canSeeAll)       ? $canSeeAll       : false;
   $selectedUnitId = isset($selectedUnitId) ? $selectedUnitId : null;
   $units          = isset($units)          ? $units          : collect();
-
   if ($units->isEmpty()) {
       $units = $canSeeAll
           ? DB::table('units')->select('id','name')->orderBy('name')->get()
@@ -74,32 +37,27 @@
   }
   $unitMap = $units->pluck('name','id');
   $dhcUnitId = DB::table('units')->where(function($q){ $q->where('code','DHC')->orWhere('name','Divisi Human Capital')->orWhere('name','like','Divisi Human Capital%'); })->value('id');
-
   $canCreate = Gate::check('recruitment.create') || Gate::check('recruitment.update') || ($me && $me->hasRole('SDM Unit')) || ($me && $me->hasRole('Superadmin'));
-
   $rkapList = isset($rkapList) ? $rkapList : collect([
     (object)['name' => 'Reporter', 'rkap' => 5, 'existing' => 2],
     (object)['name' => 'KJJJ', 'rkap' => 3, 'existing' => 1],
     (object)['name' => 'Inspektor', 'rkap' => 4, 'existing' => 4],
   ]);
-
   $positions = DB::table('positions')->select('id', 'name')->where('is_active',1)->orderBy('name')->get();
-
   try {
       $rawPics = DB::table('employees')->join('persons', 'employees.person_id', '=', 'persons.id')->select('employees.id', 'employees.employee_id', 'persons.full_name')->where('employees.unit_id', $selectedUnitId ?? $meUnit)->orderBy('persons.full_name')->get();
   } catch (\Exception $e) { $rawPics = collect(); }
-
   $picListFormatted = $rawPics->map(function($p) { return ['id' => $p->id, 'name' => ($p->employee_id ?? '-') . ' - ' . ($p->full_name ?? '-')]; })->values();
-  $locationsJs = $locations->map(function($l) {
+  $locationsJs = $locations
+      ->unique('city')
+      ->map(function($l) {
         return [
             'id' => $l->id, 
-            'name' => $l->city . ' - ' . $l->name
+            'name' => $l->city
         ];
     })->values();
 @endphp
-
 <div class="u-card u-card--glass u-hover-lift">
-  {{-- Header & Filter --}}
   <div class="u-flex u-items-center u-justify-between u-mb-md">
     <h2 class="u-title">Izin Prinsip</h2>
     <form method="get" class="u-flex u-gap-sm u-items-center">
@@ -118,16 +76,12 @@
     <button class="u-btn u-btn--brand u-hover-lift" data-modal-open="createApprovalModal" data-mode="create"><i class="fas fa-plus u-mr-xs"></i> Buat Permintaan</button>
     @endif
   </div>
-
-  {{-- Notifications --}}
   @if(session('ok')) @push('swal') <script>window.toastOk('Berhasil', {!! json_encode(session('ok')) !!});</script> @endpush @endif
   @if($errors->any())
     <div class="u-card u-mb-md u-error">
       <ul class="u-list">@foreach($errors->all() as $e)<li class="u-item">{{ $e }}</li>@endforeach</ul>
     </div>
   @endif
-
-  {{-- Tabel Utama --}}
   <div class="dt-wrapper">
     <div class="u-flex u-items-center u-justify-between u-mb-sm">
       <div class="u-font-semibold">Daftar Izin Prinsip</div>
@@ -144,17 +98,13 @@
             $meUnit = auth()->user()->unit_id; 
             $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
             $me = auth()->user();
-
-            // --- 1. LOGIC APPROVAL HISTORY & NOTES ---
             $approvalHistory = [];
             $roleTitles = ['Kepala Unit', 'DHC', 'AVP HC Ops', 'VP Human Capital', 'Dir SDM'];
-            
             if ($r->relationLoaded('approvals')) {
                 foreach ($r->approvals as $index => $app) {
                     $rawNote = $app->note;
                     $cleanNote = preg_replace('/\[stage=[^\]]+\]/', '', $rawNote); 
                     $cleanNote = trim($cleanNote); 
-
                     $approvalHistory[] = [
                         'role'   => $roleTitles[$index] ?? 'Approver',
                         'status' => $app->status, 
@@ -163,7 +113,6 @@
                     ];
                 }
             }
-
             $myJobTitle = null;
             if ($me->person_id) {
                 $myJobTitle = DB::table('employees')
@@ -171,9 +120,6 @@
                     ->where('employees.person_id', $me->person_id)
                     ->value('positions.name');
             }
-                
-
-            // --- 2. LOGIC VISIBILITY CATATAN ---
             $isRequester = $me->id === $r->created_by || $me->id === $r->requested_by;
             $isApprover = $me->hasRole('Kepala Unit') 
                        || $me->hasRole('DHC') 
@@ -182,21 +128,16 @@
                        || $me->hasRole('SDM Unit')
                        || ($me->hasRole('AVP Human Capital Operation') || $myJobTitle === 'AVP Human Capital Operation')
                        || ($me->hasRole('VP Human Capital') || $myJobTitle === 'VP Human Capital');
-            
             $canViewNotes = $isRequester || $isApprover;
-            
             $stageIndex = null; 
             $rejectedByLabel = ''; 
-
             if ($r->relationLoaded('approvals')) { 
                 foreach ($r->approvals as $i => $ap) { 
                     if ($stageIndex === null && ($ap->status ?? 'pending') === 'pending') { $stageIndex = $i; }
                     if (($ap->status ?? '') === 'rejected') { $rejectedByLabel = $roleTitles[$i] ?? 'Approver'; }
                 } 
             }
-
             $me = auth()->user();
-            // DEFINISI ROLES USER LOGIN
             $meRoles = [ 
                 'Superadmin'  => $me && $me->hasRole('Superadmin'), 
                 'Kepala Unit' => $me && $me->hasRole('Kepala Unit'), 
@@ -205,7 +146,6 @@
                 'VP HC'       => $me && $me->hasRole('VP Human Capital'),
                 'Dir SDM'     => $me && $me->hasRole('Dir SDM') 
             ];
-            
             $status          = $r->status ?? 'draft';
             $employmentType  = $r->employment_type ?? $r->contract_type ?? null;
             $targetStart     = $r->target_start_date ?? $r->start_date ?? null;
@@ -214,7 +154,6 @@
             $budgetRef       = $r->budget_ref ?? $r->rkap_ref ?? $r->rab_ref ?? $r->budget_reference ?? '';
             $justif          = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
             $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
-            
             $totalStages = 5;
             $progressStep = null;
 
@@ -227,11 +166,8 @@
             elseif ($stageIndex === 3) { $progressText = 'Menunggu VP HC';      $progressStep = 4; }
             elseif ($stageIndex === 4) { $progressText = 'Menunggu Dir SDM';     $progressStep = 5; }
             else { $progressText = 'In Review'; }
-
-            // --- 4. LOGIC TOMBOL AKSI (PERMISSION) ---
             $canStage = false;
             $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
-
             if(in_array($status, ['in_review','submitted']) && $stageIndex !== null) {
                 if ($meRoles['Superadmin']) { $canStage = true; } 
                 else {
@@ -242,12 +178,10 @@
                         $canStage = $meRoles['DHC'] || $isKepalaUnitDHC; 
                     } 
                     elseif ($stageIndex === 2) { 
-                        // Stage 3: AVP HC Ops
                         $isAvp = $me->hasRole('AVP Human Capital Operation') || ($myJobTitle === 'AVP Human Capital Operation');
                         $canStage = $isAvp || $isKepalaUnitDHC; 
                     }
                     elseif ($stageIndex === 3) { 
-                        // Stage 4: VP Human Capital
                         $canStage = $meRoles['VP HC'] || $isKepalaUnitDHC; 
                     } 
                     elseif ($stageIndex === 4) { 
@@ -255,51 +189,30 @@
                     }
                 }
             }
-            
             $recruitmentDetails = collect($r->meta['recruitment_details'] ?? []);
             $hasMultiData = $recruitmentDetails->count() > 1;
             $posObj = $positions->firstWhere('id', $r->position);
             $positionDisplay = $posObj ? $posObj->name : $r->position;
-
             $slaBadgeClass = '';
             $slaText = '-';
-            
             $kaUnitApp = $r->approvals->sortBy('id')->first();
             $isApprovedByKaUnit = ($kaUnitApp && $kaUnitApp->status === 'approved' && $kaUnitApp->decided_at);
-            // Hanya hitung SLA jika status masih berjalan (submitted/in_review)
             if (in_array($status, ['submitted', 'in_review']) && $isApprovedByKaUnit) {
-                
-                // Waktu Mulai = Waktu saat Kepala Unit klik Approve
                 $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
-
-                // A. Hitung Selisih Hari (Khusus untuk menentukan WARNA Merah/Kuning)
                 $daysDiff = $slaTimeBase->diffInDays(now());
-
-                // B. Hitung Teks Tampilan (Human Readable: Jam, Menit)
-                // syntax DIFF_RELATIVE_TO_NOW membuat output seperti "4 jam setelahnya" (tanpa 'ago')
-                $rawText = $slaTimeBase->locale('id')->diffForHumans([
-                    'parts' => 2,        // Batasi 2 bagian (misal: 1 jam, 30 menit)
-                    'join' => true,      // Gabungkan dengan kata sambung
-                    'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW, 
-                ]);
-
-                // C. Bersihkan Teks (Hapus 'yang', 'setelahnya', ganti 'dan' jadi ',')
-                // Menghapus kata-kata tidak perlu agar singkat
+                $rawText = $slaTimeBase->locale('id')->diffForHumans(['parts' => 2,'join' => true,'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW, ]);
                 $cleanText = str_replace(
                     ['yang ', 'setelahnya', 'sebelumnya', ' dan '], 
                     ['', '', '', ', '], 
                     $rawText
-                );
-                
+                );                
                 $slaText = trim($cleanText);
-
-                // D. Tentukan Warna Badge
                 if ($daysDiff >= 5) {
-                    $slaBadgeClass = 'u-badge--danger'; // Merah
+                    $slaBadgeClass = 'u-badge--danger';
                 } elseif ($daysDiff >= 3) {
-                    $slaBadgeClass = 'u-badge--warning'; // Kuning
+                    $slaBadgeClass = 'u-badge--warning';
                 } else {
-                    $slaBadgeClass = 'u-badge--info'; // Biru
+                    $slaBadgeClass = 'u-badge--info';
                 }
             }
           @endphp
@@ -399,8 +312,6 @@
     </div>
   </div>
 </div>
-
-{{-- MODAL URAIAN JABATAN (FORM BASED) --}}
 <div id="uraianModal" class="u-modal" hidden>
   <div class="u-modal__card modal-card-wide">
     <div class="u-modal__head">
@@ -413,11 +324,8 @@
       </div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
     </div>
-
     <div class="u-modal__body u-p-md" style="background-color: #f9fafb;">
       <form id="uraianForm" class="u-space-y-md">
-        
-        {{-- SECTION 1: IDENTITAS JABATAN --}}
         <div class="u-card u-p-md">
             <h3 class="uj-section-title">1. Identitas Jabatan</h3>
             <div class="u-grid-2-custom">
@@ -431,22 +339,16 @@
                 </div>
             </div>
         </div>
-
-        {{-- SECTION 2: TUJUAN JABATAN --}}
         <div class="u-card u-p-md">
             <h3 class="uj-section-title">2. Tujuan Jabatan</h3>
             <div class="u-mb-xs u-text-xs u-muted">Kesimpulan dari akuntabilitas utama, dalam satu kalimat.</div>
             <textarea class="u-input" rows="3" id="uj_tujuan"></textarea>
         </div>
-
-        {{-- SECTION 3: AKUNTABILITAS UTAMA --}}
         <div class="u-card u-p-md">
             <h3 class="uj-section-title">3. Akuntabilitas Utama</h3>
             <div class="u-mb-xs u-text-xs u-muted">Uraian tugas dan tujuan tugas (gunakan poin-poin).</div>
             <textarea class="u-input" rows="6" id="uj_akuntabilitas"></textarea>
         </div>
-
-        {{-- SECTION 4: DIMENSI --}}
         <div class="u-card u-p-md">
             <h3 class="uj-section-title">4. Dimensi</h3>
             <div class="u-space-y-sm">
@@ -480,15 +382,11 @@
                 </div>
             </div>
         </div>
-
-        {{-- SECTION 5: WEWENANG --}}
         <div class="u-card u-p-md">
             <h3 class="uj-section-title">5. Wewenang</h3>
             <div class="u-mb-xs u-text-xs u-muted">Suatu tugas yang dapat dilakukan pemangku jabatan tanpa meminta persetujuan atasan.</div>
             <textarea class="u-input" rows="4" id="uj_wewenang"></textarea>
         </div>
-
-        {{-- SECTION 6: HUBUNGAN KERJA --}}
         <div class="u-card u-p-md">
           <h3 class="uj-section-title">6. Hubungan Kerja</h3>
           <div class="u-mb-xs u-text-xs u-muted">Jelaskan hubungan kerja internal dan eksternal</div>
@@ -503,8 +401,6 @@
             </div>
           </div>
         </div>
-
-        {{-- SECTION 7: SPESIFIKASI JABATAN --}}
         <div class="u-card u-p-md">
           <h3 class="uj-section-title">7. Spesifikasi Jabatan</h3>
           <div class="u-mb-xs u-text-xs u-muted">Latar belakang pendidikan, pengalaman, pengetahuan & kompetensi</div>
@@ -533,8 +429,6 @@
             </div>
           </div>
         </div>
-
-        {{-- SECTION 8: STRUKTUR ORGANISASI --}}
         <div class="u-card u-p-md">
           <h3 class="uj-section-title">8. Struktur organisasi</h3>
           <div class="u-mb-xs u-text-xs u-muted">Unggah gambar struktur organisasi (opsional)</div>
@@ -545,7 +439,6 @@
         </div>
       </form>
     </div>
-
     <div class="u-modal__foot">
       <div class="u-flex u-justify-between u-items-center u-gap-sm">
         <div id="uj_status_display" class="u-badge u-badge--glass">Status: Draft</div>
@@ -561,8 +454,6 @@
     </div>
   </div>
 </div>
-
-{{-- MODAL CREATE (UTAMA) --}}
 <div id="createApprovalModal" class="u-modal" hidden>
   <div class="u-modal__card">
     <div class="u-modal__head">
@@ -572,13 +463,10 @@
       </div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class="fas fa-times"></i></button>
     </div>
-
     <div class="u-modal__body">
       <form method="POST" action="{{ route('recruitment.principal-approval.store') }}" class="u-space-y-md u-p-md" id="createApprovalForm" data-default-action="{{ route('recruitment.principal-approval.store') }}">
         @csrf
         <input type="hidden" name="details_json" id="detailsJson">
-
-        {{-- [SECTION STATIS] --}}
         <div class="u-space-y-sm">
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan</label>
           <select class="u-input" name="request_type"><option value="Rekrutmen">Rekrutmen</option><option value="Perpanjang Kontrak">Perpanjang Kontrak</option></select>
@@ -604,20 +492,12 @@
           <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
           <input class="u-input" type="number" min="1" name="headcount" id="headcountInput" value="1" placeholder="Jumlah orang" required>
         </div>
-        
-        {{-- Tabs Container Multidata --}}
-        <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;">
-           {{-- Tombol Data 1, Data 2, dll di-generate via JS --}}
-        </div>
-
-        {{-- [SECTION DINAMIS] --}}
+        <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;"></div>
         <div id="dynamicContentWrapper" class="u-p-md u-border u-rounded u-bg-light">
             <div class="u-space-y-sm u-mb-md">
               <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
               <input class="u-input" id="titleInput" name="title" placeholder="Mis. Rekrutmen Analis TKDN Proyek X" required>
             </div>
-
-            {{-- SECTION PROJECT BASED --}}
             <div id="projectSection" class="u-space-y-md" style="display:none;">
               <div class="u-flex u-items-center u-justify-between"><div><label class="u-block u-text-sm u-font-medium u-mb-sm">Data Project</label><div class="u-text-2xs u-muted">Pilih kode project, nama project akan otomatis terisi</div></div></div>
               <div class="u-grid-2 u-stack-mobile u-gap-md">
@@ -636,7 +516,7 @@
                 <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project</label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
               </div>
               <div class="u-space-y-sm" style="position: relative;">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Project Based -->
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label>
                 <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off">
                 <input type="hidden" name="position" id="positionInput">
                 <div id="positionSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -655,8 +535,6 @@
                 <div id="picProjectSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
               </div>
             </div>
-
-            {{-- SECTION ORGANIK --}}
             <div id="rkapSection" class="u-space-y-md" style="display:none;">
               <div class="u-flex u-items-center u-justify-between"><div><label class="u-block u-text-sm u-font-medium u-mb-sm">Tabel RKAP 2025</label><div class="u-text-2xs u-muted">Pilih job function untuk memakai kuota RKAP</div></div></div>
               <div class="u-scroll-x">
@@ -682,7 +560,7 @@
                       <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian">Isi Uraian</button>
                     </div>
                     <div style="position: relative;">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> <!-- Organik -->
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> 
                       <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off">
                       <input type="hidden" id="positionOrganikInput"> 
                       <div id="positionOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -699,7 +577,6 @@
                 </div>
               </div>
             </div>
-
             <div id="extraDynamicFields" class="u-mt-md u-pt-md u-border-t">
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
@@ -805,8 +682,6 @@
               </div>
           </div>
         </div>
-
-        {{-- Justifikasi --}}
         <div class="u-space-y-sm u-mt-md">
             <label class="u-block u-text-sm u-font-medium u-mb-sm">Detail Penjelasan Kebutuhan</label>
             <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan secara detail..." required></textarea>
@@ -823,8 +698,6 @@
     </div>
   </div>
 </div>
-
-{{-- DETAIL APPROVAL --}}
 <div id="detailApprovalModal" class="u-modal" hidden>
   <div class="u-modal__card" style="max-width: 900px;"> 
     <div class="u-modal__head">
@@ -873,27 +746,19 @@
         <div class="u-muted u-text-sm"><span id="tab-indicator-text">Menampilkan Data 1</span></div>
         <div class="u-flex u-gap-sm action-buttons">
             <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
-
-            {{-- Form Reject --}}
             <form method="POST" action="" class="detail-reject-form u-inline" style="display:none;">
                 @csrf
-                {{-- ID ditambahkan agar JS bisa memindahkan catatan kesini --}}
                 <input type="hidden" name="note" class="reject-note-input" id="real_reject_note"> 
                 <button type="button" class="u-btn u-btn--outline u-danger detail-reject-btn" 
                     onclick="triggerCustomConfirm(this, 'reject')">
                     <i class="fas fa-times u-mr-xs"></i> Reject
                 </button>
             </form>
-
-            {{-- Tombol Catatan --}}
             <button type="button" class="u-btn u-btn--outline u-text-brand js-open-note-modal" style="display:none;" id="btn-add-note">
                 <i class="fas fa-edit u-mr-xs"></i> Catatan
             </button>
-
-            {{-- Form Approve --}}
             <form method="POST" action="" class="detail-approve-form u-inline" style="display:none;">
                 @csrf
-                {{-- ID ini sudah ada sebelumnya --}}
                 <input type="hidden" name="extended_note" id="hidden_extended_note">
                 <button type="button" class="u-btn u-btn--brand u-success detail-approve-btn" 
                     onclick="triggerCustomConfirm(this, 'approve')">
@@ -906,25 +771,18 @@
   </div>
 </div>
 
-{{-- MODAL KONFIRMASI (CUSTOM POPUP) --}}
 <div id="confirmationModal" class="u-modal" style="z-index: 3000; display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.6);">
     <div class="u-modal__card" style="width: 100%; max-width: 400px; background: white; border-radius: 12px; overflow: hidden; animation: u-slide-up 0.2s ease-out; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
         <div class="u-p-lg u-text-center">
-            {{-- Pesan Konfirmasi --}}
             <div class="u-mb-lg">
                 <h3 id="conf-title" class="u-font-bold u-text-dark" style="font-size: 1.1rem; line-height: 1.5;">
                     Apakah Anda yakin menyetujui izin prinsip ini?
                 </h3>
             </div>
-            
-            {{-- Tombol Aksi --}}
             <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 25px;">
-                {{-- Tombol Ya (Hijau) --}}
                 <button type="button" id="btn-conf-yes" class="u-btn" style="background-color: #22c55e; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
                     Ya
                 </button>
-                
-                {{-- Tombol Tidak (Merah) --}}
                 <button type="button" id="btn-conf-no" class="u-btn" style="background-color: #ef4444; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
                     Tidak
                 </button>
@@ -949,45 +807,35 @@
     </div>
   </div>
 </div>
-
-{{-- MODAL CREATE PROJECT (Popup di atas Popup) --}}
 <div id="createProjectModal" class="u-modal" style="z-index: 3050; display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.6);">
     <div class="u-modal__card" style="width: 100%; max-width: 600px; background: white; border-radius: 8px; overflow: hidden; animation: u-slide-up 0.2s ease-out;">
         <div class="u-modal__head u-flex u-justify-between u-items-center u-p-md u-border-b">
             <div class="u-font-bold u-text-lg">Tambah Project Baru</div>
             <button type="button" class="u-btn u-btn--ghost u-btn--sm js-close-project-modal"><i class="fas fa-times"></i></button>
-        </div>
-        
+        </div>  
         <form id="formCreateProject" enctype="multipart/form-data">
             @csrf
             <div class="u-modal__body u-p-md u-space-y-md">
                 <div class="u-space-y-sm">
                     <label class="u-label u-font-medium u-text-sm">Kode Project <span class="u-text-danger">*</span></label>
                     <input type="text" name="project_code" class="u-input" placeholder="Contoh: PRJ-2025-001" required>
-                </div>
-                
+                </div>  
                 <div class="u-space-y-sm">
                     <label class="u-label u-font-medium u-text-sm">Nama Project <span class="u-text-danger">*</span></label>
                     <input type="text" name="project_name" class="u-input" placeholder="Contoh: Pembangunan Infrastruktur X" required>
                 </div>
-
                 <div class="u-space-y-sm" style="position: relative;">
                     <label class="u-label u-font-medium u-text-sm">Lokasi Project <span class="u-text-danger">*</span></label>
-                    
                     <input type="text" id="projectLocationSearchInput" class="u-input" placeholder="Ketik Kota atau Nama Lokasi..." autocomplete="off" required>
-                    
-                    <input type="hidden" name="location_id" id="projectLocationInput">
-                    
+                    <input type="hidden" name="location_id" id="projectLocationInput">                    
                     <div id="projectLocationSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 3100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                 </div>
-
                 <div class="u-space-y-sm">
                     <label class="u-label u-font-medium u-text-sm">Dokumen (Proposal/RAB) <span class="u-text-danger">*</span></label>
                     <div class="u-text-2xs u-muted u-mb-xs">Format: PDF, DOC, DOCX (Max 5MB)</div>
                     <input type="file" name="document" class="u-input" accept=".pdf,.doc,.docx" required>
                 </div>
             </div>
-
             <div class="u-modal__foot u-p-md u-border-t u-flex u-justify-end u-gap-sm">
                 <button type="button" class="u-btn u-btn--ghost js-close-project-modal">Batal</button>
                 <button type="submit" class="u-btn u-btn--brand" id="btnSaveProject">
@@ -1002,7 +850,6 @@
     function toggleHistoryNote(id) {
         const el = document.getElementById(id);
         if (el) {
-            // Toggle display antara none dan block
             if (el.style.display === "none" || el.style.display === "") {
                 el.style.display = "block";
                 const icon = document.getElementById('icon-' + id);
@@ -1017,54 +864,31 @@
     function setBudgetLock(isLocked, budgetType) {
         const budgetSelect = document.getElementById('budgetSourceSelect');
         if (!budgetSelect) return;
-
         if (isLocked) {
-            // 1. Set nilai otomatis (misal: RKAP atau RAB Proyek)
             budgetSelect.value = budgetType;
-
-            // 2. Kunci elemen agar tidak bisa diklik user (Visual Disabled)
-            // Kita gunakan pointer-events none agar nilai tetap terkirim saat submit form
-            // (Kalau pakai attribute disabled="true", nilainya tidak akan terkirim ke controller)
             budgetSelect.style.pointerEvents = 'none';
-            budgetSelect.style.backgroundColor = '#e5e7eb'; // Warna abu-abu (visual disabled)
+            budgetSelect.style.backgroundColor = '#e5e7eb';
             budgetSelect.classList.add('u-muted');
         } else {
-            // 1. Buka kunci
             budgetSelect.style.pointerEvents = 'auto';
-            budgetSelect.style.backgroundColor = ''; // Reset warna
+            budgetSelect.style.backgroundColor = ''; 
             budgetSelect.classList.remove('u-muted');
-
-            // 2. Jika ada parameter kosong (''), kita biarkan user memilih sendiri,
-            // atau jika ada value tertentu, kita set.
             if (budgetType !== '') {
                 budgetSelect.value = budgetType;
             }
         }
     }
-
-    // --- POPUP KONFIRMASI ---
     let formToSubmit = null;
-
     function triggerCustomConfirm(btn, action) {
         const modal = document.getElementById('confirmationModal');
         const titleEl = document.getElementById('conf-title');
-        
-        // Simpan form yang akan di-submit
         formToSubmit = btn.closest('form');
-
-        // Sinkronisasi Catatan agar tidak hilang
-        // Ambil nilai dari editor catatan (yang tersimpan di hidden_extended_note)
         const noteEditorValue = document.getElementById('hidden_extended_note').value;
-        
-        // Masukkan ke input hidden form yang sesuai
         if(action === 'reject') {
             const rejectInput = document.getElementById('real_reject_note');
             if(rejectInput) rejectInput.value = noteEditorValue;
-            
-            // Ubah Teks Judul Popup
             titleEl.textContent = "Apakah Anda yakin menolak izin prinsip ini?";
         } else {
-            // Untuk approve, inputnya adalah hidden_extended_note itu sendiri, jadi aman.
             titleEl.textContent = "Apakah Anda yakin menyetujui izin prinsip ini?";
         }
         modal.style.display = 'flex';
@@ -1075,7 +899,6 @@
             '', 'SATU', 'DUA', 'TIGA', 'EMPAT', 'LIMA', 'ENAM', 'TUJUH', 'DELAPAN', 'SEMBILAN', 'SEPULUH', 'SEBELAS'
         ];
         var temp = '';
-
         if (nilai < 12) {
             temp = ' ' + huruf[nilai];
         } else if (nilai < 20) {
@@ -1097,10 +920,8 @@
         } else if (nilai < 1000000000000000) {
             temp = terbilang(Math.floor(nilai / 1000000000000)) + ' TRILIUN ' + terbilang(nilai % 1000000000000);
         }
-
         return temp.trim();
     }
-    // Event Listener untuk Tombol YA dan TIDAK di dalam Popup
     document.addEventListener('DOMContentLoaded', function() {
         const btnYes = document.getElementById('btn-conf-yes');
         if(btnYes) {
@@ -1111,7 +932,6 @@
                 document.getElementById('confirmationModal').style.display = 'none';
             });
         }
-
         const btnNo = document.getElementById('btn-conf-no');
         if(btnNo) {
             btnNo.addEventListener('click', function() {
@@ -1119,12 +939,10 @@
                 formToSubmit = null;
             });
         }
-        
         const positionsData = {!! json_encode($positions) !!};
         const locationsData = {!! json_encode($locationsJs) !!};
         const picData       = {!! json_encode($picListFormatted) !!};
         const meUnitName    = {!! json_encode($meUnitName) !!}; 
-
         function setupSearchableDropdown(searchInput, hiddenInput, resultsContainer, dataArray, allowNew = false) { 
                 if (!searchInput || !resultsContainer) return;
                 const renderOptions = (filterText = '') => {
@@ -1153,25 +971,19 @@
                 this.bindModal(); 
                 this.initDT(); 
                 this.bindExternalSearch(); 
-                // --- LOGIC ADD NEW PROJECT ---
                 const projectModal = document.getElementById('createProjectModal');
                 const projectForm = document.getElementById('formCreateProject');
                 const projectSelect = document.getElementById('kodeProjectSelect');
                 const projectNameInput = document.getElementById('namaProjectInput');
-
                 const locSearchInput = document.getElementById('projectLocationSearchInput');
                 const locHiddenInput = document.getElementById('projectLocationInput');
                 const locResultsContainer = document.getElementById('projectLocationSearchResults');
-
                 setupSearchableDropdown(locSearchInput, locHiddenInput, locResultsContainer, locationsData, false);
-
-                // 1. Event Listener saat Dropdown berubah
                 if (projectSelect) {
                     projectSelect.addEventListener('change', function() {
                         if (this.value === 'NEW') {
                             this.value = ""; 
                             if(projectNameInput) projectNameInput.value = "";
-                            
                             projectForm.reset();
                             if(locSearchInput) locSearchInput.value = "";
                             if(locHiddenInput) locHiddenInput.value = "";
@@ -1179,24 +991,19 @@
                         }
                     });
                 }
-
                 document.querySelectorAll('.js-close-project-modal').forEach(btn => {
                     btn.addEventListener('click', () => {
                         projectModal.style.display = 'none';
                     });
                 });
-
                 if (projectForm) {
                     projectForm.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        
+                        e.preventDefault();     
                         const btnSave = document.getElementById('btnSaveProject');
                         const originalText = btnSave.innerHTML;
                         btnSave.disabled = true;
                         btnSave.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Menyimpan...';
-
                         const formData = new FormData(this);
-
                         fetch("{{ route('recruitment.project.store') }}", {
                             method: 'POST',
                             body: formData,
@@ -1208,21 +1015,17 @@
                         .then(data => {
                             if (data.status === 'success') {
                                 projectModal.style.display = 'none';
-                                
                                 const newOption = document.createElement('option');
                                 newOption.value = data.data.project_code;
                                 newOption.text = data.data.project_code + ' - ' + data.data.project_name;
                                 newOption.setAttribute('data-nama', data.data.project_name);
                                 newOption.selected = true;
-
-                                // Masukkan setelah opsi "Buat Project Baru" (index 1) atau di akhir
                                 const newIdx = 2; 
                                 if(projectSelect.options.length >= 2) {
                                     projectSelect.add(newOption, 2);
                                 } else {
                                     projectSelect.add(newOption);
                                 }
-
                                 projectSelect.value = data.data.project_code;
                                 if(projectNameInput) projectNameInput.value = data.data.project_name;
                                 alert('Project berhasil dibuat!'); 
@@ -1241,29 +1044,23 @@
                     });
                 }
             },
-
             bindModal() {
             const modalMain   = document.getElementById('createApprovalModal');
             const detailModal = document.getElementById('detailApprovalModal');
             const uraianModal = document.getElementById('uraianModal');
-            
             const form          = document.getElementById('createApprovalForm');
             const submitBtn     = document.getElementById('submitApprovalBtn');
             const modalTitle    = document.getElementById('ip-modal-title');
             const modalSubtitle = document.getElementById('ip-modal-subtitle');
-            
             const contractTypeSelect = form.querySelector('#contractTypeSelect');
             const budgetSourceSelect = form.querySelector('#budgetSourceSelect');
             const headcountInput     = form.querySelector('#headcountInput');
             const dataTabsContainer  = document.getElementById('dataTabsContainer');
             const detailsJsonInput   = document.getElementById('detailsJson');
-            
-            // Inputs Form Utama
             const requestTypeSelect  = form.querySelector('[name="request_type"]');
             const titleInput         = form.querySelector('#titleInput');
             const targetStartInput   = form.querySelector('#targetStartInput'); 
             const justifInput        = form.querySelector('[name="justification"]');
-
             const dynInputs = {
                 start_date:  form.querySelector('#dyn_start_date'),
                 end_date:    form.querySelector('#dyn_end_date'),
@@ -1288,10 +1085,7 @@
             
             const dynLocationId = document.getElementById('dyn_location_id');
             const dynLocationResults = document.getElementById('dynLocationSearchResults');
-
             setupSearchableDropdown(dynInputs.location, dynLocationId, dynLocationResults, locationsData, true);
-
-            // Kumpulkan input yang memicu perhitungan
             const calcInputs = [
                 dynInputs.salary, 
                 dynInputs.thr, 
@@ -1300,20 +1094,13 @@
                 dynInputs.end_date
             ];
 
-            // Fungsi hitung renumerasi ke API
             function calculateRemuneration() {
-                // Ambil value Gaji & Tanggal
                 const salary = parseFloat(dynInputs.salary ? dynInputs.salary.value : 0) || 0;
                 const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
                 const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
-
                 if (salary <= 0 || !start || !end) return;
-
-                // Ambil nilai dari input form
                 let valThr = parseFloat(dynInputs.thr ? dynInputs.thr.value : 0);
                 let valKomp = parseFloat(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
-
-                // paksa nilai THR & Kompensasi menggunakan nilai Gaji Pokok agar perhitungan akurat.
                 if (salary > 0 && valThr === 0) {
                     valThr = salary;
                     if(dynInputs.thr) dynInputs.thr.value = salary;
@@ -1322,7 +1109,6 @@
                     valKomp = salary;
                     if(dynInputs.kompensasi) dynInputs.kompensasi.value = salary;
                 }
-
                 const payload = {
                     salary: salary,
                     start_date: start,
@@ -1331,9 +1117,7 @@
                     kompensasi: valKomp,
                     _token: '{{ csrf_token() }}'
                 };
-
                 if(dynInputs.pph21) dynInputs.pph21.placeholder = "Menghitung...";
-
                 fetch("{{ route('api.calculate.salary') }}", {
                     method: 'POST',
                     headers: {
@@ -1353,33 +1137,23 @@
                     console.error('Error calculating:', error);
                 });
             }
-
-            // Auto hitung saat mengetik
             let calcTimeout;
             calcInputs.forEach(input => {
                 if(input) {
                     input.addEventListener('input', function() {
                         clearTimeout(calcTimeout);
-                        // Delay 800ms agar tidak spam request saat mengetik cepat
                         calcTimeout = setTimeout(calculateRemuneration, 800); 
                     });
                     input.addEventListener('change', calculateRemuneration);
                 }
             });
-
-            // LOGIKA KALKULASI GAJI
             if(dynInputs.salary) {
                 dynInputs.salary.addEventListener('input', function(e) {
                     const val = e.target.value;
-                    
-                    // Autofill THR & Kompensasi
                     if(dynInputs.thr) dynInputs.thr.value = val;
                     if(dynInputs.kompensasi) dynInputs.kompensasi.value = val;
-
-                    // Autofill Terbilang
                     if(dynInputs.terbilang) {
                         if(val && !isNaN(val)) {
-                            // Konversi angka ke kata
                             let text = terbilang(val) + ' RUPIAH';
                             text = text.charAt(0).toUpperCase() + text.slice(1);
                             dynInputs.terbilang.value = text;
@@ -1389,8 +1163,6 @@
                     }
                 });
             }
-
-            // LOGIKA FILE UPLOAD (Convert to Base64)
             if(dynInputs.cv) {
                 dynInputs.cv.addEventListener('change', function(e) {
                     const file = e.target.files[0];
@@ -1405,8 +1177,6 @@
                     }
                 });
             }
-
-            // Elements Form Uraian
             const uraianForm = document.getElementById('uraianForm');
             const ujInputs = {
                 nama: document.getElementById('uj_nama'),
@@ -1433,8 +1203,6 @@
             };
             const btnPreviewPdf = document.getElementById('btnPreviewPdf');
             const uraianStatusDisplay = document.getElementById('uj_status_display');
-
-            // Handle file input for struktur organisasi
             if(ujInputs.struktur) {
                 ujInputs.struktur.addEventListener('change', function(e) {
                     const file = e.target.files[0];
@@ -1452,8 +1220,6 @@
                     }
                 });
             }
-
-            // References & Searchables
             const rkapSection       = form.querySelector('#rkapSection');
             const rkapSelectedInfo = form.querySelector('#rkapSelectedInfo');
             const rkapSelectedName = form.querySelector('#rkapSelectedName');
@@ -1462,7 +1228,6 @@
             const kodeProjectSelect     = form.querySelector('#kodeProjectSelect');
             const namaProjectInput      = form.querySelector('#namaProjectInput');
             const uraianStatusProject   = form.querySelector('#uraianStatusProject');
-            
             const picOrganikSearchInput = form.querySelector('#picOrganikSearchInput');
             const picOrganikInput       = form.querySelector('#picOrganikInput');
             const picOrganikResults     = form.querySelector('#picOrganikSearchResults');
@@ -1475,17 +1240,13 @@
             const picProjectSearchInput = form.querySelector('#picProjectSearchInput');
             const picProjectInput       = form.querySelector('#picProjectInput');
             const picProjectResults     = form.querySelector('#picProjectSearchResults');
-
             let activeDataIndex = 1;
             let totalDataCount  = 1;
             let multiDataStore  = {}; 
-
             function getActiveContractType() { return contractTypeSelect ? contractTypeSelect.value : ''; }
-
             window.openUraianForm = function(currentData, mode) {
                 uraianForm.reset();
                 const d = currentData.uraian_data || {};
-
                 ujInputs.nama.value = d.nama || '';
                 ujInputs.unit.value = d.unit || '';
                 ujInputs.pemangku.value = d.pemangku || '';
@@ -1506,13 +1267,11 @@
                 if(ujInputs.spek_kompetensi) ujInputs.spek_kompetensi.value = d.spek_kompetensi || '';
                 if(ujInputs.spek_kompetensi_wajib) ujInputs.spek_kompetensi_wajib.value = d.spek_kompetensi_wajib || '';
                 if(ujInputs.spek_kompetensi_generik) ujInputs.spek_kompetensi_generik.value = d.spek_kompetensi_generik || '';
-
                 if(d.struktur_organisasi) {
                     const previewDiv = document.getElementById('uj_struktur_preview');
                     if(previewDiv) previewDiv.innerHTML = `<img src="${d.struktur_organisasi}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
                     if(ujInputs.struktur) ujInputs.struktur._base64 = d.struktur_organisasi;
                 }
-
                 if (!ujInputs.unit.value && meUnitName) ujInputs.unit.value = meUnitName;
                 if (!ujInputs.nama.value) {
                     if (mode === 'organik') {
@@ -1523,10 +1282,8 @@
                         if(positionSearchInput && positionSearchInput.value) ujInputs.nama.value = positionSearchInput.value;
                     }
                 }
-
                 const status = currentData.uraian_status || 'Belum diisi';
                 uraianStatusDisplay.textContent = 'Status: ' + status;
-                
                 if(status === 'Final' || status === 'Finalized') {
                     btnPreviewPdf.style.display = 'inline-flex';
                     btnPreviewPdf.dataset.json = JSON.stringify(d);
@@ -1538,7 +1295,6 @@
                 uraianModal.style.zIndex = '2000'; 
                 document.body.classList.add('modal-open');
             };
-
             document.addEventListener('click', function(e) {
                 if(e.target.classList.contains('js-save-uraian-form')) {
                     const status = e.target.getAttribute('data-status');
@@ -1565,14 +1321,11 @@
                         spek_kompetensi_generik: ujInputs.spek_kompetensi_generik ? ujInputs.spek_kompetensi_generik.value : '',
                         struktur_organisasi: (ujInputs.struktur && ujInputs.struktur._base64) ? ujInputs.struktur._base64 : ''
                     };
-
                     if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
                     multiDataStore[activeDataIndex].uraian_data = dataObj;
                     multiDataStore[activeDataIndex].uraian_status = status; 
-
                     const type = getActiveContractType();
                     const textStatus = (status === 'Final') ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
-
                     const currentBudget = budgetSourceSelect ? budgetSourceSelect.value : '';
                     if(currentBudget === 'RKAP') { 
                         if(uraianStatus) uraianStatus.textContent = textStatus; 
@@ -1580,7 +1333,6 @@
                     else { 
                         if(uraianStatusProject) uraianStatusProject.textContent = textStatus; 
                     }
-
                     if(status === 'Final') {
                         btnPreviewPdf.dataset.json = JSON.stringify(dataObj);
                         btnPreviewPdf.style.display = 'inline-flex';
@@ -1612,12 +1364,9 @@
                 document.getElementById('pdf-data-input').value = jsonData;
                 formPdf.submit();
             }
-
             if(btnPreviewPdf) {
                 btnPreviewPdf.addEventListener('click', function() { submitPdfForm(this.dataset.json); });
             }
-
-            // --- Logic section dinamis ---      
             function resetDynamicInputs() {
                 if(titleInput) titleInput.value = '';
                 Object.values(dynInputs).forEach(el => {
@@ -1626,7 +1375,6 @@
                 if (dynLocationId) dynLocationId.value = '';
                 if(dynInputs.cv) { dynInputs.cv.value = ''; dynInputs.cv._base64 = null; dynInputs.cv._filename = null; }
                 if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = '';
-
                 form.querySelectorAll('.js-rkap-select.selected').forEach(b => {
                     b.classList.remove('selected', 'u-success'); b.classList.add('u-btn--outline'); b.innerHTML = '+';
                 });
@@ -1645,13 +1393,10 @@
                 if(picProjectInput) picProjectInput.value = '';
                 if(picProjectSearchInput) picProjectSearchInput.value = '';
             }
-
             function saveCurrentTabData() {
                 const idx = activeDataIndex;
                 if (!multiDataStore[idx]) multiDataStore[idx] = {};
                 if(titleInput) multiDataStore[idx].title = titleInput.value;
-
-                // Simpan input statis
                 multiDataStore[idx].start_date = dynInputs.start_date?.value || '';
                 multiDataStore[idx].end_date    = dynInputs.end_date?.value || '';
                 multiDataStore[idx].location    = dynInputs.location?.value || '';
@@ -1669,17 +1414,12 @@
                 multiDataStore[idx].bpjs_tk     = dynInputs.bpjs_tk?.value || '';
                 multiDataStore[idx].thr         = dynInputs.thr?.value || '';
                 multiDataStore[idx].kompensasi  = dynInputs.kompensasi?.value || '';
-
                 if(dynInputs.cv && dynInputs.cv._base64) {
                     multiDataStore[idx].cv_file = dynInputs.cv._base64;
                     multiDataStore[idx].cv_filename = dynInputs.cv._filename;
                 }
-
-                // --- LOGIKA BARU: Tentukan tipe data berdasarkan SECTION YANG VISIBLE ---
-                // cek apakah section RKAP atau Project sedang tampil (berdasarkan Budget Source)
                 const isRkapVisible = rkapSection && rkapSection.style.display !== 'none';
                 const isProjectVisible = projectSection && projectSection.style.display !== 'none';
-
                 if (isRkapVisible) {
                     const selectedRow = form.querySelector('.js-rkap-select.selected');
                     const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
@@ -1700,14 +1440,11 @@
                     multiDataStore[idx].pic_text = picProjectSearchInput.value;
                 }
             }
-
             function loadTabData(idx) {
                 resetDynamicInputs(); 
                 const data = multiDataStore[idx];
                 if (!data) return; 
-
                 if(data.title && titleInput) titleInput.value = data.title;
-
                 if(dynInputs.start_date) dynInputs.start_date.value = data.start_date || '';
                 if(dynInputs.end_date)   dynInputs.end_date.value   = data.end_date || '';
                 if(dynInputs.location)   dynInputs.location.value   = data.location || '';
@@ -1725,7 +1462,6 @@
                 if(dynInputs.bpjs_tk)    dynInputs.bpjs_tk.value    = data.bpjs_tk || '';
                 if(dynInputs.thr)        dynInputs.thr.value        = data.thr || '';
                 if(dynInputs.kompensasi) dynInputs.kompensasi.value = data.kompensasi || '';
-
                 if(data.salary && dynInputs.terbilang) {
                     let text = terbilang(data.salary) + 'RUPIAH';
                     text = text.charAt(0).toUpperCase() + text.slice(1);
@@ -1738,12 +1474,9 @@
                     dynInputs.cv._base64 = data.cv_file;
                     dynInputs.cv._filename = data.cv_filename;
                 }
-
                 const type = getActiveContractType();
                 const statusText = (data.uraian_status === 'Final') ? 'Tersimpan (Final)' : (data.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
-
                 const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
-
                 if (data.rkap_job || (type === 'Organik' && data.type === 'Organik') || (budgetSourceSelect && budgetSourceSelect.value === 'RKAP')) {
                     if (data.rkap_job) {
                         const rows = form.querySelectorAll('#rkap-table tbody tr');
@@ -1759,7 +1492,6 @@
                     if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
                     if(data.position) positionOrganikInput.value = data.position;
                     if(data.position_text) positionOrganikSearchInput.value = data.position_text;
-
                 } else if (projectTypes.includes(type) && projectTypes.includes(data.type)) {
                         if(data.project_code) {
                             kodeProjectSelect.value = data.project_code;
@@ -1772,11 +1504,9 @@
                         if(data.pic_text) picProjectSearchInput.value = data.pic_text;
                 }
             }
-
             function renderTabs(count) {
                 dataTabsContainer.innerHTML = '';
-                dataTabsContainer.style.display = 'flex';
-                
+                dataTabsContainer.style.display = 'flex';   
                 for (let i = 1; i <= count; i++) {
                     const btn = document.createElement('button');
                     btn.type = 'button';
@@ -1795,7 +1525,6 @@
                     dataTabsContainer.appendChild(btn);
                 }
             }
-
             if(headcountInput) {
                 headcountInput.addEventListener('input', function(e) {
                     let val = parseInt(e.target.value);
@@ -1806,7 +1535,6 @@
                     renderTabs(totalDataCount);
                 });
             }
-
             if (contractTypeSelect) {
                 contractTypeSelect.addEventListener('change', function() {
                 const val = this.value;
@@ -1821,7 +1549,6 @@
                 updateVisibility();
                 });
             }
-
             submitBtn.addEventListener('click', function(e) {
                 saveCurrentTabData();
                 const payload = [];
@@ -1833,14 +1560,12 @@
                 }
                 detailsJsonInput.value = JSON.stringify(payload);
             });
-
             const btnAddNote       = document.getElementById('btn-add-note');
             const noteModal        = document.getElementById('noteEditorModal');
             const hiddenNoteInput  = document.getElementById('hidden_extended_note');
             const closeNoteBtns    = document.querySelectorAll('.js-close-note-modal');
             const saveNoteBtn      = document.querySelector('.js-save-note');
             let myNoteEditor = null;
-
             if (!myNoteEditor && document.querySelector('#editorContent')) {
                 ClassicEditor
                     .create(document.querySelector('#editorContent'), {
@@ -1850,7 +1575,6 @@
                     .then(editor => { myNoteEditor = editor; })
                     .catch(error => { console.error(error); });
             }
-
             if(btnAddNote) {
                 btnAddNote.addEventListener('click', function() {
                     if(myNoteEditor) { myNoteEditor.setData(hiddenNoteInput.value || ''); }
@@ -1884,7 +1608,6 @@
                     noteModal.style.display = 'none';
                 });
             }
-
             document.addEventListener('click', function(e) {
                 if (e.target.closest('#uraianModal [data-modal-close]')) {
                     const m = document.getElementById('uraianModal');
@@ -1902,8 +1625,7 @@
                     if(m) { 
                         m.hidden = false; document.body.classList.add('modal-open'); 
                         const mode = btnCreate.getAttribute('data-mode');
-                        multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1; 
-                        
+                        multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1;            
                         if(mode === 'create') {
                             form.reset(); 
                             setBudgetLock(false, ''); 
@@ -1926,23 +1648,18 @@
                             if(updateUrl) form.action = updateUrl;
                             const deleteUrl = btnCreate.getAttribute('data-delete-url');
                             if(deleteForm) { deleteForm.style.display = 'block'; deleteForm.action = deleteUrl || ''; }
-                            
                             let methodField = form.querySelector('input[name="_method"]');
                             if (!methodField) { methodField = document.createElement('input'); methodField.type = 'hidden'; methodField.name = '_method'; methodField.value = 'PUT'; form.appendChild(methodField); }
-
                             if(requestTypeSelect) requestTypeSelect.value = btnCreate.getAttribute('data-request-type');
                             if(titleInput) titleInput.value = btnCreate.getAttribute('data-title');
                             if(justifInput) justifInput.value = btnCreate.getAttribute('data-justification');
-
                             const contractType = btnCreate.getAttribute('data-employment-type');
                             const budgetType   = btnCreate.getAttribute('data-budget-source-type');
-                            
                             if(contractTypeSelect) contractTypeSelect.value = contractType;
                             if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
                             else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
                             else { setBudgetLock(false, ''); if(budgetSourceSelect) budgetSourceSelect.value = budgetType; }
                             updateVisibility();
-
                             const posName = btnCreate.getAttribute('data-position');
                             if (contractType === 'Organik') {
                                 if(positionOrganikSearchInput) positionOrganikSearchInput.value = posName;
@@ -1951,11 +1668,9 @@
                                 if(positionSearchInput) positionSearchInput.value = posName;
                                 if(positionInput) positionInput.value = posName;
                             }
-
                             totalDataCount = parseInt(btnCreate.getAttribute('data-headcount')) || 1;
                             if(headcountInput) headcountInput.value = totalDataCount;
                             renderTabs(totalDataCount);
-
                             const metaJsonStr = btnCreate.getAttribute('data-meta-json');
                             if (metaJsonStr) {
                                 try {
@@ -1970,8 +1685,6 @@
                         }
                     }
                 }
-                
-                // Detail Modal Logic
                 const btnDetail = e.target.closest('.js-open-detail');
                 if(btnDetail && detailModal) {
                     const safeTxt = (attr) => btnDetail.getAttribute(attr) || '-';
@@ -1985,26 +1698,20 @@
                     const canViewNotes = btnDetail.getAttribute('data-can-view-notes') === 'true';
                     let historyData = [];
                     try { historyData = JSON.parse(historyJson); } catch(e) {}
-
                     const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '-'; };
                     setTxt('view-ticket', safeTxt('data-ticket-number'));
                     setTxt('view-status', safeTxt('data-status'));
                     setTxt('view-unit', safeTxt('data-unit'));
                     setTxt('view-request-type', safeTxt('data-request-type'));
                     setTxt('view-justification', safeTxt('data-justification'));
-                    setTxt('view-budget-source', safeTxt('data-budget-source'));
-                    
+                    setTxt('view-budget-source', safeTxt('data-budget-source'));   
                     const tabsContainer = document.getElementById('detailTabsContainer');
                     tabsContainer.innerHTML = '';
-                    
                     const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
                     const approveUrl = btnDetail.getAttribute('data-approve-url');
                     const rejectUrl = btnDetail.getAttribute('data-reject-url');
-                    
                     const approveForm = detailModal.querySelector('.detail-approve-form');
                     const rejectForm = detailModal.querySelector('.detail-reject-form');
-
-                    // Logic Tampilan Tombol Catatan di Detail Modal
                     if(canApprove && approveForm && rejectForm) {
                         approveForm.style.display = 'block';
                         rejectForm.style.display = 'block';
@@ -2018,7 +1725,6 @@
                         if(rejectForm) rejectForm.style.display = 'none';
                         if(btnAddNote) btnAddNote.style.display = 'none';
                     }
-
                     const renderContent = (index) => {
                         const data = detailsArray[index];
                         const globalTitle = safeTxt('data-title');
@@ -2027,7 +1733,6 @@
                         setTxt('view-headcount', '1 Orang');
                         setTxt('view-employment', data.type || safeTxt('data-employment-type'));
                         setTxt('view-pic', data.pic_text || '-');
-
                         const btnPdf = document.getElementById('btn-view-pdf-detail');
                         const statusUraian = document.getElementById('view-uraian-status');
                         if(data && data.uraian_data) {
@@ -2038,10 +1743,8 @@
                             statusUraian.textContent = 'Tidak ada uraian';
                             btnPdf.style.display = 'none';
                         }
-                        
                         const container = document.getElementById('detailContentContainer');
                         let extraDetailDiv = document.getElementById('view-extra-details');
-                        
                         if(!extraDetailDiv) {
                             extraDetailDiv = document.createElement('div');
                             extraDetailDiv.id = 'view-extra-details';
@@ -2053,7 +1756,6 @@
                             }
                             extraDetailDiv.style.marginTop = '24px';
                         }
-
                         const makeRow = (lbl, val, isBold = false, isGrand = false) => {
                             let styleVal = isBold ? 'font-weight: 800; color: #111827;' : 'font-medium';
                             let styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
@@ -2063,22 +1765,18 @@
                                 styleLbl = 'font-weight: 800; color: #065f46; font-size: 1.0em;';
                                 borderStyle = 'border-top: 2px solid #059669; padding-top: 8px; margin-top: 8px;';
                             }
-
                             return `<div class="u-flex u-justify-between u-mb-xs u-pb-xs" style="${borderStyle}">
                                         <span class="u-text-xs u-uppercase ${styleLbl}">${lbl}</span>
                                         <span class="u-text-sm u-text-right ${styleVal}">${val || '-'}</span>
                                     </div>`;
                         };
-
                         const formatRp = (val) => {
                             if (!val) return '-';
                             let num = parseFloat(val);
                             if (isNaN(num)) return '-';
                             return 'Rp ' + num.toLocaleString('id-ID'); 
                         };
-
                         const parseVal = (v) => parseFloat(v) || 0;
-                        
                         const totalAnggaranPerBulan = 
                             parseVal(data.salary) + 
                             parseVal(data.allowanceJ) + 
@@ -2090,7 +1788,6 @@
                             parseVal(data.bpjs_tk) + 
                             parseVal(data.bpjs_kes) + 
                             parseVal(data.pph21);
-
                         let duration = 1; 
                         if (data.start_date && data.end_date) {
                             const d1 = new Date(data.start_date);
@@ -2103,13 +1800,11 @@
                             duration = months > 0 ? months : 1;
                         }
                         const grandTotal = totalAnggaranPerBulan * duration;
-                        
                         let historyHtml = '';
                         if (historyData.length > 0) {
                             historyHtml += `<div class="u-mt-lg u-pt-md u-border-t">`;
                             historyHtml += `<div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em;">Riwayat Persetujuan</div>`;
                             historyHtml += `<div class="u-space-y-sm">`; 
-                            
                             console.log("DEBUG HISTORY:", {
                                 roleSaya: "{{ $me->getRoleNames()->first() ?? 'User' }}", 
                                 bisaLihatCatatan: canViewNotes, 
@@ -2130,7 +1825,6 @@
                                 let noteIndicator = hasNote 
                                     ? `<div class="u-text-2xs u-text-brand u-mt-xxs u-font-medium"><i id="${iconId}" class="fas fa-chevron-down u-mr-xs"></i> Lihat Catatan</div>` 
                                     : '';
-
                                 historyHtml += `
                                 <div class="u-card u-p-sm u-bg-white u-border u-mb-sm u-hover-lift" style="${cursorStyle}" ${clickAttr} title="${hasNote ? 'Klik untuk melihat catatan' : ''}">
                                     <div class="u-flex u-justify-between u-items-center">
@@ -2143,19 +1837,17 @@
                                             ${noteIndicator}
                                         </div>
                                     </div>
-                                    
                                     ${ hasNote ? 
                                         `<div id="${noteId}" style="display: none;" class="u-bg-light u-p-sm u-rounded u-text-sm u-mt-sm u-animate-fade-in" style="border-left: 3px solid #3b82f6;">
-                                                <div class="u-text-xs u-font-bold u-text-muted u-mb-xxs u-uppercase">Isi Catatan:</div>
-                                                <div class="ck-content" style="font-size: 0.9em; color: #374151;">${h.note}</div>
-                                            </div>` : '' 
+                                            <div class="u-text-xs u-font-bold u-text-muted u-mb-xxs u-uppercase">Isi Catatan:</div>
+                                            <div class="ck-content" style="font-size: 0.9em; color: #374151;">${h.note}</div>
+                                        </div>` : '' 
                                     }
                                 </div>
                                 `;
                             });
                             historyHtml += `</div></div>`;
                         }
-
                         extraDetailDiv.innerHTML = `
                             <div class="u-card u-p-md">
                                 <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">
@@ -2169,14 +1861,12 @@
                                     ${makeRow('Lokasi', data.location)}
                                     ${makeRow('Pendidikan', data.education)}
                                     ${makeRow('Brevet', data.brevet)}
-                                    ${makeRow('Pengalaman', data.experience)}
-                                    
+                                    ${makeRow('Pengalaman', data.experience)}           
                                     <div class="u-mt-sm u-flex u-justify-between u-items-center">
                                         <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
                                         ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
                                     </div>
                                 </div>
-
                                 <div> 
                                     ${makeRow('Gaji Pokok', formatRp(data.salary))}
                                     ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
@@ -2188,11 +1878,9 @@
                                     ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
                                     ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
                                     ${makeRow('PPh 21', formatRp(data.pph21))}
-                                    
                                     <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
                                         ${makeRow('TOTAL ANGGARAN (PER BULAN)', formatRp(totalAnggaranPerBulan), true)}
                                     </div>
-
                                     ${makeRow(`TOTAL SELURUHNYA (${duration} BULAN)`, formatRp(grandTotal), false, true)}
                                 </div>
                                 </div>
@@ -2200,7 +1888,6 @@
                             ${historyHtml}
                         `;
                     };
-                    
                     detailsArray.forEach((item, i) => {
                         const btnTab = document.createElement('button');
                         btnTab.type = 'button';
@@ -2225,7 +1912,6 @@
                     document.body.classList.add('modal-open');
                 }
             });
-
             form.addEventListener('click', function(e) {
                 if (e.target.closest('.js-open-uraian-project')) {
                     const currentData = multiDataStore[activeDataIndex] || {};
@@ -2238,7 +1924,6 @@
                     openUraianForm(currentData, 'organik');
                 }
             });
-            
             function toggleRkapSelect(sel, forceSelect = false) { 
                 const tr = sel.closest('tr'); const job = tr.dataset.jobName;
                 form.querySelectorAll('.js-rkap-select.selected').forEach(el => { if (el !== sel) { el.classList.remove('selected', 'u-success'); el.classList.add('u-btn--outline'); el.innerHTML = '+'; } });
@@ -2257,18 +1942,14 @@
                 }
             }
             form.addEventListener('click', function(e) { const btn = e.target.closest('.js-rkap-select'); if (btn) { e.preventDefault(); toggleRkapSelect(btn); } });
-            
             setupSearchableDropdown(positionSearchInput, positionInput, positionSearchResults, positionsData, true);
             setupSearchableDropdown(positionOrganikSearchInput, positionOrganikInput, positionOrganikSearchResults, positionsData, true);
             setupSearchableDropdown(picProjectSearchInput, picProjectInput, picProjectResults, picData, false);
             setupSearchableDropdown(picOrganikSearchInput, picOrganikInput, picOrganikResults, picData, false);
-            
-            // --- VISIBILITY & TRIGGER LOGIC ---
             const updateVisibility = () => { 
                 const budget = budgetSourceSelect ? budgetSourceSelect.value : '';
                 const isRkap = (budget === 'RKAP');
                 const isProjectRab = (budget === 'RAB Proyek');
-
                 if (rkapSection) rkapSection.style.display = isRkap ? 'block' : 'none';
                 if (!isRkap && rkapSelectedInfo) rkapSelectedInfo.style.display = 'none'; 
                 if (projectSection) projectSection.style.display = isProjectRab ? 'block' : 'none';
@@ -2284,14 +1965,12 @@
                     if(positionInput) positionInput.setAttribute('name', 'position'); 
                 } 
             };
-
             if (budgetSourceSelect) {
                 budgetSourceSelect.addEventListener('change', function() {
                     resetDynamicInputs(); 
                     updateVisibility();
                 });
             }
-
             if (contractTypeSelect) {
                 contractTypeSelect.addEventListener('change', function() {
                     const val = this.value;
@@ -2300,7 +1979,6 @@
                     resetDynamicInputs();
                     activeDataIndex = 1;
                     renderTabs(totalDataCount); 
-
                     if (val === 'Organik') {
                         if(budgetSourceSelect) budgetSourceSelect.value = 'RKAP';
                     } else if (projectTypes.includes(val)) {
@@ -2325,10 +2003,8 @@
                     const selectElement = document.getElementById('dt-length-0');
                     if (selectElement && !document.getElementById('btn-export-excel')) {
                         const container = selectElement.parentNode; 
-
                         const currentParams = new URLSearchParams(window.location.search);
                         const exportUrl = "{{ route('recruitment.principal-approval.export') }}?" + currentParams.toString();
-
                         const exportBtn = document.createElement('a');
                         exportBtn.id = 'btn-export-excel';
                         exportBtn.href = exportUrl;
@@ -2340,7 +2016,6 @@
                         exportBtn.style.textDecoration = 'none';
                         exportBtn.style.height = '32px';
                         exportBtn.innerHTML = '<i class="fas fa-file-excel u-mr-xs"></i> Export Excel';
-
                         container.style.display = 'flex';
                         container.style.alignItems = 'center';
                         container.appendChild(exportBtn);
@@ -2350,34 +2025,25 @@
             bindExternalSearch() { /* ... */ }
         };
         page.init();
-
         const urlParams = new URLSearchParams(window.location.search);
             const ticketId = urlParams.get('open_ticket_id');
-
             if (ticketId) {
                 setTimeout(() => {
                     const detailBtn = document.querySelector(`.js-open-detail[data-id="${ticketId}"]`);
-                    
                     if (detailBtn) {
-                        // Scroll
                         detailBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        // efek highlight sejenak (kuning tipis)
                         const row = detailBtn.closest('tr');
                         if(row) {
                             const originalBg = row.style.backgroundColor;
                             row.style.transition = "background-color 0.5s ease";
-                            row.style.backgroundColor = "#fef3c7"; // Highlight kuning
+                            row.style.backgroundColor = "#fef3c7"; 
                             setTimeout(() => { row.style.backgroundColor = originalBg; }, 2000);
                         }
-
-                        // Klik tombol detail secara otomatis untuk membuka modal
                         detailBtn.click();
                     }
-
                     const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                     window.history.replaceState({path: newUrl}, '', newUrl);
-                }, 800); // Delay 800ms
+                }, 800);
             }
         });
 </script>
