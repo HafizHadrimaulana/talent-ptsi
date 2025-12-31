@@ -620,6 +620,16 @@
               </div>
               <div class="u-bg-light u-p-sm u-rounded u-font-bold u-text-sm u-mb-sm" style="color:#374151;"><b>Remunerasi</b></div>
               <div class="u-grid-2-custom u-mb-sm">
+                <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Resiko Pekerjaan</label>
+                      <select class="u-input" id="dyn_resiko" required>
+                          <option value="">Pilih Resiko</option>
+                          <option value="Tinggi">Tinggi</option>
+                          <option value="Rendah">Rendah</option>
+                      </select>
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)</label>
                       <input class="u-input" type="number" id="dyn_salary" placeholder="1.000.000" required>
@@ -641,12 +651,12 @@
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Komunikasi (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_allowanceC" placeholder="Masukkan angka">
-                  </div>
-                  <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Kinerja (Rp)</label>
                       <input class="u-input" type="number" id="dyn_allowanceK" placeholder="Masukkan angka">
+                  </div>
+                  <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Lainnya (Rp)</label>
+                      <input class="u-input" type="number" id="dyn_allowanceL" placeholder="Masukkan angka">
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
@@ -1068,11 +1078,12 @@
                 education:   form.querySelector('#dyn_education'),
                 brevet:      form.querySelector('#dyn_brevet'),
                 experience:  form.querySelector('#dyn_experience'),
+                resiko: form.querySelector('#dyn_resiko'),
                 salary:      form.querySelector('#dyn_salary'),
                 terbilang:   form.querySelector('#dyn_terbilang'),
                 allowanceJ:   form.querySelector('#dyn_allowanceJ'),
                 allowanceP:   form.querySelector('#dyn_allowanceP'),
-                allowanceC:   form.querySelector('#dyn_allowanceC'),
+                allowanceL:   form.querySelector('#dyn_allowanceL'),
                 allowanceK:   form.querySelector('#dyn_allowanceK'),
                 pph21:       form.querySelector('#dyn_pph21'),
                 bpjs_kes:    form.querySelector('#dyn_bpjs_kes'),
@@ -1091,13 +1102,15 @@
                 dynInputs.thr, 
                 dynInputs.kompensasi,
                 dynInputs.start_date, 
-                dynInputs.end_date
+                dynInputs.end_date,
+                dynInputs.resiko
             ];
 
             function calculateRemuneration() {
                 const salary = parseFloat(dynInputs.salary ? dynInputs.salary.value : 0) || 0;
                 const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
                 const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
+                const riskVal = dynInputs.resiko ? dynInputs.resiko.value : 'Rendah';
                 if (salary <= 0 || !start || !end) return;
                 let valThr = parseFloat(dynInputs.thr ? dynInputs.thr.value : 0);
                 let valKomp = parseFloat(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
@@ -1115,6 +1128,7 @@
                     end_date: end,
                     thr: valThr,
                     kompensasi: valKomp,
+                    risk_level: riskVal,
                     _token: '{{ csrf_token() }}'
                 };
                 if(dynInputs.pph21) dynInputs.pph21.placeholder = "Menghitung...";
@@ -1407,7 +1421,7 @@
                 multiDataStore[idx].terbilang   = dynInputs.terbilang?.value || '';
                 multiDataStore[idx].allowanceJ  = dynInputs.allowanceJ?.value || '';
                 multiDataStore[idx].allowanceP  = dynInputs.allowanceP?.value || '';
-                multiDataStore[idx].allowanceC  = dynInputs.allowanceC?.value || '';
+                multiDataStore[idx].allowanceL  = dynInputs.allowanceL?.value || '';
                 multiDataStore[idx].allowanceK  = dynInputs.allowanceK?.value || '';
                 multiDataStore[idx].pph21       = dynInputs.pph21?.value || '';
                 multiDataStore[idx].bpjs_kes    = dynInputs.bpjs_kes?.value || '';
@@ -1455,7 +1469,7 @@
                 if(dynInputs.terbilang)  dynInputs.terbilang.value  = data.terbilang || '';
                 if(dynInputs.allowanceJ)  dynInputs.allowanceJ.value  = data.allowanceJ || '';
                 if(dynInputs.allowanceP)  dynInputs.allowanceP.value  = data.allowanceP || '';
-                if(dynInputs.allowanceC)  dynInputs.allowanceC.value  = data.allowanceC || '';
+                if(dynInputs.allowanceL)  dynInputs.allowanceL.value  = data.allowanceL || '';
                 if(dynInputs.allowanceK)  dynInputs.allowanceK.value  = data.allowanceK || '';
                 if(dynInputs.pph21)      dynInputs.pph21.value      = data.pph21 || '';
                 if(dynInputs.bpjs_kes)   dynInputs.bpjs_kes.value   = data.bpjs_kes || '';
@@ -1781,7 +1795,7 @@
                             parseVal(data.salary) + 
                             parseVal(data.allowanceJ) + 
                             parseVal(data.allowanceP) + 
-                            parseVal(data.allowanceC) + 
+                            parseVal(data.allowanceL) + 
                             parseVal(data.allowanceK) + 
                             parseVal(data.thr) + 
                             parseVal(data.kompensasi) + 
@@ -1860,7 +1874,7 @@
                                     ${makeRow('Durasi Kontrak', duration + ' Bulan')} 
                                     ${makeRow('Lokasi', data.location)}
                                     ${makeRow('Pendidikan', data.education)}
-                                    ${makeRow('Brevet', data.brevet)}
+                                    ${makeRow('Pelatihan', data.brevet)}
                                     ${makeRow('Pengalaman', data.experience)}           
                                     <div class="u-mt-sm u-flex u-justify-between u-items-center">
                                         <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
@@ -1871,8 +1885,8 @@
                                     ${makeRow('Gaji Pokok', formatRp(data.salary))}
                                     ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
                                     ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
-                                    ${makeRow('Tunjangan Komunikasi', formatRp(data.allowanceC))}
                                     ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
+                                    ${makeRow('Tunjangan Lainnya', formatRp(data.allowanceL))}
                                     ${makeRow('THR', formatRp(data.thr))}
                                     ${makeRow('Kompensasi', formatRp(data.kompensasi))}
                                     ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
