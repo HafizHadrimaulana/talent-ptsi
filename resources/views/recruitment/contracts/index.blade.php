@@ -560,17 +560,30 @@
             
             <div id="detMapSection" class="is-hidden">
                 <div class="u-bg-section u-p-lg">
-                    <div class="section-divider"><i class="fas fa-map-marked-alt u-text-brand"></i> Verifikasi Lokasi</div>
+                    <div class="section-divider"><i class="fas fa-map-marked-alt u-text-brand"></i> Verifikasi Lokasi & Wajah</div>
                     <div class="u-grid-2 u-stack-mobile">
                         <div id="wrapperMapHead" class="is-hidden">
                             <div class="u-text-xs u-font-bold u-muted u-mb-xs">Lokasi Kepala Unit (Saat Approval)</div>
-                            <div id="map-head" class="map-container"></div>
-                            <div class="u-text-xs u-muted u-mt-xs text-right" id="ts-head"></div>
+                            <div id="map-head" class="map-container u-mb-sm"></div>
+                            <div class="u-text-xs u-muted u-mb-sm text-right" id="ts-head"></div>
+                            
+                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
+                            <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 250px; width: 100%;">
+                                <img id="img-head" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+                                <span id="no-img-head" class="u-text-xs u-text-muted" style="display:none;">Tidak ada foto</span>
+                            </div>
                         </div>
+                        
                         <div id="wrapperMapCand" class="is-hidden">
                             <div class="u-text-xs u-font-bold u-muted u-mb-xs">Lokasi Kandidat/Pegawai (Saat Ttd)</div>
-                            <div id="map-cand" class="map-container"></div>
-                            <div class="u-text-xs u-muted u-mt-xs text-right" id="ts-cand"></div>
+                            <div id="map-cand" class="map-container u-mb-sm"></div>
+                            <div class="u-text-xs u-muted u-mb-sm text-right" id="ts-cand"></div>
+                            
+                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
+                            <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 250px; width: 100%;">
+                                <img id="img-cand" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+                                <span id="no-img-cand" class="u-text-xs u-text-muted" style="display:none;">Tidak ada foto</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -607,19 +620,32 @@
         <form id="signForm" class="u-modal__body">
             <div id="cameraSection" class="u-mb-md is-hidden">
                 <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Verifikasi Wajah</label>
-                <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 360px;">
+                
+                <div id="wrapperCamera" class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 360px; position:relative;">
                     <video id="cameraStream" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                    <div id="cameraPlaceholder" class="u-text-white u-text-sm">Menghubungkan Kamera...</div>
+                    <img id="snapshotPreview" style="width: 100%; height: 100%; object-fit: cover; display:none;">
+                    <div id="cameraPlaceholder" class="u-text-white u-text-sm" style="position:absolute;">Menghubungkan Kamera...</div>
+                </div>
+
+                <div class="u-flex u-justify-center u-gap-md u-mt-md">
+                    <button type="button" id="btnCapture" class="u-btn u-btn--sm u-btn--primary u-shadow-sm" style="border-radius: 999px; padding-left: 1.5rem; padding-right: 1.5rem;">
+                        <i class="fas fa-camera u-mr-xs"></i> Ambil Foto
+                    </button>
+                    <button type="button" id="btnRetake" class="u-btn u-btn--sm u-btn--outline is-hidden" style="border-radius: 999px; padding-left: 1.5rem; padding-right: 1.5rem;">
+                        <i class="fas fa-redo u-mr-xs"></i> Ulangi Foto
+                    </button>
                 </div>
             </div>
 
             <div class="u-mb-md">
-                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Tanda Tangan Digital</label>
+                <div class="u-flex u-justify-between u-items-end u-mb-xs">
+                    <label class="u-text-xs u-font-bold u-muted u-uppercase">Tanda Tangan Digital</label>
+                    <button type="button" id="clearSign" class="u-btn u-btn--xs u-btn--ghost u-text-danger u-font-bold" style="border-radius: 999px;">
+                        <i class="fas fa-eraser u-mr-xs"></i> Hapus
+                    </button>
+                </div>
                 <div class="u-card u-card--border u-p-xs" style="background: #fff;">
                     <canvas id="signCanvas" style="width: 100%; height: 200px; touch-action: none; cursor: crosshair; display: block;"></canvas>
-                </div>
-                <div class="u-flex u-justify-between u-text-xs u-mt-xs">
-                    <button type="button" id="clearSign" class="u-text-brand u-font-bold u-pointer" style="border:none; background:none;">Hapus Tanda Tangan</button>
                 </div>
             </div>
 
@@ -635,6 +661,7 @@
             <input type="hidden" name="snapshot_image"> 
             <input type="hidden" name="geo_lat">
             <input type="hidden" name="geo_lng">
+            <input type="hidden" name="geo_accuracy"> 
 
             <div class="u-flex u-justify-end u-gap-sm">
                 <button type="button" class="u-btn u-btn--ghost js-close-modal" style="border-radius: 999px;">Batal</button>
@@ -709,7 +736,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const subSel = select('#createSubtypeSelect');
         const srcSel = select('#createSourceSelect');
         const filterUnit = select('#filterSourceUnit');
-        
+        const appSel = select('#createApplicantSelect');
+
         const toggleInputs = (container, shouldEnable) => {
             if(!container) return;
             const inputs = container.querySelectorAll('input, select, textarea');
@@ -732,9 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showBlock(secExist); toggleInputs(secExist, true);
                 select('#labelSourceExisting').textContent = isTerm ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
             }
-            
             (mode === 'extend') ? showBlock(select('#newUnitSection')) : hide(select('#newUnitSection'));
-
             if (isTerm) { hide(select('#sectionPkwtSpk')); showBlock(select('#sectionPb')); }
             else { showBlock(select('#sectionPkwtSpk')); hide(select('#sectionPb')); }
         };
@@ -762,25 +788,22 @@ document.addEventListener('DOMContentLoaded', () => {
             } else hide(select('#createMainSection'));
         });
 
-        const appSel = select('#createApplicantSelect');
-        appSel?.addEventListener('change', () => {
-            const o = appSel.options[appSel.selectedIndex];
-            if (appSel.value) {
-                select('#createPersonIdInput').value = o.dataset.personId;
-                select('#createPersonIdInput').disabled = false;
-                select('#createEmployeeIdInput').disabled = true;
-                
-                select('#prevName').textContent = o.dataset.fullname;
-                select('#prevPos').textContent = o.dataset.pos;
-                select('#prevUnit').textContent = o.dataset.unit;
-                select('#prevDate').textContent = '-';
-                
-                showBlock(select('#createPersonPreview'));
-                const uSel = select('#createUnitSelectNew');
-                if(uSel && o.dataset.unitId) uSel.value = o.dataset.unitId;
-                const uHid = select('#createUnitHiddenNew');
-                if(uHid && o.dataset.unitId) uHid.value = o.dataset.unitId;
-            } else hide(select('#createPersonPreview'));
+        if(appSel) appSel.addEventListener('change', () => {
+             const o = appSel.options[appSel.selectedIndex];
+             if (appSel.value) {
+                 select('#createPersonIdInput').value = o.dataset.personId;
+                 select('#createPersonIdInput').disabled = false;
+                 select('#createEmployeeIdInput').disabled = true;
+                 select('#prevName').textContent = o.dataset.fullname;
+                 select('#prevPos').textContent = o.dataset.pos;
+                 select('#prevUnit').textContent = o.dataset.unit;
+                 select('#prevDate').textContent = '-';
+                 showBlock(select('#createPersonPreview'));
+                 const uSel = select('#createUnitSelectNew');
+                 if(uSel && o.dataset.unitId) uSel.value = o.dataset.unitId;
+                 const uHid = select('#createUnitHiddenNew');
+                 if(uHid && o.dataset.unitId) uHid.value = o.dataset.unitId;
+             } else hide(select('#createPersonPreview'));
         });
 
         if(filterUnit && srcSel) {
@@ -793,7 +816,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 srcSel.value = ""; hide(select('#createPersonPreview'));
             });
-
             srcSel.addEventListener('change', () => {
                 const o = srcSel.options[srcSel.selectedIndex];
                 if (srcSel.value) {
@@ -803,13 +825,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     select('#createPersonIdInput').disabled = false;
                     select('#createEmployeeIdInput').value = o.dataset.employeeId;
                     select('#createEmployeeIdInput').disabled = false;
-                    
                     select('#prevName').textContent = o.dataset.person;
                     select('#prevPos').textContent = o.dataset.pos;
                     select('#prevUnit').textContent = o.dataset.unitName;
                     select('#prevNik').textContent = o.dataset.nik;
                     select('#prevDate').textContent = (o.dataset.start||'-') + ' s/d ' + (o.dataset.end||'-');
-                    
                     showBlock(select('#createPersonPreview'));
                     select('#createExistingUnitId').value = o.dataset.unitId;
                     select('#createExistingUnitName').value = o.dataset.unitName;
@@ -896,7 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bSign = select('#btnSign'); d.can_sign ? (show(bSign), bSign.onclick=()=>signAct(d.sign_url, 'Kandidat')) : hide(bSign);
                 const bRej = select('#btnReject'); d.can_approve ? (show(bRej), bRej.onclick=()=>rejectAct(d.reject_url)) : hide(bRej);
 
-                // --- MAPS LOGIC ---
+                // --- MAPS & IMAGE LOGIC ---
                 const geo = d.geolocation || {};
                 const mapSec = select('#detMapSection');
                 const wHead = select('#wrapperMapHead');
@@ -904,16 +924,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (geo.head || geo.candidate) showBlock(mapSec); else hide(mapSec);
                 
+                // Reset Images & Maps UI
+                select('#img-head').style.display='none'; select('#no-img-head').style.display='none';
+                select('#img-cand').style.display='none'; select('#no-img-cand').style.display='none';
+
                 if (geo.head) {
                     showBlock(wHead);
                     select('#ts-head').textContent = `Ditandatangani: ${geo.head.ts}`;
                     initMap('map-head', geo.head.lat, geo.head.lng);
+                    
+                    if(geo.head.image_url) {
+                        select('#img-head').src = geo.head.image_url;
+                        showBlock(select('#img-head'));
+                    } else showBlock(select('#no-img-head'));
                 } else hide(wHead);
 
                 if (geo.candidate) {
                     showBlock(wCand);
                     select('#ts-cand').textContent = `Ditandatangani: ${geo.candidate.ts}`;
                     initMap('map-cand', geo.candidate.lat, geo.candidate.lng);
+                    
+                    if(geo.candidate.image_url) {
+                        select('#img-cand').src = geo.candidate.image_url;
+                        showBlock(select('#img-cand'));
+                    } else showBlock(select('#no-img-cand'));
                 } else hide(wCand);
 
                 openModal('detailContractModal');
@@ -935,7 +969,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#editTypeInput').value = d.contract_type;
                 select('#editDisplayPerson').textContent = d.person_name;
                 select('#editDisplayType').textContent = d.contract_type_label;
-                
                 select('#editPos').value = d.position_name;
                 select('#editRemarks').value = d.remarks;
                 if(select('#editUnitSelect')) select('#editUnitSelect').value = d.unit_id;
@@ -949,14 +982,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     showBlock(select('#editSectionPkwtSpk')); hide(select('#editSectionPb'));
                     select('#editStart').value = d.start_date_raw || d.start_date; 
                     select('#editEnd').value = d.end_date_raw || d.end_date;
-                    
                     const setM = (sel, val) => { const el = select(sel); if(el){ el.value = money(val); el.dispatchEvent(new Event('input')); }};
                     setM('#editSalary', m.salary_amount); setM('#editLunch', m.lunch_allowance_daily);
                     setM('#editAP', m.allowance_position_amount); setM('#editAC', m.allowance_communication_amount);
                     setM('#editAS', m.allowance_special_amount); setM('#editAO', m.allowance_other_amount);
                     select('#editOB').value = m.other_benefits_desc || '';
                 }
-                
                 const boxNew = select('#editNewUnitWrapper');
                 if(d.contract_type === 'PKWT_PERPANJANGAN') { showBlock(boxNew); if(m.new_unit_id) select('#editNewUnitId').value = m.new_unit_id; }
                 else hide(boxNew);
@@ -975,10 +1006,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnSubmit = select('#btnSubmitSign');
         const geoStat = select('#geoStatus');
         
+        // Buttons for capture
+        const btnCap = select('#btnCapture');
+        const btnRet = select('#btnRetake');
+        const snapPrev = select('#snapshotPreview');
+        let captured = false;
+
         f.reset();
         select('[name="signature_image"]').value = '';
         select('[name="geo_lat"]').value = '';
         select('[name="geo_lng"]').value = '';
+        select('[name="snapshot_image"]').value = ''; 
+        
+        // Reset Camera UI
+        captured = false;
+        snapPrev.style.display = 'none';
+        vid.style.display = 'block';
+        hide(btnRet);
+        if(btnCap) { showBlock(btnCap); btnCap.disabled = false; }
+        
         btnSubmit.disabled = true;
         
         openModal('signModal');
@@ -997,42 +1043,33 @@ document.addEventListener('DOMContentLoaded', () => {
         geoStat.className = "u-text-sm u-font-medium u-text-muted";
         
         const getGeo = (highAccuracy) => {
-            if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-                 geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS untuk Lokasi!</span>';
-                 console.warn("Skipping geo check due to non-secure context");
+             if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                 geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS!</span>';
                  return;
-            }
-            if (!("geolocation" in navigator)) {
-                geoStat.textContent = "Browser tidak support lokasi.";
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
+             }
+             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     select('[name="geo_lat"]').value = pos.coords.latitude;
                     select('[name="geo_lng"]').value = pos.coords.longitude;
+                    select('[name="geo_accuracy"]').value = pos.coords.accuracy; // Set accuracy
                     geoStat.textContent = `Lat: ${pos.coords.latitude.toFixed(5)}, Lng: ${pos.coords.longitude.toFixed(5)}`;
                     geoStat.className = "u-text-sm u-font-medium u-text-success";
                     select('#geoIcon').className = "fas fa-map-marker-alt u-text-success";
                     checkReady();
                 },
                 (err) => {
-                    if (highAccuracy && err.code !== 1) {
-                        geoStat.textContent = "Mencoba akurasi rendah...";
-                        getGeo(false); 
-                    } else {
-                        let msg = "Gagal mendeteksi lokasi.";
-                        if(err.code === 1) msg = "Izin lokasi ditolak browser.";
-                        geoStat.textContent = msg;
+                    if(highAccuracy) getGeo(false);
+                    else {
+                        geoStat.textContent = "Gagal mendeteksi lokasi.";
                         geoStat.className = "u-text-sm u-font-medium u-text-danger";
                     }
                 },
-                { enableHighAccuracy: highAccuracy, timeout: 20000, maximumAge: 0 }
+                { enableHighAccuracy: highAccuracy, timeout: 20000 }
             );
         };
-
         getGeo(true); 
 
+        // Camera Logic
         let streamObj = null;
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === 'localhost')) {
             showBlock(camSec);
@@ -1045,12 +1082,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .catch((err) => {
                     console.error("Camera Error:", err);
-                    select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Wajib HTTPS";
+                    select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak";
                 });
         } else {
             hide(camSec); 
         }
 
+        // Capture Button Action
+        if(btnCap) {
+            btnCap.onclick = () => {
+                if (vid.videoWidth > 0) {
+                    const snapCanvas = document.createElement('canvas');
+                    snapCanvas.width = 640; 
+                    snapCanvas.height = 480; 
+                    snapCanvas.getContext('2d').drawImage(vid, 0, 0, snapCanvas.width, snapCanvas.height);
+                    const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // Set value & show preview
+                    select('[name="snapshot_image"]').value = dataUrl;
+                    snapPrev.src = dataUrl;
+                    
+                    vid.style.display = 'none';
+                    snapPrev.style.display = 'block';
+                    
+                    hide(btnCap);
+                    showBlock(btnRet);
+                    
+                    captured = true;
+                    checkReady();
+                }
+            };
+        }
+        
+        // Retake Button Action
+        if(btnRet) {
+            btnRet.onclick = () => {
+                select('[name="snapshot_image"]').value = '';
+                snapPrev.style.display = 'none';
+                vid.style.display = 'block';
+                showBlock(btnCap);
+                hide(btnRet);
+                captured = false;
+                checkReady();
+            };
+        }
+
+        // Drawing Logic ...
         let isDown = false;
         let hasSigned = false;
         const ctx = cvs.getContext('2d');
@@ -1089,7 +1166,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cvs.onmousedown = drawStart;
         cvs.onmousemove = drawMove;
         window.addEventListener('mouseup', drawEnd);
-
         cvs.ontouchstart = drawStart;
         cvs.ontouchmove = drawMove;
         window.addEventListener('touchend', drawEnd);
@@ -1102,21 +1178,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function checkReady() {
             const locOk = select('[name="geo_lat"]').value !== "";
-            if (locOk && hasSigned) btnSubmit.disabled = false;
+            const camOk = !camSec.classList.contains('is-hidden') ? captured : true; // Require cam if visible
+            
+            if (locOk && hasSigned && camOk) btnSubmit.disabled = false;
+            else btnSubmit.disabled = true;
         }
 
         f.onsubmit = async (e) => {
             e.preventDefault();
             select('[name="signature_image"]').value = cvs.toDataURL('image/png');
-
-            if (streamObj && !camSec.classList.contains('is-hidden')) {
-                const snapCanvas = document.createElement('canvas');
-                snapCanvas.width = vid.videoWidth;
-                snapCanvas.height = vid.videoHeight;
-                snapCanvas.getContext('2d').drawImage(vid, 0, 0);
-                select('[name="snapshot_image"]').value = snapCanvas.toDataURL('image/jpeg', 0.8);
-            }
-
+            
             const fd = new FormData(f);
             if (streamObj) streamObj.getTracks().forEach(track => track.stop());
 

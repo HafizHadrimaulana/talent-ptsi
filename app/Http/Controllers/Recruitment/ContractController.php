@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Storage};
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 class ContractController extends Controller
 {
@@ -37,7 +38,6 @@ class ContractController extends Controller
             } elseif ($isSuperadmin) {
                 $query->whereHas('unit', fn($q) => $q->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']));
             }
-    
             if ($isApproverOnly) {
                 $query->where('status', '!=', 'draft');
             }
@@ -144,15 +144,12 @@ class ContractController extends Controller
             }
             $c->remuneration_json = $meta;
             $c->status = ($v['submit_action'] === 'submit') ? 'review' : 'draft';
-            
             if ($c->status === 'review') {
                 $c->contract_no = $this->generateContractNumber($c);
             }
-            
             $c->created_by_user_id = $request->user()->id;
             $c->created_by_person_id = $request->user()->person_id;
             $c->save();
-            
             $this->ensureDocumentRecord($c);
             if ($c->status === 'review') {
                 $this->createApproval($c, $request->user());
@@ -220,7 +217,6 @@ class ContractController extends Controller
         if ($contract->status !== 'draft') {
             return back()->withErrors('Hanya dokumen status Draft yang dapat dihapus.');
         }
-
         DB::beginTransaction();
         try {
             if ($contract->document_id) {
@@ -232,9 +228,7 @@ class ContractController extends Controller
                     $doc->delete();
                 }
             }
-
             Approval::where('approvable_id', $contract->id)->where('approvable_type', 'contract')->delete();
-            
             $contract->delete();
             DB::commit();
             return back()->with('success', 'Dokumen berhasil dihapus.');
@@ -258,15 +252,39 @@ class ContractController extends Controller
         set_time_limit(600);
         ini_set('memory_limit', '512M');
         $needsDraw = ($contract->requires_draw_signature == 1 || $contract->requires_draw_signature === true);
+        
         $data = $request->validate([
             'note' => 'nullable',
             'signature_image' => ($needsDraw ? 'required' : 'nullable'),
             'geo_lat' => 'nullable|string',
             'geo_lng' => 'nullable|string',
+            'geo_accuracy' => 'nullable|numeric',
             'snapshot_image' => 'nullable|string',
         ]);
+
         DB::beginTransaction();
         try {
+            $snapshotPath = null;
+            $camHash = null;
+            if (!empty($data['snapshot_image'])) {
+                if (str_starts_with($data['snapshot_image'], 'data:image')) {
+                    $image_parts = explode(";base64,", $data['snapshot_image']);
+                    if (count($image_parts) >= 2) {
+                        $image_type_aux = explode("image/", $image_parts[0]);
+                        $image_type = $image_type_aux[1] ?? 'jpeg';
+                        $image_base64 = base64_decode($image_parts[1]);
+                        
+                        $fileName = 'snap_' . $contract->id . '_' . time() . '_' . Str::random(8) . '.' . $image_type;
+                        $path = 'signatures/snapshots/' . $fileName; 
+                        
+                        Storage::disk('public')->put($path, $image_base64);
+                        
+                        $snapshotPath = $path;
+                        $camHash = hash('sha256', $image_base64);
+                    }
+                }
+            }
+
             if ($role === 'Kepala Unit') {
                 Approval::where('approvable_id', $contract->id)->where('status', 'pending')->update([
                     'status' => 'approved', 'approver_person_id' => $request->user()->person_id, 'approver_user_id' => $request->user()->id, 'decided_at' => now(), 'note' => $data['note'] ?? null
@@ -277,16 +295,27 @@ class ContractController extends Controller
             } else {
                 Approval::where('approvable_id', $contract->id)->where('status', 'approved')->update(['status' => 'completed', 'note' => $data['note'] ?? 'Signed']);
             }
+            
             $this->ensureDocumentRecord($contract);
+            
+            $sigHash = !empty($data['signature_image']) ? hash('sha256', $data['signature_image']) : null;
+            $verifCode = strtoupper(Str::random(10));
+
             Signature::create([
                 'document_id' => $contract->document_id, 'signer_person_id' => $request->user()->person_id, 'signer_user_id' => $request->user()->id,
                 'signer_role' => $role, 'signed_at' => now(),
                 'signature_draw_data' => $data['signature_image'] ?? null,
+                'signature_draw_hash' => $sigHash,
                 'geo_lat' => $data['geo_lat'] ?? null,
                 'geo_lng' => $data['geo_lng'] ?? null,
-                'snapshot_data' => $data['snapshot_image'] ?? null,
+                'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
+                'camera_photo_path' => $snapshotPath,
+                'camera_photo_hash' => $camHash,
+                'snapshot_data' => $snapshotPath, // Isi juga utk backward compatibility
+                'verification_code' => $verifCode,
                 'ip_address' => $request->ip()
             ]);
+            
             $contract->update(['status' => $status]);
             $contract->loadMissing('document');
             if ($contract->document && Storage::disk('local')->exists($contract->document->path)) {
@@ -345,17 +374,9 @@ class ContractController extends Controller
         
         $kaUnitStatus = 'Waiting';
         $candStatus = 'Waiting';
-
-        if ($contract->status === 'approved') {
-            $kaUnitStatus = 'Approved';
-            $candStatus = 'Pending';
-        } elseif ($contract->status === 'signed') {
-            $kaUnitStatus = 'Approved';
-            $candStatus = 'Signed';
-        } elseif ($contract->status === 'rejected') {
-            $kaUnitStatus = 'Rejected';
-            $candStatus = '-';
-        }
+        if ($contract->status === 'approved') { $kaUnitStatus = 'Approved'; $candStatus = 'Pending'; } 
+        elseif ($contract->status === 'signed') { $kaUnitStatus = 'Approved'; $candStatus = 'Signed'; } 
+        elseif ($contract->status === 'rejected') { $kaUnitStatus = 'Rejected'; $candStatus = '-'; }
         
         $me = auth()->user();
         $canSign = $me->can('contract.sign') && $contract->status === 'approved';
@@ -364,7 +385,6 @@ class ContractController extends Controller
         }
 
         $targetRole = (in_array($contract->contract_type, ['PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN'])) ? 'Pegawai' : 'Kandidat';
-
         $geoData = $this->getGeoData($contract, $me);
 
         return response()->json(['success' => true, 'data' => array_merge($contract->toArray(), [
@@ -374,14 +394,9 @@ class ContractController extends Controller
             'can_sign' => $canSign,
             'doc_url' => $docUrl, 'approve_url' => route('recruitment.contracts.approve', $contract), 'sign_url' => route('recruitment.contracts.sign', $contract),
             'reject_url' => route('recruitment.contracts.reject', $contract),
-            'candidate_nik' => $cand['nik'] ?? '-',
-            'candidate_nik_real' => $cand['nik_real'] ?? '-',
-            'target_role_label' => $targetRole,
+            'candidate_nik' => $cand['nik'] ?? '-', 'candidate_nik_real' => $cand['nik_real'] ?? '-', 'target_role_label' => $targetRole,
             'geolocation' => $geoData,
-            'progress' => [
-                'ka_unit' => $kaUnitStatus,
-                'candidate' => $candStatus
-            ]
+            'progress' => [ 'ka_unit' => $kaUnitStatus, 'candidate' => $candStatus ]
         ])]);
     }
 
@@ -392,43 +407,49 @@ class ContractController extends Controller
         $candSig = $signatures->whereIn('signer_role', ['Kandidat', 'Pegawai'])->last();
 
         $geo = ['head' => null, 'candidate' => null];
+        $isPowerUser = $user->hasRole(['Superadmin', 'SDM Unit', 'DHC', 'Kepala Unit']); 
         
-        $isPowerUser = $user->hasRole(['Superadmin', 'SDM Unit', 'DHC']);
-        
-        if ($headSig && ($isPowerUser || $headSig->signer_person_id == $user->person_id)) {
-             $tz = $this->resolveIndonesianTimezone($headSig->geo_lng);
-             $geo['head'] = [
-                 'lat' => $headSig->geo_lat, 
-                 'lng' => $headSig->geo_lng, 
-                 'ts' => Carbon::parse($headSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
-                 'name' => 'Kepala Unit'
-            ];
+        if ($headSig) {
+            $canSeeHead = $isPowerUser || ($headSig->signer_person_id == $user->person_id);
+            if ($canSeeHead) {
+                $tz = $this->resolveIndonesianTimezone($headSig->geo_lng);
+                $geo['head'] = [
+                    'lat' => $headSig->geo_lat, 'lng' => $headSig->geo_lng, 
+                    'ts' => Carbon::parse($headSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
+                    'name' => 'Kepala Unit',
+                    'image_url' => $this->resolveImageUrl($headSig->camera_photo_path ?? $headSig->snapshot_data)
+                ];
+            }
         }
 
-        if ($candSig && ($isPowerUser || $candSig->signer_person_id == $user->person_id)) {
-             $tz = $this->resolveIndonesianTimezone($candSig->geo_lng);
-             $geo['candidate'] = [
-                 'lat' => $candSig->geo_lat, 
-                 'lng' => $candSig->geo_lng, 
-                 'ts' => Carbon::parse($candSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
-                 'name' => 'Kandidat/Pegawai'
-            ];
+        if ($candSig) {
+            $canSeeCand = $isPowerUser || ($candSig->signer_person_id == $user->person_id);
+            if ($canSeeCand) {
+                $tz = $this->resolveIndonesianTimezone($candSig->geo_lng);
+                $geo['candidate'] = [
+                    'lat' => $candSig->geo_lat, 'lng' => $candSig->geo_lng, 
+                    'ts' => Carbon::parse($candSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
+                    'name' => 'Kandidat/Pegawai',
+                    'image_url' => $this->resolveImageUrl($candSig->camera_photo_path ?? $candSig->snapshot_data)
+                ];
+            }
         }
-
         return $geo;
+    }
+
+    private function resolveImageUrl($pathOrBase64) 
+    {
+        if (!$pathOrBase64) return null;
+        if (str_starts_with($pathOrBase64, 'data:image')) return $pathOrBase64;
+        return asset('storage/' . $pathOrBase64);
     }
 
     protected function resolveIndonesianTimezone($lng)
     {
         $lng = (float) $lng;
-        // Approximation: WIB < 114.5 (ish), WITA < 125, WIT > 125
-        if ($lng > 125.0) {
-            return ['zone' => 'Asia/Jayapura', 'abbr' => 'WIT'];
-        } elseif ($lng > 114.5) {
-            return ['zone' => 'Asia/Makassar', 'abbr' => 'WITA'];
-        } else {
-            return ['zone' => 'Asia/Jakarta', 'abbr' => 'WIB'];
-        }
+        if ($lng > 125.0) return ['zone' => 'Asia/Jayapura', 'abbr' => 'WIT'];
+        elseif ($lng > 114.5) return ['zone' => 'Asia/Makassar', 'abbr' => 'WITA'];
+        else return ['zone' => 'Asia/Jakarta', 'abbr' => 'WIB'];
     }
 
     protected function resolveCandidate(Contract $c)
@@ -493,41 +514,27 @@ class ContractController extends Controller
         $uCode = $c->unit?->code ?? 'UNIT';
         $romanMonth = $this->getRomanMonth(now()->month);
         $year = now()->year;
-        
         $defaultHead = (string)(config('recruitment.numbering.default_head_code') ?? 'XX');
         $headCode = $defaultHead;
-        
         $headUnit = $this->resolveHeadUnit($c->unit);
         $head = $this->getUnitHeadUser($headUnit);
-        
         if ($head && $head->person && ($head->person->full_name ?? null)) {
             $ini = $this->initialsFromName($head->person->full_name);
             if ($ini) $headCode = $ini;
         }
-
         $base = "/{$uCode}-{$romanMonth}/{$headCode}/{$year}";
-        
-        $last = DB::table('contracts')
-            ->where('contract_no', 'like', "%{$base}")
-            ->orderByRaw('LENGTH(contract_no) DESC')
-            ->orderBy('contract_no', 'desc')
-            ->value('contract_no');
-
+        $last = DB::table('contracts')->where('contract_no', 'like', "%{$base}")->orderByRaw('LENGTH(contract_no) DESC')->orderBy('contract_no', 'desc')->value('contract_no');
         $seq = 1;
         if ($last) {
             $parts = explode('/', $last);
             $nums = explode('-', $parts[0] ?? '');
             $seq = ((int)end($nums)) + 1;
         }
-
         do {
             $candidate = sprintf("%s-%03d%s", $code, $seq, $base);
             $exists = DB::table('contracts')->where('contract_no', $candidate)->exists();
-            if ($exists) {
-                $seq++;
-            }
+            if ($exists) $seq++;
         } while ($exists);
-
         return $candidate;
     }
 
