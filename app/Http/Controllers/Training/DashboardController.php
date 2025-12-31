@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\TrainingReference;
 use App\Models\TrainingRequest;
+use App\Models\Unit;
 
 use Illuminate\Database\QueryException;
 
@@ -21,91 +22,66 @@ class DashboardController extends Controller
     
     public function index()
     {
-        /**
-         * ==========================================
-         * A. TRAINING REFERENCE (LNA)
-         * ==========================================
-         */
-        $referenceCounts = TrainingReference::select(
-                'status_training_reference',
-                DB::raw('COUNT(*) as total')
-            )
-            ->groupBy('status_training_reference')
+        $user = auth()->user();
+        // Asumsi: User memiliki relasi ke Employee, dan Employee memiliki unit_id
+        $employee = $user->employee; 
+        $unitId = auth()->user()?->employee?->unit_id;
+
+        Log::info('Unit ID:', ['unit_id' => $unitId]);
+        
+        // A. Statistik LNA & Request (Seperti code Anda)
+        $referenceCounts = TrainingReference::groupBy('status_training_reference')
+            ->select('status_training_reference', DB::raw('count(*) as total'))
             ->pluck('total', 'status_training_reference');
 
-        /**
-         * ==========================================
-         * B. TRAINING REQUEST
-         * ==========================================
-         */
-        $requestCounts = TrainingRequest::select(
-                'status_approval_training',
-                DB::raw('COUNT(*) as total')
-            )
-            ->groupBy('status_approval_training')
+        $requestCounts = TrainingRequest::groupBy('status_approval_training')
+            ->select('status_approval_training', DB::raw('count(*) as total'))
             ->pluck('total', 'status_approval_training');
 
-        /**
-         * ==========================================
-         * C. DEFINISI STATUS (HARDCODE = BENAR)
-         * ==========================================
-         */
+        $myUnitBudget = null;
+        if ($unitId) {
+            $used = TrainingRequest::whereHas('employee', function($q) use ($unitId) {
+                $q->where('unit_id', $unitId);
+            })
+                ->where('status_approval_training', 'approved')
+                ->sum('estimasi_total_biaya');
+
+            $limit = 5_000_000_000;
+
+            $myUnitBudget = [
+                'name'       => auth()->user()->employee?->unit?->name, // opsional
+                'used'       => $used,
+                'limit'      => $limit,
+                'percentage' => $used > 0
+                    ? min(round(($used / $limit) * 100, 1), 100)
+                    : 0,
+            ];
+        }
+
+        // C. DATA TABEL TERBARU
+        $recentRequests = TrainingRequest::with(['employee.person', 'trainingReference'])
+            ->whereHas('employee', function($q) use ($unitId) {
+                $q->where('unit_id', $unitId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
         $dashboardItems = collect([
-            // ===== LNA =====
-            [
-                'key'   => 'pending',
-                'label' => 'Pending (LNA)',
-                'total' => $referenceCounts['pending'] ?? 0,
-            ],
-            [
-                'key'   => 'in_review_dhc',
-                'label' => 'In Review DHC (LNA)',
-                'total' => $referenceCounts['in_review_dhc'] ?? 0,
-            ],
-            [
-                'key'   => 'active',
-                'label' => 'Active (LNA)',
-                'total' => $referenceCounts['active'] ?? 0,
-            ],
-            [
-                'key'   => 'rejected',
-                'label' => 'Rejected (LNA)',
-                'total' => $referenceCounts['rejected'] ?? 0,
-            ],
-
-            // ===== TRAINING REQUEST =====
-            [
-                'key'   => 'created',
-                'label' => 'Created (Request)',
-                'total' => $requestCounts['created'] ?? 0,
-            ],
-            [
-                'key'   => 'in_review_gmvp',
-                'label' => 'In Review GM/VP',
-                'total' => $requestCounts['in_review_gmvp'] ?? 0,
-            ],
-            [
-                'key'   => 'in_review_dhc',
-                'label' => 'In Review DHC',
-                'total' => $requestCounts['in_review_dhc'] ?? 0,
-            ],
-            [
-                'key'   => 'approved',
-                'label' => 'Approved',
-                'total' => $requestCounts['approved'] ?? 0,
-            ],
-            [
-                'key'   => 'rejected',
-                'label' => 'Rejected',
-                'total' => $requestCounts['rejected'] ?? 0,
-            ],
+            ['key' => 'pending', 'label' => 'Pending (LNA)', 'total' => $referenceCounts['pending'] ?? 0],
+            ['key' => 'active', 'label' => 'Active (LNA)', 'total' => $referenceCounts['active'] ?? 0],
+            ['key' => 'in_review_dhc', 'label' => 'Review DHC', 'total' => $requestCounts['in_review_dhc'] ?? 0],
+            ['key' => 'in_review_gmvp', 'label' => 'Review Kepala Unit', 'total' => $requestCounts['in_review_gmvp'] ?? 0],
+            ['key' => 'in_review_avpdhc', 'label' => 'Review AVP DHC', 'total' => $requestCounts['in_review_avpdhc'] ?? 0],
+            ['key' => 'in_review_vpdhc', 'label' => 'Review VP DHC', 'total' => $requestCounts['in_review_vpdhc'] ?? 0],
+            ['key' => 'approved', 'label' => 'Approved (Req)', 'total' => $requestCounts['approved'] ?? 0],
+            ['key' => 'rejected', 'label' => 'Rejected', 'total' => $requestCounts['rejected'] ?? 0],
         ]);
 
-        return view('training.dashboard.index', [
-            'dashboardItems' => $dashboardItems
-        ]);
+        return view('training.dashboard.index', compact('dashboardItems', 
+        'myUnitBudget', 
+        'recentRequests'));
     }
-
 
     public function getDataEvaluation()
     {

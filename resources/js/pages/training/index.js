@@ -174,18 +174,6 @@ const initializeButtonHandlers = () => {
         console.log("Initializing download template handler");
         initDownloadTemplateHandler();
     }
-
-    // // Bulk Approval
-    // if (document.querySelector(TRAINING_CONFIG.buttons.bulkApprove)) {
-    //     console.log("Initializing bulk approval handler");
-    //     initBulkApprovalHandler();
-    // }
-
-    // // All Approval
-    // if (document.querySelector(TRAINING_CONFIG.buttons.allApprove)) {
-    //     console.log("Initializing all approval handler");
-    //     initAllApprovalHandler();
-    // }
 };
 
 const initializeGlobalEventHandlers = () => {

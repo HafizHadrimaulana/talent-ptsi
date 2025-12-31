@@ -1,101 +1,106 @@
 import { getJSON } from "@/utils/fetch";
-import { initDeleteHandler } from "./handler/deleteHandler";
-import { initEditHandler } from "./handler/editHandler";
-import { initApproveHandler, initApproveReferenceHandler } from "./handler/approveHandler";
-import { initRejectHandler, rejectTrainingPengajuanHandler } from "./handler/rejectHandler";
 import { initDragDropUpload } from "./handler/dragDropImport";
-import { initDetailHandler } from "./handler/initDetailHandler";
 import { initDataTables } from "../../../plugins/datatables";
+import { executeApprove, executeApproveReference } from "./handler/approveHandler";
+import { executeReject, executeRejectPengajuan } from "./handler/rejectHandler";
+
 
 const TABLE_CONFIGS = {
-    'data-lna-table': {
+    "data-lna-table": {
         tableId: "data-lna-table",
+        modalId: "#lna-modal",
         apiEndpoint: () => "/training/training-request/get-data-lna",
         columns: [
-            'no','judul_sertifikasi','unit_kerja','penyelenggara',
-            'jumlah_jam','waktu_pelaksanaan','biaya_pelatihan',
-            'uhpd','biaya_akomodasi','estimasi_total_biaya',
-            'nama_proyek','jenis_portofolio','fungsi', 'status_training_reference', 'actions'
+            "no",
+            "judul_sertifikasi",
+            "unit_kerja",
+            "penyelenggara",
+            "jumlah_jam",
+            "waktu_pelaksanaan",
+            "biaya_pelatihan",
+            "uhpd",
+            "biaya_akomodasi",
+            "estimasi_total_biaya",
+            "nama_proyek",
+            "jenis_portofolio",
+            "fungsi",
+            "status_training_reference",
+            "actions",
         ],
         dataMapper: (res) => res.data || [],
-        actions: { default: ['details'] }
     },
 
-    'approval-pengajuan-training-table': {
+    "approval-pengajuan-training-table": {
         tableId: "approval-pengajuan-training-table",
-        apiEndpoint: () => `/training/training-request/get-approval-pengajuan-training`,
+        modalId: "#pengajuan-training-modal",
+        apiEndpoint: () =>
+            `/training/training-request/get-approval-pengajuan-training`,
         columns: [
-            'no','judul_sertifikasi','unit_kerja','penyelenggara',
-            'jumlah_jam','waktu_pelaksanaan','biaya_pelatihan',
-            'uhpd','biaya_akomodasi','estimasi_total_biaya',
-            'nama_proyek','jenis_portofolio','fungsi', 'status_training_reference', 'actions'
+            "no",
+            "judul_sertifikasi",
+            "unit_kerja",
+            "penyelenggara",
+            "jumlah_jam",
+            "waktu_pelaksanaan",
+            "biaya_pelatihan",
+            "uhpd",
+            "biaya_akomodasi",
+            "estimasi_total_biaya",
+            "nama_proyek",
+            "jenis_portofolio",
+            "fungsi",
+            "status_training_reference",
+            "actions",
         ],
         dataMapper: (res) => res.data || [],
-        actions: {
-            default: ['details'],
-            rules: [
-                { roles: ['DBS Unit', 'DHC'], allow: ['approve_training_pengajuan', 'reject_training_pengajuan'] }
-            ]
-        }
     },
 
-    'training-request-table': {
+    "training-request-table": {
         tableId: "training-request-table",
-        apiEndpoint: (unitId) => `/training/training-request/${unitId}/get-training-request-list`,
-        columns: ['no', 'judul_sertifikasi', 'peserta', 'tanggal_mulai', 'tanggal_berakhir', 'realisasi_biaya_pelatihan', 'estimasi_total_biaya', 'lampiran_penawaran', 'status_approval_training', 'actions'],
-        dataMapper: (data) => {
-            if (!data || data.status !== "success") return [];
-            return data.data.map((item) => ({
+        modalId: "#training-peserta-modal",
+        apiEndpoint: (unitId) =>
+            `/training/training-request/${unitId}/get-training-request-list`,
+        columns: [
+            "no",
+            "judul_sertifikasi",
+            "peserta",
+            "tanggal_mulai",
+            "tanggal_berakhir",
+            "realisasi_biaya_pelatihan",
+            "estimasi_total_biaya",
+            "lampiran_penawaran",
+            "status_approval_training",
+            "actions",
+        ],
+        dataMapper: (res) =>
+            (res.data || []).map((item) => ({
                 id: item.id,
-                judul_sertifikasi: item.training_reference?.judul_sertifikasi || "-",
+                judul_sertifikasi:
+                    item.training_reference?.judul_sertifikasi || "-",
                 nama_peserta: item.employee?.person?.full_name || "-",
                 nik: item.employee?.employee_id || "-",
                 tanggal_mulai: item.start_date,
                 tanggal_berakhir: item.end_date,
                 realisasi_biaya_pelatihan: item.realisasi_biaya_pelatihan,
-                estimasi_total_biaya: item.estimasi_total_biaya || item.training_reference?.estimasi_total_biaya || "0",
+                estimasi_total_biaya:
+                    item.estimasi_total_biaya ||
+                    item.training_reference?.estimasi_total_biaya ||
+                    "0",
                 lampiran_penawaran: item.lampiran_penawaran,
                 status_approval_training: item.status_approval_training,
-            }));
-        },
-        actions: {
-            default: ['details'],
-            rules: [
-                {
-                    roles: ["SDM Unit"],
-                    when: (s) => s === "in_review_gmvp",
-                    allow: ["delete"],
-                },
-                {
-                    roles: ["DHC"],
-                    when: (s) => s === "in_review_dhc",
-                    allow: ["approve", "reject"],
-                },
-                {
-                    roles: ["AVP"],
-                    when: (s) => s === "in_review_avpdhc",
-                    allow: ["approve", "reject"],
-                },
-                { roles: ["Kepala Unit"], allow: ["approve", "reject"] },
-            ],
-        }
-    }
+            })),
+    },
 };
 
-const ACTION_BUTTONS = {
-    edit: { class: "u-btn u-btn--brand u-hover-lift", text: "Edit" },
-    delete: { class: "u-btn u-btn--danger u-hover-lift", text: "Hapus" },
-    approve: { class: "u-btn u-btn--success u-hover-lift", text: "Terima" },
-    reject: { class: "u-btn u-btn--danger u-hover-lift", text: "Tolak" },
-    approve_training_pengajuan: { class: "u-btn u-btn--success u-hover-lift", text: "Terima" },
-    reject_training_pengajuan: { class: "u-btn u-btn--danger u-hover-lift", text: "Tolak" },
-    details: { class: "u-btn u-btn--info u-hover-lift", text: "Details" }
-};
-
+// RENDERER UNTUK KOLOM TABEL
 const COLUMN_RENDERERS = {
-    no: (d, t, r, meta) => `<div class="text-center"><div class="u-badge u-badge--primary">${meta.row + 1}</div></div>`,
-    
-    judul_sertifikasi: (d, t, r) => `<div class="u-font-medium">${r.judul_sertifikasi ?? "-"}</div>`,
+    no: (d, t, r, meta) =>
+        `<div class="text-center"><div class="u-badge u-badge--primary">${
+            meta.row + 1
+        }</div></div>`,
+
+    judul_sertifikasi: (d, t, r) =>
+        `<div class="u-font-medium">${r.judul_sertifikasi ?? "-"}</div>`,
 
     peserta: (d, t, r) => `
         <div class="flex flex-col">
@@ -105,210 +110,273 @@ const COLUMN_RENDERERS = {
 
     tanggal_mulai: (d) => `<div>${formatDate(d)}</div>`,
     tanggal_berakhir: (d) => `<div>${formatDate(d)}</div>`,
-
-    biaya_pelatihan: (d) => `<div class="u-text-right font-semibold u-text-primary">${formatRupiah(d)}</div>`,
-    realisasi_biaya_pelatihan: (d) => `<div class="u-text-right font-semibold">${formatRupiah(d)}</div>`,
-    estimasi_total_biaya: (d) => `<div class="u-text-right font-bold u-text-primary">${formatRupiah(d)}</div>`,
+    biaya_pelatihan: (d) => `<div>${formatRupiah(d)}</div>`,
+    estimasi_total_biaya: (d) =>
+        `<div class="font-bold u-text-primary">${formatRupiah(d)}</div>`,
 
     lampiran_penawaran: (d) => {
         const hasFile = d && d !== "null" && d !== "";
-        return `<div class="text-center"><span class="u-badge ${hasFile ? 'u-badge--success' : 'u-badge--danger'}">${hasFile ? 'Tersedia' : 'Kosong'}</span></div>`;
+        return `<div class="text-center"><span class="u-badge ${
+            hasFile ? "u-badge--success" : "u-badge--danger"
+        }">${hasFile ? "Tersedia" : "Kosong"}</span></div>`;
     },
 
-    status_approval_training: (d) => {
-        // 1. Definisikan mapping style
-        const STATUS_MAP = {
-            created: {
-                label: "Created",
-                class: "u-badge--secondary"
-            },
-            in_review_gmvp: {
-                label: "In Review GM/VP",
-                class: "u-badge--warning"
-            },
-            in_review_dhc: {
-                label: "In Review DHC",
-                class: "u-badge--info"
-            },
-            in_review_avpdhc: {
-                label: "In Review AVP DHC",
-                class: "u-badge--purple"
-            },
-            in_review_vpdhc: {
-                label: "In Review VP DHC",
-                class: "u-badge--primary"
-            },
-            approved: {
-                label: "Approved",
-                class: "u-badge--success"
-            },
-            rejected: {
-                label: "Rejected",
-                class: "u-badge--danger"
-            }
-        };
+    status_approval_training: (d) => renderStatusBadge(d),
+    status_training_reference: (d) => renderStatusBadge(d),
 
-        // 2. Ambil config berdasarkan key status (d), jika tidak ada gunakan default
-        const config = STATUS_MAP[d] || { 
-            label: d?.replace(/_/g, ' ').toUpperCase() || '-', 
-            class: "u-badge--secondary" 
-        };
+    actions: (data, type, row, meta, config) => `
+        <div class="u-flex u-justify-center">
+            <button type="button" class="u-btn u-btn--xs u-btn--outline btn-trigger-modal" 
+                data-table="${config.tableId}">
+                <i class="fas fa-eye"></i> Detail
+            </button>
+        </div>`,
+};
 
-        // 3. Render HTML
-        return `
-            <div class="text-center">
-                <span class="u-badge ${config.class}">
-                    ${config.label}
-                </span>
-            </div>`;
-    },
+// --- CORE HANDLER ---
 
-    status_training_reference: (d) => {
-        const MAP = {
-            active: { label: "Aktif", class: "u-badge--success" },
-            pending: { label: "Pending", class: "u-badge--warning" },
-            rejected: { label: "Ditolak", class: "u-badge--danger" },
-        };
-        const cfg = MAP[d] || { label: d, class: "u-badge--secondary" };
-        return `<div class="text-center"><span class="u-badge ${cfg.class}">${cfg.label}</span></div>`;
-    },
+const initModalSystem = () => {
+    const $body = $("body");
 
-    actions: (data, type, row, meta, baseConfig) => {
-        const actions = resolveActions(baseConfig, row);
-        
-        const finalActions = actions && actions.length ? actions : ['details'];
-        
-        const tableId = baseConfig.tableId;
+    // 1. Handler Buka Modal
+    $body
+        .off("click", ".btn-trigger-modal")
+        .on("click", ".btn-trigger-modal", function () {
+            const $btn = $(this);
+            const tableId = $btn.data("table");
+            const config = TABLE_CONFIGS[tableId];
 
-        const buttons = finalActions.map(act => {
-            const btn = ACTION_BUTTONS[act];
-            if (!btn) return "";
+            if (!config) return;
+
+            const rowData = $(`#${tableId}`)
+                .DataTable()
+                .row($btn.closest("tr"))
+                .data();
+            const $modal = $(config.modalId);
+
+            console.log('row data aaa', rowData);
             
-            return `<button 
-                        class="${btn.class} btn-action" 
-                        data-action="${act}" 
-                        data-id="${row.id}" 
-                        data-table="${tableId}">
-                        ${btn.text}
-                    </button>`;
-        }).join('');
+            if ($modal.length && rowData) {
+                populateModalData($modal, rowData);
 
-        return `
-            <div class="u-flex u-justify-center u-gap-sm">
-                ${buttons || "-"}
-            </div>
-        `;
-    }
-};
-
-const resolveActions = (config, item) => {
-    console.log('aaa', config);
-    const role = window.currentUserRole;
-    let allowed = config.actions?.default || ['details'];
-
-    if (config.actions?.rules) {
-        for (const rule of config.actions.rules) {
-            const roleMatch = !rule.roles || rule.roles.includes(role);
-            const statusMatch = !rule.when || rule.when(item.status_approval_training);
-            if (roleMatch && statusMatch) {
-                allowed = rule.allow;
-                break;
+                // Tampilkan Modal
+                $modal.removeClass("hidden").show();
             }
+        });
+
+    // 2. Handler Tutup Modal (Tombol dengan atribut data-modal-close atau tombol Batal)
+    $body
+        .off("click", "[data-modal-close], .u-btn--ghost")
+        .on("click", "[data-modal-close], .u-btn--ghost", function () {
+            $(this)
+                .closest(".u-modal")
+                .fadeOut(150, function () {
+                    $(this).addClass("hidden").hide();
+                });
+        });
+
+    $body.off("click", "#btn-approve-request").on("click", "#btn-approve-request", function () {
+        const $modal = $(this).closest(".u-modal");
+        const id = $modal.attr('data-current-id');
+        const modalId = $modal.attr('id');
+        const note = $modal.find("#catatan").val();
+
+        const reloadTable = () => $(".dataTable").DataTable().ajax.reload(null, false);
+    
+        if (modalId === "training-peserta-modal") {
+            console.log('id data', id);
+            executeApprove(id, reloadTable, note);
+        } else {
+            executeApproveReference(id, reloadTable, note);
         }
-    }
-    return allowed;
+    });
+
+    $body.off("click", "#btn-decline-request").on("click", "#btn-decline-request", function () {
+        const $modal = $(this).closest(".u-modal");
+        const id = $modal.attr('data-current-id');
+        const modalId = $modal.attr('id');
+        const note = $modal.find("#catatan").val();
+
+        const reloadTable = () => $(".dataTable").DataTable().ajax.reload(null, false);
+
+        if (modalId === "training-peserta-modal") {
+            executeReject(id, reloadTable, note);
+        } else {
+            executeRejectPengajuan(id, reloadTable, note);
+        }
+    });
 };
+
+const populateModalData = ($modal, data) => {
+    // Mapping ID Modal (Opsional: untuk logika spesifik berdasarkan modal)
+    $modal.attr('data-current-id', data.id);
+
+    // Informasi Dasar (Menggunakan selector lama & baru agar kompatibel)
+    $modal.find(".detail-judul-text, .detail-judul_sertifikasi").text(data.judul_sertifikasi || "-");
+    $modal.find(".detail-unit, .detail-unit_kerja").text(data.unit_kerja || "-");
+    $modal.find(".detail-penyelenggara").text(data.penyelenggara || "-");
+    $modal.find(".detail-jam, .detail-jumlah_jam").text(data.jumlah_jam || "-");
+    $modal.find(".detail-no").text(data.no || "-");
+    
+    // Status (Handle dua versi status)
+    $modal.find(".detail-status_training_reference").text(`Status: ${data.status_training_reference || "-"}`);
+    $modal.find(".detail-status_approval_training").text(`Status: ${data.status_approval_training || "-"}`);
+
+    // Penanganan Waktu (Satu tanggal vs Range)
+    $modal.find(".detail-waktu, .detail-waktu_pelaksanaan").text(data.waktu_pelaksanaan || "-");
+    $modal.find(".detail-tanggal_mulai").text(data.tanggal_mulai || "-");
+    $modal.find(".detail-tanggal_berakhir").text(data.tanggal_berakhir || "-");
+
+    // Proyek & Fungsi
+    $modal.find(".detail-proyek, .detail-nama_proyek").text(data.nama_proyek || "-");
+    $modal.find(".detail-fungsi").text(data.fungsi || "-");
+    $modal.find(".detail-portofolio, .detail-jenis_portofolio").text(data.jenis_portofolio || "-");
+
+    // Informasi Biaya
+    $modal.find(".detail-biaya-pelatihan, .detail-biaya_pelatihan").text(formatRupiah(data.biaya_pelatihan || 0));
+    $modal.find(".detail-uhpd").text(formatRupiah(data.uhpd || 0));
+    $modal.find(".detail-biaya-akomodasi, .detail-biaya_akomodasi").text(formatRupiah(data.biaya_akomodasi || 0));
+    $modal.find(".detail-total-biaya, .detail-estimasi_total_biaya").text(formatRupiah(data.estimasi_total_biaya || 0));
+    $modal.find(".detail-realisasi_biaya_pelatihan").text(formatRupiah(data.realisasi_biaya_pelatihan || 0));
+
+    $modal.find('#catatan').val('');
+
+    renderApprovalTimeline(data.approvals || []);
+
+    // Handle Peserta (Mapping data.peserta dari kolom baru)
+    const pesertaData = data.peserta || data.nama_peserta;
+    if (pesertaData) {
+        $modal.find(".section-peserta").show();
+        $modal.find(".detail-peserta").text(pesertaData);
+    } else {
+        $modal.find(".section-peserta").hide();
+    }
+
+    // Handle Lampiran (Khusus untuk Training Request)
+    if (data.lampiran_penawaran) {
+        $modal.find(".detail-lampiran_penawaran").html(`
+            <a href="${data.lampiran_penawaran}" target="_blank" class="u-btn u-btn--sm u-btn--light">
+                <i class="fas fa-download u-mr-xs"></i> Lihat Lampiran
+            </a>
+        `);
+    } else {
+        $modal.find(".detail-lampiran_penawaran").html('<span class="u-muted u-text-sm italic">Tidak ada lampiran</span>');
+    }
+};
+
+// --- DATATABLE INITIALIZATION ---
 
 export function initGetDataTable(tableBody, options = {}) {
-    const $tableBody = $(tableBody);
-    const $tableEl = $tableBody.closest('table');
-    const tableId = $tableEl.attr('id');
-
+    const tableId = $(tableBody).closest("table").attr("id");
     const baseConfig = TABLE_CONFIGS[tableId];
     if (!baseConfig) return;
 
-    // Destroy existing instance if any
-    if ($.fn.DataTable.isDataTable(`#${tableId}`)) {
-        $(`#${tableId}`).DataTable().destroy();
-    }
-
-    const reloadTable = () => $(`#${tableId}`).DataTable().ajax.reload(null, false);
-    initializeEventHandlers($tableBody, reloadTable);
+    // Inisialisasi sistem modal (hanya sekali)
+    initModalSystem();
+    initDragDropUpload();
 
     initDataTables(`#${tableId}`, {
         serverSide: true,
         ajax: async (data, callback) => {
-            const page = (data.start / data.length) + 1;
-            const search = data.search.value;
+            const params = new URLSearchParams({
+                page: data.start / data.length + 1,
+                per_page: data.length,
+                search: data.search.value,
+                order_by: data.columns[data.order[0]?.column]?.data || "",
+                order_dir: data.order[0]?.dir || "",
+            });
 
-            const orderColumnIndex = data.order[0]?.column; // Indeks kolom yang di-klik
-            const orderDir = data.order[0]?.dir; // 'asc' atau 'desc'
-            const orderColumnName = data.columns[orderColumnIndex]?.data; // Nama field kolom
-
-            // Tambahkan ke URL
-            let url = baseConfig.apiEndpoint(options.unitId) + 
-                    `?page=${page}` +
-                    `&per_page=${data.length}` +
-                    `&search=${encodeURIComponent(search)}` +
-                    `&order_by=${orderColumnName || ''}` + // Field yang diurutkan
-                    `&order_dir=${orderDir || ''}`;
-            
             try {
-                const response = await getJSON(url);
+                const response = await getJSON(
+                    `${baseConfig.apiEndpoint(options.unitId)}?${params}`
+                );
                 callback({
                     draw: data.draw,
-                    recordsTotal: parseInt(response.pagination?.total) || 0,
-                    recordsFiltered: parseInt(response.pagination?.total) || 0,
-                    data: baseConfig.dataMapper(response)
+                    recordsTotal: response.pagination?.total || 0,
+                    recordsFiltered: response.pagination?.total || 0,
+                    data: baseConfig.dataMapper(response),
                 });
             } catch (e) {
-                console.error("DataTable Error:", e);
-                callback({ 
+                callback({
                     draw: data.draw,
-                    data: [], 
-                    recordsTotal: 0, 
-                    recordsFiltered: 0 
+                    data: [],
+                    recordsTotal: 0,
+                    recordsFiltered: 0,
                 });
             }
         },
-        columns: baseConfig.columns.map(col => ({
-            data: (col === 'no' || col === 'actions' || col === 'peserta') ? null : col,
-            className: col === 'actions' ? 'cell-actions' : '',
-            render: (data, type, row, meta) => {
-                const renderer = COLUMN_RENDERERS[col];
-                return renderer ? renderer(data, type, row, meta, baseConfig) : (data ?? "-");
-            }
+        columns: baseConfig.columns.map((col) => ({
+            data: ["no", "actions", "peserta"].includes(col) ? null : col,
+            render: (d, t, r, m) =>
+                COLUMN_RENDERERS[col]
+                    ? COLUMN_RENDERERS[col](d, t, r, m, baseConfig)
+                    : d ?? "-",
         })),
-        // drawCallback: function() {
-        //     initializeEventHandlers(tableBody, () => this.api().draw(false));
-        // }
     });
 }
 
-const initializeEventHandlers = (tableBody, reloadFunction) => {
-    initEditHandler(tableBody, reloadFunction);
-    initDetailHandler(tableBody);
-    initDeleteHandler(tableBody, reloadFunction);
-    initApproveHandler(tableBody, reloadFunction);
-    initRejectHandler(tableBody, reloadFunction);
-    rejectTrainingPengajuanHandler(tableBody, reloadFunction);
-    initApproveReferenceHandler(tableBody, reloadFunction);
-    initDragDropUpload();
-};
+// --- HELPERS ---
 
-// HELPERS //
-const formatRupiah = (value) => {
-    const number = parseFloat(value);
-    if (isNaN(number)) return "Rp 0";
-    return new Intl.NumberFormat("id-ID", {
-        style: "currency", currency: "IDR", minimumFractionDigits: 0
-    }).format(number);
-};
+const renderApprovalTimeline = (approvals) => {
+    console.log('approval', approvals)
+    const $container = $('#approval-timeline-container');
+    $container.empty();
 
-const formatDate = (dateString) => {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? "-" : date.toLocaleDateString('id-ID', {
-        day: '2-digit', month: 'long', year: 'numeric'
+    if (!approvals || approvals.length === 0) {
+        $container.append(`
+            <div class="u-text-center u-py-md u-muted u-text-xs italic">
+                Belum ada riwayat catatan.
+            </div>
+        `);
+        return;
+    }
+
+    approvals.forEach((item) => {
+        const isApprove = item.action === 'approve';
+        const colorClass = isApprove ? 'text-green-600' : 'text-red-600';
+        const bgClass = isApprove ? 'bg-green-50' : 'bg-red-50';
+        
+        // Format tanggal sederhana (bisa disesuaikan)
+        const date = item.created_at ? new Date(item.created_at).toLocaleString('id-ID', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+        }) : '-';
+
+        $container.append(`
+            <div class="u-mb-md u-pl-md border-l-2 border-gray-200 u-relative">
+                <div class="u-absolute" style="left: -7px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; border: 2px solid ${isApprove ? '#10b981' : '#ef4444'}"></div>
+                <div class="u-flex u-justify-between">
+                    <span class="u-text-xs u-font-bold u-uppercase text-gray-800">${item.role}</span>
+                    <span class="u-text-xxs u-muted">${date}</span>
+                </div>
+                <div class="u-mt-xs u-p-xs u-rounded ${bgClass} border border-gray-100">
+                    <p class="u-text-xs italic text-gray-600">"${item.note || 'Tanpa catatan'}"</p>
+                </div>
+            </div>
+        `);
     });
+};
+
+const formatRupiah = (v) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(v || 0);
+const formatDate = (d) =>
+    d
+        ? new Date(d).toLocaleDateString("id-ID", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+          })
+        : "-";
+const renderStatusBadge = (s) => {
+    const MAP = {
+        approved: "u-badge--success",
+        rejected: "u-badge--danger",
+        in_review_dhc: "u-badge--info",
+    };
+    return `<div class="text-center"><span class="u-badge ${
+        MAP[s] || "u-badge--secondary"
+    }">${s?.toUpperCase() || "-"}</span></div>`;
 };

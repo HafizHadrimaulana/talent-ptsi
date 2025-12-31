@@ -1,131 +1,61 @@
 import { postJSON } from "@/utils/fetch";
 
 /**
- * Inisialisasi event handler untuk tombol Edit
- * @param {Element} tableBody - elemen tbody dari tabel
- * @param {Function} reloadCallback - fungsi untuk reload data setelah update
+ * Helper internal untuk menangani request reject dengan alasan
  */
+const processRejection = async (url, title, reloadCallback, note) => {
+    $(".u-modal").fadeOut(150, function () {
+        $(this).addClass("hidden").hide();
+    });
 
-export function initRejectHandler(tableBody) {
-    // tableBody.addEventListener("click", async (e) => {
-    //     const button = e.target.closest("button[data-action='reject']");
-    //     if (!button) return;
+    try {
+        // 2. Tampilkan Loading
+        Swal.fire({
+            title: "Memproses Penolakan...",
+            text: "Mohon tunggu sebentar.",
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading(),
+        });
 
-    //     const id = button.dataset.id;
+        const bodyData = new FormData();
+        bodyData.append('note', note || '');
 
-    //     const confirmResult = await Swal.fire({
-    //         title: "Yakin ingin menolak data ini?",
-    //         text: "Tindakan ini tidak dapat dibatalkan.",
-    //         icon: "warning",
-    //         showCancelButton: true,
-    //         confirmButtonText: "Ya, Tolak",
-    //         cancelButtonText: "Batal",
-    //         reverseButtons: true,
-    //     });
+        // 3. Kirim Request (Body berisi alasan)
+        const res = await postJSON(url, bodyData);
 
-    //     if (!confirmResult.isConfirmed) return;
+        Swal.close();
 
-    //     try {
-    //         Swal.fire({
-    //             title: "Memproses...",
-    //             text: "Mohon tunggu sebentar.",
-    //             allowOutsideClick: false,
-    //             didOpen: () => Swal.showLoading(),
-    //         });
+        // 4. Handle Response
+        if (res.status === "success" || res.ok) {
+            await Swal.fire({
+                icon: "success",
+                title: "Ditolak",
+                text: res.message || "Data berhasil ditolak.",
+                timer: 1500,
+                showConfirmButton: false,
+            });
 
-    //         const res = await postJSON(
-    //             `/training/training-request/${id}/reject-training-request`
-    //         );
-    //         console.log("res", res);
+            if (typeof reloadCallback === "function") reloadCallback();
+        } else {
+            throw new Error(res.message || "Gagal menolak data.");
+        }
+    } catch (error) {
+        Swal.close();
+        console.error("Reject Error:", error);
+        Swal.fire({
+            icon: "error",
+            title: "Gagal",
+            text: error.message || "Terjadi kesalahan sistem.",
+        });
+    }
+};
 
-    //         Swal.close();
+export const executeReject = async (id, reloadCallback, note) => {
+    const url = `/training/training-management/${id}/reject-training-submission`;
+    await processRejection(url, "Tolak Permintaan Training?", reloadCallback, note);
+};
 
-    //         if (res.status === "success") {
-    //             await Swal.fire({
-    //                 icon: "success",
-    //                 title: "Ditolak",
-    //                 text: res.message,
-    //                 timer: 2000,
-    //                 showConfirmButton: false,
-    //             });
-    //             location.reload();
-    //         } else {
-    //             Swal.fire({
-    //                 icon: "error",
-    //                 title: "Gagal",
-    //                 text: res.message || "Gagal menolak data.",
-    //             });
-    //         }
-    //     } catch (error) {
-    //         Swal.close();
-    //         console.error(error);
-    //         Swal.fire({
-    //             icon: "error",
-    //             title: "Kesalahan Server",
-    //             text: "Terjadi kesalahan saat menolak data.",
-    //         });
-    //     }
-    // });
-}
-
-export function rejectTrainingPengajuanHandler(tableBody) {
-    // tableBody.addEventListener("click", async (e) => {
-    //     const button = e.target.closest("button[data-action='reject_training_pengajuan']");
-    //     if (!button) return;
-
-    //     const id = button.dataset.id;
-
-    //     const confirmResult = await Swal.fire({
-    //         title: "Yakin ingin menolak data pengajuan ini?",
-    //         text: "Tindakan ini tidak dapat dibatalkan.",
-    //         icon: "warning",
-    //         showCancelButton: true,
-    //         confirmButtonText: "Ya, Tolak",
-    //         cancelButtonText: "Batal",
-    //         reverseButtons: true,
-    //     });
-
-    //     if (!confirmResult.isConfirmed) return;
-
-    //     try {
-    //         Swal.fire({
-    //             title: "Memproses...",
-    //             text: "Mohon tunggu sebentar.",
-    //             allowOutsideClick: false,
-    //             didOpen: () => Swal.showLoading(),
-    //         });
-
-    //         const res = await postJSON(
-    //             `/training/training-request/${id}/reject-training-pengajuan`
-    //         );
-    //         console.log("res", res);
-
-    //         Swal.close();
-
-    //         if (res.status === "success") {
-    //             await Swal.fire({
-    //                 icon: "success",
-    //                 title: "Ditolak",
-    //                 text: res.message,
-    //                 timer: 2000,
-    //                 showConfirmButton: false,
-    //             });
-    //             location.reload();
-    //         } else {
-    //             Swal.fire({
-    //                 icon: "error",
-    //                 title: "Gagal",
-    //                 text: res.message || "Gagal menolak data.",
-    //             });
-    //         }
-    //     } catch (error) {
-    //         Swal.close();
-    //         console.error(error);
-    //         Swal.fire({
-    //             icon: "error",
-    //             title: "Kesalahan Server",
-    //             text: "Terjadi kesalahan saat menolak data.",
-    //         });
-    //     }
-    // });
-}
+export const executeRejectPengajuan = async (id, reloadCallback, note) => {
+    const url = `/training/training-management/${id}/reject-training-pengajuan`;
+    await processRejection(url, "Tolak Pengajuan Training?", reloadCallback, note);
+};

@@ -17,9 +17,9 @@ use App\Http\Controllers\Recruitment\ApplicantDataController;
 use App\Http\Controllers\Public\CareerController;
 use App\Http\Controllers\Training\{
     MonitoringController as TrainingMonitoringController,
-    PrincipalApprovalController as TrainingApprovalController,
     DashboardController as TrainingDashboardController,
-    TrainingRequestController
+    TrainingRequestController,
+    TrainingManagementController
 };
 
 use App\Http\Controllers\Admin\Org\OrgController;
@@ -147,10 +147,8 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('training-request/get-approval-pengajuan-training', [TrainingRequestController::class, 'getApprovalPengajuanTraining'])
             ->name('training-request.get-approval-pengajuan-training');
 
-        Route::get('training-request/data-request', [TrainingRequestController::class, 'getDataRequest'])
-            ->name('training-request');
-        Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])
-            ->name('training-request.training-reference');
+        //// sdm unit
+        Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])->middleware('permission:training.view')->name('training-request.training-reference');
         Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])
             ->name('training-request.get-employee-by-unit');
         Route::get('training-request/{id}/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])
@@ -164,11 +162,17 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.approve-training-request');
         Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
             ->name('training-request.reject-training-request');
-
-        Route::post('training-request/{id}/approve-training-reference', [TrainingRequestController::class,'approveTrainingReference'])
-            ->name('training-request.approve-training-reference');
-        Route::post('training-request/{id}/reject-training-pengajuan', [TrainingRequestController::class,'rejectTrainingReference'])
-            ->name('training-request.reject-training-pengajuan');
+        
+        // TRAINING MANAGEMENT
+        Route::get('training-management', [TrainingManagementController::class, 'index'])->middleware('permission:training.management.view')->name('training-management');
+        Route::post('training-management/{id}/approve-training-submission', [TrainingManagementController::class,'approveTrainingSubmission']);
+        Route::post('training-management/{id}/reject-training-submission', [TrainingManagementController::class,'rejectTrainingSubmission']);
+        
+        Route::post('training-management/{id}/approve-training-reference', [TrainingManagementController::class,'approveTrainingReference'])
+            ->name('training-management.approve-training-reference');
+        Route::post('training-management/{id}/reject-training-pengajuan', [TrainingManagementController::class,'rejectTrainingReference'])
+            ->name('training-management.reject-training-pengajuan');
+        // END
 
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');

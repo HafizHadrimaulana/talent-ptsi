@@ -137,7 +137,7 @@
             @if($isSuper || $user?->can('training.view'))
             <a class="nav-item nav-child {{ request()->routeIs('training.training-request')?'active':'' }}"
               href="{{ Route::has('training.training-request') ? route('training.training-request') : '#' }}">
-              <span class="icon">✅</span><span class="label">Training Request</span>
+              <span class="icon">✅</span><span class="label">Training</span>
             </a>
             @endif
 
@@ -148,12 +148,19 @@
             </a>
             @endif
 
-            @if($isSuper || $user?->can('training.view'))
-            <a class="nav-item nav-child {{ request()->routeIs('training.principal-approval')?'active':'' }}"
-                href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
-                <span class="icon">🗂️</span><span class="label">Principal Approval</span>
+            @if($isSuper || $user?->can('training.management.view'))
+            <a class="nav-item nav-child {{ request()->routeIs('training.training-management')?'active':'' }}"
+              href="{{ Route::has('training.training-management') ? route('training.training-management') : '#' }}">
+              <span class="icon">🗂️</span><span class="label">Training Management</span>
             </a>
             @endif
+
+            <!-- @if($isSuper || $user?->can('training.view'))
+            <a class="nav-item nav-child {{ request()->routeIs('training.principal-approval')?'active':'' }}"
+                href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
+                <span class="icon"></span><span class="label">Principal Approval</span>
+            </a>
+            @endif -->
           </div>
       </div>
     </nav>
