@@ -48,10 +48,12 @@
       $rawPics = DB::table('employees')->join('persons', 'employees.person_id', '=', 'persons.id')->select('employees.id', 'employees.employee_id', 'persons.full_name')->where('employees.unit_id', $selectedUnitId ?? $meUnit)->orderBy('persons.full_name')->get();
   } catch (\Exception $e) { $rawPics = collect(); }
   $picListFormatted = $rawPics->map(function($p) { return ['id' => $p->id, 'name' => ($p->employee_id ?? '-') . ' - ' . ($p->full_name ?? '-')]; })->values();
-  $locationsJs = $locations->map(function($l) {
+  $locationsJs = $locations
+      ->unique('city')
+      ->map(function($l) {
         return [
             'id' => $l->id, 
-            'name' => $l->city . ' - ' . $l->name
+            'name' => $l->city
         ];
     })->values();
 @endphp
