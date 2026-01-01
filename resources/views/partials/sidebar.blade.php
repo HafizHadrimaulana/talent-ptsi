@@ -1,38 +1,29 @@
-<!-- ===== Sidebar ===== -->
 <aside class="sidebar glass" id="sidebar" aria-label="Primary navigation" data-scroll-area>
   @php
     $user = auth()->user();
     
-    // Helper roles
     $roleNames = $user ? $user->getRoleNames() : collect([]);
-
-    // Definisikan Variable $isPelamar
     $isPelamar = $user && $user->hasRole('Pelamar');
-    
-    // Cek Superadmin
     $isSuper = $roleNames->contains(fn($r)=> in_array(strtolower($r), ['superadmin','super-admin','admin','administrator']));
 
-    // Logika Tampilan
-    $showMain = !$isPelamar; // Sembunyikan dashboard utama jika pelamar
-
-    // Tampilkan menu Recruitment jika Superadmin, Pelamar, atau punya permission
+    $showMain = !$isPelamar; 
     $showRecruitment = $isSuper || $isPelamar || $user?->hasAnyPermission(['recruitment.view','contract.view']);
-    
     $showTraining = !$isPelamar && ($isSuper || $user?->hasAnyPermission(['training.view']));
     $showSettings = !$isPelamar && ($user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view')));
     $showMaster   = !$isPelamar && ($isSuper || ($user && $user->can('org.view')));
 
     $printedAnySection = false;
     
-    // Deteksi Menu Aktif
     $recOpen = str_starts_with(request()->route()->getName() ?? '', 'recruitment.') || str_starts_with(request()->route()->getName() ?? '', 'careers.');
     $trOpen  = str_starts_with(request()->route()->getName() ?? '', 'training.');
+    
     $acOpen  = request()->routeIs('admin.users.*') || request()->routeIs('admin.roles.*') || request()->routeIs('admin.permissions.*') || request()->routeIs('admin.employees.*');
-    $mdOpen  = request()->routeIs('admin.org.*');
+    
+    $mdOpen  = request()->routeIs('admin.org.*') || request()->routeIs('admin.contract-templates.*');
   @endphp
   <div class="brand">
     <a href="{{ route('dashboard') }}" class="brand-link" aria-label="Dashboard">
-      <img src="{{ Vite::asset('resources/images/sapahc.png') }}" alt="Logo" class="logo">
+      <img src="{{ asset('images/sapahc.png') }}" alt="Logo" class="logo">
     </a>
   </div>
 
@@ -68,13 +59,11 @@
              data-accordion-panel="nav-recruitment">
              @if($isPelamar || $isSuper)
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.applicant-data.*') ? 'active' : '' }}"
-                    href="{{ route('recruitment.applicant-data.index') }}">
+                   href="{{ route('recruitment.applicant-data.index') }}">
                   <span class="icon">👤</span><span class="label">Biodata & Status</span>
                 </a>
-
-                {{-- Link Cari Lowongan (Opsional untuk Superadmin, Wajib untuk Pelamar) --}}
                 <a class="nav-item nav-child {{ request()->routeIs('careers.*') ? 'active' : '' }}"
-                    href="{{ route('careers.index') }}">
+                   href="{{ route('careers.index') }}">
                   <span class="icon">💼</span><span class="label">Cari Lowongan</span>
                 </a>
               @endif
@@ -90,7 +79,6 @@
               <span class="icon">✅</span><span class="label">Principal Approval</span>
             </a>
           @endif
-          {{-- [EXTERNAL RECRUITMENT] --}}
           @if($isSuper || $user?->can('recruitment.external.view'))
             <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}"
                href="{{ \Illuminate\Support\Facades\Route::has('recruitment.external.index') ? route('recruitment.external.index') : '#' }}">
@@ -133,34 +121,24 @@
               <span class="icon">📊</span><span class="label">Dashboard</span>
             </a>
             @endif
-
             @if($isSuper || $user?->can('training.view'))
             <a class="nav-item nav-child {{ request()->routeIs('training.training-request')?'active':'' }}"
               href="{{ Route::has('training.training-request') ? route('training.training-request') : '#' }}">
               <span class="icon">✅</span><span class="label">Training</span>
             </a>
             @endif
-
             @if($isSuper || $user?->can('training.view'))
             <a class="nav-item nav-child {{ request()->routeIs('training.self-learning')?'active':'' }}"
               href="{{ Route::has('training.self-learning') ? route('training.self-learning') : '#' }}">
               <span class="icon">📈</span><span class="label">Self Learning</span>
             </a>
             @endif
-
             @if($isSuper || $user?->can('training.management.view'))
             <a class="nav-item nav-child {{ request()->routeIs('training.training-management')?'active':'' }}"
               href="{{ Route::has('training.training-management') ? route('training.training-management') : '#' }}">
               <span class="icon">🗂️</span><span class="label">Training Management</span>
             </a>
             @endif
-
-            <!-- @if($isSuper || $user?->can('training.view'))
-            <a class="nav-item nav-child {{ request()->routeIs('training.principal-approval')?'active':'' }}"
-                href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
-                <span class="icon"></span><span class="label">Principal Approval</span>
-            </a>
-            @endif -->
           </div>
       </div>
     </nav>
@@ -180,7 +158,7 @@
                   class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}"
                   data-accordion="nav-access"
                   aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
-            <span class="icon">🧭</span><span class="label">Access Management</span><span class="chev">▾</span>
+            <span class="icon">🧭</span><span class="label">Configuration</span><span class="chev">▾</span>
           </button>
           <div id="nav-access"
                class="nav-children {{ $acOpen ? 'open' : '' }}"
@@ -214,7 +192,6 @@
     @php $printedAnySection = true; @endphp
   @endif
 
-  {{-- ========== MASTER DATA GROUP ========== --}}
   @if($printedAnySection && $showMaster)
     <div class="nav-divider" aria-hidden="true"></div>
   @endif
@@ -236,6 +213,12 @@
              href="{{ route('admin.org.index') }}">
             <span class="icon">🏷️</span><span class="label">Directorates & Units</span>
           </a>
+          @if($isSuper || $user->hasRole('DHC'))
+            <a class="nav-item nav-child {{ request()->routeIs('admin.contract-templates.*') ? 'active' : '' }}"
+               href="{{ route('admin.contract-templates.index') }}">
+              <span class="icon">📄</span><span class="label">Document Templates</span>
+            </a>
+          @endif
         </div>
       </div>
     </nav>

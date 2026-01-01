@@ -311,7 +311,7 @@ class ContractController extends Controller
                 'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
                 'camera_photo_path' => $snapshotPath,
                 'camera_photo_hash' => $camHash,
-                'snapshot_data' => $snapshotPath, // Isi juga utk backward compatibility
+                'snapshot_data' => $snapshotPath, 
                 'verification_code' => $verifCode,
                 'ip_address' => $request->ip()
             ]);
@@ -394,7 +394,12 @@ class ContractController extends Controller
             'can_sign' => $canSign,
             'doc_url' => $docUrl, 'approve_url' => route('recruitment.contracts.approve', $contract), 'sign_url' => route('recruitment.contracts.sign', $contract),
             'reject_url' => route('recruitment.contracts.reject', $contract),
-            'candidate_nik' => $cand['nik'] ?? '-', 'candidate_nik_real' => $cand['nik_real'] ?? '-', 'target_role_label' => $targetRole,
+            
+            // Output untuk UI Frontend (Modal Detail)
+            'ui_nik_ktp' => $cand['nik_ktp'], 
+            'ui_employee_id' => $cand['employee_id'],
+            
+            'target_role_label' => $targetRole,
             'geolocation' => $geoData,
             'progress' => [ 'ka_unit' => $kaUnitStatus, 'candidate' => $candStatus ]
         ])]);
@@ -455,18 +460,37 @@ class ContractController extends Controller
     protected function resolveCandidate(Contract $c)
     {
         $p = $c->person ?? ($c->person_id ? Person::find($c->person_id) : ($c->applicant ?? ($c->applicant_id ? Applicant::find($c->applicant_id) : null)));
-        $d = ['name' => 'Kandidat', 'address' => '-', 'nik' => '-', 'nik_real' => '-', 'pob' => '-', 'dob' => '-', 'gender' => '-'];
+        
+        $d = [
+            'name' => 'Kandidat',
+            'address' => '-',
+            'nik_ktp' => '-', 
+            'employee_id' => '-',
+            'pob' => '-',
+            'dob' => '-',
+            'gender' => '-'
+        ];
+
         if ($p) {
             $d['name'] = $p->full_name ?? $p->name ?? 'Kandidat';
             $d['address'] = $p->address ?? $p->domicile_address ?? '-';
-            $realNik = DB::table('identities')->where('person_id', $p->id)->whereIn('system', ['nik', 'ktp', 'e_ktp'])->value('external_id');
-            $d['nik'] = $c->employee_id ?? '-'; 
-            $d['nik_real'] = $realNik ?? $p->nik_hash ?? $p->nik ?? '-'; 
+            
+            // LOGIC KTP: Ambil nik_hash (sesuai request user)
+            $d['nik_ktp'] = $p->nik_hash ?? $p->nik ?? '-';
+
+            // LOGIC KARYAWAN: Ambil employee_id
+            $empId = $c->employee_id;
+            if (!$empId) {
+                 $empRecord = Employee::where('person_id', $p->id)->first();
+                 $empId = $empRecord ? $empRecord->employee_id : '-';
+            }
+            $d['employee_id'] = $empId;
+
             $d['pob'] = $p->place_of_birth ?? $p->pob ?? '-';
             $d['dob'] = $p->date_of_birth ? Carbon::parse($p->date_of_birth)->translatedFormat('d F Y') : '-';
             $g = strtoupper($p->gender ?? '');
-            if ($g === 'L' || $g === 'MALE' || $g === 'PRIA') $d['gender'] = 'Laki-laki';
-            elseif ($g === 'P' || $g === 'FEMALE' || $g === 'WANITA') $d['gender'] = 'Perempuan';
+            if (in_array($g, ['L', 'MALE', 'PRIA', 'LAKI-LAKI'])) $d['gender'] = 'Laki-laki';
+            elseif (in_array($g, ['P', 'FEMALE', 'WANITA', 'PEREMPUAN'])) $d['gender'] = 'Perempuan';
         }
         return $d;
     }
@@ -715,7 +739,11 @@ class ContractController extends Controller
             'signer_signature' => $signerTag,
             'candidate_name' => $cand['name'],
             'candidate_address' => $cand['address'],
-            'candidate_nik' => $cand['nik'],
+            
+            // Perbaikan: Mapping NIK untuk output dokumen (menggunakan KTP/nik_hash)
+            'candidate_nik' => $cand['nik_ktp'], 
+            'candidate_employee_id' => $cand['employee_id'],
+            
             'pob' => $cand['pob'],
             'dob' => $cand['dob'],
             'gender' => $cand['gender'],

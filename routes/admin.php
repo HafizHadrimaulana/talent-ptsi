@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\Access\RoleController;
 use App\Http\Controllers\Admin\Access\PermissionController;
 
 use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\ContractTemplateController;
 use App\Http\Controllers\Self\ProfileController;
 
 use App\Http\Controllers\Recruitment\MonitoringController as RecruitmentMonitoringController;
@@ -46,6 +47,8 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('employees',       [EmployeeController::class, 'index'])->middleware('permission:employees.view')->name('employees.index');
         Route::get('employees/{id}', [EmployeeController::class, 'show'])->middleware('permission:employees.view')->name('employees.show');
         Route::get('employees/positions/options', [EmployeeController::class, 'positionOptions'])->middleware('permission:employees.view')->name('employees.positions.options');
+
+        Route::resource('contract-templates', ContractTemplateController::class);
     });
 
     Route::prefix('admin/org')->name('admin.org.')->middleware('permission:org.view')->group(function () {
@@ -147,7 +150,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('training-request/get-approval-pengajuan-training', [TrainingRequestController::class, 'getApprovalPengajuanTraining'])
             ->name('training-request.get-approval-pengajuan-training');
 
-        //// sdm unit
         Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])->middleware('permission:training.view')->name('training-request.training-reference');
         Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])
             ->name('training-request.get-employee-by-unit');
@@ -163,7 +165,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
             ->name('training-request.reject-training-request');
         
-        // TRAINING MANAGEMENT
         Route::get('training-management', [TrainingManagementController::class, 'index'])->middleware('permission:training.management.view')->name('training-management');
         Route::post('training-management/{id}/approve-training-submission', [TrainingManagementController::class,'approveTrainingSubmission']);
         Route::post('training-management/{id}/reject-training-submission', [TrainingManagementController::class,'rejectTrainingSubmission']);
@@ -172,7 +173,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-management.approve-training-reference');
         Route::post('training-management/{id}/reject-training-pengajuan', [TrainingManagementController::class,'rejectTrainingReference'])
             ->name('training-management.reject-training-pengajuan');
-        // END
 
         Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
             ->name('download-template');
@@ -195,18 +195,16 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('training', function () { return view('reports.training'); })->name('training');
     });
     
-    // Biodata & Status
     Route::prefix('recruitment/applicant-data')
         ->name('recruitment.applicant-data.')
-        ->middleware('permission:applicant.data.view') // Permission baru
+        ->middleware('permission:applicant.data.view')
         ->group(function () {
             Route::get('/', [ApplicantDataController::class, 'index'])->name('index');
             Route::post('/update', [ApplicantDataController::class, 'update'])->name('update');
         });
 
-    // Cari Lowongan (Versi Login)
     Route::get('careers', [CareerController::class, 'index'])
-        ->middleware('permission:careers.view') // Permission baru
+        ->middleware('permission:careers.view')
         ->name('careers.index');
 
 });
