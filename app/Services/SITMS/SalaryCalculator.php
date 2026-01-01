@@ -6,14 +6,15 @@ class SalaryCalculator
 {
     /**
      * Menghitung remunerasi, pajak, dan BPJS sesuai aturan Izin Prinsip.
-     * * @param float $gajiPokok
+     * @param float $gajiPokok
      * @param string $startDate 
      * @param string $endDate   
      * @param float $thr        
      * @param float $kompensasi 
      * @return array
+     * @param string $riskLevel 'Tinggi' atau 'Rendah'
      */
-    public function calculate(float $gajiPokok, string $startDate, string $endDate, float $thr = 0, float $kompensasi = 0): array
+    public function calculate(float $gajiPokok, string $startDate, string $endDate, float $thr = 0, float $kompensasi = 0, string $riskLevel = 'Rendah'): array
     {
         // Hitung Durasi (+1 hari agar inklusif)
         $start = Carbon::parse($startDate);
@@ -22,38 +23,35 @@ class SalaryCalculator
         $duration = (int) floor($monthsRaw);
 
         if ($duration < 1) $duration = 1;
-
-        // Hitung Total Remunerasi
-        // Rumus: [gaji pokok * jlh durasi bulan] + THR + Kompensasi
         $totalRemunerasi = round(($gajiPokok * $duration) + $thr + $kompensasi);
 
-        // Hitung BPJS Kesehatan
-        // Rumus: [gaji pokok * 4%] 
         $basisKes = ($gajiPokok >= 12000000) ? 12000000 : $gajiPokok;
         $bpjsKesehatan = $basisKes * 0.04;
 
-        // Hitung BPJS Ketenagakerjaan
-        // Rumus: (gaji pokok * 4.24%) + (Jaminan Pensiun)
-        // Jika gaji < 10.547.400 -> gaji * 2%
-        // Jika gaji >= 10.547.400 -> 10.547.400 * 2%
-        $jkk_jkm_jht = $gajiPokok * 0.0424;
+        $rateBpjsTk = ($riskLevel === 'Tinggi') ? 0.0574 : 0.0424;
         
-        $capJp = 10547400;
-        $basisJp = ($gajiPokok >= $capJp) ? $capJp : $gajiPokok;
-        $jp = $basisJp * 0.02;
+        // Komponen JKK, JKM, JHT (Tanpa Cap)
+        // $jkk_jkm_jht = $gajiPokok * $rateBpjsTk; 
+        
+        // Komponen JP (Jaminan Pensiun) - Tetap 2% dengan Cap Rp 10.547.400
+        // $capJp = 10547400;
+        // $basisJp = ($gajiPokok >= $capJp) ? $capJp : $gajiPokok;
+        // $jp = $basisJp * 0.02;
 
-        $bpjsKetenagakerjaan = $jkk_jkm_jht + $jp;
+        // Total BPJS Ketenagakerjaan
+        $bpjsKetenagakerjaan = $gajiPokok * $rateBpjsTk;
 
-        \Illuminate\Support\Facades\Log::info("DEBUG SALARY:", [
-            'Input_Gaji' => $gajiPokok,
-            'Input_THR' => $thr,
-            'Input_Komp' => $kompensasi,
-            'Durasi_Bulan' => $duration,
-            'Total_Remunerasi' => $totalRemunerasi,
-        ]);
+        // \Illuminate\Support\Facades\Log::info("DEBUG SALARY:", [
+        //     'Input_Gaji' => $gajiPokok,
+        //     'Input_THR' => $thr,
+        //     'Input_Komp' => $kompensasi,
+        //     'Durasi_Bulan' => $duration,
+        //     'Total_Remunerasi' => $totalRemunerasi,
+        //     'Resiko' => $riskLevel,
+        //     'Rate_TK' => $rateBpjsTk,
+        //     'Total_BPJS_TK' => $bpjsKetenagakerjaan
+        // ]);
 
-        // Hitung Pajak (PPh 21 TER A)
-        // Tarif dicari berdasarkan TOTAL REMUNERASI
         $tarif = $this->getTarifTerA($totalRemunerasi);
         $pajakPerBulan = ($totalRemunerasi * $tarif) / $duration;
 

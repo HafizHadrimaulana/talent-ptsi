@@ -620,9 +620,19 @@
               </div>
               <div class="u-bg-light u-p-sm u-rounded u-font-bold u-text-sm u-mb-sm" style="color:#374151;"><b>Remunerasi</b></div>
               <div class="u-grid-2-custom u-mb-sm">
+                <div class="u-space-y-sm">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Resiko Pekerjaan</label>
+                      <select class="u-input" id="dyn_resiko" required>
+                          <option value="">Pilih Resiko</option>
+                          <option value="Tinggi">Tinggi</option>
+                          <option value="Rendah">Rendah</option>
+                      </select>
+                  </div>
+              </div>
+              <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_salary" placeholder="1.000.000" required>
+                      <input class="u-input input-currency" type="text" id="dyn_salary" placeholder="1.000.000" required>
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Terbilang</label>
@@ -632,41 +642,41 @@
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Jabatan (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_allowanceJ" placeholder="Masukkan angka">
+                      <input class="u-input input-currency" type="text" id="dyn_allowanceJ" placeholder="Masukkan angka">
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Project (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_allowanceP" placeholder="Masukkan angka">
+                      <input class="u-input input-currency" type="text" id="dyn_allowanceP" placeholder="Masukkan angka">
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Komunikasi (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_allowanceC" placeholder="Masukkan angka">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Kinerja (Rp)</label>
+                      <input class="u-input input-currency" type="text" id="dyn_allowanceK" placeholder="Masukkan angka">
                   </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Kinerja (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_allowanceK" placeholder="Masukkan angka">
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tunjangan Lainnya (Rp)</label>
+                      <input class="u-input input-currency" type="text" id="dyn_allowanceL" placeholder="Masukkan angka">
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">BPJS Kesehatan (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_bpjs_kes" readonly placeholder="Autofill">
+                      <input class="u-input input-currency" type="text" id="dyn_bpjs_kes" readonly placeholder="Autofill">
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">BPJS Ketenagakerjaan (Rp)</label>
-                      <input class="u-input" type="number" id="dyn_bpjs_tk" readonly placeholder="Autofill">
+                      <input class="u-input input-currency" type="text" id="dyn_bpjs_tk" readonly placeholder="Autofill">
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">THR (1x Gaji Pokok)</label>
-                      <input class="u-input u-bg-light" type="number" id="dyn_thr" readonly placeholder="Autofill">
+                      <input class="u-input input-currency" type="text" id="dyn_thr" readonly placeholder="Autofill">
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Kompensasi (1x Gaji Pokok)</label>
-                      <input class="u-input u-bg-light" type="number" id="dyn_kompensasi" readonly placeholder="Autofill">
+                      <input class="u-input input-currency" type="text" id="dyn_kompensasi" readonly placeholder="Autofill">
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
@@ -677,7 +687,7 @@
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">PPH 21</label>
-                      <input class="u-input" type="number" id="dyn_pph21" readonly placeholder="Autofill">
+                      <input class="u-input input-currency" type="text" id="dyn_pph21" readonly placeholder="Autofill">
                   </div>
               </div>
           </div>
@@ -1045,958 +1055,1016 @@
                 }
             },
             bindModal() {
-            const modalMain   = document.getElementById('createApprovalModal');
-            const detailModal = document.getElementById('detailApprovalModal');
-            const uraianModal = document.getElementById('uraianModal');
-            const form          = document.getElementById('createApprovalForm');
-            const submitBtn     = document.getElementById('submitApprovalBtn');
-            const modalTitle    = document.getElementById('ip-modal-title');
-            const modalSubtitle = document.getElementById('ip-modal-subtitle');
-            const contractTypeSelect = form.querySelector('#contractTypeSelect');
-            const budgetSourceSelect = form.querySelector('#budgetSourceSelect');
-            const headcountInput     = form.querySelector('#headcountInput');
-            const dataTabsContainer  = document.getElementById('dataTabsContainer');
-            const detailsJsonInput   = document.getElementById('detailsJson');
-            const requestTypeSelect  = form.querySelector('[name="request_type"]');
-            const titleInput         = form.querySelector('#titleInput');
-            const targetStartInput   = form.querySelector('#targetStartInput'); 
-            const justifInput        = form.querySelector('[name="justification"]');
-            const dynInputs = {
-                start_date:  form.querySelector('#dyn_start_date'),
-                end_date:    form.querySelector('#dyn_end_date'),
-                location:    form.querySelector('#dyn_location'),
-                education:   form.querySelector('#dyn_education'),
-                brevet:      form.querySelector('#dyn_brevet'),
-                experience:  form.querySelector('#dyn_experience'),
-                salary:      form.querySelector('#dyn_salary'),
-                terbilang:   form.querySelector('#dyn_terbilang'),
-                allowanceJ:   form.querySelector('#dyn_allowanceJ'),
-                allowanceP:   form.querySelector('#dyn_allowanceP'),
-                allowanceC:   form.querySelector('#dyn_allowanceC'),
-                allowanceK:   form.querySelector('#dyn_allowanceK'),
-                pph21:       form.querySelector('#dyn_pph21'),
-                bpjs_kes:    form.querySelector('#dyn_bpjs_kes'),
-                bpjs_tk:     form.querySelector('#dyn_bpjs_tk'),
-                thr:         form.querySelector('#dyn_thr'),
-                kompensasi:  form.querySelector('#dyn_kompensasi'),
-                cv:          form.querySelector('#dyn_cv'),
-                cv_preview:  form.querySelector('#dyn_cv_preview_text')
-            };
-            
-            const dynLocationId = document.getElementById('dyn_location_id');
-            const dynLocationResults = document.getElementById('dynLocationSearchResults');
-            setupSearchableDropdown(dynInputs.location, dynLocationId, dynLocationResults, locationsData, true);
-            const calcInputs = [
-                dynInputs.salary, 
-                dynInputs.thr, 
-                dynInputs.kompensasi,
-                dynInputs.start_date, 
-                dynInputs.end_date
-            ];
+                // --- HELPER FORMAT RUPIAH ---
+                const formatRupiahTyping = (angka, prefix) => {
+                    let number_string = angka.replace(/[^,\d]/g, '').toString(),
+                        split = number_string.split(','),
+                        sisa = split[0].length % 3,
+                        rupiah = split[0].substr(0, sisa),
+                        ribuan = split[0].substr(sisa).match(/\d{3}/gi);
 
-            function calculateRemuneration() {
-                const salary = parseFloat(dynInputs.salary ? dynInputs.salary.value : 0) || 0;
-                const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
-                const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
-                if (salary <= 0 || !start || !end) return;
-                let valThr = parseFloat(dynInputs.thr ? dynInputs.thr.value : 0);
-                let valKomp = parseFloat(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
-                if (salary > 0 && valThr === 0) {
-                    valThr = salary;
-                    if(dynInputs.thr) dynInputs.thr.value = salary;
-                }
-                if (salary > 0 && valKomp === 0) {
-                    valKomp = salary;
-                    if(dynInputs.kompensasi) dynInputs.kompensasi.value = salary;
-                }
-                const payload = {
-                    salary: salary,
-                    start_date: start,
-                    end_date: end,
-                    thr: valThr,
-                    kompensasi: valKomp,
-                    _token: '{{ csrf_token() }}'
+                    if (ribuan) {
+                        let separator = sisa ? '.' : '';
+                        rupiah += separator + ribuan.join('.');
+                    }
+
+                    rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+                    return prefix == undefined ? rupiah : (rupiah ? 'Rp. ' + rupiah : '');
                 };
-                if(dynInputs.pph21) dynInputs.pph21.placeholder = "Menghitung...";
-                fetch("{{ route('api.calculate.salary') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log("RESPONSE:", data);
-                    if(dynInputs.pph21)   dynInputs.pph21.value   = data.pph21_bulanan; 
-                    if(dynInputs.bpjs_kes) dynInputs.bpjs_kes.value = data.bpjs_kesehatan;
-                    if(dynInputs.bpjs_tk)  dynInputs.bpjs_tk.value  = data.bpjs_ketenagakerjaan;
-                })
-                .catch(error => {
-                    console.error('Error calculating:', error);
-                });
-            }
-            let calcTimeout;
-            calcInputs.forEach(input => {
-                if(input) {
-                    input.addEventListener('input', function() {
-                        clearTimeout(calcTimeout);
-                        calcTimeout = setTimeout(calculateRemuneration, 800); 
-                    });
-                    input.addEventListener('change', calculateRemuneration);
-                }
-            });
-            if(dynInputs.salary) {
-                dynInputs.salary.addEventListener('input', function(e) {
-                    const val = e.target.value;
-                    if(dynInputs.thr) dynInputs.thr.value = val;
-                    if(dynInputs.kompensasi) dynInputs.kompensasi.value = val;
-                    if(dynInputs.terbilang) {
-                        if(val && !isNaN(val)) {
-                            let text = terbilang(val) + ' RUPIAH';
-                            text = text.charAt(0).toUpperCase() + text.slice(1);
-                            dynInputs.terbilang.value = text;
-                        } else {
-                            dynInputs.terbilang.value = '';
-                        }
-                    }
-                });
-            }
-            if(dynInputs.cv) {
-                dynInputs.cv.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if(file) {
-                        const reader = new FileReader();
-                        reader.onload = function(evt) {
-                            dynInputs.cv._base64 = evt.target.result;
-                            dynInputs.cv._filename = file.name;
-                            if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = "File selected: " + file.name;
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-            const uraianForm = document.getElementById('uraianForm');
-            const ujInputs = {
-                nama: document.getElementById('uj_nama'),
-                unit: document.getElementById('uj_unit'),
-                pemangku: document.getElementById('uj_pemangku'),
-                melapor: document.getElementById('uj_melapor'),
-                tujuan: document.getElementById('uj_tujuan'),
-                akuntabilitas: document.getElementById('uj_akuntabilitas'),
-                dimensi_keuangan: document.getElementById('uj_dimensi_keuangan'),
-                anggaran: document.getElementById('uj_anggaran'),
-                dimensi_non_keuangan: document.getElementById('uj_dimensi_non_keuangan'),
-                bawahan_langsung: document.getElementById('uj_bawahan_langsung'),
-                total_staff: document.getElementById('uj_total_staff'),
-                total_pegawai: document.getElementById('uj_total_pegawai'),
-                wewenang: document.getElementById('uj_wewenang'),
-                hub_internal: document.getElementById('uj_hub_internal'),
-                hub_eksternal: document.getElementById('uj_hub_eksternal'),
-                spek_pendidikan: document.getElementById('uj_spek_pendidikan'),
-                spek_pengetahuan: document.getElementById('uj_spek_pengetahuan'),
-                spek_kompetensi: document.getElementById('uj_spek_kompetensi'),
-                spek_kompetensi_wajib: document.getElementById('uj_spek_kompetensi_wajib'),
-                spek_kompetensi_generik: document.getElementById('uj_spek_kompetensi_generik'),
-                struktur: document.getElementById('uj_struktur')
-            };
-            const btnPreviewPdf = document.getElementById('btnPreviewPdf');
-            const uraianStatusDisplay = document.getElementById('uj_status_display');
-            if(ujInputs.struktur) {
-                ujInputs.struktur.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    const previewDiv = document.getElementById('uj_struktur_preview');
-                    if(file && file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = function(evt) {
-                            ujInputs.struktur._base64 = evt.target.result;
-                            previewDiv.innerHTML = `<img src="${evt.target.result}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
-                        };
-                        reader.readAsDataURL(file);
-                    } else if(file) {
-                        alert('Silakan pilih file gambar (JPG, PNG, dll)');
-                        previewDiv.innerHTML = '';
-                    }
-                });
-            }
-            const rkapSection       = form.querySelector('#rkapSection');
-            const rkapSelectedInfo = form.querySelector('#rkapSelectedInfo');
-            const rkapSelectedName = form.querySelector('#rkapSelectedName');
-            const uraianStatus      = form.querySelector('#uraianStatus'); 
-            const projectSection        = form.querySelector('#projectSection');
-            const kodeProjectSelect     = form.querySelector('#kodeProjectSelect');
-            const namaProjectInput      = form.querySelector('#namaProjectInput');
-            const uraianStatusProject   = form.querySelector('#uraianStatusProject');
-            const picOrganikSearchInput = form.querySelector('#picOrganikSearchInput');
-            const picOrganikInput       = form.querySelector('#picOrganikInput');
-            const picOrganikResults     = form.querySelector('#picOrganikSearchResults');
-            const positionOrganikSearchInput = form.querySelector('#positionOrganikSearchInput');
-            const positionOrganikInput       = form.querySelector('#positionOrganikInput');
-            const positionOrganikSearchResults = form.querySelector('#positionOrganikSearchResults');
-            const positionSearchInput  = form.querySelector('#positionSearchInput');
-            const positionInput        = form.querySelector('#positionInput');
-            const positionSearchResults = form.querySelector('#positionSearchResults');
-            const picProjectSearchInput = form.querySelector('#picProjectSearchInput');
-            const picProjectInput       = form.querySelector('#picProjectInput');
-            const picProjectResults     = form.querySelector('#picProjectSearchResults');
-            let activeDataIndex = 1;
-            let totalDataCount  = 1;
-            let multiDataStore  = {}; 
-            function getActiveContractType() { return contractTypeSelect ? contractTypeSelect.value : ''; }
-            window.openUraianForm = function(currentData, mode) {
-                uraianForm.reset();
-                const d = currentData.uraian_data || {};
-                ujInputs.nama.value = d.nama || '';
-                ujInputs.unit.value = d.unit || '';
-                ujInputs.pemangku.value = d.pemangku || '';
-                ujInputs.melapor.value = d.melapor || '';
-                ujInputs.tujuan.value = d.tujuan || '';
-                ujInputs.akuntabilitas.value = d.akuntabilitas || '';
-                if(ujInputs.dimensi_keuangan) ujInputs.dimensi_keuangan.value = d.dimensi_keuangan || '';
-                if(ujInputs.anggaran) ujInputs.anggaran.value = d.anggaran || '';
-                if(ujInputs.dimensi_non_keuangan) ujInputs.dimensi_non_keuangan.value = d.dimensi_non_keuangan || '';
-                if(ujInputs.bawahan_langsung) ujInputs.bawahan_langsung.value = d.bawahan_langsung || '';
-                if(ujInputs.total_staff) ujInputs.total_staff.value = d.total_staff || '';
-                if(ujInputs.total_pegawai) ujInputs.total_pegawai.value = d.total_pegawai || '';
-                if(ujInputs.wewenang) ujInputs.wewenang.value = d.wewenang || '';
-                if(ujInputs.hub_internal) ujInputs.hub_internal.value = d.hub_internal || '';
-                if(ujInputs.hub_eksternal) ujInputs.hub_eksternal.value = d.hub_eksternal || '';
-                if(ujInputs.spek_pendidikan) ujInputs.spek_pendidikan.value = d.spek_pendidikan || '';
-                if(ujInputs.spek_pengetahuan) ujInputs.spek_pengetahuan.value = d.spek_pengetahuan || '';
-                if(ujInputs.spek_kompetensi) ujInputs.spek_kompetensi.value = d.spek_kompetensi || '';
-                if(ujInputs.spek_kompetensi_wajib) ujInputs.spek_kompetensi_wajib.value = d.spek_kompetensi_wajib || '';
-                if(ujInputs.spek_kompetensi_generik) ujInputs.spek_kompetensi_generik.value = d.spek_kompetensi_generik || '';
-                if(d.struktur_organisasi) {
-                    const previewDiv = document.getElementById('uj_struktur_preview');
-                    if(previewDiv) previewDiv.innerHTML = `<img src="${d.struktur_organisasi}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
-                    if(ujInputs.struktur) ujInputs.struktur._base64 = d.struktur_organisasi;
-                }
-                if (!ujInputs.unit.value && meUnitName) ujInputs.unit.value = meUnitName;
-                if (!ujInputs.nama.value) {
-                    if (mode === 'organik') {
-                        const selectedRow = form.querySelector('.js-rkap-select.selected');
-                        if(selectedRow) ujInputs.nama.value = selectedRow.closest('tr').dataset.jobName;
-                        else if (positionOrganikSearchInput && positionOrganikSearchInput.value) ujInputs.nama.value = positionOrganikSearchInput.value;
-                    } else if (mode === 'project') {
-                        if(positionSearchInput && positionSearchInput.value) ujInputs.nama.value = positionSearchInput.value;
-                    }
-                }
-                const status = currentData.uraian_status || 'Belum diisi';
-                uraianStatusDisplay.textContent = 'Status: ' + status;
-                if(status === 'Final' || status === 'Finalized') {
-                    btnPreviewPdf.style.display = 'inline-flex';
-                    btnPreviewPdf.dataset.json = JSON.stringify(d);
-                } else {
-                    btnPreviewPdf.style.display = 'none';
-                }
 
-                uraianModal.hidden = false;
-                uraianModal.style.zIndex = '2000'; 
-                document.body.classList.add('modal-open');
-            };
-            document.addEventListener('click', function(e) {
-                if(e.target.classList.contains('js-save-uraian-form')) {
-                    const status = e.target.getAttribute('data-status');
-                    const dataObj = {
-                        nama: ujInputs.nama.value,
-                        unit: ujInputs.unit.value,
-                        pemangku: ujInputs.pemangku.value,
-                        melapor: ujInputs.melapor.value,
-                        tujuan: ujInputs.tujuan.value,
-                        akuntabilitas: ujInputs.akuntabilitas.value,
-                        dimensi_keuangan: ujInputs.dimensi_keuangan ? ujInputs.dimensi_keuangan.value : '',
-                        anggaran: ujInputs.anggaran ? ujInputs.anggaran.value : '',
-                        dimensi_non_keuangan: ujInputs.dimensi_non_keuangan ? ujInputs.dimensi_non_keuangan.value : '',
-                        bawahan_langsung: ujInputs.bawahan_langsung ? ujInputs.bawahan_langsung.value : '',
-                        total_staff: ujInputs.total_staff ? ujInputs.total_staff.value : '',
-                        total_pegawai: ujInputs.total_pegawai ? ujInputs.total_pegawai.value : '',
-                        wewenang: ujInputs.wewenang ? ujInputs.wewenang.value : '',
-                        hub_internal: ujInputs.hub_internal ? ujInputs.hub_internal.value : '',
-                        hub_eksternal: ujInputs.hub_eksternal ? ujInputs.hub_eksternal.value : '',
-                        spek_pendidikan: ujInputs.spek_pendidikan ? ujInputs.spek_pendidikan.value : '',
-                        spek_pengetahuan: ujInputs.spek_pengetahuan ? ujInputs.spek_pengetahuan.value : '',
-                        spek_kompetensi: ujInputs.spek_kompetensi ? ujInputs.spek_kompetensi.value : '',
-                        spek_kompetensi_wajib: ujInputs.spek_kompetensi_wajib ? ujInputs.spek_kompetensi_wajib.value : '',
-                        spek_kompetensi_generik: ujInputs.spek_kompetensi_generik ? ujInputs.spek_kompetensi_generik.value : '',
-                        struktur_organisasi: (ujInputs.struktur && ujInputs.struktur._base64) ? ujInputs.struktur._base64 : ''
-                    };
-                    if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
-                    multiDataStore[activeDataIndex].uraian_data = dataObj;
-                    multiDataStore[activeDataIndex].uraian_status = status; 
-                    const type = getActiveContractType();
-                    const textStatus = (status === 'Final') ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
-                    const currentBudget = budgetSourceSelect ? budgetSourceSelect.value : '';
-                    if(currentBudget === 'RKAP') { 
-                        if(uraianStatus) uraianStatus.textContent = textStatus; 
-                    } 
-                    else { 
-                        if(uraianStatusProject) uraianStatusProject.textContent = textStatus; 
-                    }
-                    if(status === 'Final') {
-                        btnPreviewPdf.dataset.json = JSON.stringify(dataObj);
-                        btnPreviewPdf.style.display = 'inline-flex';
-                        uraianStatusDisplay.textContent = 'Status: Final';
-                        alert('Data berhasil difinalisasi.');
-                    } else {
-                        uraianModal.hidden = true;
-                    }
-                }
-            });
-
-            function submitPdfForm(jsonData) {
-                if(!jsonData) return;
-                let formPdf = document.getElementById('pdf-generator-form');
-                if(!formPdf) {
-                    formPdf = document.createElement('form');
-                    formPdf.id = 'pdf-generator-form';
-                    formPdf.method = 'POST';
-                    formPdf.action = "{{ route('recruitment.uraian-jabatan.preview-pdf') }}"; 
-                    formPdf.target = '_blank';
-                    const csrf = document.createElement('input');
-                    csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = "{{ csrf_token() }}";
-                    formPdf.appendChild(csrf);
-                    const inp = document.createElement('input');
-                    inp.type = 'hidden'; inp.name = 'data'; inp.id = 'pdf-data-input';
-                    formPdf.appendChild(inp);
-                    document.body.appendChild(formPdf);
-                }
-                document.getElementById('pdf-data-input').value = jsonData;
-                formPdf.submit();
-            }
-            if(btnPreviewPdf) {
-                btnPreviewPdf.addEventListener('click', function() { submitPdfForm(this.dataset.json); });
-            }
-            function resetDynamicInputs() {
-                if(titleInput) titleInput.value = '';
-                Object.values(dynInputs).forEach(el => {
-                    if(el && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) el.value = '';
-                });
-                if (dynLocationId) dynLocationId.value = '';
-                if(dynInputs.cv) { dynInputs.cv.value = ''; dynInputs.cv._base64 = null; dynInputs.cv._filename = null; }
-                if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = '';
-                form.querySelectorAll('.js-rkap-select.selected').forEach(b => {
-                    b.classList.remove('selected', 'u-success'); b.classList.add('u-btn--outline'); b.innerHTML = '+';
-                });
-                if(rkapSelectedInfo) rkapSelectedInfo.style.display = 'none';
-                if(rkapSelectedName) rkapSelectedName.textContent = '';
-                if(uraianStatus) uraianStatus.textContent = 'Belum ada uraian';
-                if(picOrganikInput) picOrganikInput.value = '';
-                if(picOrganikSearchInput) picOrganikSearchInput.value = '';
-                if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
-                if(positionOrganikInput) positionOrganikInput.value = '';
-                if(kodeProjectSelect) kodeProjectSelect.value = '';
-                if(namaProjectInput) namaProjectInput.value = '';
-                if(positionSearchInput) positionSearchInput.value = '';
-                if(positionInput) positionInput.value = '';
-                if(uraianStatusProject) uraianStatusProject.textContent = 'Belum ada uraian';
-                if(picProjectInput) picProjectInput.value = '';
-                if(picProjectSearchInput) picProjectSearchInput.value = '';
-            }
-            function saveCurrentTabData() {
-                const idx = activeDataIndex;
-                if (!multiDataStore[idx]) multiDataStore[idx] = {};
-                if(titleInput) multiDataStore[idx].title = titleInput.value;
-                multiDataStore[idx].start_date = dynInputs.start_date?.value || '';
-                multiDataStore[idx].end_date    = dynInputs.end_date?.value || '';
-                multiDataStore[idx].location    = dynInputs.location?.value || '';
-                multiDataStore[idx].education   = dynInputs.education?.value || '';
-                multiDataStore[idx].brevet      = dynInputs.brevet?.value || '';
-                multiDataStore[idx].experience  = dynInputs.experience?.value || '';
-                multiDataStore[idx].salary      = dynInputs.salary?.value || '';
-                multiDataStore[idx].terbilang   = dynInputs.terbilang?.value || '';
-                multiDataStore[idx].allowanceJ  = dynInputs.allowanceJ?.value || '';
-                multiDataStore[idx].allowanceP  = dynInputs.allowanceP?.value || '';
-                multiDataStore[idx].allowanceC  = dynInputs.allowanceC?.value || '';
-                multiDataStore[idx].allowanceK  = dynInputs.allowanceK?.value || '';
-                multiDataStore[idx].pph21       = dynInputs.pph21?.value || '';
-                multiDataStore[idx].bpjs_kes    = dynInputs.bpjs_kes?.value || '';
-                multiDataStore[idx].bpjs_tk     = dynInputs.bpjs_tk?.value || '';
-                multiDataStore[idx].thr         = dynInputs.thr?.value || '';
-                multiDataStore[idx].kompensasi  = dynInputs.kompensasi?.value || '';
-                if(dynInputs.cv && dynInputs.cv._base64) {
-                    multiDataStore[idx].cv_file = dynInputs.cv._base64;
-                    multiDataStore[idx].cv_filename = dynInputs.cv._filename;
-                }
-                const isRkapVisible = rkapSection && rkapSection.style.display !== 'none';
-                const isProjectVisible = projectSection && projectSection.style.display !== 'none';
-                if (isRkapVisible) {
-                    const selectedRow = form.querySelector('.js-rkap-select.selected');
-                    const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
-                    multiDataStore[idx].type = 'Organik';
-                    multiDataStore[idx].rkap_job = rkapJob;
-                    multiDataStore[idx].pic_id = picOrganikInput.value;
-                    multiDataStore[idx].pic_text = picOrganikSearchInput.value;
-                    multiDataStore[idx].position = positionOrganikInput.value; 
-                    multiDataStore[idx].position_text = positionOrganikSearchInput.value;
-                } 
-                else if (isProjectVisible) {
-                    multiDataStore[idx].type = getActiveContractType();
-                    multiDataStore[idx].project_code = kodeProjectSelect.value;
-                    multiDataStore[idx].project_name = namaProjectInput.value;
-                    multiDataStore[idx].position = positionInput.value; 
-                    multiDataStore[idx].position_text = positionSearchInput.value;
-                    multiDataStore[idx].pic_id = picProjectInput.value;
-                    multiDataStore[idx].pic_text = picProjectSearchInput.value;
-                }
-            }
-            function loadTabData(idx) {
-                resetDynamicInputs(); 
-                const data = multiDataStore[idx];
-                if (!data) return; 
-                if(data.title && titleInput) titleInput.value = data.title;
-                if(dynInputs.start_date) dynInputs.start_date.value = data.start_date || '';
-                if(dynInputs.end_date)   dynInputs.end_date.value   = data.end_date || '';
-                if(dynInputs.location)   dynInputs.location.value   = data.location || '';
-                if(dynInputs.education)  dynInputs.education.value  = data.education || '';
-                if(dynInputs.brevet)     dynInputs.brevet.value     = data.brevet || '';
-                if(dynInputs.experience) dynInputs.experience.value = data.experience || '';
-                if(dynInputs.salary)     dynInputs.salary.value     = data.salary || '';
-                if(dynInputs.terbilang)  dynInputs.terbilang.value  = data.terbilang || '';
-                if(dynInputs.allowanceJ)  dynInputs.allowanceJ.value  = data.allowanceJ || '';
-                if(dynInputs.allowanceP)  dynInputs.allowanceP.value  = data.allowanceP || '';
-                if(dynInputs.allowanceC)  dynInputs.allowanceC.value  = data.allowanceC || '';
-                if(dynInputs.allowanceK)  dynInputs.allowanceK.value  = data.allowanceK || '';
-                if(dynInputs.pph21)      dynInputs.pph21.value      = data.pph21 || '';
-                if(dynInputs.bpjs_kes)   dynInputs.bpjs_kes.value   = data.bpjs_kes || '';
-                if(dynInputs.bpjs_tk)    dynInputs.bpjs_tk.value    = data.bpjs_tk || '';
-                if(dynInputs.thr)        dynInputs.thr.value        = data.thr || '';
-                if(dynInputs.kompensasi) dynInputs.kompensasi.value = data.kompensasi || '';
-                if(data.salary && dynInputs.terbilang) {
-                    let text = terbilang(data.salary) + 'RUPIAH';
-                    text = text.charAt(0).toUpperCase() + text.slice(1);
-                    dynInputs.terbilang.value = text;
-                } else if (dynInputs.terbilang) {
-                    dynInputs.terbilang.value = data.terbilang || '';
-                }
-                if(data.cv_filename && dynInputs.cv_preview) {
-                    dynInputs.cv_preview.textContent = "Current File: " + data.cv_filename;
-                    dynInputs.cv._base64 = data.cv_file;
-                    dynInputs.cv._filename = data.cv_filename;
-                }
-                const type = getActiveContractType();
-                const statusText = (data.uraian_status === 'Final') ? 'Tersimpan (Final)' : (data.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
-                const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
-                if (data.rkap_job || (type === 'Organik' && data.type === 'Organik') || (budgetSourceSelect && budgetSourceSelect.value === 'RKAP')) {
-                    if (data.rkap_job) {
-                        const rows = form.querySelectorAll('#rkap-table tbody tr');
-                        rows.forEach(tr => {
-                            if (tr.dataset.jobName === data.rkap_job) {
-                                const btn = tr.querySelector('.js-rkap-select');
-                                toggleRkapSelect(btn, true);
-                            }
+                // Fungsi untuk mengubah "1.000.000" kembali menjadi integer 1000000 untuk kalkulasi
+                const parseRupiah = (str) => {
+                    if (!str) return 0;
+                    // Hapus semua karakter kecuali angka dan koma (jika ada desimal)
+                    // Disini kita asumsi bulat, jadi hapus titik saja
+                    return parseFloat(str.toString().replace(/\./g, '')) || 0;
+                };
+                const modalMain   = document.getElementById('createApprovalModal');
+                const detailModal = document.getElementById('detailApprovalModal');
+                const uraianModal = document.getElementById('uraianModal');
+                const form          = document.getElementById('createApprovalForm');
+                const submitBtn     = document.getElementById('submitApprovalBtn');
+                const modalTitle    = document.getElementById('ip-modal-title');
+                const modalSubtitle = document.getElementById('ip-modal-subtitle');
+                const contractTypeSelect = form.querySelector('#contractTypeSelect');
+                const budgetSourceSelect = form.querySelector('#budgetSourceSelect');
+                const headcountInput     = form.querySelector('#headcountInput');
+                const dataTabsContainer  = document.getElementById('dataTabsContainer');
+                const detailsJsonInput   = document.getElementById('detailsJson');
+                const requestTypeSelect  = form.querySelector('[name="request_type"]');
+                const titleInput         = form.querySelector('#titleInput');
+                const targetStartInput   = form.querySelector('#targetStartInput'); 
+                const justifInput        = form.querySelector('[name="justification"]');
+                const dynInputs = {
+                    start_date:  form.querySelector('#dyn_start_date'),
+                    end_date:    form.querySelector('#dyn_end_date'),
+                    location:    form.querySelector('#dyn_location'),
+                    education:   form.querySelector('#dyn_education'),
+                    brevet:      form.querySelector('#dyn_brevet'),
+                    experience:  form.querySelector('#dyn_experience'),
+                    resiko: form.querySelector('#dyn_resiko'),
+                    salary:      form.querySelector('#dyn_salary'),
+                    terbilang:   form.querySelector('#dyn_terbilang'),
+                    allowanceJ:   form.querySelector('#dyn_allowanceJ'),
+                    allowanceP:   form.querySelector('#dyn_allowanceP'),
+                    allowanceL:   form.querySelector('#dyn_allowanceL'),
+                    allowanceK:   form.querySelector('#dyn_allowanceK'),
+                    pph21:       form.querySelector('#dyn_pph21'),
+                    bpjs_kes:    form.querySelector('#dyn_bpjs_kes'),
+                    bpjs_tk:     form.querySelector('#dyn_bpjs_tk'),
+                    thr:         form.querySelector('#dyn_thr'),
+                    kompensasi:  form.querySelector('#dyn_kompensasi'),
+                    cv:          form.querySelector('#dyn_cv'),
+                    cv_preview:  form.querySelector('#dyn_cv_preview_text')
+                };
+                
+                const dynLocationId = document.getElementById('dyn_location_id');
+                const dynLocationResults = document.getElementById('dynLocationSearchResults');
+                setupSearchableDropdown(dynInputs.location, dynLocationId, dynLocationResults, locationsData, true);
+                const currencyInputs = [
+                    dynInputs.salary, dynInputs.allowanceJ, dynInputs.allowanceP, 
+                    dynInputs.allowanceL, dynInputs.allowanceK, dynInputs.thr, 
+                    dynInputs.kompensasi, dynInputs.bpjs_kes, dynInputs.bpjs_tk, dynInputs.pph21
+                ];
+                currencyInputs.forEach(input => {
+                    if(input) {
+                        input.addEventListener('input', function(e) {
+                            // Format tampilan saat mengetik
+                            this.value = formatRupiahTyping(this.value);
                         });
                     }
-                    if(uraianStatus) uraianStatus.textContent = statusText;
-                    if(data.pic_id) picOrganikInput.value = data.pic_id;
-                    if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
-                    if(data.position) positionOrganikInput.value = data.position;
-                    if(data.position_text) positionOrganikSearchInput.value = data.position_text;
-                } else if (projectTypes.includes(type) && projectTypes.includes(data.type)) {
-                        if(data.project_code) {
-                            kodeProjectSelect.value = data.project_code;
-                            namaProjectInput.value = data.project_name || ''; 
-                        }
-                        if(data.position) positionInput.value = data.position;
-                        if(data.position_text) positionSearchInput.value = data.position_text;
-                        if(uraianStatusProject) uraianStatusProject.textContent = statusText;
-                        if(data.pic_id) picProjectInput.value = data.pic_id;
-                        if(data.pic_text) picProjectSearchInput.value = data.pic_text;
-                }
-            }
-            function renderTabs(count) {
-                dataTabsContainer.innerHTML = '';
-                dataTabsContainer.style.display = 'flex';   
-                for (let i = 1; i <= count; i++) {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    const activeClass = (i === activeDataIndex) ? 'u-btn--brand' : 'u-btn--soft';
-                    btn.className = `u-btn u-btn--sm ${activeClass}`;
-                    btn.textContent = `Data ${i}`;
-                    btn.dataset.idx = i;
-                    btn.addEventListener('click', () => {
-                        saveCurrentTabData(); 
-                        const prevBtn = dataTabsContainer.querySelector(`button[data-idx="${activeDataIndex}"]`);
-                        if(prevBtn) { prevBtn.classList.remove('u-btn--brand'); prevBtn.classList.add('u-btn--soft'); }
-                        btn.classList.remove('u-btn--soft'); btn.classList.add('u-btn--brand');
-                        activeDataIndex = i; 
-                        loadTabData(i); 
-                    });
-                    dataTabsContainer.appendChild(btn);
-                }
-            }
-            if(headcountInput) {
-                headcountInput.addEventListener('input', function(e) {
-                    let val = parseInt(e.target.value);
-                    if (isNaN(val) || val < 1) val = 1;
-                    saveCurrentTabData(); 
-                    totalDataCount = val;
-                    if (activeDataIndex > totalDataCount) { activeDataIndex = 1; loadTabData(1); }
-                    renderTabs(totalDataCount);
                 });
-            }
-            if (contractTypeSelect) {
-                contractTypeSelect.addEventListener('change', function() {
-                const val = this.value;
-                multiDataStore = {}; 
-                resetDynamicInputs();
-                activeDataIndex = 1;
-                renderTabs(totalDataCount); 
-                const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
-                if (val === 'Organik') { setBudgetLock(true, 'RKAP'); }
-                else if (projectTypes.includes(val)) { setBudgetLock(true, 'RAB Proyek');}
-                else { setBudgetLock(false, ''); }
-                updateVisibility();
-                });
-            }
-            submitBtn.addEventListener('click', function(e) {
-                saveCurrentTabData();
-                const payload = [];
-                for (let i = 1; i <= totalDataCount; i++) {
-                    let d = multiDataStore[i] || {};
-                    d.type = getActiveContractType(); 
-                    if(!d.title) d.title = titleInput.value; 
-                    payload.push(d);
-                }
-                detailsJsonInput.value = JSON.stringify(payload);
-            });
-            const btnAddNote       = document.getElementById('btn-add-note');
-            const noteModal        = document.getElementById('noteEditorModal');
-            const hiddenNoteInput  = document.getElementById('hidden_extended_note');
-            const closeNoteBtns    = document.querySelectorAll('.js-close-note-modal');
-            const saveNoteBtn      = document.querySelector('.js-save-note');
-            let myNoteEditor = null;
-            if (!myNoteEditor && document.querySelector('#editorContent')) {
-                ClassicEditor
-                    .create(document.querySelector('#editorContent'), {
-                        toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'blockQuote', 'insertTable', 'undo', 'redo' ],
-                        placeholder: 'Tulis catatan persetujuan/penolakan di sini...'
+                const calcTriggers = [
+                    dynInputs.salary, dynInputs.thr, dynInputs.kompensasi,
+                    dynInputs.start_date, dynInputs.end_date, dynInputs.resiko
+                ];
+
+                function calculateRemuneration() {
+                    // [UBAH DISINI] Gunakan parseRupiah, bukan parseFloat biasa
+                    const salary = parseRupiah(dynInputs.salary ? dynInputs.salary.value : 0);
+                    const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
+                    const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
+                    const riskVal = dynInputs.resiko ? dynInputs.resiko.value : 'Rendah';
+
+                    if (salary <= 0 || !start || !end) return;
+
+                    // [UBAH DISINI] Gunakan parseRupiah
+                    let valThr = parseRupiah(dynInputs.thr ? dynInputs.thr.value : 0);
+                    let valKomp = parseRupiah(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
+
+                    // Logic paksa samakan Gaji (tetap sama, variabel salary sudah bersih)
+                    if (salary > 0 && valThr === 0) {
+                        valThr = salary;
+                        // Update tampilan input THR dengan format rupiah
+                        if(dynInputs.thr) dynInputs.thr.value = formatRupiahTyping(salary.toString());
+                    }
+                    if (salary > 0 && valKomp === 0) {
+                        valKomp = salary;
+                        if(dynInputs.kompensasi) dynInputs.kompensasi.value = formatRupiahTyping(salary.toString());
+                    }
+
+                    const payload = {
+                        salary: salary, // Sudah bersih (integer/float)
+                        start_date: start,
+                        end_date: end,
+                        thr: valThr,    // Sudah bersih
+                        kompensasi: valKomp, // Sudah bersih
+                        risk_level: riskVal,
+                        _token: '{{ csrf_token() }}'
+                    };
+
+                    if(dynInputs.pph21) dynInputs.pph21.placeholder = "Menghitung...";
+
+                    fetch("{{ route('api.calculate.salary') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify(payload)
                     })
-                    .then(editor => { myNoteEditor = editor; })
-                    .catch(error => { console.error(error); });
-            }
-            if(btnAddNote) {
-                btnAddNote.addEventListener('click', function() {
-                    if(myNoteEditor) { myNoteEditor.setData(hiddenNoteInput.value || ''); }
-                    noteModal.hidden = false;
-                    noteModal.style.display = 'flex'; 
-                });
-            }
-            closeNoteBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    noteModal.hidden = true;
-                    noteModal.style.display = 'none';
-                });
-            });
-            if(saveNoteBtn) {
-                saveNoteBtn.addEventListener('click', function() {
-                    if(myNoteEditor) {
-                        const content = myNoteEditor.getData();
-                        hiddenNoteInput.value = content; 
-                        const cleanText = content.replace(/<[^>]*>?/gm, '').trim(); 
-                        if(cleanText !== '') {
-                            btnAddNote.classList.remove('u-btn--outline');
-                            btnAddNote.classList.add('u-btn--brand');
-                            btnAddNote.innerHTML = '<i class="fas fa-check-circle u-mr-xs"></i> Catatan Tersimpan';
-                        } else {
-                            btnAddNote.classList.add('u-btn--outline');
-                            btnAddNote.classList.remove('u-btn--brand');
-                            btnAddNote.innerHTML = '<i class="fas fa-edit u-mr-xs"></i> Catatan';
-                        }
-                    }
-                    noteModal.hidden = true;
-                    noteModal.style.display = 'none';
-                });
-            }
-            document.addEventListener('click', function(e) {
-                if (e.target.closest('#uraianModal [data-modal-close]')) {
-                    const m = document.getElementById('uraianModal');
-                    m.hidden = true; 
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("RESPONSE:", data);
+                        
+                        // [UBAH DISINI] Format hasil dari server ke Rupiah sebelum ditampilkan
+                        if(dynInputs.pph21)   dynInputs.pph21.value   = formatRupiahTyping(data.pph21_bulanan.toString());
+                        if(dynInputs.bpjs_kes) dynInputs.bpjs_kes.value = formatRupiahTyping(data.bpjs_kesehatan.toString());
+                        if(dynInputs.bpjs_tk)  dynInputs.bpjs_tk.value  = formatRupiahTyping(data.bpjs_ketenagakerjaan.toString());
+                    })
+                    .catch(error => { console.error('Error calculating:', error); });
                 }
-                else if (e.target.closest('#createApprovalModal [data-modal-close]') || e.target.closest('#detailApprovalModal [data-modal-close]')) {
-                    const m = e.target.closest('.u-modal');
-                    if(m) { m.hidden = true; document.body.classList.remove('modal-open'); }
-                }
-
-                const btnCreate = e.target.closest('[data-modal-open="createApprovalModal"]');
-                if(btnCreate) {
-                    const m = document.getElementById('createApprovalModal');
-                    const deleteForm = document.getElementById('deleteDraftForm');
-                    if(m) { 
-                        m.hidden = false; document.body.classList.add('modal-open'); 
-                        const mode = btnCreate.getAttribute('data-mode');
-                        multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1;            
-                        if(mode === 'create') {
-                            form.reset(); 
-                            setBudgetLock(false, ''); 
-                            if(modalTitle) modalTitle.textContent = "Buat Izin Prinsip Baru";
-                            if(modalSubtitle) modalSubtitle.textContent = "Ajukan permintaan rekrutmen atau perpanjangan kontrak";
-                            form.action = form.getAttribute('data-default-action'); 
-                            if(deleteForm) deleteForm.style.display = 'none';
-                            let methodField = form.querySelector('input[name="_method"]');
-                            if (methodField) methodField.remove();
-                            [positionSearchInput, positionInput, positionOrganikSearchInput, positionOrganikInput, 
-                            picProjectSearchInput, picProjectInput, picOrganikSearchInput, picOrganikInput].forEach(el => { if(el) el.value = ''; });
-                            resetDynamicInputs();
-                            renderTabs(1); 
-                            loadTabData(1);
-                            updateVisibility();
-
-                        } else if (mode === 'edit') {
-                            if(modalTitle) modalTitle.textContent = "Edit Izin Prinsip";
-                            const updateUrl = btnCreate.getAttribute('data-update-url');
-                            if(updateUrl) form.action = updateUrl;
-                            const deleteUrl = btnCreate.getAttribute('data-delete-url');
-                            if(deleteForm) { deleteForm.style.display = 'block'; deleteForm.action = deleteUrl || ''; }
-                            let methodField = form.querySelector('input[name="_method"]');
-                            if (!methodField) { methodField = document.createElement('input'); methodField.type = 'hidden'; methodField.name = '_method'; methodField.value = 'PUT'; form.appendChild(methodField); }
-                            if(requestTypeSelect) requestTypeSelect.value = btnCreate.getAttribute('data-request-type');
-                            if(titleInput) titleInput.value = btnCreate.getAttribute('data-title');
-                            if(justifInput) justifInput.value = btnCreate.getAttribute('data-justification');
-                            const contractType = btnCreate.getAttribute('data-employment-type');
-                            const budgetType   = btnCreate.getAttribute('data-budget-source-type');
-                            if(contractTypeSelect) contractTypeSelect.value = contractType;
-                            if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
-                            else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
-                            else { setBudgetLock(false, ''); if(budgetSourceSelect) budgetSourceSelect.value = budgetType; }
-                            updateVisibility();
-                            const posName = btnCreate.getAttribute('data-position');
-                            if (contractType === 'Organik') {
-                                if(positionOrganikSearchInput) positionOrganikSearchInput.value = posName;
-                                if(positionOrganikInput) positionOrganikInput.value = posName; 
-                            } else {
-                                if(positionSearchInput) positionSearchInput.value = posName;
-                                if(positionInput) positionInput.value = posName;
-                            }
-                            totalDataCount = parseInt(btnCreate.getAttribute('data-headcount')) || 1;
-                            if(headcountInput) headcountInput.value = totalDataCount;
-                            renderTabs(totalDataCount);
-                            const metaJsonStr = btnCreate.getAttribute('data-meta-json');
-                            if (metaJsonStr) {
-                                try {
-                                    const detailsArray = JSON.parse(metaJsonStr);
-                                    if (Array.isArray(detailsArray) && detailsArray.length > 0) {
-                                        detailsArray.forEach((detail, idx) => { multiDataStore[idx + 1] = detail; });
-                                    }
-                                } catch (e) { console.warn('Failed to parse meta-json:', e); }
-                            }
-                            activeDataIndex = 1;
-                            loadTabData(1);
-                        }
-                    }
-                }
-                const btnDetail = e.target.closest('.js-open-detail');
-                if(btnDetail && detailModal) {
-                    const safeTxt = (attr) => btnDetail.getAttribute(attr) || '-';
-                    const metaJsonStr = btnDetail.getAttribute('data-meta-json');
-                    let detailsArray = [];
-                    try { detailsArray = JSON.parse(metaJsonStr); } catch(e){}
-                    if(!Array.isArray(detailsArray) || detailsArray.length===0) detailsArray = [{}];
-
-
-                    const historyJson = btnDetail.getAttribute('data-history');
-                    const canViewNotes = btnDetail.getAttribute('data-can-view-notes') === 'true';
-                    let historyData = [];
-                    try { historyData = JSON.parse(historyJson); } catch(e) {}
-                    const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '-'; };
-                    setTxt('view-ticket', safeTxt('data-ticket-number'));
-                    setTxt('view-status', safeTxt('data-status'));
-                    setTxt('view-unit', safeTxt('data-unit'));
-                    setTxt('view-request-type', safeTxt('data-request-type'));
-                    setTxt('view-justification', safeTxt('data-justification'));
-                    setTxt('view-budget-source', safeTxt('data-budget-source'));   
-                    const tabsContainer = document.getElementById('detailTabsContainer');
-                    tabsContainer.innerHTML = '';
-                    const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
-                    const approveUrl = btnDetail.getAttribute('data-approve-url');
-                    const rejectUrl = btnDetail.getAttribute('data-reject-url');
-                    const approveForm = detailModal.querySelector('.detail-approve-form');
-                    const rejectForm = detailModal.querySelector('.detail-reject-form');
-                    if(canApprove && approveForm && rejectForm) {
-                        approveForm.style.display = 'block';
-                        rejectForm.style.display = 'block';
-                        if(approveForm.querySelector('button')) approveForm.querySelector('button').disabled = false;
-                        if(rejectForm.querySelector('button')) rejectForm.querySelector('button').disabled = false;
-                        if(approveUrl) approveForm.action = approveUrl;
-                        if(rejectUrl) rejectForm.action = rejectUrl;
-                        if(btnAddNote) btnAddNote.style.display = 'block';
-                    } else {
-                        if(approveForm) approveForm.style.display = 'none';
-                        if(rejectForm) rejectForm.style.display = 'none';
-                        if(btnAddNote) btnAddNote.style.display = 'none';
-                    }
-                    const renderContent = (index) => {
-                        const data = detailsArray[index];
-                        const globalTitle = safeTxt('data-title');
-                        setTxt('view-title', data.title || globalTitle);
-                        setTxt('view-position', data.position_text || safeTxt('data-position'));
-                        setTxt('view-headcount', '1 Orang');
-                        setTxt('view-employment', data.type || safeTxt('data-employment-type'));
-                        setTxt('view-pic', data.pic_text || '-');
-                        const btnPdf = document.getElementById('btn-view-pdf-detail');
-                        const statusUraian = document.getElementById('view-uraian-status');
-                        if(data && data.uraian_data) {
-                            statusUraian.textContent = 'Tersedia';
-                            btnPdf.style.display = 'inline-flex';
-                            btnPdf.onclick = function() { submitPdfForm(JSON.stringify(data.uraian_data)); };
-                        } else {
-                            statusUraian.textContent = 'Tidak ada uraian';
-                            btnPdf.style.display = 'none';
-                        }
-                        const container = document.getElementById('detailContentContainer');
-                        let extraDetailDiv = document.getElementById('view-extra-details');
-                        if(!extraDetailDiv) {
-                            extraDetailDiv = document.createElement('div');
-                            extraDetailDiv.id = 'view-extra-details';
-                            extraDetailDiv.style.marginTop = '24px';
-                            container.appendChild(extraDetailDiv);
-                        } else {
-                            if (extraDetailDiv.parentNode !== container) {
-                                container.appendChild(extraDetailDiv);
-                            }
-                            extraDetailDiv.style.marginTop = '24px';
-                        }
-                        const makeRow = (lbl, val, isBold = false, isGrand = false) => {
-                            let styleVal = isBold ? 'font-weight: 800; color: #111827;' : 'font-medium';
-                            let styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
-                            let borderStyle = 'border-bottom: 1px solid #f3f4f6;';
-                            if (isGrand) {
-                                styleVal = 'font-weight: 900; color: #059669; font-size: 1.1em;'; 
-                                styleLbl = 'font-weight: 800; color: #065f46; font-size: 1.0em;';
-                                borderStyle = 'border-top: 2px solid #059669; padding-top: 8px; margin-top: 8px;';
-                            }
-                            return `<div class="u-flex u-justify-between u-mb-xs u-pb-xs" style="${borderStyle}">
-                                        <span class="u-text-xs u-uppercase ${styleLbl}">${lbl}</span>
-                                        <span class="u-text-sm u-text-right ${styleVal}">${val || '-'}</span>
-                                    </div>`;
-                        };
-                        const formatRp = (val) => {
-                            if (!val) return '-';
-                            let num = parseFloat(val);
-                            if (isNaN(num)) return '-';
-                            return 'Rp ' + num.toLocaleString('id-ID'); 
-                        };
-                        const parseVal = (v) => parseFloat(v) || 0;
-                        const totalAnggaranPerBulan = 
-                            parseVal(data.salary) + 
-                            parseVal(data.allowanceJ) + 
-                            parseVal(data.allowanceP) + 
-                            parseVal(data.allowanceC) + 
-                            parseVal(data.allowanceK) + 
-                            parseVal(data.thr) + 
-                            parseVal(data.kompensasi) + 
-                            parseVal(data.bpjs_tk) + 
-                            parseVal(data.bpjs_kes) + 
-                            parseVal(data.pph21);
-                        let duration = 1; 
-                        if (data.start_date && data.end_date) {
-                            const d1 = new Date(data.start_date);
-                            const d2 = new Date(data.end_date);
-                            d2.setDate(d2.getDate() + 1);
-                            let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-                            if (d2.getDate() < d1.getDate()) {
-                                months--;
-                            }
-                            duration = months > 0 ? months : 1;
-                        }
-                        const grandTotal = totalAnggaranPerBulan * duration;
-                        let historyHtml = '';
-                        if (historyData.length > 0) {
-                            historyHtml += `<div class="u-mt-lg u-pt-md u-border-t">`;
-                            historyHtml += `<div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em;">Riwayat Persetujuan</div>`;
-                            historyHtml += `<div class="u-space-y-sm">`; 
-                            console.log("DEBUG HISTORY:", {
-                                roleSaya: "{{ $me->getRoleNames()->first() ?? 'User' }}", 
-                                bisaLihatCatatan: canViewNotes, 
-                                dataHistory: historyData
-                            });
-                            historyData.forEach((h, index) => {
-                                let badgeClass = 'u-badge--subtle';
-                                let icon = '<i class="fas fa-circle-notch fa-spin"></i>';
-                                if(h.status === 'approved') { badgeClass = 'u-badge--success'; icon = '<i class="fas fa-check-circle"></i>'; } 
-                                else if(h.status === 'rejected') { badgeClass = 'u-badge--danger'; icon = '<i class="fas fa-times-circle"></i>'; } 
-                                else { icon = '<i class="far fa-clock"></i>'; }
-                                let contentNote = (h.note && h.note !== 'null') ? h.note.trim() : '';
-                                let hasNote = (canViewNotes && contentNote.length > 0);
-                                let noteId = `history-note-${index}`; 
-                                let iconId = `icon-history-note-${index}`;
-                                let cursorStyle = hasNote ? 'cursor: pointer;' : '';
-                                let clickAttr = hasNote ? `onclick="toggleHistoryNote('${noteId}')"` : '';
-                                let noteIndicator = hasNote 
-                                    ? `<div class="u-text-2xs u-text-brand u-mt-xxs u-font-medium"><i id="${iconId}" class="fas fa-chevron-down u-mr-xs"></i> Lihat Catatan</div>` 
-                                    : '';
-                                historyHtml += `
-                                <div class="u-card u-p-sm u-bg-white u-border u-mb-sm u-hover-lift" style="${cursorStyle}" ${clickAttr} title="${hasNote ? 'Klik untuk melihat catatan' : ''}">
-                                    <div class="u-flex u-justify-between u-items-center">
-                                        <div>
-                                            <div class="u-font-bold u-text-sm u-text-dark">${h.role}</div>
-                                            <div class="u-text-2xs u-muted"><i class="far fa-calendar-alt"></i> ${h.date}</div>
-                                        </div>
-                                        <div class="u-text-right">
-                                            <div class="u-badge ${badgeClass} u-text-2xs">${icon} ${h.status.toUpperCase()}</div>
-                                            ${noteIndicator}
-                                        </div>
-                                    </div>
-                                    ${ hasNote ? 
-                                        `<div id="${noteId}" style="display: none;" class="u-bg-light u-p-sm u-rounded u-text-sm u-mt-sm u-animate-fade-in" style="border-left: 3px solid #3b82f6;">
-                                            <div class="u-text-xs u-font-bold u-text-muted u-mb-xxs u-uppercase">Isi Catatan:</div>
-                                            <div class="ck-content" style="font-size: 0.9em; color: #374151;">${h.note}</div>
-                                        </div>` : '' 
-                                    }
-                                </div>
-                                `;
-                            });
-                            historyHtml += `</div></div>`;
-                        }
-                        extraDetailDiv.innerHTML = `
-                            <div class="u-card u-p-md">
-                                <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">
-                                    Detail Kandidat & Remunerasi
-                                </div>
-                                <div class="u-grid-2 u-stack-mobile u-gap-lg">
-                                <div>
-                                    ${makeRow('Mulai Kerja', data.start_date)}
-                                    ${makeRow('Selesai Kerja', data.end_date)}
-                                    ${makeRow('Durasi Kontrak', duration + ' Bulan')} 
-                                    ${makeRow('Lokasi', data.location)}
-                                    ${makeRow('Pendidikan', data.education)}
-                                    ${makeRow('Brevet', data.brevet)}
-                                    ${makeRow('Pengalaman', data.experience)}           
-                                    <div class="u-mt-sm u-flex u-justify-between u-items-center">
-                                        <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
-                                        ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
-                                    </div>
-                                </div>
-                                <div> 
-                                    ${makeRow('Gaji Pokok', formatRp(data.salary))}
-                                    ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
-                                    ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
-                                    ${makeRow('Tunjangan Komunikasi', formatRp(data.allowanceC))}
-                                    ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
-                                    ${makeRow('THR', formatRp(data.thr))}
-                                    ${makeRow('Kompensasi', formatRp(data.kompensasi))}
-                                    ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
-                                    ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
-                                    ${makeRow('PPh 21', formatRp(data.pph21))}
-                                    <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
-                                        ${makeRow('TOTAL ANGGARAN (PER BULAN)', formatRp(totalAnggaranPerBulan), true)}
-                                    </div>
-                                    ${makeRow(`TOTAL SELURUHNYA (${duration} BULAN)`, formatRp(grandTotal), false, true)}
-                                </div>
-                                </div>
-                            </div>
-                            ${historyHtml}
-                        `;
-                    };
-                    detailsArray.forEach((item, i) => {
-                        const btnTab = document.createElement('button');
-                        btnTab.type = 'button';
-                        const initialStyle = (i === 0) ? 'u-btn--brand u-text-white' : 'u-btn--ghost';
-                        btnTab.className = `u-btn u-btn--sm ${initialStyle} u-hover-lift`;
-                        btnTab.textContent = `Data ${i + 1}`;
-                        btnTab.style.borderRadius = '20px'; 
-                        btnTab.addEventListener('click', (evt) => {
-                            evt.preventDefault();
-                            Array.from(tabsContainer.children).forEach(c => {
-                                c.classList.remove('u-btn--brand', 'u-text-white');
-                                c.classList.add('u-btn--ghost');
-                            });
-                            btnTab.classList.remove('u-btn--ghost');
-                            btnTab.classList.add('u-btn--brand', 'u-text-white');
-                            renderContent(i);
+                let calcTimeout;
+                calcTriggers.forEach(input => {
+                    if(input) {
+                        // Gunakan 'input' atau 'keyup'
+                        input.addEventListener('keyup', function() {
+                            clearTimeout(calcTimeout);
+                            calcTimeout = setTimeout(calculateRemuneration, 800); 
                         });
-                        tabsContainer.appendChild(btnTab);
-                    });          
-                    renderContent(0);
-                    detailModal.hidden = false; 
-                    document.body.classList.add('modal-open');
-                }
-            });
-            form.addEventListener('click', function(e) {
-                if (e.target.closest('.js-open-uraian-project')) {
-                    const currentData = multiDataStore[activeDataIndex] || {};
-                    openUraianForm(currentData, 'project');
-                }
-                if (e.target.closest('.js-open-uraian')) {
-                    const selectedRow = form.querySelector('.js-rkap-select.selected');
-                    if (!selectedRow) { alert('Pilih Job Function di tabel RKAP terlebih dahulu.'); return; }
-                    const currentData = multiDataStore[activeDataIndex] || {};
-                    openUraianForm(currentData, 'organik');
-                }
-            });
-            function toggleRkapSelect(sel, forceSelect = false) { 
-                const tr = sel.closest('tr'); const job = tr.dataset.jobName;
-                form.querySelectorAll('.js-rkap-select.selected').forEach(el => { if (el !== sel) { el.classList.remove('selected', 'u-success'); el.classList.add('u-btn--outline'); el.innerHTML = '+'; } });
-                const isSelected = sel.classList.contains('selected') && !forceSelect;
-                if (isSelected) {
-                    sel.classList.remove('selected', 'u-success'); sel.classList.add('u-btn--outline'); sel.innerHTML = '+';
-                    rkapSelectedInfo.style.display = 'none';
-                    if(multiDataStore[activeDataIndex]) { multiDataStore[activeDataIndex].rkap_job = null; }
-                } else {
-                    sel.classList.add('selected', 'u-success'); sel.classList.remove('u-btn--outline'); sel.innerHTML = '<i class="fas fa-check"></i>';
-                    rkapSelectedInfo.style.display = 'block';
-                    if(rkapSelectedName) rkapSelectedName.textContent = job;
-                    const stored = multiDataStore[activeDataIndex];
-                    const statusText = (stored && stored.uraian_status === 'Final') ? 'Tersimpan (Final)' : (stored && stored.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
-                    if(uraianStatus) uraianStatus.textContent = statusText;
-                }
-            }
-            form.addEventListener('click', function(e) { const btn = e.target.closest('.js-rkap-select'); if (btn) { e.preventDefault(); toggleRkapSelect(btn); } });
-            setupSearchableDropdown(positionSearchInput, positionInput, positionSearchResults, positionsData, true);
-            setupSearchableDropdown(positionOrganikSearchInput, positionOrganikInput, positionOrganikSearchResults, positionsData, true);
-            setupSearchableDropdown(picProjectSearchInput, picProjectInput, picProjectResults, picData, false);
-            setupSearchableDropdown(picOrganikSearchInput, picOrganikInput, picOrganikResults, picData, false);
-            const updateVisibility = () => { 
-                const budget = budgetSourceSelect ? budgetSourceSelect.value : '';
-                const isRkap = (budget === 'RKAP');
-                const isProjectRab = (budget === 'RAB Proyek');
-                if (rkapSection) rkapSection.style.display = isRkap ? 'block' : 'none';
-                if (!isRkap && rkapSelectedInfo) rkapSelectedInfo.style.display = 'none'; 
-                if (projectSection) projectSection.style.display = isProjectRab ? 'block' : 'none';
-                if(positionInput) positionInput.removeAttribute('name');
-                if(positionOrganikInput) positionOrganikInput.removeAttribute('name');
-                if (isRkap) {
-                    if(positionOrganikInput) positionOrganikInput.setAttribute('name', 'position'); 
-                    const selectedRow = form.querySelector('.js-rkap-select.selected');
-                    if(selectedRow && positionOrganikInput) {
-                        positionOrganikInput.value = selectedRow.closest('tr').dataset.jobName;
+                        // Untuk dropdown/date gunakan 'change'
+                        input.addEventListener('change', calculateRemuneration);
                     }
-                } else if (isProjectRab) { 
-                    if(positionInput) positionInput.setAttribute('name', 'position'); 
-                } 
-            };
-            if (budgetSourceSelect) {
-                budgetSourceSelect.addEventListener('change', function() {
-                    resetDynamicInputs(); 
-                    updateVisibility();
                 });
-            }
-            if (contractTypeSelect) {
-                contractTypeSelect.addEventListener('change', function() {
-                    const val = this.value;
+                if(dynInputs.salary) {
+                    dynInputs.salary.addEventListener('keyup', function(e) { // Ganti ke keyup agar realtime saat ngetik
+                        // Bersihkan titik dulu baru hitung terbilang
+                        const val = parseRupiah(e.target.value);
+                        
+                        if(dynInputs.terbilang) {
+                            if(val && !isNaN(val)) {
+                                let text = terbilang(val) + ' RUPIAH';
+                                text = text.charAt(0).toUpperCase() + text.slice(1);
+                                dynInputs.terbilang.value = text;
+                            } else {
+                                dynInputs.terbilang.value = '';
+                            }
+                        }
+                    });
+                }
+                if(dynInputs.cv) {
+                    dynInputs.cv.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if(file) {
+                            const reader = new FileReader();
+                            reader.onload = function(evt) {
+                                dynInputs.cv._base64 = evt.target.result;
+                                dynInputs.cv._filename = file.name;
+                                if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = "File selected: " + file.name;
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                }
+                const uraianForm = document.getElementById('uraianForm');
+                const ujInputs = {
+                    nama: document.getElementById('uj_nama'),
+                    unit: document.getElementById('uj_unit'),
+                    pemangku: document.getElementById('uj_pemangku'),
+                    melapor: document.getElementById('uj_melapor'),
+                    tujuan: document.getElementById('uj_tujuan'),
+                    akuntabilitas: document.getElementById('uj_akuntabilitas'),
+                    dimensi_keuangan: document.getElementById('uj_dimensi_keuangan'),
+                    anggaran: document.getElementById('uj_anggaran'),
+                    dimensi_non_keuangan: document.getElementById('uj_dimensi_non_keuangan'),
+                    bawahan_langsung: document.getElementById('uj_bawahan_langsung'),
+                    total_staff: document.getElementById('uj_total_staff'),
+                    total_pegawai: document.getElementById('uj_total_pegawai'),
+                    wewenang: document.getElementById('uj_wewenang'),
+                    hub_internal: document.getElementById('uj_hub_internal'),
+                    hub_eksternal: document.getElementById('uj_hub_eksternal'),
+                    spek_pendidikan: document.getElementById('uj_spek_pendidikan'),
+                    spek_pengetahuan: document.getElementById('uj_spek_pengetahuan'),
+                    spek_kompetensi: document.getElementById('uj_spek_kompetensi'),
+                    spek_kompetensi_wajib: document.getElementById('uj_spek_kompetensi_wajib'),
+                    spek_kompetensi_generik: document.getElementById('uj_spek_kompetensi_generik'),
+                    struktur: document.getElementById('uj_struktur')
+                };
+                const btnPreviewPdf = document.getElementById('btnPreviewPdf');
+                const uraianStatusDisplay = document.getElementById('uj_status_display');
+                if(ujInputs.struktur) {
+                    ujInputs.struktur.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        const previewDiv = document.getElementById('uj_struktur_preview');
+                        if(file && file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = function(evt) {
+                                ujInputs.struktur._base64 = evt.target.result;
+                                previewDiv.innerHTML = `<img src="${evt.target.result}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
+                            };
+                            reader.readAsDataURL(file);
+                        } else if(file) {
+                            alert('Silakan pilih file gambar (JPG, PNG, dll)');
+                            previewDiv.innerHTML = '';
+                        }
+                    });
+                }
+                const rkapSection       = form.querySelector('#rkapSection');
+                const rkapSelectedInfo = form.querySelector('#rkapSelectedInfo');
+                const rkapSelectedName = form.querySelector('#rkapSelectedName');
+                const uraianStatus      = form.querySelector('#uraianStatus'); 
+                const projectSection        = form.querySelector('#projectSection');
+                const kodeProjectSelect     = form.querySelector('#kodeProjectSelect');
+                const namaProjectInput      = form.querySelector('#namaProjectInput');
+                const uraianStatusProject   = form.querySelector('#uraianStatusProject');
+                const picOrganikSearchInput = form.querySelector('#picOrganikSearchInput');
+                const picOrganikInput       = form.querySelector('#picOrganikInput');
+                const picOrganikResults     = form.querySelector('#picOrganikSearchResults');
+                const positionOrganikSearchInput = form.querySelector('#positionOrganikSearchInput');
+                const positionOrganikInput       = form.querySelector('#positionOrganikInput');
+                const positionOrganikSearchResults = form.querySelector('#positionOrganikSearchResults');
+                const positionSearchInput  = form.querySelector('#positionSearchInput');
+                const positionInput        = form.querySelector('#positionInput');
+                const positionSearchResults = form.querySelector('#positionSearchResults');
+                const picProjectSearchInput = form.querySelector('#picProjectSearchInput');
+                const picProjectInput       = form.querySelector('#picProjectInput');
+                const picProjectResults     = form.querySelector('#picProjectSearchResults');
+                let activeDataIndex = 1;
+                let totalDataCount  = 1;
+                let multiDataStore  = {}; 
+                function getActiveContractType() { return contractTypeSelect ? contractTypeSelect.value : ''; }
+                window.openUraianForm = function(currentData, mode) {
+                    uraianForm.reset();
+                    const d = currentData.uraian_data || {};
+                    ujInputs.nama.value = d.nama || '';
+                    ujInputs.unit.value = d.unit || '';
+                    ujInputs.pemangku.value = d.pemangku || '';
+                    ujInputs.melapor.value = d.melapor || '';
+                    ujInputs.tujuan.value = d.tujuan || '';
+                    ujInputs.akuntabilitas.value = d.akuntabilitas || '';
+                    if(ujInputs.dimensi_keuangan) ujInputs.dimensi_keuangan.value = d.dimensi_keuangan || '';
+                    if(ujInputs.anggaran) ujInputs.anggaran.value = d.anggaran || '';
+                    if(ujInputs.dimensi_non_keuangan) ujInputs.dimensi_non_keuangan.value = d.dimensi_non_keuangan || '';
+                    if(ujInputs.bawahan_langsung) ujInputs.bawahan_langsung.value = d.bawahan_langsung || '';
+                    if(ujInputs.total_staff) ujInputs.total_staff.value = d.total_staff || '';
+                    if(ujInputs.total_pegawai) ujInputs.total_pegawai.value = d.total_pegawai || '';
+                    if(ujInputs.wewenang) ujInputs.wewenang.value = d.wewenang || '';
+                    if(ujInputs.hub_internal) ujInputs.hub_internal.value = d.hub_internal || '';
+                    if(ujInputs.hub_eksternal) ujInputs.hub_eksternal.value = d.hub_eksternal || '';
+                    if(ujInputs.spek_pendidikan) ujInputs.spek_pendidikan.value = d.spek_pendidikan || '';
+                    if(ujInputs.spek_pengetahuan) ujInputs.spek_pengetahuan.value = d.spek_pengetahuan || '';
+                    if(ujInputs.spek_kompetensi) ujInputs.spek_kompetensi.value = d.spek_kompetensi || '';
+                    if(ujInputs.spek_kompetensi_wajib) ujInputs.spek_kompetensi_wajib.value = d.spek_kompetensi_wajib || '';
+                    if(ujInputs.spek_kompetensi_generik) ujInputs.spek_kompetensi_generik.value = d.spek_kompetensi_generik || '';
+                    if(d.struktur_organisasi) {
+                        const previewDiv = document.getElementById('uj_struktur_preview');
+                        if(previewDiv) previewDiv.innerHTML = `<img src="${d.struktur_organisasi}" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />`;
+                        if(ujInputs.struktur) ujInputs.struktur._base64 = d.struktur_organisasi;
+                    }
+                    if (!ujInputs.unit.value && meUnitName) ujInputs.unit.value = meUnitName;
+                    if (!ujInputs.nama.value) {
+                        if (mode === 'organik') {
+                            const selectedRow = form.querySelector('.js-rkap-select.selected');
+                            if(selectedRow) ujInputs.nama.value = selectedRow.closest('tr').dataset.jobName;
+                            else if (positionOrganikSearchInput && positionOrganikSearchInput.value) ujInputs.nama.value = positionOrganikSearchInput.value;
+                        } else if (mode === 'project') {
+                            if(positionSearchInput && positionSearchInput.value) ujInputs.nama.value = positionSearchInput.value;
+                        }
+                    }
+                    const status = currentData.uraian_status || 'Belum diisi';
+                    uraianStatusDisplay.textContent = 'Status: ' + status;
+                    if(status === 'Final' || status === 'Finalized') {
+                        btnPreviewPdf.style.display = 'inline-flex';
+                        btnPreviewPdf.dataset.json = JSON.stringify(d);
+                    } else {
+                        btnPreviewPdf.style.display = 'none';
+                    }
+
+                    uraianModal.hidden = false;
+                    uraianModal.style.zIndex = '2000'; 
+                    document.body.classList.add('modal-open');
+                };
+                document.addEventListener('click', function(e) {
+                    if(e.target.classList.contains('js-save-uraian-form')) {
+                        const status = e.target.getAttribute('data-status');
+                        const dataObj = {
+                            nama: ujInputs.nama.value,
+                            unit: ujInputs.unit.value,
+                            pemangku: ujInputs.pemangku.value,
+                            melapor: ujInputs.melapor.value,
+                            tujuan: ujInputs.tujuan.value,
+                            akuntabilitas: ujInputs.akuntabilitas.value,
+                            dimensi_keuangan: ujInputs.dimensi_keuangan ? ujInputs.dimensi_keuangan.value : '',
+                            anggaran: ujInputs.anggaran ? ujInputs.anggaran.value : '',
+                            dimensi_non_keuangan: ujInputs.dimensi_non_keuangan ? ujInputs.dimensi_non_keuangan.value : '',
+                            bawahan_langsung: ujInputs.bawahan_langsung ? ujInputs.bawahan_langsung.value : '',
+                            total_staff: ujInputs.total_staff ? ujInputs.total_staff.value : '',
+                            total_pegawai: ujInputs.total_pegawai ? ujInputs.total_pegawai.value : '',
+                            wewenang: ujInputs.wewenang ? ujInputs.wewenang.value : '',
+                            hub_internal: ujInputs.hub_internal ? ujInputs.hub_internal.value : '',
+                            hub_eksternal: ujInputs.hub_eksternal ? ujInputs.hub_eksternal.value : '',
+                            spek_pendidikan: ujInputs.spek_pendidikan ? ujInputs.spek_pendidikan.value : '',
+                            spek_pengetahuan: ujInputs.spek_pengetahuan ? ujInputs.spek_pengetahuan.value : '',
+                            spek_kompetensi: ujInputs.spek_kompetensi ? ujInputs.spek_kompetensi.value : '',
+                            spek_kompetensi_wajib: ujInputs.spek_kompetensi_wajib ? ujInputs.spek_kompetensi_wajib.value : '',
+                            spek_kompetensi_generik: ujInputs.spek_kompetensi_generik ? ujInputs.spek_kompetensi_generik.value : '',
+                            struktur_organisasi: (ujInputs.struktur && ujInputs.struktur._base64) ? ujInputs.struktur._base64 : ''
+                        };
+                        if(!multiDataStore[activeDataIndex]) multiDataStore[activeDataIndex] = {};
+                        multiDataStore[activeDataIndex].uraian_data = dataObj;
+                        multiDataStore[activeDataIndex].uraian_status = status; 
+                        const type = getActiveContractType();
+                        const textStatus = (status === 'Final') ? 'Tersimpan (Final)' : 'Tersimpan (Draft)';
+                        const currentBudget = budgetSourceSelect ? budgetSourceSelect.value : '';
+                        if(currentBudget === 'RKAP') { 
+                            if(uraianStatus) uraianStatus.textContent = textStatus; 
+                        } 
+                        else { 
+                            if(uraianStatusProject) uraianStatusProject.textContent = textStatus; 
+                        }
+                        if(status === 'Final') {
+                            btnPreviewPdf.dataset.json = JSON.stringify(dataObj);
+                            btnPreviewPdf.style.display = 'inline-flex';
+                            uraianStatusDisplay.textContent = 'Status: Final';
+                            alert('Data berhasil difinalisasi.');
+                        } else {
+                            uraianModal.hidden = true;
+                        }
+                    }
+                });
+
+                function submitPdfForm(jsonData) {
+                    if(!jsonData) return;
+                    let formPdf = document.getElementById('pdf-generator-form');
+                    if(!formPdf) {
+                        formPdf = document.createElement('form');
+                        formPdf.id = 'pdf-generator-form';
+                        formPdf.method = 'POST';
+                        formPdf.action = "{{ route('recruitment.uraian-jabatan.preview-pdf') }}"; 
+                        formPdf.target = '_blank';
+                        const csrf = document.createElement('input');
+                        csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = "{{ csrf_token() }}";
+                        formPdf.appendChild(csrf);
+                        const inp = document.createElement('input');
+                        inp.type = 'hidden'; inp.name = 'data'; inp.id = 'pdf-data-input';
+                        formPdf.appendChild(inp);
+                        document.body.appendChild(formPdf);
+                    }
+                    document.getElementById('pdf-data-input').value = jsonData;
+                    formPdf.submit();
+                }
+                if(btnPreviewPdf) {
+                    btnPreviewPdf.addEventListener('click', function() { submitPdfForm(this.dataset.json); });
+                }
+                function resetDynamicInputs() {
+                    if(titleInput) titleInput.value = '';
+                    Object.values(dynInputs).forEach(el => {
+                        if(el && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) el.value = '';
+                    });
+                    if (dynLocationId) dynLocationId.value = '';
+                    if(dynInputs.cv) { dynInputs.cv.value = ''; dynInputs.cv._base64 = null; dynInputs.cv._filename = null; }
+                    if(dynInputs.cv_preview) dynInputs.cv_preview.textContent = '';
+                    form.querySelectorAll('.js-rkap-select.selected').forEach(b => {
+                        b.classList.remove('selected', 'u-success'); b.classList.add('u-btn--outline'); b.innerHTML = '+';
+                    });
+                    if(rkapSelectedInfo) rkapSelectedInfo.style.display = 'none';
+                    if(rkapSelectedName) rkapSelectedName.textContent = '';
+                    if(uraianStatus) uraianStatus.textContent = 'Belum ada uraian';
+                    if(picOrganikInput) picOrganikInput.value = '';
+                    if(picOrganikSearchInput) picOrganikSearchInput.value = '';
+                    if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
+                    if(positionOrganikInput) positionOrganikInput.value = '';
+                    if(kodeProjectSelect) kodeProjectSelect.value = '';
+                    if(namaProjectInput) namaProjectInput.value = '';
+                    if(positionSearchInput) positionSearchInput.value = '';
+                    if(positionInput) positionInput.value = '';
+                    if(uraianStatusProject) uraianStatusProject.textContent = 'Belum ada uraian';
+                    if(picProjectInput) picProjectInput.value = '';
+                    if(picProjectSearchInput) picProjectSearchInput.value = '';
+                }
+                function saveCurrentTabData() {
+                    const idx = activeDataIndex;
+                    if (!multiDataStore[idx]) multiDataStore[idx] = {};
+                    if(titleInput) multiDataStore[idx].title = titleInput.value;
+                    multiDataStore[idx].start_date = dynInputs.start_date?.value || '';
+                    multiDataStore[idx].end_date    = dynInputs.end_date?.value || '';
+                    multiDataStore[idx].location    = dynInputs.location?.value || '';
+                    multiDataStore[idx].education   = dynInputs.education?.value || '';
+                    multiDataStore[idx].brevet      = dynInputs.brevet?.value || '';
+                    multiDataStore[idx].experience  = dynInputs.experience?.value || '';
+                    multiDataStore[idx].salary      = dynInputs.salary?.value || '';
+                    multiDataStore[idx].terbilang   = dynInputs.terbilang?.value || '';
+                    multiDataStore[idx].allowanceJ  = dynInputs.allowanceJ?.value || '';
+                    multiDataStore[idx].allowanceP  = dynInputs.allowanceP?.value || '';
+                    multiDataStore[idx].allowanceL  = dynInputs.allowanceL?.value || '';
+                    multiDataStore[idx].allowanceK  = dynInputs.allowanceK?.value || '';
+                    multiDataStore[idx].pph21       = dynInputs.pph21?.value || '';
+                    multiDataStore[idx].bpjs_kes    = dynInputs.bpjs_kes?.value || '';
+                    multiDataStore[idx].bpjs_tk     = dynInputs.bpjs_tk?.value || '';
+                    multiDataStore[idx].thr         = dynInputs.thr?.value || '';
+                    multiDataStore[idx].kompensasi  = dynInputs.kompensasi?.value || '';
+                    if(dynInputs.cv && dynInputs.cv._base64) {
+                        multiDataStore[idx].cv_file = dynInputs.cv._base64;
+                        multiDataStore[idx].cv_filename = dynInputs.cv._filename;
+                    }
+                    const isRkapVisible = rkapSection && rkapSection.style.display !== 'none';
+                    const isProjectVisible = projectSection && projectSection.style.display !== 'none';
+                    if (isRkapVisible) {
+                        const selectedRow = form.querySelector('.js-rkap-select.selected');
+                        const rkapJob = selectedRow ? selectedRow.closest('tr').dataset.jobName : null;
+                        multiDataStore[idx].type = 'Organik';
+                        multiDataStore[idx].rkap_job = rkapJob;
+                        multiDataStore[idx].pic_id = picOrganikInput.value;
+                        multiDataStore[idx].pic_text = picOrganikSearchInput.value;
+                        multiDataStore[idx].position = positionOrganikInput.value; 
+                        multiDataStore[idx].position_text = positionOrganikSearchInput.value;
+                    } 
+                    else if (isProjectVisible) {
+                        multiDataStore[idx].type = getActiveContractType();
+                        multiDataStore[idx].project_code = kodeProjectSelect.value;
+                        multiDataStore[idx].project_name = namaProjectInput.value;
+                        multiDataStore[idx].position = positionInput.value; 
+                        multiDataStore[idx].position_text = positionSearchInput.value;
+                        multiDataStore[idx].pic_id = picProjectInput.value;
+                        multiDataStore[idx].pic_text = picProjectSearchInput.value;
+                    }
+                }
+                function loadTabData(idx) {
+                    resetDynamicInputs(); 
+                    const data = multiDataStore[idx];
+                    if (!data) return; 
+                    if(data.title && titleInput) titleInput.value = data.title;
+                    if(dynInputs.start_date) dynInputs.start_date.value = data.start_date || '';
+                    if(dynInputs.end_date)   dynInputs.end_date.value   = data.end_date || '';
+                    if(dynInputs.location)   dynInputs.location.value   = data.location || '';
+                    if(dynInputs.education)  dynInputs.education.value  = data.education || '';
+                    if(dynInputs.brevet)     dynInputs.brevet.value     = data.brevet || '';
+                    if(dynInputs.experience) dynInputs.experience.value = data.experience || '';
+                    if(dynInputs.salary)     dynInputs.salary.value     = data.salary || '';
+                    if(dynInputs.terbilang)  dynInputs.terbilang.value  = data.terbilang || '';
+                    if(dynInputs.allowanceJ)  dynInputs.allowanceJ.value  = data.allowanceJ || '';
+                    if(dynInputs.allowanceP)  dynInputs.allowanceP.value  = data.allowanceP || '';
+                    if(dynInputs.allowanceL)  dynInputs.allowanceL.value  = data.allowanceL || '';
+                    if(dynInputs.allowanceK)  dynInputs.allowanceK.value  = data.allowanceK || '';
+                    if(dynInputs.pph21)      dynInputs.pph21.value      = data.pph21 || '';
+                    if(dynInputs.bpjs_kes)   dynInputs.bpjs_kes.value   = data.bpjs_kes || '';
+                    if(dynInputs.bpjs_tk)    dynInputs.bpjs_tk.value    = data.bpjs_tk || '';
+                    if(dynInputs.thr)        dynInputs.thr.value        = data.thr || '';
+                    if(dynInputs.kompensasi) dynInputs.kompensasi.value = data.kompensasi || '';
+                    if(data.salary && dynInputs.terbilang) {
+                        let text = terbilang(data.salary) + 'RUPIAH';
+                        text = text.charAt(0).toUpperCase() + text.slice(1);
+                        dynInputs.terbilang.value = text;
+                    } else if (dynInputs.terbilang) {
+                        dynInputs.terbilang.value = data.terbilang || '';
+                    }
+                    if(data.cv_filename && dynInputs.cv_preview) {
+                        dynInputs.cv_preview.textContent = "Current File: " + data.cv_filename;
+                        dynInputs.cv._base64 = data.cv_file;
+                        dynInputs.cv._filename = data.cv_filename;
+                    }
+                    const type = getActiveContractType();
+                    const statusText = (data.uraian_status === 'Final') ? 'Tersimpan (Final)' : (data.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
                     const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
+                    if (data.rkap_job || (type === 'Organik' && data.type === 'Organik') || (budgetSourceSelect && budgetSourceSelect.value === 'RKAP')) {
+                        if (data.rkap_job) {
+                            const rows = form.querySelectorAll('#rkap-table tbody tr');
+                            rows.forEach(tr => {
+                                if (tr.dataset.jobName === data.rkap_job) {
+                                    const btn = tr.querySelector('.js-rkap-select');
+                                    toggleRkapSelect(btn, true);
+                                }
+                            });
+                        }
+                        if(uraianStatus) uraianStatus.textContent = statusText;
+                        if(data.pic_id) picOrganikInput.value = data.pic_id;
+                        if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
+                        if(data.position) positionOrganikInput.value = data.position;
+                        if(data.position_text) positionOrganikSearchInput.value = data.position_text;
+                    } else if (projectTypes.includes(type) && projectTypes.includes(data.type)) {
+                            if(data.project_code) {
+                                kodeProjectSelect.value = data.project_code;
+                                namaProjectInput.value = data.project_name || ''; 
+                            }
+                            if(data.position) positionInput.value = data.position;
+                            if(data.position_text) positionSearchInput.value = data.position_text;
+                            if(uraianStatusProject) uraianStatusProject.textContent = statusText;
+                            if(data.pic_id) picProjectInput.value = data.pic_id;
+                            if(data.pic_text) picProjectSearchInput.value = data.pic_text;
+                    }
+                }
+                function renderTabs(count) {
+                    dataTabsContainer.innerHTML = '';
+                    dataTabsContainer.style.display = 'flex';   
+                    for (let i = 1; i <= count; i++) {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        const activeClass = (i === activeDataIndex) ? 'u-btn--brand' : 'u-btn--soft';
+                        btn.className = `u-btn u-btn--sm ${activeClass}`;
+                        btn.textContent = `Data ${i}`;
+                        btn.dataset.idx = i;
+                        btn.addEventListener('click', () => {
+                            saveCurrentTabData(); 
+                            const prevBtn = dataTabsContainer.querySelector(`button[data-idx="${activeDataIndex}"]`);
+                            if(prevBtn) { prevBtn.classList.remove('u-btn--brand'); prevBtn.classList.add('u-btn--soft'); }
+                            btn.classList.remove('u-btn--soft'); btn.classList.add('u-btn--brand');
+                            activeDataIndex = i; 
+                            loadTabData(i); 
+                        });
+                        dataTabsContainer.appendChild(btn);
+                    }
+                }
+                if(headcountInput) {
+                    headcountInput.addEventListener('input', function(e) {
+                        let val = parseInt(e.target.value);
+                        if (isNaN(val) || val < 1) val = 1;
+                        saveCurrentTabData(); 
+                        totalDataCount = val;
+                        if (activeDataIndex > totalDataCount) { activeDataIndex = 1; loadTabData(1); }
+                        renderTabs(totalDataCount);
+                    });
+                }
+                if (contractTypeSelect) {
+                    contractTypeSelect.addEventListener('change', function() {
+                    const val = this.value;
                     multiDataStore = {}; 
                     resetDynamicInputs();
                     activeDataIndex = 1;
                     renderTabs(totalDataCount); 
-                    if (val === 'Organik') {
-                        if(budgetSourceSelect) budgetSourceSelect.value = 'RKAP';
-                    } else if (projectTypes.includes(val)) {
-                        if(budgetSourceSelect) budgetSourceSelect.value = 'RAB Proyek';
-                    } else {
-                        if(budgetSourceSelect) budgetSourceSelect.value = '';
-                    }
+                    const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
+                    if (val === 'Organik') { setBudgetLock(true, 'RKAP'); }
+                    else if (projectTypes.includes(val)) { setBudgetLock(true, 'RAB Proyek');}
+                    else { setBudgetLock(false, ''); }
                     updateVisibility();
+                    });
+                }
+                submitBtn.addEventListener('click', function(e) {
+                    saveCurrentTabData();
+                    const payload = [];
+                    for (let i = 1; i <= totalDataCount; i++) {
+                        let d = multiDataStore[i] || {};
+                        d.type = getActiveContractType(); 
+                        if(!d.title) d.title = titleInput.value; 
+                        payload.push(d);
+                    }
+                    detailsJsonInput.value = JSON.stringify(payload);
                 });
-            }
-            if (kodeProjectSelect && namaProjectInput) { 
-                kodeProjectSelect.addEventListener('change', function() { 
-                    const selectedOption = this.options[this.selectedIndex]; 
-                    const nama = selectedOption.getAttribute('data-nama'); 
-                    namaProjectInput.value = nama ? nama : ''; 
-                }); 
-            }
-            updateVisibility();
+                const btnAddNote       = document.getElementById('btn-add-note');
+                const noteModal        = document.getElementById('noteEditorModal');
+                const hiddenNoteInput  = document.getElementById('hidden_extended_note');
+                const closeNoteBtns    = document.querySelectorAll('.js-close-note-modal');
+                const saveNoteBtn      = document.querySelector('.js-save-note');
+                let myNoteEditor = null;
+                if (!myNoteEditor && document.querySelector('#editorContent')) {
+                    ClassicEditor
+                        .create(document.querySelector('#editorContent'), {
+                            toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'blockQuote', 'insertTable', 'undo', 'redo' ],
+                            placeholder: 'Tulis catatan persetujuan/penolakan di sini...'
+                        })
+                        .then(editor => { myNoteEditor = editor; })
+                        .catch(error => { console.error(error); });
+                }
+                if(btnAddNote) {
+                    btnAddNote.addEventListener('click', function() {
+                        if(myNoteEditor) { myNoteEditor.setData(hiddenNoteInput.value || ''); }
+                        noteModal.hidden = false;
+                        noteModal.style.display = 'flex'; 
+                    });
+                }
+                closeNoteBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        noteModal.hidden = true;
+                        noteModal.style.display = 'none';
+                    });
+                });
+                if(saveNoteBtn) {
+                    saveNoteBtn.addEventListener('click', function() {
+                        if(myNoteEditor) {
+                            const content = myNoteEditor.getData();
+                            hiddenNoteInput.value = content; 
+                            const cleanText = content.replace(/<[^>]*>?/gm, '').trim(); 
+                            if(cleanText !== '') {
+                                btnAddNote.classList.remove('u-btn--outline');
+                                btnAddNote.classList.add('u-btn--brand');
+                                btnAddNote.innerHTML = '<i class="fas fa-check-circle u-mr-xs"></i> Catatan Tersimpan';
+                            } else {
+                                btnAddNote.classList.add('u-btn--outline');
+                                btnAddNote.classList.remove('u-btn--brand');
+                                btnAddNote.innerHTML = '<i class="fas fa-edit u-mr-xs"></i> Catatan';
+                            }
+                        }
+                        noteModal.hidden = true;
+                        noteModal.style.display = 'none';
+                    });
+                }
+                document.addEventListener('click', function(e) {
+                    if (e.target.closest('#uraianModal [data-modal-close]')) {
+                        const m = document.getElementById('uraianModal');
+                        m.hidden = true; 
+                    }
+                    else if (e.target.closest('#createApprovalModal [data-modal-close]') || e.target.closest('#detailApprovalModal [data-modal-close]')) {
+                        const m = e.target.closest('.u-modal');
+                        if(m) { m.hidden = true; document.body.classList.remove('modal-open'); }
+                    }
+
+                    const btnCreate = e.target.closest('[data-modal-open="createApprovalModal"]');
+                    if(btnCreate) {
+                        const m = document.getElementById('createApprovalModal');
+                        const deleteForm = document.getElementById('deleteDraftForm');
+                        if(m) { 
+                            m.hidden = false; document.body.classList.add('modal-open'); 
+                            const mode = btnCreate.getAttribute('data-mode');
+                            multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1;            
+                            if(mode === 'create') {
+                                form.reset(); 
+                                setBudgetLock(false, ''); 
+                                if(modalTitle) modalTitle.textContent = "Buat Izin Prinsip Baru";
+                                if(modalSubtitle) modalSubtitle.textContent = "Ajukan permintaan rekrutmen atau perpanjangan kontrak";
+                                form.action = form.getAttribute('data-default-action'); 
+                                if(deleteForm) deleteForm.style.display = 'none';
+                                let methodField = form.querySelector('input[name="_method"]');
+                                if (methodField) methodField.remove();
+                                [positionSearchInput, positionInput, positionOrganikSearchInput, positionOrganikInput, 
+                                picProjectSearchInput, picProjectInput, picOrganikSearchInput, picOrganikInput].forEach(el => { if(el) el.value = ''; });
+                                resetDynamicInputs();
+                                renderTabs(1); 
+                                loadTabData(1);
+                                updateVisibility();
+
+                            } else if (mode === 'edit') {
+                                if(modalTitle) modalTitle.textContent = "Edit Izin Prinsip";
+                                const updateUrl = btnCreate.getAttribute('data-update-url');
+                                if(updateUrl) form.action = updateUrl;
+                                const deleteUrl = btnCreate.getAttribute('data-delete-url');
+                                if(deleteForm) { deleteForm.style.display = 'block'; deleteForm.action = deleteUrl || ''; }
+                                let methodField = form.querySelector('input[name="_method"]');
+                                if (!methodField) { methodField = document.createElement('input'); methodField.type = 'hidden'; methodField.name = '_method'; methodField.value = 'PUT'; form.appendChild(methodField); }
+                                if(requestTypeSelect) requestTypeSelect.value = btnCreate.getAttribute('data-request-type');
+                                if(titleInput) titleInput.value = btnCreate.getAttribute('data-title');
+                                if(justifInput) justifInput.value = btnCreate.getAttribute('data-justification');
+                                const contractType = btnCreate.getAttribute('data-employment-type');
+                                const budgetType   = btnCreate.getAttribute('data-budget-source-type');
+                                if(contractTypeSelect) contractTypeSelect.value = contractType;
+                                if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
+                                else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
+                                else { setBudgetLock(false, ''); if(budgetSourceSelect) budgetSourceSelect.value = budgetType; }
+                                updateVisibility();
+                                const posName = btnCreate.getAttribute('data-position');
+                                if (contractType === 'Organik') {
+                                    if(positionOrganikSearchInput) positionOrganikSearchInput.value = posName;
+                                    if(positionOrganikInput) positionOrganikInput.value = posName; 
+                                } else {
+                                    if(positionSearchInput) positionSearchInput.value = posName;
+                                    if(positionInput) positionInput.value = posName;
+                                }
+                                totalDataCount = parseInt(btnCreate.getAttribute('data-headcount')) || 1;
+                                if(headcountInput) headcountInput.value = totalDataCount;
+                                renderTabs(totalDataCount);
+                                const metaJsonStr = btnCreate.getAttribute('data-meta-json');
+                                if (metaJsonStr) {
+                                    try {
+                                        const detailsArray = JSON.parse(metaJsonStr);
+                                        if (Array.isArray(detailsArray) && detailsArray.length > 0) {
+                                            detailsArray.forEach((detail, idx) => { multiDataStore[idx + 1] = detail; });
+                                        }
+                                    } catch (e) { console.warn('Failed to parse meta-json:', e); }
+                                }
+                                activeDataIndex = 1;
+                                loadTabData(1);
+                            }
+                        }
+                    }
+                    const btnDetail = e.target.closest('.js-open-detail');
+                    if(btnDetail && detailModal) {
+                        const safeTxt = (attr) => btnDetail.getAttribute(attr) || '-';
+                        const metaJsonStr = btnDetail.getAttribute('data-meta-json');
+                        let detailsArray = [];
+                        try { detailsArray = JSON.parse(metaJsonStr); } catch(e){}
+                        if(!Array.isArray(detailsArray) || detailsArray.length===0) detailsArray = [{}];
+
+
+                        const historyJson = btnDetail.getAttribute('data-history');
+                        const canViewNotes = btnDetail.getAttribute('data-can-view-notes') === 'true';
+                        let historyData = [];
+                        try { historyData = JSON.parse(historyJson); } catch(e) {}
+                        const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '-'; };
+                        setTxt('view-ticket', safeTxt('data-ticket-number'));
+                        setTxt('view-status', safeTxt('data-status'));
+                        setTxt('view-unit', safeTxt('data-unit'));
+                        setTxt('view-request-type', safeTxt('data-request-type'));
+                        setTxt('view-justification', safeTxt('data-justification'));
+                        setTxt('view-budget-source', safeTxt('data-budget-source'));   
+                        const tabsContainer = document.getElementById('detailTabsContainer');
+                        tabsContainer.innerHTML = '';
+                        const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
+                        const approveUrl = btnDetail.getAttribute('data-approve-url');
+                        const rejectUrl = btnDetail.getAttribute('data-reject-url');
+                        const approveForm = detailModal.querySelector('.detail-approve-form');
+                        const rejectForm = detailModal.querySelector('.detail-reject-form');
+                        if(canApprove && approveForm && rejectForm) {
+                            approveForm.style.display = 'block';
+                            rejectForm.style.display = 'block';
+                            if(approveForm.querySelector('button')) approveForm.querySelector('button').disabled = false;
+                            if(rejectForm.querySelector('button')) rejectForm.querySelector('button').disabled = false;
+                            if(approveUrl) approveForm.action = approveUrl;
+                            if(rejectUrl) rejectForm.action = rejectUrl;
+                            if(btnAddNote) btnAddNote.style.display = 'block';
+                        } else {
+                            if(approveForm) approveForm.style.display = 'none';
+                            if(rejectForm) rejectForm.style.display = 'none';
+                            if(btnAddNote) btnAddNote.style.display = 'none';
+                        }
+                        const renderContent = (index) => {
+                            const data = detailsArray[index];
+                            const globalTitle = safeTxt('data-title');
+                            setTxt('view-title', data.title || globalTitle);
+                            setTxt('view-position', data.position_text || safeTxt('data-position'));
+                            setTxt('view-headcount', '1 Orang');
+                            setTxt('view-employment', data.type || safeTxt('data-employment-type'));
+                            setTxt('view-pic', data.pic_text || '-');
+                            const btnPdf = document.getElementById('btn-view-pdf-detail');
+                            const statusUraian = document.getElementById('view-uraian-status');
+                            if(data && data.uraian_data) {
+                                statusUraian.textContent = 'Tersedia';
+                                btnPdf.style.display = 'inline-flex';
+                                btnPdf.onclick = function() { submitPdfForm(JSON.stringify(data.uraian_data)); };
+                            } else {
+                                statusUraian.textContent = 'Tidak ada uraian';
+                                btnPdf.style.display = 'none';
+                            }
+                            const container = document.getElementById('detailContentContainer');
+                            let extraDetailDiv = document.getElementById('view-extra-details');
+                            if(!extraDetailDiv) {
+                                extraDetailDiv = document.createElement('div');
+                                extraDetailDiv.id = 'view-extra-details';
+                                extraDetailDiv.style.marginTop = '24px';
+                                container.appendChild(extraDetailDiv);
+                            } else {
+                                if (extraDetailDiv.parentNode !== container) {
+                                    container.appendChild(extraDetailDiv);
+                                }
+                                extraDetailDiv.style.marginTop = '24px';
+                            }
+                            const makeRow = (lbl, val, isBold = false, isGrand = false) => {
+                                let styleVal = isBold ? 'font-weight: 800; color: #111827;' : 'font-medium';
+                                let styleLbl = isBold ? 'font-weight: 700; color: #374151;' : 'font-bold u-text-muted';
+                                let borderStyle = 'border-bottom: 1px solid #f3f4f6;';
+                                if (isGrand) {
+                                    styleVal = 'font-weight: 900; color: #059669; font-size: 1.1em;'; 
+                                    styleLbl = 'font-weight: 800; color: #065f46; font-size: 1.0em;';
+                                    borderStyle = 'border-top: 2px solid #059669; padding-top: 8px; margin-top: 8px;';
+                                }
+                                return `<div class="u-flex u-justify-between u-mb-xs u-pb-xs" style="${borderStyle}">
+                                            <span class="u-text-xs u-uppercase ${styleLbl}">${lbl}</span>
+                                            <span class="u-text-sm u-text-right ${styleVal}">${val || '-'}</span>
+                                        </div>`;
+                            };
+                            const formatRp = (val) => {
+                                if (!val) return '-';
+                                // Bersihkan titik dulu kalau inputnya string "1.000.000"
+                                let cleanVal = val.toString().replace(/\./g, '');
+                                let num = parseFloat(cleanVal);
+                                if (isNaN(num)) return '-';
+                                return 'Rp ' + num.toLocaleString('id-ID'); 
+                            };
+
+                            // Helper Parse: String "1.000.000" -> Integer 1000000 (Utk Penjumlahan)
+                            const parseVal = (v) => {
+                                if (!v) return 0;
+                                if (typeof v === 'number') return v;
+                                // Hapus titik pemisah ribuan sebelum di-parse
+                                return parseFloat(v.toString().replace(/\./g, '')) || 0;
+                            };
+                            
+                            // Hitung Total Per Bulan
+                            const totalAnggaranPerBulan = 
+                                parseVal(data.salary) + 
+                                parseVal(data.allowanceJ) + 
+                                parseVal(data.allowanceP) + 
+                                parseVal(data.allowanceC) + 
+                                parseVal(data.allowanceK) + 
+                                parseVal(data.thr) + 
+                                parseVal(data.kompensasi) + 
+                                parseVal(data.bpjs_tk) + 
+                                parseVal(data.bpjs_kes) + 
+                                parseVal(data.pph21);
+
+                            // Hitung Durasi
+                            let duration = 1; 
+                            if (data.start_date && data.end_date) {
+                                const d1 = new Date(data.start_date);
+                                const d2 = new Date(data.end_date);
+                                d2.setDate(d2.getDate() + 1); // Inklusif
+                                let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+                                if (d2.getDate() < d1.getDate()) months--;
+                                duration = months > 0 ? months : 1;
+                            }
+
+                            const grandTotal = totalAnggaranPerBulan * duration;
+                            let historyHtml = '';
+                            if (historyData.length > 0) {
+                                historyHtml += `<div class="u-mt-lg u-pt-md u-border-t">`;
+                                historyHtml += `<div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em;">Riwayat Persetujuan</div>`;
+                                historyHtml += `<div class="u-space-y-sm">`; 
+                                console.log("DEBUG HISTORY:", {
+                                    roleSaya: "{{ $me->getRoleNames()->first() ?? 'User' }}", 
+                                    bisaLihatCatatan: canViewNotes, 
+                                    dataHistory: historyData
+                                });
+                                historyData.forEach((h, index) => {
+                                    let badgeClass = 'u-badge--subtle';
+                                    let icon = '<i class="fas fa-circle-notch fa-spin"></i>';
+                                    if(h.status === 'approved') { badgeClass = 'u-badge--success'; icon = '<i class="fas fa-check-circle"></i>'; } 
+                                    else if(h.status === 'rejected') { badgeClass = 'u-badge--danger'; icon = '<i class="fas fa-times-circle"></i>'; } 
+                                    else { icon = '<i class="far fa-clock"></i>'; }
+                                    let contentNote = (h.note && h.note !== 'null') ? h.note.trim() : '';
+                                    let hasNote = (canViewNotes && contentNote.length > 0);
+                                    let noteId = `history-note-${index}`; 
+                                    let iconId = `icon-history-note-${index}`;
+                                    let cursorStyle = hasNote ? 'cursor: pointer;' : '';
+                                    let clickAttr = hasNote ? `onclick="toggleHistoryNote('${noteId}')"` : '';
+                                    let noteIndicator = hasNote 
+                                        ? `<div class="u-text-2xs u-text-brand u-mt-xxs u-font-medium"><i id="${iconId}" class="fas fa-chevron-down u-mr-xs"></i> Lihat Catatan</div>` 
+                                        : '';
+                                    historyHtml += `
+                                    <div class="u-card u-p-sm u-bg-white u-border u-mb-sm u-hover-lift" style="${cursorStyle}" ${clickAttr} title="${hasNote ? 'Klik untuk melihat catatan' : ''}">
+                                        <div class="u-flex u-justify-between u-items-center">
+                                            <div>
+                                                <div class="u-font-bold u-text-sm u-text-dark">${h.role}</div>
+                                                <div class="u-text-2xs u-muted"><i class="far fa-calendar-alt"></i> ${h.date}</div>
+                                            </div>
+                                            <div class="u-text-right">
+                                                <div class="u-badge ${badgeClass} u-text-2xs">${icon} ${h.status.toUpperCase()}</div>
+                                                ${noteIndicator}
+                                            </div>
+                                        </div>
+                                        ${ hasNote ? 
+                                            `<div id="${noteId}" style="display: none;" class="u-bg-light u-p-sm u-rounded u-text-sm u-mt-sm u-animate-fade-in" style="border-left: 3px solid #3b82f6;">
+                                                <div class="u-text-xs u-font-bold u-text-muted u-mb-xxs u-uppercase">Isi Catatan:</div>
+                                                <div class="ck-content" style="font-size: 0.9em; color: #374151;">${h.note}</div>
+                                            </div>` : '' 
+                                        }
+                                    </div>
+                                    `;
+                                });
+                                historyHtml += `</div></div>`;
+                            }
+                            extraDetailDiv.innerHTML = `
+                                <div class="u-card u-p-md">
+                                    <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-md" style="letter-spacing: 0.05em; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;">
+                                        Detail Kandidat & Remunerasi
+                                    </div>
+                                    <div class="u-grid-2 u-stack-mobile u-gap-lg">
+                                    <div>
+                                        ${makeRow('Mulai Kerja', data.start_date)}
+                                        ${makeRow('Selesai Kerja', data.end_date)}
+                                        ${makeRow('Durasi Kontrak', duration + ' Bulan')} 
+                                        ${makeRow('Lokasi', data.location)}
+                                        ${makeRow('Pendidikan', data.education)}
+                                        ${makeRow('Pelatihan', data.brevet)}
+                                        ${makeRow('Pengalaman', data.experience)}           
+                                        <div class="u-mt-sm u-flex u-justify-between u-items-center">
+                                            <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
+                                            ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
+                                        </div>
+                                    </div>
+                                    <div> 
+                                        ${makeRow('Gaji Pokok', formatRp(data.salary))}
+                                        ${makeRow('Tunjangan Jabatan', formatRp(data.allowanceJ))}
+                                        ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
+                                        ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
+                                        ${makeRow('Tunjangan Lainnya', formatRp(data.allowanceL))}
+                                        ${makeRow('THR', formatRp(data.thr))}
+                                        ${makeRow('Kompensasi', formatRp(data.kompensasi))}
+                                        ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
+                                        ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
+                                        ${makeRow('PPh 21', formatRp(data.pph21))}
+                                        <div style="margin-top: 12px; padding-top: 8px; border-top: 2px dashed #d1d5db;">
+                                            ${makeRow('TOTAL ANGGARAN (PER BULAN)', formatRp(totalAnggaranPerBulan), true)}
+                                        </div>
+                                        ${makeRow(`TOTAL SELURUHNYA (${duration} BULAN)`, formatRp(grandTotal), false, true)}
+                                    </div>
+                                    </div>
+                                </div>
+                                ${historyHtml}
+                            `;
+                        };
+                        detailsArray.forEach((item, i) => {
+                            const btnTab = document.createElement('button');
+                            btnTab.type = 'button';
+                            const initialStyle = (i === 0) ? 'u-btn--brand u-text-white' : 'u-btn--ghost';
+                            btnTab.className = `u-btn u-btn--sm ${initialStyle} u-hover-lift`;
+                            btnTab.textContent = `Data ${i + 1}`;
+                            btnTab.style.borderRadius = '20px'; 
+                            btnTab.addEventListener('click', (evt) => {
+                                evt.preventDefault();
+                                Array.from(tabsContainer.children).forEach(c => {
+                                    c.classList.remove('u-btn--brand', 'u-text-white');
+                                    c.classList.add('u-btn--ghost');
+                                });
+                                btnTab.classList.remove('u-btn--ghost');
+                                btnTab.classList.add('u-btn--brand', 'u-text-white');
+                                renderContent(i);
+                            });
+                            tabsContainer.appendChild(btnTab);
+                        });          
+                        renderContent(0);
+                        detailModal.hidden = false; 
+                        document.body.classList.add('modal-open');
+                    }
+                });
+                form.addEventListener('click', function(e) {
+                    if (e.target.closest('.js-open-uraian-project')) {
+                        const currentData = multiDataStore[activeDataIndex] || {};
+                        openUraianForm(currentData, 'project');
+                    }
+                    if (e.target.closest('.js-open-uraian')) {
+                        const selectedRow = form.querySelector('.js-rkap-select.selected');
+                        if (!selectedRow) { alert('Pilih Job Function di tabel RKAP terlebih dahulu.'); return; }
+                        const currentData = multiDataStore[activeDataIndex] || {};
+                        openUraianForm(currentData, 'organik');
+                    }
+                });
+                function toggleRkapSelect(sel, forceSelect = false) { 
+                    const tr = sel.closest('tr'); const job = tr.dataset.jobName;
+                    form.querySelectorAll('.js-rkap-select.selected').forEach(el => { if (el !== sel) { el.classList.remove('selected', 'u-success'); el.classList.add('u-btn--outline'); el.innerHTML = '+'; } });
+                    const isSelected = sel.classList.contains('selected') && !forceSelect;
+                    if (isSelected) {
+                        sel.classList.remove('selected', 'u-success'); sel.classList.add('u-btn--outline'); sel.innerHTML = '+';
+                        rkapSelectedInfo.style.display = 'none';
+                        if(multiDataStore[activeDataIndex]) { multiDataStore[activeDataIndex].rkap_job = null; }
+                    } else {
+                        sel.classList.add('selected', 'u-success'); sel.classList.remove('u-btn--outline'); sel.innerHTML = '<i class="fas fa-check"></i>';
+                        rkapSelectedInfo.style.display = 'block';
+                        if(rkapSelectedName) rkapSelectedName.textContent = job;
+                        const stored = multiDataStore[activeDataIndex];
+                        const statusText = (stored && stored.uraian_status === 'Final') ? 'Tersimpan (Final)' : (stored && stored.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
+                        if(uraianStatus) uraianStatus.textContent = statusText;
+                    }
+                }
+                form.addEventListener('click', function(e) { const btn = e.target.closest('.js-rkap-select'); if (btn) { e.preventDefault(); toggleRkapSelect(btn); } });
+                setupSearchableDropdown(positionSearchInput, positionInput, positionSearchResults, positionsData, true);
+                setupSearchableDropdown(positionOrganikSearchInput, positionOrganikInput, positionOrganikSearchResults, positionsData, true);
+                setupSearchableDropdown(picProjectSearchInput, picProjectInput, picProjectResults, picData, false);
+                setupSearchableDropdown(picOrganikSearchInput, picOrganikInput, picOrganikResults, picData, false);
+                const updateVisibility = () => { 
+                    const budget = budgetSourceSelect ? budgetSourceSelect.value : '';
+                    const isRkap = (budget === 'RKAP');
+                    const isProjectRab = (budget === 'RAB Proyek');
+                    if (rkapSection) rkapSection.style.display = isRkap ? 'block' : 'none';
+                    if (!isRkap && rkapSelectedInfo) rkapSelectedInfo.style.display = 'none'; 
+                    if (projectSection) projectSection.style.display = isProjectRab ? 'block' : 'none';
+                    if(positionInput) positionInput.removeAttribute('name');
+                    if(positionOrganikInput) positionOrganikInput.removeAttribute('name');
+                    if (isRkap) {
+                        if(positionOrganikInput) positionOrganikInput.setAttribute('name', 'position'); 
+                        const selectedRow = form.querySelector('.js-rkap-select.selected');
+                        if(selectedRow && positionOrganikInput) {
+                            positionOrganikInput.value = selectedRow.closest('tr').dataset.jobName;
+                        }
+                    } else if (isProjectRab) { 
+                        if(positionInput) positionInput.setAttribute('name', 'position'); 
+                    } 
+                };
+                if (budgetSourceSelect) {
+                    budgetSourceSelect.addEventListener('change', function() {
+                        resetDynamicInputs(); 
+                        updateVisibility();
+                    });
+                }
+                if (contractTypeSelect) {
+                    contractTypeSelect.addEventListener('change', function() {
+                        const val = this.value;
+                        const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
+                        multiDataStore = {}; 
+                        resetDynamicInputs();
+                        activeDataIndex = 1;
+                        renderTabs(totalDataCount); 
+                        if (val === 'Organik') {
+                            if(budgetSourceSelect) budgetSourceSelect.value = 'RKAP';
+                        } else if (projectTypes.includes(val)) {
+                            if(budgetSourceSelect) budgetSourceSelect.value = 'RAB Proyek';
+                        } else {
+                            if(budgetSourceSelect) budgetSourceSelect.value = '';
+                        }
+                        updateVisibility();
+                    });
+                }
+                if (kodeProjectSelect && namaProjectInput) { 
+                    kodeProjectSelect.addEventListener('change', function() { 
+                        const selectedOption = this.options[this.selectedIndex]; 
+                        const nama = selectedOption.getAttribute('data-nama'); 
+                        namaProjectInput.value = nama ? nama : ''; 
+                    }); 
+                }
+                updateVisibility();
             }, 
             initDT() { 
                 setTimeout(() => {
