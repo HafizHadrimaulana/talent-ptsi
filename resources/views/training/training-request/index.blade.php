@@ -47,7 +47,7 @@
                         <div class="u-font-bold text-gray-800">
                             {{ $item->trainingReference->judul_sertifikasi ?? 'Custom Training' }}
                         </div>
-                        <div class="u-text-xxs u-muted">ID: #TR-{{ str_pad($item->id, 5, '0', STR_PAD_LEFT) }}</div>
+                        <div class="u-text-xxs u-muted">{{ str_pad($item->id, 5, '0', STR_PAD_LEFT) }}</div>
                     </td>
                     <td>
                         <span class="u-text-xs">
@@ -78,8 +78,8 @@
                         @endif
                     </td>
                     <td class="text-center">
-                        <button class="u-btn u-btn--ghost u-btn--sm btn-detail" data-id="{{ $item->id }}">
-                            <i class="fas fa-eye"></i>
+                        <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-training-karyawan" data-id="{{ $item->id }}">
+                            <i class="fas fa-eye"></i> Detail
                         </button>
                     </td>
                 </tr>
@@ -92,4 +92,163 @@
         </table>
     </div>
 </div>
+
+@include('training.training-request.modals.form-evaluasi-modal')
+
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const $modal = $('#form-evaluasi-modal');
+
+        $(document).on('click', '.btn-detail-training-karyawan', function() {
+            const trainingId = $(this).data('id');
+            
+            $modal.find('form')[0].reset();
+            $modal.removeClass('hidden').fadeIn(200);
+
+            $.ajax({
+                url: `/training/training-request/detail-training-request/${trainingId}`,
+                method: 'GET',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        console.log('responses detail', response);
+                        fillManualModal(response);
+                    }
+                },
+                error: function() {
+                    alert('Gagal mengambil data detail.');
+                    closeModal();
+                }
+            });
+        });
+
+        $(document).on('submit', '#evaluasi-form', function(e) {
+            e.preventDefault();
+            console.log('form submitted');
+            
+            const $form = $(this);
+            const $btn = $form.closest('.u-modal__card').find('button[type="submit"]');
+            const formData = $form.serialize(); // Mengambil semua input radio dan textarea
+
+            // Loading state
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
+
+            $.ajax({
+                url: "/training/training-request/submit-evaluasi-training",
+                method: "POST",
+                data: formData,
+                success: function(response) {
+                    if (response.status === 'success') {
+                        alert('Evaluasi berhasil disimpan!');
+                        closeModal();
+                        // Opsional: Reload tabel atau update baris tertentu
+                        location.reload(); 
+                    }
+                },
+                error: function(xhr) {
+                    $btn.prop('disabled', false).text('Simpan Evaluasi');
+                    const err = xhr.responseJSON;
+                    alert(err.message || 'Terjadi kesalahan saat menyimpan data.');
+                }
+            });
+        });
+
+        // CLOSE MODAL HANDLER
+        $(document).on('click', '[data-modal-close], #form-evaluasi-close-modal', function(e) {
+            e.preventDefault();
+            closeModal();
+        });
+
+        $modal.on('click', function(e) {
+            if ($(e.target).is($modal)) {
+                closeModal();
+            }
+        });
+
+        $(document).on('keydown', function(e) {
+            if (e.key === "Escape" && !$modal.hasClass('hidden')) {
+                closeModal();
+            }
+        });
+
+        function closeModal() {
+            $modal.fadeOut(150, function() {
+                $(this).addClass('hidden');
+            });
+        }
+
+        function fillManualModal(data) {
+            const $modal = $('#form-evaluasi-modal');
+            
+            $modal.find('form')[0].reset();
+            
+            $modal.find('.detail-judul_sertifikasi').text(data.data.judul_sertifikasi || '-');
+            $modal.find('.detail-tanggal_mulai').text(data.data.start_date || '-');
+            $modal.find('.detail-tanggal_berakhir').text(data.data.end_date || '-');
+            
+            const namaPeserta = data.data.employee_name || "{{ auth()->user()->name }}";
+            $modal.find('.detail-peserta').text(namaPeserta);
+            
+            $modal.find('input[name="training_request_id"]').val(data.data.id);
+
+            renderQuestions(
+                'questions-penyelenggaraan',
+                data.questions?.penyelenggaraan,
+                'Pertanyaan penilaian penyelenggaraan belum tersedia.'
+            );
+
+            // Dampak
+            renderQuestions(
+                'questions-dampak',
+                data.questions?.dampak,
+                'Pertanyaan evaluasi dampak belum tersedia.'
+            );
+        }
+
+    });
+
+    function renderQuestions(containerId, questions, emptyMessage) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+
+        if (!Array.isArray(questions) || questions.length === 0) {
+            container.innerHTML = `
+                <div class="u-p-sm u-text-xs u-muted italic text-center">
+                    ${emptyMessage}
+                </div>
+            `;
+            return;
+        }
+
+        questions.forEach((q, index) => {
+            let radios = '';
+            for (let i = 1; i <= 5; i++) {
+                radios += `
+                    <label class="u-flex u-items-center u-gap-xs cursor-pointer">
+                        <input type="radio"
+                            name="answers[${q.id}]"
+                            value="${i}"
+                            class="u-radio"
+                            required>
+                        <span class="text-xs font-bold">${i}</span>
+                    </label>
+                `;
+            }
+
+            container.innerHTML += `
+                <div class="u-p-sm border border-gray-50 u-rounded-lg">
+                    <label class="block text-sm font-medium text-gray-800 u-mb-xs">
+                        ${index + 1}. ${q.question_text}
+                    </label>
+                    <div class="u-flex u-gap-md">
+                        ${radios}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+</script>
+@endpush

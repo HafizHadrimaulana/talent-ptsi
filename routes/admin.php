@@ -124,6 +124,10 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
         Route::get('training-request', [TrainingRequestController::class, 'index'])
             ->name('training-request');
+        Route::get('training-request/detail-training-request/{id}', [TrainingRequestController::class, 'getDetailTrainingRequest'])
+            ->name('training-request/detail-training-request');
+        Route::post('training-request/submit-evaluasi-training', [TrainingRequestController::class, 'submitEvaluasiTraining'])
+            ->name('training-request/submit-evaluasi-training');
         Route::post('training-request/import-lna', [TrainingRequestController::class, 'importLna'])
             ->name('training-request.import-lna');
         Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])

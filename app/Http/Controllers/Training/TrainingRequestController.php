@@ -11,6 +11,8 @@ use App\Models\Employee;
 use App\Models\TrainingRequest;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\TrainingEvaluationQuestion;
+use App\Models\TrainingEvaluationAnswer;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -33,8 +35,6 @@ class TrainingRequestController extends Controller
             return redirect()->back()->with('error', 'Data karyawan tidak ditemukan.');
         }
 
-        // 1. Hitung Statistik
-        // Total Pelatihan: Semua pengajuan yang masuk tahap review
         $totalPelatihan = TrainingRequest::where('employee_id', $employeeId)
             ->whereIn('status_approval_training', [
                 'in_review_gmvp', 
@@ -44,21 +44,20 @@ class TrainingRequestController extends Controller
                 'approved'
             ])->count();
 
-        // Sedang Berjalan: Status 'approved' (atau tambahkan status lain jika ada)
         $sedangBerjalan = TrainingRequest::where('employee_id', $employeeId)
             ->where('status_approval_training', 'approved')
             ->count();
 
-        // Selesai/Lulus: Tergantung logika bisnis Anda, biasanya status final
         $selesaiPelatihan = TrainingRequest::where('employee_id', $employeeId)
             ->where('status_approval_training', 'completed') // Sesuaikan nama status final Anda
             ->count();
 
-        // 2. Ambil Data Tabel (dengan Pagination agar ringan)
         $listTraining = TrainingRequest::with(['trainingReference'])
             ->where('employee_id', $employeeId)
             ->orderBy('created_at', 'desc')
             ->get();
+
+        Log::info('List Training', ['listTraining' => $listTraining]);
 
         return view('training.training-request.index', compact(
             'totalPelatihan', 
@@ -66,6 +65,88 @@ class TrainingRequestController extends Controller
             'selesaiPelatihan', 
             'listTraining'
         ));
+    }
+
+    public function getDetailTrainingRequest($id)
+    {
+        $item = TrainingRequest::with(['trainingReference', 'approvals'])->find($id);
+
+        if (!$item) {
+            return response()->json(['status' => 'error', 'message' => 'Data tidak ditemukan'], 404);
+        }
+
+        $questions = [
+            'penyelenggaraan' => TrainingEvaluationQuestion::where('category', 'penyelenggaraan')
+                ->where('is_active', 1)
+                ->orderBy('id')
+                ->get(),
+
+            'dampak' => TrainingEvaluationQuestion::where('category', 'dampak')
+                ->where('is_active', 1)
+                ->orderBy('id')
+                ->get(),
+        ];
+
+        $data = [
+            'id' => $item->id,
+            'judul_sertifikasi' => $item->trainingReference?->judul_sertifikasi ?? 'Custom Training',
+            'start_date' => $item->start_date,
+            'end_date' => $item->end_date,
+            'status_approval_training' => $item->status_approval_training,
+            'approvals' => $item->approvals, // Jika ingin menampilkan timeline
+            // ... tambahkan field lain yang dibutuhkan modal evaluasi
+        ];
+
+        Log::info('questions', ['questions' => $questions]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data,
+            'questions' => $questions
+        ]);
+    }
+
+    public function submitEvaluasiTraining(Request $request) 
+    {
+        $request->validate([
+            'training_request_id' => 'required|exists:training_request,id',
+            'answers' => 'required|array', 
+        ]);
+
+        $userId = auth()->user()->id;
+        $trainingId = $request->training_request_id;
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($request->answers as $questionId => $score) {
+                if ($score) {
+                    TrainingEvaluationAnswer::updateOrCreate(
+                        [
+                            'training_request_id' => $trainingId,
+                            'question_id'         => $questionId,
+                            'user_id'             => $userId,
+                        ],
+                        [
+                            'score' => $score,
+                            'text_answer' => null
+                        ]
+                    );
+                }
+            }
+
+            $trainingRequest = TrainingRequest::find($trainingId);
+            // $trainingRequest->update([
+            //     'evaluation_comments' => $request->komentar // Pastikan kolom ini sudah ada
+            // ]);
+
+            DB::commit();
+            return response()->json(['status' => 'success', 'message' => 'Evaluasi berhasil disimpan']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['status' => 'error', 'message' => 'Gagal: ' . $e->getMessage()], 500);
+        }
     }
     
     // Import LNA
