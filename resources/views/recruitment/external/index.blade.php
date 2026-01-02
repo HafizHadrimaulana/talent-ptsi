@@ -76,66 +76,82 @@
             </thead>
             <tbody>
                 @forelse($list as $row)
+                    @php
+                        $allPositions = [];
+                        $details = $row->meta['recruitment_details'] ?? [];
+                        if (!empty($details) && is_array($details) && count($details) > 0) {
+                            foreach($details as $d) {
+                                $posName = $d['position_text'] ?? $d['position'] ?? '-';
+                                $allPositions[] = $posName;
+                            }
+                        } else {
+                            $posName = $row->positionObj->name ?? $row->position ?? '-';
+                            $allPositions[] = $posName;
+                        }
+                        $userApps = $myApplications->get($row->id) ?? collect([]);
+                        $appliedPositions = $userApps->pluck('position_applied')->filter()->toArray();
+
+                        if ($userApps->count() > 0 && count($appliedPositions) === 0) {
+                            $appliedPositions = $allPositions; 
+                        }
+
+                        $availablePositions = array_diff($allPositions, $appliedPositions);
+                        $availableJson = [];
+                        foreach($availablePositions as $p) {
+                            $availableJson[] = ['name' => $p, 'id' => $p];
+                        }
+                    @endphp
                     <tr>
                         <td><span class="u-badge u-badge--glass">{{ $row->ticket_number ?? '-' }}</span></td>
                         <td>
-                            <div class="u-font-bold">
-                                @php
-                                    $displayPosition = '-';
-                                    if ($row->positionObj) {
-                                        $displayPosition = $row->positionObj->name;
-                                    } 
-                                    elseif (isset($positionsMap[$row->position])) {
-                                        $displayPosition = $positionsMap[$row->position];
-                                    }
-                                    else {
-                                        $displayPosition = $row->position;
-                                    }
-                                @endphp
-                                {{ $displayPosition }}
+                            <div class="u-font-bold text-sm">
+                                @if(count($allPositions) > 1)
+                                    <ul class="list-disc list-inside text-gray-700">
+                                        @foreach($allPositions as $pos)
+                                            <li>
+                                                {{ $pos }}
+                                                @if(in_array($pos, $appliedPositions))
+                                                    <i class="fas fa-check-circle text-green-500 text-xs ml-1" title="Sudah dilamar"></i>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    {{ $allPositions[0] }}
+                                @endif
                             </div>
                         </td>
                         <td>{{ $row->unit->name ?? '-' }}</td>
                         <td>{{ $row->headcount }} Orang</td>
                         <td>
-                            {{-- Menghitung jumlah pelamar yang masuk ke tiket ini --}}
                             <span class="u-badge u-badge--info">
                                 <i class="fas fa-users u-mr-xs"></i> {{ $row->applicants->count() }}
                             </span>
                         </td>
-                        <td class="cell-actions" style="text-align: right;">
-                            
-                            {{-- LOGIKA TOMBOL (POV) --}}
-                            @if($isDHC)
-                                {{-- POV DHC: Lihat daftar pelamar --}}
-                                <button class="u-btn u-btn--sm u-btn--primary u-btn--outline" 
-                                        onclick="openManageModal({{ $row->id }}, '{{ $row->ticket_number }}')">
-                                    <i class="fas fa-users-cog u-mr-xs"></i> Kelola Pelamar
-                                </button>
-
-                            @elseif($isPelamar)
-                                {{-- POV PELAMAR --}}
-                                @php
-                                    $hasApplied = in_array($row->id, $myApplications);
-                                    $myApp = $row->applicants->where('user_id', auth()->id())->first();
-                                @endphp
-                                @if($hasApplied)
-                                    <button class="u-btn u-btn--sm u-btn--ghost u-text-brand" 
-                                            onclick="openMyStatusModal('{{ $myApp->status }}', '{{ $myApp->interview_schedule }}', '{{ $myApp->hr_notes }}')">
-                                        <i class="fas fa-info-circle u-mr-xs"></i> Lihat Status
+                        <td class="cell-actions" style="text-align: right; vertical-align: top;">
+                            <div class="flex flex-col gap-2 items-end">
+                                @if($isDHC)
+                                    <button class="u-btn u-btn--sm u-btn--primary u-btn--outline" onclick="openManageModal({{ $row->id }}, '{{ $row->ticket_number }}')">
+                                        <i class="fas fa-users-cog u-mr-xs"></i> Kelola Pelamar
                                     </button>
-                                @else
-                                    <button class="u-btn u-btn--sm u-btn--brand" 
-                                            onclick="openApplyModal({{ $row->id }}, '{{ $row->position }}', '{{ $row->ticket_number }}')">
-                                        <i class="fas fa-paper-plane u-mr-xs"></i> Lamar
-                                    </button>
+                                @elseif($isPelamar)
+                                    @if(count($availableJson) > 0)
+                                        <button class="u-btn u-btn--sm u-btn--brand" onclick='openApplyModal({{ $row->id }}, @json($availableJson), "{{ $row->ticket_number }}")'>
+                                            <i class="fas fa-paper-plane u-mr-xs"></i> Lamar
+                                        </button>
+                                    @endif
+                                    @foreach($userApps as $app)
+                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200" type="button" onclick="openMyStatusModal(this)" data-status="{{ $app->status }}" data-date="{{ $app->interview_schedule }}" data-note="{{ $app->hr_notes }}">
+                                            <i class="fas fa-info-circle u-mr-xs"></i> 
+                                            Status: {{ $app->position_applied ?? 'General' }}
+                                        </button>
+                                    @endforeach
                                 @endif
-                            @endif
-
+                            </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="u-text-center u-p-md u-muted">Belum ada lowongan dibuka (Approved Recruitment).</td></tr>
+                    <tr><td colspan="6" class="u-text-center u-p-md u-muted">Belum ada lowongan dibuka.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -143,7 +159,6 @@
     </div>
 </div>
 
-{{-- PELAMAR - FORM APPLY --}}
 <div id="applyModal" class="u-modal" hidden>
     <div class="u-modal__card">
         <div class="u-modal__head">
@@ -153,39 +168,37 @@
         <form action="{{ route('recruitment.external.apply') }}" method="POST" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="recruitment_request_id" id="apply_ticket_id">
-            
             <div class="u-modal__body u-p-md u-space-y-md">
-                <div class="u-bg-light u-p-sm u-rounded u-text-sm u-flex u-justify-between">
-                    <span><strong>Ticket:</strong> <span id="apply_ticket_display">-</span></span>
-                    <span><strong>Posisi:</strong> <span id="apply_position_display">-</span></span>
+                <div class="u-space-y-sm">
+                    <label class="u-label u-font-bold">Posisi yang Dilamar <span class="text-red-500">*</span></label>
+                    <select name="position_applied" id="apply_position_select" class="u-input" required></select>
                 </div>
-
                 <div class="u-grid-2 u-gap-md">
                     <div>
-                        <label class="u-label u-font-bold">Nama Lengkap</label>
+                        <label class="u-label u-font-bold">Nama Lengkap <span class="text-red-500">*</span></label>
                         <input type="text" name="name" class="u-input" value="{{ auth()->user()->name ?? '' }}" required>
                     </div>
                     <div>
-                        <label class="u-label u-font-bold">No. Handphone</label>
+                        <label class="u-label u-font-bold">No. Handphone <span class="text-red-500">*</span></label>
                         <input type="text" name="phone" class="u-input" required>
                     </div>
                 </div>
                 <div>
-                    <label class="u-label u-font-bold">Email</label>
+                    <label class="u-label u-font-bold">Email <span class="text-red-500">*</span></label>
                     <input type="email" name="email" class="u-input" value="{{ auth()->user()->email ?? '' }}" required>
                 </div>
                 <div class="u-grid-2 u-gap-md">
                     <div>
-                        <label class="u-label u-font-bold">Universitas</label>
+                        <label class="u-label u-font-bold">Universitas <span class="text-red-500">*</span></label>
                         <input type="text" name="university" class="u-input" required>
                     </div>
                     <div>
-                        <label class="u-label u-font-bold">Jurusan</label>
+                        <label class="u-label u-font-bold">Jurusan <span class="text-red-500">*</span></label>
                         <input type="text" name="major" class="u-input" required>
                     </div>
                 </div>
                 <div>
-                    <label class="u-label u-font-bold">Upload CV (PDF, Max 2MB)</label>
+                    <label class="u-label u-font-bold">Upload CV (PDF, Max 2MB) <span class="text-red-500">*</span></label>
                     <input type="file" name="cv_file" class="u-input" accept=".pdf" required>
                     <div class="u-text-xs u-muted u-mt-xs">Format PDF only.</div>
                 </div>
@@ -197,7 +210,6 @@
     </div>
 </div>
 
-{{-- PELAMAR - STATUS SAYA --}}
 <div id="myStatusModal" class="u-modal" hidden>
     <div class="u-modal__card" style="max-width: 450px;">
         <div class="u-modal__head">
@@ -209,12 +221,10 @@
                 <div class="u-text-sm u-muted u-mb-sm">Status Saat Ini</div>
                 <div id="status_badge_display" class="u-text-lg u-font-bold">-</div>
             </div>
-            
             <div id="interview_box" class="u-card u-p-sm u-bg-light u-text-left u-mb-md" style="display:none; border-left: 4px solid #f59e0b;">
                 <div class="u-font-bold u-text-dark"><i class="far fa-calendar-alt"></i> Undangan Interview</div>
                 <div class="u-text-sm u-mt-xs">Jadwal: <span id="interview_date_display" class="u-font-bold">-</span></div>
             </div>
-
             <div class="u-text-left">
                 <label class="u-label u-text-xs u-uppercase">Catatan HR:</label>
                 <div id="hr_notes_display" class="u-text-sm u-text-dark u-bg-light u-p-sm u-rounded">-</div>
@@ -223,7 +233,6 @@
     </div>
 </div>
 
-{{-- DHC - KELOLA PELAMAR --}}
 <div id="manageModal" class="u-modal" hidden>
     <div class="u-modal__card modal-card-wide">
         <div class="u-modal__head">
@@ -236,14 +245,7 @@
         <div class="u-modal__body u-p-md">
             <table class="u-table">
                 <thead>
-                    <tr>
-                        <th>Nama Pelamar</th>
-                        <th>Pendidikan</th>
-                        <th>CV</th>
-                        <th>Status</th>
-                        <th>Jadwal Interview</th>
-                        <th>Aksi</th>
-                    </tr>
+                    <tr><th>Nama Pelamar</th><th>Pendidikan</th><th>CV</th><th>Status</th><th>Jadwal Interview</th><th>Aksi</th></tr>
                 </thead>
                 <tbody id="applicant_tbody">
                     <tr><td colspan="6" class="u-text-center">Loading...</td></tr>
@@ -253,7 +255,6 @@
     </div>
 </div>
 
-{{-- DHC - UPDATE STATUS --}}
 <div id="updateStatusModal" class="u-modal" style="z-index:2100;" hidden>
     <div class="u-modal__card" style="max-width:500px;">
         <div class="u-modal__head">
@@ -267,18 +268,18 @@
                     <label class="u-label u-font-bold">Status Baru</label>
                     <select name="status" class="u-input" id="statusSelect" onchange="toggleInterview()">
                         <option value="Screening">Screening CV</option>
+                        <option value="Psikotes">Psikotes</option>
                         <option value="Interview HR">Interview HR</option>
                         <option value="Interview User">Interview User</option>
-                        <option value="Passed">Lolos (Passed)</option>
+                        <option value="Medical Check-Up">Medical Check-Up</option>
+                        <option value="Passed">Diterima (Passed)</option>
                         <option value="Rejected">Ditolak (Rejected)</option>
                     </select>
                 </div>
-                
                 <div id="interviewInputGroup" style="display:none;">
-                    <label class="u-label u-font-bold">Jadwal Interview</label>
+                    <label class="u-label u-font-bold">Jadwal</label>
                     <input type="datetime-local" name="interview_schedule" class="u-input">
                 </div>
-
                 <div>
                     <label class="u-label u-font-bold">Catatan (Optional)</label>
                     <textarea name="notes" class="u-input" rows="3" placeholder="Pesan untuk pelamar..."></textarea>
@@ -291,7 +292,6 @@
     </div>
 </div>
 
-{{-- MODAL BIODATA READONLY --}}
 <div id="biodataModal" class="u-modal" style="z-index: 2200;" hidden>
     <div class="u-modal__card modal-card-wide" style="max-width: 700px;">
         <div class="u-modal__head">
@@ -299,57 +299,86 @@
             <button class="u-btn u-btn--ghost u-btn--sm" onclick="closeModal('biodataModal')"><i class="fas fa-times"></i></button>
         </div>
         <div class="u-modal__body u-p-md" id="biodataModalContent">
-            {{-- Content akan di-load via AJAX --}}
             <div class="u-text-center u-p-lg"><i class="fas fa-spinner fa-spin fa-2x u-text-muted"></i></div>
         </div>
     </div>
 </div>
 
 <script>
-    // --- POV PELAMAR ---
-    function openApplyModal(id, position, ticket) {
+    function openApplyModal(id, positions, ticket) {
         document.getElementById('apply_ticket_id').value = id;
-        document.getElementById('apply_ticket_display').textContent = ticket;
-        document.getElementById('apply_position_display').textContent = position;
+        const select = document.getElementById('apply_position_select');
+        select.innerHTML = '';
+
+        if (Array.isArray(positions) && positions.length > 0) {
+            if(positions.length > 1) {
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = "";
+                defaultOpt.text = "-- Pilih Posisi --";
+                defaultOpt.disabled = true;
+                defaultOpt.selected = true;
+                select.appendChild(defaultOpt);
+            }
+            positions.forEach(pos => {
+                const opt = document.createElement('option');
+                opt.value = pos.name;
+                opt.text = pos.name;
+                select.appendChild(opt);
+            });
+        } else {
+            const opt = document.createElement('option');
+            opt.value = "General";
+            opt.text = "General";
+            select.appendChild(opt);
+        }
         openModal('applyModal');
     }
 
-    function openMyStatusModal(status, date, note) {
+    function openMyStatusModal(btn) {
+        const status = btn.getAttribute('data-status');
+        const date = btn.getAttribute('data-date');
+        const note = btn.getAttribute('data-note');
         const badge = document.getElementById('status_badge_display');
         const box = document.getElementById('interview_box');
         const noteEl = document.getElementById('hr_notes_display');
-        
+        const boxTitle = box.querySelector('.u-font-bold');
         badge.textContent = status;
         badge.className = 'status-badge';
-        
-        if(status.includes('Interview')) {
-            badge.classList.add('st-interview');
-            box.style.display = 'block';
-            document.getElementById('interview_date_display').textContent = date ? new Date(date).toLocaleString('id-ID') : '-';
-        } else if(status === 'Passed') {
+        if (['Passed', 'Hired', 'Offering', 'Diterima'].includes(status)) {
             badge.classList.add('st-passed');
-            box.style.display = 'none';
-        } else if(status === 'Rejected') {
+        } else if (['Rejected', 'Failed', 'Ditolak'].includes(status)) {
             badge.classList.add('st-rejected');
-            box.style.display = 'none';
+        } else if (['Psikotes', 'Interview HR', 'Interview User', 'Medical Check-Up'].includes(status) || status.includes('Interview')) {
+            badge.classList.add('st-interview');
         } else {
             badge.classList.add('st-screening');
+        }
+        if (date && date !== 'null' && date !== '') {
+            box.style.display = 'block';
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('interview_date_display').textContent = `${dateStr} - ${timeStr} WIB`;
+            if (status.includes('Interview')) {
+                boxTitle.innerHTML = '<i class="far fa-calendar-alt"></i> Undangan Interview';
+            } else if (status.includes('Psikotes')) {
+                boxTitle.innerHTML = '<i class="fas fa-file-alt"></i> Jadwal Psikotes';
+            } else if (status.includes('Medical')) {
+                boxTitle.innerHTML = '<i class="fas fa-heartbeat"></i> Jadwal Medical Check-Up';
+            } else {
+                boxTitle.innerHTML = '<i class="far fa-calendar-alt"></i> Jadwal Pelaksanaan';
+            }
+        } else {
             box.style.display = 'none';
         }
-        
         noteEl.textContent = (note && note !== 'null') ? note : '-';
         openModal('myStatusModal');
     }
-
-    // --- POV DHC ---
     function openManageModal(requestId, ticket) {
         document.getElementById('manage_ticket_display').textContent = ticket;
         const tbody = document.getElementById('applicant_tbody');
         tbody.innerHTML = '<tr><td colspan="6" class="u-text-center"><i class="fas fa-circle-notch fa-spin"></i> Loading data...</td></tr>';
-        
         openModal('manageModal');
-
-        // Fetch Applicants via AJAX
         fetch(`/recruitment/external/${requestId}/applicants`)
             .then(res => res.json())
             .then(data => {
@@ -358,19 +387,15 @@
                     tbody.innerHTML = '<tr><td colspan="6" class="u-text-center u-muted">Belum ada pelamar masuk.</td></tr>';
                     return;
                 }
-
                 data.data.forEach(app => {
                     let badgeClass = 'st-screening';
                     if(app.status.includes('Interview')) badgeClass = 'st-interview';
                     if(app.status === 'Passed') badgeClass = 'st-passed';
                     if(app.status === 'Rejected') badgeClass = 'st-rejected';
-
                     let cvBtn = app.cv_path 
                         ? `<a href="/storage/${app.cv_path}" target="_blank" class="u-text-brand u-font-bold hover:u-underline"><i class="fas fa-file-pdf"></i> PDF</a>` 
                         : '-';
-                    
                     let dateShow = app.interview_schedule ? new Date(app.interview_schedule).toLocaleString('id-ID') : '-';
-
                     let row = `
                         <tr>
                             <td>
@@ -410,27 +435,22 @@
         const modal = document.getElementById('updateStatusModal');
         const form = document.getElementById('formUpdateStatus');
         const select = document.getElementById('statusSelect');
-        
-        // Update Action URL
         form.action = `/recruitment/external/applicant/${applicantId}/update`;
-        
         select.value = currentStatus;
         toggleInterview();
-        
         modal.hidden = false;
     }
 
     function toggleInterview() {
         const val = document.getElementById('statusSelect').value;
         const group = document.getElementById('interviewInputGroup');
-        if(val.includes('Interview')) {
+        const needSchedule = ['Psikotes', 'Interview HR', 'Interview User', 'Medical Check-Up'];
+        if(needSchedule.includes(val)) {
             group.style.display = 'block';
         } else {
             group.style.display = 'none';
         }
     }
-
-    // Modal Helpers
     function openModal(id) { document.getElementById(id).hidden = false; document.body.classList.add('modal-open'); }
     function closeModal(id) { 
         document.getElementById(id).hidden = true; 
@@ -438,16 +458,11 @@
             document.body.classList.remove('modal-open');
         }
     }
-
     function openBiodataModal(applicantId) {
         const modal = document.getElementById('biodataModal');
         const content = document.getElementById('biodataModalContent');
-        
-        // Tampilkan modal dengan loading state
         content.innerHTML = '<div class="u-text-center u-p-lg"><i class="fas fa-circle-notch fa-spin fa-2x u-text-brand"></i><div class="u-mt-sm u-text-muted">Memuat data...</div></div>';
         openModal('biodataModal');
-
-        // Fetch Partial View
         fetch(`/recruitment/external/applicant/${applicantId}/biodata`)
             .then(response => response.text())
             .then(html => {
@@ -464,16 +479,13 @@
             el.style.display = 'none';
             el.classList.add('hidden');
         });
-
         const target = document.getElementById('tab-' + tabId);
         if(target) {
             target.style.display = 'block';
             target.classList.remove('hidden');
         }
-
         const allBtns = document.querySelectorAll('.bio-tab-btn');
         allBtns.forEach(b => b.classList.remove('active'));
-        
         if(btn) btn.classList.add('active');
     }
 </script>

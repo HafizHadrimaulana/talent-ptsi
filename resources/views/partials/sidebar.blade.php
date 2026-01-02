@@ -62,9 +62,9 @@
                    href="{{ route('recruitment.applicant-data.index') }}">
                   <span class="icon">👤</span><span class="label">Biodata & Status</span>
                 </a>
-                <a class="nav-item nav-child {{ request()->routeIs('careers.*') ? 'active' : '' }}"
-                   href="{{ route('careers.index') }}">
-                  <span class="icon">💼</span><span class="label">Cari Lowongan</span>
+                <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}"
+                   href="{{ route('recruitment.external.index') }}">
+                  <span class="icon">💼</span><span class="label">Careers</span>
                 </a>
               @endif
           @if($isSuper || $user?->can('recruitment.view'))

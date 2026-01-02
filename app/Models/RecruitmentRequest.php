@@ -20,6 +20,7 @@ class RecruitmentRequest extends Model
     ];
 
     protected $casts = [
+        'is_published' => 'boolean',
         'approved_at'   => 'datetime',
         'published_at'  => 'datetime',
         'requirements'  => 'array',

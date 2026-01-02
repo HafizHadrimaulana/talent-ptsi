@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Public\CareersController;
 use App\Http\Controllers\Public\ApplicationController as PublicApplicationController;
 use App\Http\Controllers\Account\AccountController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController;
@@ -12,9 +11,6 @@ use App\Http\Controllers\Recruitment\ExternalRecruitmentController;
 use App\Http\Controllers\Recruitment\ApplicantDataController;
 
 Route::middleware('web')->group(function () {
-    Route::get('/careers', [CareersController::class, 'index'])->name('careers.index');
-    Route::post('/careers/apply', [PublicApplicationController::class, 'store'])->name('careers.apply');
-
     Route::middleware('guest')->group(function () {
         Route::get('/login',  [AuthenticatedSessionController::class, 'create'])->name('login');
         Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
@@ -41,6 +37,10 @@ Route::middleware('web')->group(function () {
             Route::post('/applicant/{id}/update', [ExternalRecruitmentController::class, 'updateApplicantStatus'])->name('updateApplicantStatus');
             Route::get('/applicant/{id}/biodata', [ExternalRecruitmentController::class, 'showApplicantBiodata'])->name('applicant.biodata');
         });
+
+        Route::post('recruitment/principal-approval/{req}/publish', [PrincipalApprovalController::class, 'publish'])
+            ->name('recruitment.principal-approval.publish');
+
     });
 
     Route::get('recruitment/principal-approval/export', [PrincipalApprovalController::class, 'exportExcel'])

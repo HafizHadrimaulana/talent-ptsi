@@ -300,7 +300,9 @@
                         data-can-approve="{{ $canStage ? 'true' : 'false' }}" 
                         data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" 
                         data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" 
-                        data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'>
+                        data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'
+                        data-is-published="{{ $r->is_published ? '1' : '0' }}"
+                        data-can-publish="{{ ($me->hasRole('DHC') || $me->hasRole('Superadmin') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit')) ? 'true' : 'false' }}">
                         <i class="fas fa-info-circle u-mr-xs"></i> Detail
                 </button>
               </div>
@@ -468,12 +470,12 @@
         @csrf
         <input type="hidden" name="details_json" id="detailsJson">
         <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan</label>
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan<span class="text-red-500">*</span></label>
           <select class="u-input" name="request_type"><option value="Rekrutmen">Rekrutmen</option><option value="Perpanjang Kontrak">Perpanjang Kontrak</option></select>
         </div>
         <div class="u-grid-2 u-stack-mobile u-gap-md">
           <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak</label>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak<span class="text-red-500">*</span></label>
             <select class="u-input" id="contractTypeSelect" name="employment_type" required>
                 <option value="">Pilih jenis kontrak</option>
                 <option value="Organik">Organik</option>
@@ -484,18 +486,18 @@
             </select>
           </div>
           <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Sumber Anggaran</label>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Sumber Anggaran<span class="text-red-500">*</span></label>
             <select class="u-input" id="budgetSourceSelect" name="budget_source_type" style="-webkit-appearance: none; -moz-appearance: none; appearance: none;"><option value="">Sumber anggaran</option><option value="RKAP">RKAP</option><option value="RAB Proyek">RAB Proyek</option><option value="Lainnya">Lainnya</option></select>
           </div>
         </div>
         <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount<span class="text-red-500">*</span></label>
           <input class="u-input" type="number" min="1" name="headcount" id="headcountInput" value="1" placeholder="Jumlah orang" required>
         </div>
         <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;"></div>
         <div id="dynamicContentWrapper" class="u-p-md u-border u-rounded u-bg-light">
             <div class="u-space-y-sm u-mb-md">
-              <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
+              <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan<span class="text-red-500">*</span></label>
               <input class="u-input" id="titleInput" name="title" placeholder="Mis. Rekrutmen Analis TKDN Proyek X" required>
             </div>
             <div id="projectSection" class="u-space-y-md" style="display:none;">
@@ -513,23 +515,23 @@
                     @endforeach
                 </select>
                 </div>
-                <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project</label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
+                <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project<span class="text-red-500">*</span></label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
               </div>
               <div class="u-space-y-sm" style="position: relative;">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label>
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan<span class="text-red-500">*</span></label>
                 <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off">
                 <input type="hidden" name="position" id="positionInput">
                 <div id="positionSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
               </div>
               <div class="u-space-y-sm">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan</label>
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan<span class="text-red-500">*</span></label>
                 <div class="u-flex u-items-center u-gap-sm">
                   <div id="uraianStatusProject" class="u-text-2xs u-muted">Belum ada uraian</div>
                   <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian-project">Isi Uraian</button>
                 </div>
               </div>
               <div class="u-space-y-sm" style="position: relative;">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC<span class="text-red-500">*</span></label>
                 <input type="text" id="picProjectSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
                 <input type="hidden" name="pic_project" id="picProjectInput">
                 <div id="picProjectSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -554,13 +556,13 @@
                 <div class="u-text-sm u-font-medium">Selected: <span id="rkapSelectedName"></span></div>
                 <div class="u-grid-2 u-stack-mobile u-gap-md">
                   <div>
-                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan</label>
+                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan<span class="text-red-500">*</span></label>
                     <div class="u-flex u-items-center u-gap-sm">
                       <div id="uraianStatus" class="u-text-2xs u-muted">Belum ada uraian</div>
                       <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian">Isi Uraian</button>
                     </div>
                     <div style="position: relative;">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> 
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan<span class="text-red-500">*</span></label> 
                       <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off">
                       <input type="hidden" id="positionOrganikInput"> 
                       <div id="positionOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -568,7 +570,7 @@
                   </div>
                   <div>
                     <div style="position: relative;" class="u-mb-md">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC<span class="text-red-500">*</span></label>
                       <input type="text" id="picOrganikSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
                       <input type="hidden" name="pic" id="picOrganikInput">
                       <div id="picOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -580,23 +582,23 @@
             <div id="extraDynamicFields" class="u-mt-md u-pt-md u-border-t">
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja<span class="text-red-500">*</span></label>
                       <input class="u-input" type="date" id="dyn_start_date" required>
                   </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Selesai Kerja</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Selesai Kerja<span class="text-red-500">*</span></label>
                       <input class="u-input" type="date" id="dyn_end_date" required>
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm" style="position: relative;">
-                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Kota Lokasi Penempatan Kerja</label>
+                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Kota Lokasi Penempatan Kerja<span class="text-red-500">*</span></label>
                     <input class="u-input" type="text" id="dyn_location" placeholder="Ketik atau Pilih Kota/Kabupaten" autocomplete="off">
                     <input type="hidden" id="dyn_location_id">
                     <div id="dynLocationSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                 </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan<span class="text-red-500">*</span></label>
                       <select class="u-input" id="dyn_education" required>
                           <option value="">Pilih Pendidikan</option>
                           <option value="SMA">SMA</option>
@@ -614,14 +616,14 @@
                       <input class="u-input" type="text" id="dyn_brevet" placeholder="Masukkan pelatihan">
                   </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pengalaman</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pengalaman<span class="text-red-500">*</span></label>
                       <input class="u-input" type="text" id="dyn_experience" placeholder="Masukkan pengalaman" required>
                   </div>
               </div>
               <div class="u-bg-light u-p-sm u-rounded u-font-bold u-text-sm u-mb-sm" style="color:#374151;"><b>Remunerasi</b></div>
               <div class="u-grid-2-custom u-mb-sm">
                 <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Resiko Pekerjaan</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Resiko Pekerjaan<span class="text-red-500">*</span></label>
                       <select class="u-input" id="dyn_resiko" required>
                           <option value="">Pilih Resiko</option>
                           <option value="Tinggi">Tinggi</option>
@@ -631,7 +633,7 @@
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)<span class="text-red-500">*</span></label>
                       <input class="u-input input-currency" type="text" id="dyn_salary" placeholder="1.000.000" required>
                   </div>
                   <div class="u-space-y-sm">
@@ -687,13 +689,13 @@
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">PPH 21</label>
-                      <input class="u-input input-currency" type="text" id="dyn_pph21" readonly placeholder="Autofill">
+                      <input class="u-input input-currency" type="text" id="dyn_pph21" readonly placeholder="0">
                   </div>
               </div>
           </div>
         </div>
         <div class="u-space-y-sm u-mt-md">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Detail Penjelasan Kebutuhan</label>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Detail Penjelasan Kebutuhan<span class="text-red-500">*</span></label>
             <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan secara detail..." required></textarea>
         </div>
       </form>
@@ -756,6 +758,9 @@
         <div class="u-muted u-text-sm"><span id="tab-indicator-text">Menampilkan Data 1</span></div>
         <div class="u-flex u-gap-sm action-buttons">
             <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+            <button type="button" class="u-btn u-btn--info u-hover-lift js-btn-publish" style="display:none; background-color: #0ea5e9; border-color: #0ea5e9; color: white;">
+                <i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan
+            </button>
             <form method="POST" action="" class="detail-reject-form u-inline" style="display:none;">
                 @csrf
                 <input type="hidden" name="note" class="reject-note-input" id="real_reject_note"> 
@@ -1978,6 +1983,66 @@
                         renderContent(0);
                         detailModal.hidden = false; 
                         document.body.classList.add('modal-open');
+
+                        const isPublished = safeTxt('data-is-published') === '1';
+                        const canPublishUser = btnDetail.getAttribute('data-can-publish') === 'true';
+                        const statusTiket = safeTxt('data-status').toLowerCase();
+                        const noTicket = safeTxt('data-ticket-number');
+                        const reqId = btnDetail.getAttribute('data-id');
+                        const btnPublish = detailModal.querySelector('.js-btn-publish');
+
+                        if (btnPublish) {
+                            btnPublish.style.display = 'none';
+                            btnPublish.disabled = false;
+                            btnPublish.innerHTML = '<i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan';
+                            btnPublish.classList.add('u-btn--info');
+                            btnPublish.classList.remove('u-btn--success');
+                            btnPublish.onclick = null;
+
+                            if (canPublishUser && statusTiket === 'approved' && noTicket && noTicket !== '-') {
+                                
+                                if (isPublished) {
+                                    btnPublish.style.display = 'inline-flex';
+                                    btnPublish.disabled = true;
+                                    btnPublish.innerHTML = '<i class="fas fa-check u-mr-xs"></i> Terpublikasi';
+                                    btnPublish.classList.remove('u-btn--info');
+                                    btnPublish.classList.add('u-btn--success');
+                                } else {
+                                    btnPublish.style.display = 'inline-flex';
+                                    btnPublish.onclick = function() {
+                                        if(confirm('Apakah Anda yakin ingin mempublikasikan lowongan ini ke Portal Eksternal?')) {
+                                            btnPublish.disabled = true;
+                                            btnPublish.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
+
+                                            fetch(`/recruitment/principal-approval/${reqId}/publish`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                                    'Content-Type': 'application/json'
+                                                }
+                                            })
+                                            .then(res => res.json())
+                                            .then(data => {
+                                                if(data.success) {
+                                                    alert(data.message);
+                                                    location.reload();
+                                                } else {
+                                                    alert('Gagal: ' + data.message);
+                                                    btnPublish.disabled = false;
+                                                    btnPublish.innerHTML = '<i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan';
+                                                }
+                                            })
+                                            .catch(err => {
+                                                console.error(err);
+                                                alert('Terjadi kesalahan sistem.');
+                                                btnPublish.disabled = false;
+                                                btnPublish.innerHTML = '<i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan';
+                                            });
+                                        }
+                                    };
+                                }
+                            }
+                        }
                     }
                 });
                 form.addEventListener('click', function(e) {
