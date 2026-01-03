@@ -3,8 +3,6 @@
 
 @section('content')
     <div class="u-card u-card--glass u-hover-lift">
-        
-        {{-- Header --}}
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
@@ -19,16 +17,12 @@
                 <i class="fas fa-arrow-left mr-2"></i> Kembali ke Lowongan
             </a>
         </div>
-
-        {{-- Alerts --}}
         @if(session('success'))
             <div role="alert" class="alert alert-success mb-6 shadow-sm rounded-xl bg-green-50 border-none text-green-800 flex gap-2">
                 <i class="fas fa-check-circle text-lg"></i>
                 <span class="font-medium">{{ session('success') }}</span>
             </div>
         @endif
-
-        {{-- TABS NAVIGATION --}}
         <div class="bg-gray-100 p-1.5 rounded-xl flex overflow-x-auto mb-8 gap-1 no-scrollbar sticky top-4 z-30 shadow-sm border border-gray-200">
             @php
                 $tabs = ['data-diri' => 'Data Diri','alamat' => 'Alamat','pendidikan' => 'Pendidikan','keluarga' => 'Data Keluarga','pengalaman' => 'Pengalaman Kerja','organisasi' => 'Organisasi','skill' => 'Skill','sertifikasi' => 'Sertifikasi','dokumen' => 'Data Pendukung','lamaran' => 'Lamaran Anda'];
@@ -40,7 +34,6 @@
         <form action="{{ route('recruitment.applicant-data.update') }}" method="POST" enctype="multipart/form-data">
             @csrf
             <div class="bg-white rounded-3xl p-2 min-h-[500px]">
-                {{-- 1. DATA DIRI --}}
                 <div id="tab-data-diri" class="tab-content block">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
                         <div class="md:col-span-2 space-y-6">
@@ -49,7 +42,6 @@
                             @include('components.input-soft', ['label' => 'Email', 'name' => 'email', 'val' => $person->email, 'readonly' => true])
                             @include('components.input-soft', ['label' => 'Nama Lengkap', 'name' => 'full_name', 'val' => $person->full_name])
                             @include('components.input-soft', ['label' => 'No. HP / WA', 'name' => 'phone', 'val' => $person->phone, 'ph' => '08xxxxxxxxxx']) 
-                            {{-- Contoh Select Gender di index.blade.php --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-block u-text-sm u-font-medium u-mb-sm text-gray-700">Jenis Kelamin</label>
                                 <select name="gender" class="u-input w-full">
@@ -58,25 +50,19 @@
                                     <option value="Perempuan" {{ $person->gender == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
                                 </select>
                             </div>
-
                             @include('components.input-soft', ['label' => 'Tempat Lahir', 'name' => 'place_of_birth', 'val' => $person->place_of_birth])
-                            
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-block u-text-sm u-font-medium u-mb-sm text-gray-700">Tanggal Lahir</label>
                                 <input type="date" name="date_of_birth" value="{{ $person->date_of_birth ? $person->date_of_birth->format('Y-m-d') : '' }}" class="u-input w-full">
                             </div>
-
                             @include('components.input-soft', ['label' => 'Agama', 'name' => 'religion', 'val' => $person->religion])
                             @include('components.input-soft', ['label' => 'Status Nikah', 'name' => 'marital_status', 'val' => $person->marital_status, 'ph' => 'Lajang / Menikah / Duda / Janda'])
                             @include('components.input-soft', ['label' => 'Tinggi Badan (cm)', 'name' => 'height', 'val' => $person->height, 'type' => 'number'])
-                            @include('components.input-soft', ['label' => 'Berat Badan (kg)', 'name' => 'weight', 'val' => $person->weight, 'type' => 'number'])
-                            
+                            @include('components.input-soft', ['label' => 'Berat Badan (kg)', 'name' => 'weight', 'val' => $person->weight, 'type' => 'number'])                            
                             <div class="divider">Sosial Media</div>
                             @include('components.input-soft', ['label' => 'LinkedIn URL', 'name' => 'linkedin_url', 'val' => $person->linkedin_url, 'ph' => 'https://linkedin.com/in/...'])
                             @include('components.input-soft', ['label' => 'Instagram URL', 'name' => 'instagram_url', 'val' => $person->instagram_url, 'ph' => 'https://instagram.com/...'])
                         </div>
-
-                        {{-- Foto Profil --}}
                         <div class="md:col-span-1 flex flex-col items-center pt-8">
                             <div class="relative group">
                                 <div class="w-48 h-64 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group-hover:border-blue-400 transition-all shadow-sm">
@@ -88,8 +74,7 @@
                                         <span class="text-xs text-gray-400 font-bold group-hover:text-blue-500">Upload Foto</span>
                                     </div>
                                     <input type="file" name="photo_file" id="photo_input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/png, image/jpeg, image/jpg"onchange="handlePhotoUpload(this)">
-                                </div>
-                                
+                                </div>                                
                                 <div id="photo_overlay" class="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 hover:opacity-100 pointer-events-none z-20 transition-opacity {{ $person->photo_path ? '' : 'hidden' }}">
                                     <span class="text-white text-xs font-bold"><i class="fas fa-pen"></i> Ganti Foto</span>
                                 </div>
@@ -105,8 +90,6 @@
                         </div>
                     </div>
                 </div>
-
-                {{-- 2. ALAMAT --}}
                 <div id="tab-alamat" class="tab-content hidden space-y-10">
                     <div>
                         <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Alamat Sesuai KTP</h3>
@@ -125,12 +108,9 @@
                         </div>
                     </div>
                 </div>
-
-                {{-- 3. PENDIDIKAN --}}
                 <div id="tab-pendidikan" class="tab-content hidden">
                     <h3 class="font-bold text-lg text-gray-800 mb-6">Riwayat Pendidikan</h3>
-                    <h5 class="u-block u-text-sm u-font-bold u-mb-sm text-yellow-500 mb-4 border-b pb-2">!! Pastikan data paling atas adalah Pendidikan Terakhir Anda !!</h5>
-                    
+                    <h5 class="u-block u-text-sm u-font-bold u-mb-sm text-yellow-500 mb-4 border-b pb-2">!! Pastikan data paling atas adalah Pendidikan Terakhir Anda !!</h5>                    
                     <div id="education-container">
                         @php $edus = $person->education_history ?? []; @endphp
                         @foreach($edus as $idx => $edu)
@@ -139,14 +119,11 @@
                         <div id="education-template" class="hidden">
                             @include('components.repeater-education', ['idx' => 'INDEX', 'edu' => []])
                         </div>
-                    </div>
-                    
+                    </div>                    
                     <button type="button" onclick="addRepeater('education')" class="btn btn-outline btn-sm rounded-full mt-4 normal-case border-dashed border-gray-400 text-gray-600 hover:bg-gray-50 hover:border-gray-500">
                         <i class="fas fa-plus"></i> Tambah Pendidikan
                     </button>
                 </div>
-
-                {{-- 4. KELUARGA --}}
                 <div id="tab-keluarga" class="tab-content hidden">
                     <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Data Keluarga</h3>
                     <div id="family-container">
@@ -162,8 +139,6 @@
                         <i class="fas fa-plus"></i> Tambah Anggota Keluarga
                     </button>
                 </div>
-
-                {{-- 5. PENGALAMAN KERJA --}}
                 <div id="tab-pengalaman" class="tab-content hidden">
                     <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Pengalaman Kerja</h3>
                     <div id="work-container">
@@ -179,8 +154,6 @@
                         <i class="fas fa-plus"></i> Tambah Pengalaman Kerja
                     </button>
                 </div>
-
-                {{-- 6. ORGANISASI --}}
                 <div id="tab-organisasi" class="tab-content hidden">
                     <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Pengalaman Organisasi</h3>
                     <div id="org-container">
@@ -196,8 +169,6 @@
                         <i class="fas fa-plus"></i> Tambah Organisasi
                     </button>
                 </div>
-
-                {{-- 7. SKILL --}}
                 <div id="tab-skill" class="tab-content hidden">
                     <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Skill / Kompetensi</h3>
                     <div id="skill-container">
@@ -213,8 +184,6 @@
                         <i class="fas fa-plus"></i> Tambah Skill
                     </button>
                 </div>
-
-                {{-- 8. SERTIFIKASI --}}
                 <div id="tab-sertifikasi" class="tab-content hidden">
                     <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Sertifikasi & Pelatihan</h3>
                     <div id="cert-container">
@@ -230,8 +199,6 @@
                         <i class="fas fa-plus"></i> Tambah Sertifikasi
                     </button>
                 </div>
-
-                {{-- 9. DOKUMEN --}}
                 <div id="tab-dokumen" class="tab-content hidden">
                     <h3 class="font-bold text-lg text-gray-800 mb-6 border-b pb-2">Dokumen Pendukung</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -244,15 +211,12 @@
                         @include('components.file-upload-soft', ['label' => 'Dokumen Pendukung Lainnya', 'name' => 'other_doc_file', 'path' => $person->other_doc_path])
                     </div>
                 </div>
-
-                {{-- 10. LAMARAN ANDA --}}
                 <div id="tab-lamaran" class="tab-content hidden">
                     <div class="flex justify-between items-center mb-6 border-b pb-2">
                         <h3 class="font-bold text-lg text-gray-800">
                             <i class="fas fa-briefcase text-blue-600 mr-2"></i> Riwayat Lamaran
                         </h3>
                     </div>
-
                     <div class="overflow-hidden border border-gray-200 rounded-2xl shadow-sm">
                         <table class="table w-full">
                             <thead class="bg-gray-100 text-gray-600 text-xs uppercase font-bold tracking-wider">
@@ -266,7 +230,6 @@
                             <tbody class="bg-white divide-y divide-gray-100">
                                 @forelse($applications as $app)
                                     <tr class="hover:bg-blue-50/50 transition-colors duration-200 group">
-                                        {{-- KOLOM POSISI --}}
                                         <td class="px-6 py-5">
                                             <div class="flex items-start gap-3">
                                                 <div>
@@ -284,7 +247,6 @@
                                                                 $displayName = $req->position;
                                                             }
                                                         @endphp
-
                                                         {{ $displayName }}
                                                     </div>
                                                     <div class="text-xs text-gray-500 mt-1 flex items-center gap-1">
@@ -294,8 +256,6 @@
                                                 </div>
                                             </div>
                                         </td>
-
-                                        {{-- KOLOM TANGGAL --}}
                                         <td class="px-4 py-5 text-center whitespace-nowrap">
                                             <div class="text-sm font-medium text-gray-600">
                                                 {{ $app->created_at->timezone('Asia/Jakarta')->format('d M Y') }}
@@ -304,8 +264,6 @@
                                                 {{ $app->created_at->timezone('Asia/Jakarta')->format('H:i') }} WIB
                                             </div>
                                         </td>
-
-                                        {{-- KOLOM STATUS --}}
                                         <td class="px-4 py-5 text-center">
                                             @php
                                                 $statusColor = match($app->status) {
@@ -320,8 +278,6 @@
                                                 {{ $app->status }}
                                             </span>
                                         </td>
-
-                                        {{-- KOLOM JADWAL --}}
                                         <td class="px-4 py-5 text-center">
                                             @if($app->interview_schedule)
                                                 <div class="text-sm font-semibold text-gray-700">
@@ -353,14 +309,11 @@
                         </table>
                     </div>
                 </div>
-
-                {{-- TOMBOL SIMPAN FLOATING --}}
                 <div class="fixed bottom-8 right-8 z-50">
                     <button type="submit" class="btn bg-gray-900 hover:bg-black text-white px-8 rounded-full shadow-xl border-none gap-2 h-14 text-base font-bold transition-transform hover:-translate-y-1">
                         <i class="fas fa-save"></i> Simpan Perubahan
                     </button>
                 </div>
-
             </div>
         </form>
     </div>
@@ -371,15 +324,10 @@
         const placeholder = document.getElementById('photo_placeholder');
         const filenameText = document.getElementById('photo_filename');
         const overlay = document.getElementById('photo_overlay');
-
         if (input.files && input.files[0]) {
             const file = input.files[0];
-
-            // 1. Tampilkan Nama File
             filenameText.innerHTML = `<i class="fas fa-check-circle"></i> File: ${file.name}`;
             filenameText.classList.remove('hidden');
-            
-            // 2. Preview Gambar secara Live
             const reader = new FileReader();
             reader.onload = function(e) {
                 preview.src = e.target.result;
@@ -393,34 +341,28 @@
     function switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         document.getElementById('tab-' + tabId).classList.remove('hidden');
-        
         document.querySelectorAll('[id^="tab-btn-"]').forEach(btn => {
             btn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
             btn.classList.add('text-gray-500');
         });
-        
         const activeBtn = document.getElementById('tab-btn-' + tabId);
         activeBtn.classList.remove('text-gray-500');
         activeBtn.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
     }
-
     function addRepeater(type) {
         const container = document.getElementById(type + '-container');
         const template = document.getElementById(type + '-template').innerHTML;
         const newHtml = template.replace(/INDEX/g, Date.now());
         container.insertAdjacentHTML('beforeend', newHtml);
     }
-
     function removeRow(btn) {
         btn.closest('.repeater-item').remove();
     }
-
     function updateFilePreview(inputName) {
         const input = document.getElementById('input_' + inputName);
         const placeholder = document.getElementById('placeholder_' + inputName);
         const info = document.getElementById('info_' + inputName);
         const filenameText = document.getElementById('filename_' + inputName);
-
         if (input.files && input.files[0]) {
             const file = input.files[0];
             filenameText.textContent = file.name;

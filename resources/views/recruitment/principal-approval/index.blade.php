@@ -3,7 +3,6 @@
 
 @section('content')
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
-
 <style>
     #createApprovalModal {z-index: 1050 !important;}
     #uraianModal {z-index: 2000 !important; background-color: rgba(0, 0, 0, 0.5); display: none;align-items: center; justify-content: center; position: fixed; inset: 0; }
@@ -19,6 +18,12 @@
     @media (max-width: 768px) { .u-grid-2-custom { grid-template-columns: 1fr; } }
     .ck-editor__editable_inline { min-height: 200px; max-height: 400px; }
     .ck.ck-balloon-panel { z-index: 2060 !important; }
+    #publishDescriptionModal { display: flex !important; align-items: center; justify-content: center; z-index: 2200 !important; }
+    .ck-content ul { list-style-type: disc !important; padding-left: 2rem !important; margin-bottom: 1rem;}
+    .ck-content ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-bottom: 1rem; }
+    .ck-content li { display: list-item !important; }
+    .ck-content h1, .ck-content h2, .ck-content h3 { font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .ck-content p { margin-bottom: 0.75rem; }
 </style>
 @php
   use Illuminate\Support\Facades\DB;
@@ -38,11 +43,7 @@
   $unitMap = $units->pluck('name','id');
   $dhcUnitId = DB::table('units')->where(function($q){ $q->where('code','DHC')->orWhere('name','Divisi Human Capital')->orWhere('name','like','Divisi Human Capital%'); })->value('id');
   $canCreate = Gate::check('recruitment.create') || Gate::check('recruitment.update') || ($me && $me->hasRole('SDM Unit')) || ($me && $me->hasRole('Superadmin'));
-  $rkapList = isset($rkapList) ? $rkapList : collect([
-    (object)['name' => 'Reporter', 'rkap' => 5, 'existing' => 2],
-    (object)['name' => 'KJJJ', 'rkap' => 3, 'existing' => 1],
-    (object)['name' => 'Inspektor', 'rkap' => 4, 'existing' => 4],
-  ]);
+  $rkapList = isset($rkapList) ? $rkapList : collect([ (object)['name' => 'Reporter', 'rkap' => 5, 'existing' => 2],(object)['name' => 'KJJJ', 'rkap' => 3, 'existing' => 1],(object)['name' => 'Inspektor', 'rkap' => 4, 'existing' => 4],]);
   $positions = DB::table('positions')->select('id', 'name')->where('is_active',1)->orderBy('name')->get();
   try {
       $rawPics = DB::table('employees')->join('persons', 'employees.person_id', '=', 'persons.id')->select('employees.id', 'employees.employee_id', 'persons.full_name')->where('employees.unit_id', $selectedUnitId ?? $meUnit)->orderBy('persons.full_name')->get();
@@ -51,10 +52,7 @@
   $locationsJs = $locations
       ->unique('city')
       ->map(function($l) {
-        return [
-            'id' => $l->id, 
-            'name' => $l->city
-        ];
+        return ['id' => $l->id, 'name' => $l->city];
     })->values();
 @endphp
 <div class="u-card u-card--glass u-hover-lift">
@@ -105,12 +103,7 @@
                     $rawNote = $app->note;
                     $cleanNote = preg_replace('/\[stage=[^\]]+\]/', '', $rawNote); 
                     $cleanNote = trim($cleanNote); 
-                    $approvalHistory[] = [
-                        'role'   => $roleTitles[$index] ?? 'Approver',
-                        'status' => $app->status, 
-                        'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') : '-',
-                        'note'   => $cleanNote
-                    ];
+                    $approvalHistory[] = ['role'   => $roleTitles[$index] ?? 'Approver','status' => $app->status, 'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') : '-','note'   => $cleanNote];
                 }
             }
             $myJobTitle = null;
@@ -156,7 +149,6 @@
             $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
             $totalStages = 5;
             $progressStep = null;
-
             if ($status === 'draft') { $progressText = 'Draft di SDM Unit'; $progressStep = 0; }
             elseif ($status === 'rejected') { $progressText = $rejectedByLabel ? 'Ditolak oleh ' . $rejectedByLabel : 'Ditolak'; }
             elseif ($status === 'approved') { $progressText = 'Selesai (Approved Dir SDM)'; $progressStep = $totalStages; }
@@ -860,6 +852,28 @@
         </form>
     </div>
 </div>
+<div id="publishDescriptionModal" class="u-modal" hidden> <div class="u-modal__card" style="width: 800px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="u-modal__head">
+      <div class="u-title"><i class="fas fa-bullhorn u-mr-xs"></i> Publikasi Lowongan</div>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button>
+    </div>
+    <div class="u-modal__body u-p-md" style="overflow-y: auto;"> <div class="u-alert u-alert--info u-mb-md" style="background-color: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 6px; font-size: 0.9rem;">
+        <i class="fas fa-info-circle u-mr-xs"></i> Masukkan deskripsi lowongan yang akan dilihat oleh pelamar.
+      </div>
+      <form id="publishForm">
+          <input type="hidden" id="publish_req_id">
+          <div style="color: #000;"> <textarea id="publishEditorContent"></textarea>
+          </div>
+      </form>
+    </div>
+    <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+      <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+      <button type="button" class="u-btn u-btn--brand" id="btnConfirmPublish">
+        <i class="fas fa-paper-plane u-mr-xs"></i> Simpan & Publikasikan
+      </button>
+    </div>
+  </div>
+</div>
 
 <script>
     function toggleHistoryNote(id) {
@@ -938,6 +952,65 @@
         return temp.trim();
     }
     document.addEventListener('DOMContentLoaded', function() {
+        // --- TAMBAHAN BARU: Inisialisasi Editor & Handler Simpan ---
+        let publishEditor = null;
+        if (document.querySelector('#publishEditorContent')) {
+            ClassicEditor
+                .create(document.querySelector('#publishEditorContent'), {
+                    toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
+                    placeholder: 'Tulis deskripsi pekerjaan, kualifikasi, dll...'
+                })
+                .then(editor => { publishEditor = editor; })
+                .catch(error => { console.error(error); });
+        }
+
+        // Handler tombol "Simpan & Publikasikan" di Modal Baru
+        const btnConfirmPublish = document.getElementById('btnConfirmPublish');
+        if(btnConfirmPublish) {
+            btnConfirmPublish.addEventListener('click', function() {
+                const reqId = document.getElementById('publish_req_id').value;
+                const description = publishEditor ? publishEditor.getData() : '';
+
+                if(!description.trim()) {
+                    alert('Mohon isi deskripsi lowongan terlebih dahulu.');
+                    return;
+                }
+
+                if(!confirm('Apakah Anda yakin ingin mempublikasikan lowongan ini?')) return;
+
+                const btn = this;
+                const originalContent = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
+
+                fetch(`/recruitment/principal-approval/${reqId}/publish`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ description: description }) 
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Gagal: ' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = originalContent;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Terjadi kesalahan sistem.');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                });
+            });
+        }
+        // --- AKHIR TAMBAHAN BARU ---
         const btnYes = document.getElementById('btn-conf-yes');
         if(btnYes) {
             btnYes.addEventListener('click', function() {
@@ -1464,6 +1537,7 @@
                     multiDataStore[idx].education   = dynInputs.education?.value || '';
                     multiDataStore[idx].brevet      = dynInputs.brevet?.value || '';
                     multiDataStore[idx].experience  = dynInputs.experience?.value || '';
+                    multiDataStore[idx].resiko = dynInputs.resiko?.value || '';
                     multiDataStore[idx].salary      = dynInputs.salary?.value || '';
                     multiDataStore[idx].terbilang   = dynInputs.terbilang?.value || '';
                     multiDataStore[idx].allowanceJ  = dynInputs.allowanceJ?.value || '';
@@ -1512,6 +1586,7 @@
                     if(dynInputs.education)  dynInputs.education.value  = data.education || '';
                     if(dynInputs.brevet)     dynInputs.brevet.value     = data.brevet || '';
                     if(dynInputs.experience) dynInputs.experience.value = data.experience || '';
+                    if(dynInputs.resiko) dynInputs.resiko.value = data.resiko || '';
                     if(dynInputs.salary)     dynInputs.salary.value     = data.salary || '';
                     if(dynInputs.terbilang)  dynInputs.terbilang.value  = data.terbilang || '';
                     if(dynInputs.allowanceJ)  dynInputs.allowanceJ.value  = data.allowanceJ || '';
@@ -1934,7 +2009,8 @@
                                         ${makeRow('Lokasi', data.location)}
                                         ${makeRow('Pendidikan', data.education)}
                                         ${makeRow('Pelatihan', data.brevet)}
-                                        ${makeRow('Pengalaman', data.experience)}           
+                                        ${makeRow('Pengalaman', data.experience)}
+                                        ${makeRow('Resiko Pekerjaan', data.resiko)}         
                                         <div class="u-mt-sm u-flex u-justify-between u-items-center">
                                             <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
                                             ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
@@ -2001,6 +2077,7 @@
 
                             if (canPublishUser && statusTiket === 'approved' && noTicket && noTicket !== '-') {
                                 
+                                // --- INI KODE PENGGANTI BARU ---
                                 if (isPublished) {
                                     btnPublish.style.display = 'inline-flex';
                                     btnPublish.disabled = true;
@@ -2009,38 +2086,27 @@
                                     btnPublish.classList.add('u-btn--success');
                                 } else {
                                     btnPublish.style.display = 'inline-flex';
+                                    
+                                    // PERUBAHAN UTAMA DISINI:
+                                    // Saat tombol diklik, jangan langsung fetch API.
+                                    // Tapi buka modal deskripsi terlebih dahulu.
                                     btnPublish.onclick = function() {
-                                        if(confirm('Apakah Anda yakin ingin mempublikasikan lowongan ini ke Portal Eksternal?')) {
-                                            btnPublish.disabled = true;
-                                            btnPublish.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
-
-                                            fetch(`/recruitment/principal-approval/${reqId}/publish`, {
-                                                method: 'POST',
-                                                headers: {
-                                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                                    'Content-Type': 'application/json'
-                                                }
-                                            })
-                                            .then(res => res.json())
-                                            .then(data => {
-                                                if(data.success) {
-                                                    alert(data.message);
-                                                    location.reload();
-                                                } else {
-                                                    alert('Gagal: ' + data.message);
-                                                    btnPublish.disabled = false;
-                                                    btnPublish.innerHTML = '<i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan';
-                                                }
-                                            })
-                                            .catch(err => {
-                                                console.error(err);
-                                                alert('Terjadi kesalahan sistem.');
-                                                btnPublish.disabled = false;
-                                                btnPublish.innerHTML = '<i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan';
-                                            });
-                                        }
+                                        // 1. Set ID ke hidden input di modal baru
+                                        document.getElementById('publish_req_id').value = reqId; 
+                                        
+                                        // 2. Reset Editor (kosongkan isinya)
+                                        if(publishEditor) publishEditor.setData(''); 
+                                        
+                                        // 3. Tampilkan Modal Deskripsi
+                                        const pubModal = document.getElementById('publishDescriptionModal');
+                                        pubModal.hidden = false;
+                                        pubModal.style.display = 'flex';
+                                        
+                                        // 4. Tutup modal detail agar tidak tumpang tindih (opsional, tergantung selera)
+                                        document.getElementById('detailApprovalModal').hidden = true; 
                                     };
                                 }
+                                // --- AKHIR KODE PENGGANTI ---
                             }
                         }
                     }
@@ -2158,6 +2224,7 @@
             bindExternalSearch() { /* ... */ }
         };
         page.init();
+        
         const urlParams = new URLSearchParams(window.location.search);
             const ticketId = urlParams.get('open_ticket_id');
             if (ticketId) {

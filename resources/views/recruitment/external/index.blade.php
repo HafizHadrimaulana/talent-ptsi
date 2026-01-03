@@ -7,12 +7,17 @@
     #ext-table thead th { color: white !important; border: none; padding: 12px; font-weight:700; text-transform:uppercase; font-size:0.8rem; }
     #ext-table thead th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
     #ext-table thead th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-    
+    #vacancyDetailModal {display: flex !important; align-items: center; justify-content: center; }
     .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; display:inline-block;}
     .st-screening { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
     .st-interview { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
     .st-passed    { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
     .st-rejected  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    .ck-content ul { list-style-type: disc !important; padding-left: 2rem !important; margin-left: 1rem !important; margin-bottom: 1rem; }
+    .ck-content ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-left: 1rem !important; margin-bottom: 1rem;}
+    .ck-content li { display: list-item !important; margin-bottom: 0.25rem; }
+    .ck-content p { margin-bottom: 0.75rem; line-height: 1.6; }
+    .ck-content h2, .ck-content h3, .ck-content h4 { font-weight: 700; margin-top: 1.2rem; margin-bottom: 0.5rem; color: #1f2937; }
 </style>
 
 <div class="u-card u-card--glass u-hover-lift">
@@ -139,8 +144,9 @@
                                     </button>
                                 @elseif($isPelamar)
                                     @if(count($availableJson) > 0)
-                                        <button class="u-btn u-btn--sm u-btn--brand" onclick='openApplyModal({{ $row->id }}, @json($availableJson), "{{ $row->ticket_number }}")'>
-                                            <i class="fas fa-paper-plane u-mr-xs"></i> Lamar
+                                        <button class="u-btn u-btn--sm u-btn--info u-btn--outline" 
+                                                onclick='openVacancyDetail({{ $row->id }}, @json($row), @json($availableJson))'>
+                                            <i class="fas fa-info-circle u-mr-xs"></i> Detail
                                         </button>
                                     @endif
                                     @foreach($userApps as $app)
@@ -151,7 +157,7 @@
                                                 data-date="{{ $app->interview_schedule }}" 
                                                 data-note="{{ $app->hr_notes }}">
                                             <i class="fas fa-info-circle u-mr-xs"></i> 
-                                            Status: {{ $app->position_applied ?? 'General' }}
+                                            Posisi: {{ $app->position_applied ?? 'General' }}
                                         </button>
                                     @endforeach
                                 @endif
@@ -225,17 +231,19 @@
             <button class="u-btn u-btn--ghost u-btn--sm" onclick="closeModal('myStatusModal')"><i class="fas fa-times"></i></button>
         </div>
         <div class="u-modal__body u-p-md u-text-center">
-            <div class="u-mb-lg">
-                <div class="u-text-sm u-muted u-mb-sm">Status Saat Ini</div>
-                <div id="status_badge_display" class="u-text-lg u-font-bold">-</div>
-            </div>
-            <div id="interview_box" class="u-card u-p-sm u-bg-light u-text-left u-mb-md" style="display:none; border-left: 4px solid #f59e0b;">
-                <div class="u-font-bold u-text-dark"><i class="far fa-calendar-alt"></i> Undangan Interview</div>
-                <div class="u-text-sm u-mt-xs">Jadwal: <span id="interview_date_display" class="u-font-bold">-</span></div>
-            </div>
-            <div class="u-text-left">
-                <label class="u-label u-text-xs u-uppercase">Catatan HR:</label>
-                <div id="hr_notes_display" class="u-text-sm u-text-dark u-bg-light u-p-sm u-rounded">-</div>
+            <div class="u-card u-p-md">
+                <div class="u-mb-lg">
+                    <div class="u-text-sm u-muted u-mb-sm">Status Saat Ini:</div>
+                    <div id="status_badge_display" class="u-text-lg u-font-bold">-</div>
+                </div>
+                <div id="interview_box" class="u-card u-p-sm u-bg-light u-text-left u-mb-md" style="display:none; border-left: 4px solid #f59e0b;">
+                    <div class="u-font-bold u-text-dark"><i class="far fa-calendar-alt"></i> Undangan Interview</div>
+                    <div class="u-text-sm u-mt-xs">Jadwal: <span id="interview_date_display" class="u-font-bold">-</span></div>
+                </div>
+                <div class="u-text-left">
+                    <label class="u-label u-text-xs u-uppercase">Catatan HR:</label>
+                    <div id="hr_notes_display" class="u-text-sm u-text-dark u-bg-light u-p-sm u-rounded">-</div>
+                </div>
             </div>
         </div>
     </div>
@@ -277,7 +285,9 @@
                     <select name="status" class="u-input" id="statusSelect" onchange="toggleInterview()">
                         <option value="Screening">Screening CV</option>
                         <option value="Psikotes">Psikotes</option>
+                        <option value="FGD">FGD</option>
                         <option value="Interview HR">Interview HR</option>
+                        <option value="Tes Teknis">Tes Teknis</option>
                         <option value="Interview User">Interview User</option>
                         <option value="Medical Check-Up">Medical Check-Up</option>
                         <option value="Passed">Diterima (Passed)</option>
@@ -311,7 +321,34 @@
         </div>
     </div>
 </div>
-
+<div id="vacancyDetailModal" class="u-modal" hidden style="z-index: 2150;">
+    <div class="u-modal__card" style="width: 800px; max-width: 95%; display:flex; flex-direction:column; max-height:90vh;">
+        <div class="u-modal__head">
+            <div>
+                <div class="u-title" id="detail_vacancy_title">Judul Posisi</div>
+                <div class="u-text-sm u-muted" id="detail_vacancy_ticket">No Ticket</div>
+            </div>
+            <button class="u-btn u-btn--ghost u-btn--sm" onclick="closeModal('vacancyDetailModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="u-modal__body u-p-md u-overflow-y-auto">
+            <div class="u-card u-p-md">
+                <div class="u-mb-md">
+                    <div class="u-text-xs u-font-bold u-uppercase u-muted u-mb-sm">Deskripsi & Kualifikasi</div>
+                    
+                    <div id="detail_vacancy_description" class="ck-content u-text-dark" style="line-height: 1.6;">
+                        </div>
+                </div>
+            </div>
+        </div>
+        <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+            <button class="u-btn u-btn--ghost" onclick="closeModal('vacancyDetailModal')">Tutup</button>
+            
+            <button class="u-btn u-btn--brand" id="btnApplyFromDetail">
+                <i class="fas fa-paper-plane u-mr-xs"></i> Apply Now
+            </button>
+        </div>
+    </div>
+</div>
 <script>
     function openApplyModal(id, positions, ticket) {
         document.getElementById('apply_ticket_id').value = id;
@@ -351,12 +388,12 @@
         const noteEl = document.getElementById('hr_notes_display');
         const boxTitle = box.querySelector('.u-font-bold');
         badge.textContent = status;
-        badge.className = 'status-badge';
-        if (['Passed', 'Hired', 'Offering', 'Diterima'].includes(status)) {
+        badge.className = 'status-badge'; // Reset class
+        if (['Passed', 'Hired', 'Offering', 'Diterima'].some(s => status.includes(s))) {
             badge.classList.add('st-passed');
-        } else if (['Rejected', 'Failed', 'Ditolak'].includes(status)) {
+        } else if (['Rejected', 'Failed', 'Ditolak'].some(s => status.includes(s))) {
             badge.classList.add('st-rejected');
-        } else if (['Psikotes', 'Interview HR', 'Interview User', 'Medical Check-Up'].includes(status) || status.includes('Interview')) {
+        } else if (['Psikotes','FGD', 'Interview', 'Medical', 'Tes'].some(s => status.includes(s))) {
             badge.classList.add('st-interview');
         } else {
             badge.classList.add('st-screening');
@@ -364,17 +401,29 @@
         if (date && date !== 'null' && date !== '') {
             box.style.display = 'block';
             const dateObj = new Date(date);
-            const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const optionsDate = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            const dateStr = dateObj.toLocaleDateString('id-ID', optionsDate);
             const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('interview_date_display').textContent = `${dateStr} - ${timeStr} WIB`;
+            
+            document.getElementById('interview_date_display').textContent = `${dateStr} - Pukul ${timeStr} WIB`;
             if (status.includes('Interview')) {
-                boxTitle.innerHTML = '<i class="far fa-calendar-alt"></i> Undangan Interview';
-            } else if (status.includes('Psikotes')) {
-                boxTitle.innerHTML = '<i class="fas fa-file-alt"></i> Jadwal Psikotes';
-            } else if (status.includes('Medical')) {
-                boxTitle.innerHTML = '<i class="fas fa-heartbeat"></i> Jadwal Medical Check-Up';
+                boxTitle.innerHTML = '<i class="far fa-calendar-alt u-mr-xs"></i> Undangan Interview';
+                box.style.borderLeftColor = '#f59e0b';
+            } else if (status.includes('Psikotes') || status.includes('Tes')) {
+                boxTitle.innerHTML = '<i class="fas fa-pencil-alt u-mr-xs"></i> Jadwal Psikotes';
+                box.style.borderLeftColor = '#3b82f6';
+            } else if (status.includes('FGD')) {
+                boxTitle.innerHTML = '<i class="fas fa-users u-mr-xs"></i> Jadwal FGD';
+                box.style.borderLeftColor = '#8b5cf6';
+            } else if (status.includes('Tes Teknis')) {
+                boxTitle.innerHTML = '<i class="fas fa-cogs u-mr-xs"></i> Jadwal Tes Teknis';
+                box.style.borderLeftColor = '#4feaffff';
+            } else if (status.includes('Medical') || status.includes('MCU')) {
+                boxTitle.innerHTML = '<i class="fas fa-heartbeat u-mr-xs"></i> Jadwal Medical Check-Up';
+                box.style.borderLeftColor = '#66ef44ff';
             } else {
-                boxTitle.innerHTML = '<i class="far fa-calendar-alt"></i> Jadwal Pelaksanaan';
+                boxTitle.innerHTML = '<i class="far fa-clock u-mr-xs"></i> Jadwal Pelaksanaan';
+                box.style.borderLeftColor = '#6b7280';
             }
         } else {
             box.style.display = 'none';
@@ -452,11 +501,24 @@
     function toggleInterview() {
         const val = document.getElementById('statusSelect').value;
         const group = document.getElementById('interviewInputGroup');
-        const needSchedule = ['Psikotes', 'Interview HR', 'Interview User', 'Medical Check-Up'];
+        const needSchedule = ['Psikotes','Tes Teknis','FGD', 'Interview HR', 'Interview User', 'Medical Check-Up'];
         if(needSchedule.includes(val)) {
             group.style.display = 'block';
+            // Opsional: Ubah label input sesuai status agar admin lebih yakin
+            const label = group.querySelector('label');
+            if(label) {
+                if(val.includes('Interview')) label.textContent = 'Jadwal Interview';
+                else if(val.includes('Psikotes')) label.textContent = 'Jadwal Psikotes';
+                else if(val.includes('Tes')) label.textContent = 'Jadwal Tes Teknis';
+                else if(val.includes('FGD')) label.textContent = 'Jadwal FGD';
+                else if(val.includes('Medical')) label.textContent = 'Jadwal MCU';
+                else label.textContent = 'Jadwal Pelaksanaan';
+            }
         } else {
             group.style.display = 'none';
+            // Reset nilai input jika disembunyikan agar tidak terkirim ke backend (opsional)
+            const input = group.querySelector('input');
+            if(input) input.value = '';
         }
     }
     function openModal(id) { document.getElementById(id).hidden = false; document.body.classList.add('modal-open'); }
@@ -495,6 +557,40 @@
         const allBtns = document.querySelectorAll('.bio-tab-btn');
         allBtns.forEach(b => b.classList.remove('active'));
         if(btn) btn.classList.add('active');
+    }
+    // --- TAMBAHAN BARU: Fungsi Buka Detail Lowongan ---
+    function openVacancyDetail(id, rowData, availablePositions) {
+        // 1. Isi Header Modal
+        document.getElementById('detail_vacancy_title').textContent = rowData.title || 'Lowongan Kerja';
+        document.getElementById('detail_vacancy_ticket').textContent = rowData.ticket_number || '-';
+        
+        // 2. Isi Deskripsi dari kolom 'description' di database
+        const descContainer = document.getElementById('detail_vacancy_description');
+        
+        // rowData.description otomatis tersedia karena kita pakai @json($row) di HTML
+        if(rowData.description) {
+            descContainer.innerHTML = rowData.description;
+        } else {
+            descContainer.innerHTML = '<div class="u-text-muted u-text-center u-p-sm" style="background:#f9fafb; border-radius:4px;">Tidak ada deskripsi tambahan.</div>';
+        }
+
+        // 3. Konfigurasi Tombol Apply di dalam Modal Detail
+        const btnApply = document.getElementById('btnApplyFromDetail');
+        
+        // Trik: Clone tombol untuk menghapus event listener lama agar tidak tertumpuk
+        const newBtn = btnApply.cloneNode(true);
+        btnApply.parentNode.replaceChild(newBtn, btnApply);
+        
+        // Pasang event listener baru ke tombol Apply yang ada di modal detail
+        newBtn.addEventListener('click', function() {
+            closeModal('vacancyDetailModal'); // Tutup modal detail
+            
+            // Panggil fungsi openApplyModal yang SUDAH ADA di kode lama Anda
+            openApplyModal(id, availablePositions, rowData.ticket_number); 
+        });
+
+        // 4. Buka Modal Detail
+        openModal('vacancyDetailModal');
     }
 </script>
 @endsection

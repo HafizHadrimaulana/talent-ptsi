@@ -491,29 +491,25 @@ class PrincipalApprovalController extends Controller
         return $pdf->stream($filename);
     }
 
-    public function publish(RecruitmentRequest $req)
+    public function publish(RecruitmentRequest $req, Request $request) // Pastikan Request di-import
     {
-        // 1. Cek Hak Akses (DHC & SDM Unit / Kepala Unit)
         $me = Auth::user();
         $isDhc = $me->hasRole('DHC') || $me->hasRole('Superadmin');
         $isSdmUnit = $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit'); 
-
         if (!$isDhc && !$isSdmUnit) {
             return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk mempublikasikan lowongan.'], 403);
         }
-
-        // 2. Validasi Status (Harus Approved & Punya Nomor Tiket)
-        // Kita gunakan strtolower untuk memastikan case-insensitive (misal: "Approved" vs "approved")
         if (strtolower($req->status) !== 'approved' || empty($req->ticket_number)) {
             return response()->json(['success' => false, 'message' => 'Hanya Izin Prinsip yang sudah Approved dan memiliki No Ticket yang dapat dipublikasikan.'], 422);
         }
-
-        // 3. Update Data
+        $request->validate([
+            'description' => 'required|string'
+        ]);
         $req->update([
             'is_published' => true,
-            'published_at' => now(), // Isi timestamp waktu publikasi
+            'published_at' => now(),
+            'description'  => $request->description 
         ]);
-
-        return response()->json(['success' => true, 'message' => 'Lowongan berhasil dipublikasikan!']);
+        return response()->json(['success' => true, 'message' => 'Lowongan berhasil dipublikasikan dengan deskripsi!']);
     }
 }

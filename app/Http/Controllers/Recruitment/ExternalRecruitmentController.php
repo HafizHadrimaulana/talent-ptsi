@@ -93,8 +93,11 @@ class ExternalRecruitmentController extends Controller
         $app = RecruitmentApplicant::findOrFail($applicantId);
         $app->status = $request->status;
         $app->hr_notes = $request->notes;
-        if (str_contains($request->status, 'Interview')) {
+
+        if ($request->filled('interview_schedule')) {
             $app->interview_schedule = $request->interview_schedule; 
+        } else {
+            $app->interview_schedule = null; 
         }
         $app->save();
         return redirect()->back()->with('ok', 'Status pelamar berhasil diperbarui.');
