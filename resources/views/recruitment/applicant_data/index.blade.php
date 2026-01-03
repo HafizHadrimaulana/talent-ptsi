@@ -15,7 +15,7 @@
                     <p class="text-sm text-gray-500">Informasi ini akan digunakan untuk semua lamaran Anda.</p>
                 </div>
             </div>
-            <a href="{{ route('external.index') }}" class="btn btn-ghost btn-sm text-gray-600 hover:bg-gray-100 rounded-full normal-case">
+            <a href="{{ route('recruitment.external.index') }}" class="btn btn-ghost btn-sm text-gray-600 hover:bg-gray-100 rounded-full normal-case">
                 <i class="fas fa-arrow-left mr-2"></i> Kembali ke Lowongan
             </a>
         </div>
@@ -344,7 +344,7 @@
                                                 </div>
                                                 <h4 class="text-gray-500 font-semibold">Belum ada lamaran</h4>
                                                 <p class="text-gray-400 text-xs mt-1">Anda belum melamar posisi apapun saat ini.</p>
-                                                <a href="{{ route('external.index') }}" class="btn btn-sm btn-primary mt-4 rounded-full px-6">Cari Lowongan</a>
+                                                <a href="{{ route('recruitment.external.index') }}" class="btn btn-sm btn-primary mt-4 rounded-full px-6">Cari Lowongan</a>
                                             </div>
                                         </td>
                                     </tr>

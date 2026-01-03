@@ -28,17 +28,12 @@
             </div>
         </div>
     </div>
-
     @if(session('ok')) 
         <div class="u-badge u-badge--success u-mb-md" style="width:100%; justify-content: center;">
             <i class="fas fa-check-circle u-mr-xs"></i> {{ session('ok') }}
         </div> 
     @endif
-
-    {{-- PAGINATION --}}
     <form method="GET" action="{{ route('recruitment.external.index') }}" class="u-flex u-justify-between u-items-center u-mb-md u-flex-wrap u-gap-sm">
-        
-        {{-- Show Entries --}}
         <div class="u-flex u-items-center u-gap-xs">
             <span class="u-text-sm u-muted">Show</span>
             <select name="per_page" class="u-input u-input--sm u-w-auto" onchange="this.form.submit()">
@@ -50,7 +45,6 @@
             <span class="u-text-sm u-muted">entries</span>
         </div>
 
-        {{-- Search Box Wrapper --}}
         <div class="u-relative u-w-full md:u-w-64" style="position: relative; display: flex; align-items: center;">
             <i class="fas fa-search u-text-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 10;"></i>
             <input type="text" name="q" value="{{ request('q') }}" class="u-input u-input--sm" style="width: 100%; padding-left: 38px; padding-right: 38px;" placeholder="Cari..." onkeydown="if(event.key === 'Enter') this.form.submit()">
@@ -61,16 +55,19 @@
             @endif
         </div>
     </form>
-
     <div class="u-overflow-auto">
         <table class="u-table" id="ext-table">
             <thead>
                 <tr>
-                    <th>No Ticket</th>
+                    @if(!$isPelamar)
+                        <th>No Ticket</th>
+                    @endif
                     <th>Posisi</th>
                     <th>Unit Penempatan</th>
-                    <th>Kuota</th>
-                    <th>Pelamar Masuk</th>
+                    @if(!$isPelamar)
+                        <th>Kuota</th>
+                        <th>Pelamar Masuk</th>
+                    @endif
                     <th class="cell-actions" style="text-align: right;">Aksi</th>
                 </tr>
             </thead>
@@ -88,6 +85,7 @@
                             $posName = $row->positionObj->name ?? $row->position ?? '-';
                             $allPositions[] = $posName;
                         }
+
                         $userApps = $myApplications->get($row->id) ?? collect([]);
                         $appliedPositions = $userApps->pluck('position_applied')->filter()->toArray();
 
@@ -102,7 +100,9 @@
                         }
                     @endphp
                     <tr>
-                        <td><span class="u-badge u-badge--glass">{{ $row->ticket_number ?? '-' }}</span></td>
+                        @if(!$isPelamar)
+                            <td><span class="u-badge u-badge--glass">{{ $row->ticket_number ?? '-' }}</span></td>
+                        @endif
                         <td>
                             <div class="u-font-bold text-sm">
                                 @if(count($allPositions) > 1)
@@ -122,12 +122,15 @@
                             </div>
                         </td>
                         <td>{{ $row->unit->name ?? '-' }}</td>
-                        <td>{{ $row->headcount }} Orang</td>
-                        <td>
-                            <span class="u-badge u-badge--info">
-                                <i class="fas fa-users u-mr-xs"></i> {{ $row->applicants->count() }}
-                            </span>
-                        </td>
+                        @if(!$isPelamar)
+                            <td>{{ $row->headcount }} Orang</td>
+                            <td>
+                                <span class="u-badge u-badge--info">
+                                    <i class="fas fa-users u-mr-xs"></i> {{ $row->applicants->count() }}
+                                </span>
+                            </td>
+                        @endif
+
                         <td class="cell-actions" style="text-align: right; vertical-align: top;">
                             <div class="flex flex-col gap-2 items-end">
                                 @if($isDHC)
@@ -141,7 +144,12 @@
                                         </button>
                                     @endif
                                     @foreach($userApps as $app)
-                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200" type="button" onclick="openMyStatusModal(this)" data-status="{{ $app->status }}" data-date="{{ $app->interview_schedule }}" data-note="{{ $app->hr_notes }}">
+                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200" 
+                                                type="button" 
+                                                onclick="openMyStatusModal(this)" 
+                                                data-status="{{ $app->status }}" 
+                                                data-date="{{ $app->interview_schedule }}" 
+                                                data-note="{{ $app->hr_notes }}">
                                             <i class="fas fa-info-circle u-mr-xs"></i> 
                                             Status: {{ $app->position_applied ?? 'General' }}
                                         </button>
@@ -151,7 +159,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="u-text-center u-p-md u-muted">Belum ada lowongan dibuka.</td></tr>
+                    <tr><td colspan="{{ $isPelamar ? 3 : 6 }}" class="u-text-center u-p-md u-muted">Belum ada lowongan dibuka.</td></tr>
                 @endforelse
             </tbody>
         </table>
