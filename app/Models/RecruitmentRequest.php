@@ -16,7 +16,7 @@ class RecruitmentRequest extends Model
         'unit_id','title','type','position','position_id','headcount','justification',
         'status','requested_by','approved_by','approved_at','meta',
         'is_published','slug','published_at','work_location','employment_type','requirements',
-        'ticket_number','budget_source_type','budget_ref','target_start_date','request_type'
+        'ticket_number','budget_source_type','budget_ref','target_start_date','request_type','description'
     ];
 
     protected $casts = [

@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Public\ApplicationController as PublicApplicationController;
 use App\Http\Controllers\Public\CareersController;
 use App\Http\Controllers\Account\AccountController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController;
@@ -17,7 +16,6 @@ Route::middleware('web')->group(function () {
         Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
         Route::post('register', [RegisteredUserController::class, 'store'])->name('register');
         Route::get('/careers', [CareersController::class, 'index'])->name('careers.index');
-        Route::post('/careers/apply', [PublicApplicationController::class, 'store'])->name('careers.apply');
     });
     Route::middleware(['auth', 'team.scope'])->group(function () { 
         Route::get('/', fn() => redirect()->route('dashboard'));

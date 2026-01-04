@@ -411,6 +411,7 @@ class PrincipalApprovalController extends Controller
 
     protected function closePending(RecruitmentRequest $req, string $status, ?string $note = null): void
     {
+        /** @var \App\Models\Approval|null $appr */
         $appr = $req->approvals()->where('status', 'pending')->latest('id')->first();
         if ($appr) {
             $payload = [

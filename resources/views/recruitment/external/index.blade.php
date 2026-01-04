@@ -145,7 +145,7 @@
                                 @elseif($isPelamar)
                                     @if(count($availableJson) > 0)
                                         <button class="u-btn u-btn--sm u-btn--info u-btn--outline" 
-                                                onclick='openVacancyDetail({{ $row->id }}, @json($row), @json($availableJson))'>
+                                            onclick="openVacancyDetail({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!}, {!! htmlspecialchars(json_encode($availableJson), ENT_QUOTES, 'UTF-8') !!})">
                                             <i class="fas fa-info-circle u-mr-xs"></i> Detail
                                         </button>
                                     @endif
