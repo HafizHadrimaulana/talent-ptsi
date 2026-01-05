@@ -343,7 +343,7 @@
         <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
             <button class="u-btn u-btn--ghost" onclick="closeModal('vacancyDetailModal')">Tutup</button>
             
-            <button class="u-btn u-btn--brand" id="btnApplyFromDetail">
+            <button class="u-btn u-btn--brand" id="btnApplyFromDetail" style="text-white;">
                 <i class="fas fa-paper-plane u-mr-xs"></i> Apply Now
             </button>
         </div>

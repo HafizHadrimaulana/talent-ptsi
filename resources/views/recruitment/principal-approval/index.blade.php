@@ -1207,18 +1207,16 @@
                 currencyInputs.forEach(input => {
                     if(input) {
                         input.addEventListener('input', function(e) {
-                            // Format tampilan saat mengetik
                             this.value = formatRupiahTyping(this.value);
                         });
                     }
                 });
                 const calcTriggers = [
-                    dynInputs.salary, dynInputs.thr, dynInputs.kompensasi,
+                    dynInputs.thr, dynInputs.kompensasi,
                     dynInputs.start_date, dynInputs.end_date, dynInputs.resiko
                 ];
 
                 function calculateRemuneration() {
-                    // [UBAH DISINI] Gunakan parseRupiah, bukan parseFloat biasa
                     const salary = parseRupiah(dynInputs.salary ? dynInputs.salary.value : 0);
                     const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
                     const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
@@ -1226,14 +1224,10 @@
 
                     if (salary <= 0 || !start || !end) return;
 
-                    // [UBAH DISINI] Gunakan parseRupiah
                     let valThr = parseRupiah(dynInputs.thr ? dynInputs.thr.value : 0);
                     let valKomp = parseRupiah(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
-
-                    // Logic paksa samakan Gaji (tetap sama, variabel salary sudah bersih)
                     if (salary > 0 && valThr === 0) {
                         valThr = salary;
-                        // Update tampilan input THR dengan format rupiah
                         if(dynInputs.thr) dynInputs.thr.value = formatRupiahTyping(salary.toString());
                     }
                     if (salary > 0 && valKomp === 0) {
@@ -1242,11 +1236,11 @@
                     }
 
                     const payload = {
-                        salary: salary, // Sudah bersih (integer/float)
+                        salary: salary,
                         start_date: start,
                         end_date: end,
-                        thr: valThr,    // Sudah bersih
-                        kompensasi: valKomp, // Sudah bersih
+                        thr: valThr,
+                        kompensasi: valKomp,
                         risk_level: riskVal,
                         _token: '{{ csrf_token() }}'
                     };
@@ -1262,7 +1256,6 @@
                     .then(data => {
                         console.log("RESPONSE:", data);
                         
-                        // [UBAH DISINI] Format hasil dari server ke Rupiah sebelum ditampilkan
                         if(dynInputs.pph21)   dynInputs.pph21.value   = formatRupiahTyping(data.pph21_bulanan.toString());
                         if(dynInputs.bpjs_kes) dynInputs.bpjs_kes.value = formatRupiahTyping(data.bpjs_kesehatan.toString());
                         if(dynInputs.bpjs_tk)  dynInputs.bpjs_tk.value  = formatRupiahTyping(data.bpjs_ketenagakerjaan.toString());
@@ -1272,29 +1265,39 @@
                 let calcTimeout;
                 calcTriggers.forEach(input => {
                     if(input) {
-                        // Gunakan 'input' atau 'keyup'
-                        input.addEventListener('keyup', function() {
-                            clearTimeout(calcTimeout);
-                            calcTimeout = setTimeout(calculateRemuneration, 800); 
-                        });
-                        // Untuk dropdown/date gunakan 'change'
-                        input.addEventListener('change', calculateRemuneration);
+                        if (input.tagName === 'SELECT' || input.type === 'date') {
+                            input.addEventListener('change', calculateRemuneration);
+                        } else {
+                            input.addEventListener('keyup', function() {
+                                clearTimeout(calcTimeout);
+                                calcTimeout = setTimeout(calculateRemuneration, 800); 
+                            });
+                        }
                     }
                 });
                 if(dynInputs.salary) {
-                    dynInputs.salary.addEventListener('keyup', function(e) { // Ganti ke keyup agar realtime saat ngetik
-                        // Bersihkan titik dulu baru hitung terbilang
-                        const val = parseRupiah(e.target.value);
+                    dynInputs.salary.addEventListener('keyup', function(e) { 
+                        let rawVal = e.target.value;
+                        e.target.value = formatRupiahTyping(rawVal);
+                        
+                        const cleanVal = parseRupiah(rawVal);
+                        const formattedVal = formatRupiahTyping(cleanVal.toString());
+
+                        if(dynInputs.thr) dynInputs.thr.value = formattedVal;
+                        if(dynInputs.kompensasi) dynInputs.kompensasi.value = formattedVal;
                         
                         if(dynInputs.terbilang) {
-                            if(val && !isNaN(val)) {
-                                let text = terbilang(val) + ' RUPIAH';
+                            if(cleanVal && !isNaN(cleanVal)) {
+                                let text = terbilang(cleanVal) + ' RUPIAH';
                                 text = text.charAt(0).toUpperCase() + text.slice(1);
                                 dynInputs.terbilang.value = text;
                             } else {
                                 dynInputs.terbilang.value = '';
                             }
                         }
+
+                        clearTimeout(calcTimeout);
+                        calcTimeout = setTimeout(calculateRemuneration, 800); 
                     });
                 }
                 if(dynInputs.cv) {
