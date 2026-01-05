@@ -24,7 +24,6 @@ class ExternalRecruitmentController extends Controller
         $perPage = $request->input('per_page', 10);
         $query = RecruitmentRequest::with(['unit', 'applicants', 'positionObj']) 
             ->where('type', 'Rekrutmen')
-            ->where('is_published', true)
             ->where(function($qq) {
                 $qq->where('status', 'approved')
                 ->orWhere('status', 'like', '%Selesai%') 
@@ -51,11 +50,11 @@ class ExternalRecruitmentController extends Controller
         $vacancies = $query->orderBy('updated_at', 'desc')
                            ->paginate($perPage)
                            ->withQueryString();
-        $myApplications = collect();
+        $myApplications = [];
         if ($isPelamar) {
             $myApplications = RecruitmentApplicant::where('user_id', $me->id)
-                ->get()
-                ->groupBy('recruitment_request_id'); 
+                ->pluck('recruitment_request_id')
+                ->toArray();
         }
         $positionsMap = Position::pluck('name', 'id')->toArray();
 
@@ -70,14 +69,14 @@ class ExternalRecruitmentController extends Controller
 
     public function apply(Request $request)
     {
-        $request->validate(['recruitment_request_id' => 'required|exists:recruitment_requests,id','position_applied'=>'required|string', 'name'=>'required|string','email'=>'required|email','phone'=>'required|string','university'=>'required|string','major'=>'required|string','cv_file'=>'required|mimes:pdf|max:2048']);
+        $request->validate(['recruitment_request_id' => 'required|exists:recruitment_requests,id', 'name'=>'required|string','email'=>'required|email','phone'=>'required|string','university'=>'required|string','major'=>'required|string','cv_file'=>'required|mimes:pdf|max:2048']);
         $path = null;
         if ($request->hasFile('cv_file')) {
             $file = $request->file('cv_file');
             $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
             $path = $file->storeAs('cv_uploads', $filename, 'public');
         }
-        RecruitmentApplicant::create(['recruitment_request_id'=> $request->recruitment_request_id,'user_id'=> Auth::id(),'position_applied' => $request->position_applied,'name'=> $request->name,'email'=> $request->email,'phone'=> $request->phone,'university'=> $request->university,'major'=> $request->major,'cv_path'=> $path,'status'=>'Screening CV']);
+        RecruitmentApplicant::create(['recruitment_request_id'=> $request->recruitment_request_id,'user_id'=> Auth::id(),'name'=> $request->name,'email'=> $request->email,'phone'=> $request->phone,'university'=> $request->university,'major'=> $request->major,'cv_path'=> $path,'status'=>'Screening CV']);
         return redirect()->back()->with('ok', 'Lamaran berhasil dikirim! Silakan pantau status Anda.');
     }
 
@@ -93,11 +92,8 @@ class ExternalRecruitmentController extends Controller
         $app = RecruitmentApplicant::findOrFail($applicantId);
         $app->status = $request->status;
         $app->hr_notes = $request->notes;
-
-        if ($request->filled('interview_schedule')) {
+        if (str_contains($request->status, 'Interview')) {
             $app->interview_schedule = $request->interview_schedule; 
-        } else {
-            $app->interview_schedule = null; 
         }
         $app->save();
         return redirect()->back()->with('ok', 'Status pelamar berhasil diperbarui.');

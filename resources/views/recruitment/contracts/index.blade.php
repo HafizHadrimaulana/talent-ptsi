@@ -23,8 +23,9 @@
     /* Modal Styling - Center & Glass */
     .u-modal {
         display: flex !important; align-items: center; justify-content: center;
-        padding: 1rem; background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px);
-        z-index: 2000; position: fixed; inset: 0;
+        padding: 1rem; background-color: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+        z-index: 99999 !important; /* Super High Z-Index to cover sidebar */
+        position: fixed; inset: 0;
     }
     .u-modal[hidden] { display: none !important; }
 

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Contract, ContractTemplate, Applicant, Unit, Document, Signature, Approval, User, Employee, Person};
+use App\Models\{Contract, ContractTemplate, RecruitmentApplicant, Unit, Document, Signature, Approval, User, Employee, Person};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Storage};
 use Carbon\Carbon;
@@ -24,7 +24,7 @@ class ContractController extends Controller
         $isApproverOnly = $user->can('contract.approve') && !$user->can('contract.update');
         $selectedUnitId = $canSeeAll ? ($request->filled('unit_id') ? (int)$request->integer('unit_id') : null) : $userUnitId;
 
-        $query = Contract::with(['unit:id,name', 'employee:id,employee_id,person_id', 'document', 'person:id,full_name', 'applicant:id,full_name,position_applied'])->orderByDesc('created_at');
+        $query = Contract::with(['unit:id,name', 'employee:id,employee_id,person_id', 'document', 'person:id,full_name', 'applicant.user.person'])->orderByDesc('created_at');
 
         if ($isEmployee && !$isSuperadmin && !$isDhc && !$isApproverOnly) {
             $query->where('employee_id', $userEmployeeId)->whereIn('status', ['approved', 'signed']);
@@ -54,12 +54,28 @@ class ContractController extends Controller
                 ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
                 ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
                 ->select('ph.id', 'ph.person_id', 'e.employee_id', 'ph.title AS position_name', 'ph.start_date', 'ph.end_date', 'e.employee_status AS employment_type', 'e.unit_id', 'u.name AS unit_name', DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name"))
-                ->where('ph.category', 'job')->whereNotNull('ph.end_date')->whereDate('ph.end_date', '>=', now())
-                ->whereDate('ph.end_date', '<=', now()->addDays(30)); // UPDATE: 30 Hari
+                ->where('ph.category', 'job')->whereNotNull('ph.end_date')->whereDate('ph.end_date', '>=', now())->whereDate('ph.end_date', '<=', now()->addDays(30));
             
             if (!$canSeeAll && $userUnitId) $expiringQuery->where('e.unit_id', $userUnitId);
             $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
         }
+
+        $applicants = RecruitmentApplicant::with(['user.person', 'recruitmentRequest.unit'])
+            ->whereIn('status', config('recruitment.contract_applicant_statuses', ['APPROVED']))
+            ->get()
+            ->map(function ($item) {
+                $person = $item->user?->person;
+                return (object) [
+                    'id' => $item->id,
+                    'person_id' => $person?->id ?? $item->user?->person_id,
+                    'full_name' => $person?->full_name ?? $item->user?->name ?? 'No Name',
+                    'position_applied' => $item->position_applied,
+                    'unit_name' => $item->recruitmentRequest?->unit?->name,
+                    'unit_id' => $item->recruitmentRequest?->unit_id,
+                ];
+            })
+            ->sortBy('full_name')
+            ->values();
 
         return view('recruitment.contracts.index', [
             'contracts' => $contracts,
@@ -70,9 +86,7 @@ class ContractController extends Controller
             'statusOptions' => config('recruitment.contract_statuses'),
             'contractTypes' => collect(config('recruitment.contract_types'))->pluck('label', 'code'),
             'employmentTypes' => collect(config('recruitment.employment_types'))->map(fn($v, $k) => ['value' => $k, 'label' => $v])->values(),
-            'applicants' => Applicant::whereIn('status', config('recruitment.contract_applicant_statuses'))
-                ->select('id', 'full_name', 'position_applied', 'person_id', 'unit_id')
-                ->orderBy('full_name')->get(),
+            'applicants' => $applicants,
             'expiringContracts' => $expiringContracts,
             'canSeeAll' => $canSeeAll,
             'currentUser' => $user,
@@ -103,13 +117,13 @@ class ContractController extends Controller
             $c->unit_id = $v['unit_id'];
 
             if (in_array($v['contract_type'], ['SPK', 'PKWT_BARU']) && $v['applicant_id']) {
-                $a = Applicant::find($v['applicant_id']);
+                $a = RecruitmentApplicant::with('user')->find($v['applicant_id']);
                 $c->applicant_id = $a->id;
-                $c->person_id = $a->person_id ?? null;
+                $c->person_id = $a->user?->person_id ?? null;
                 if (empty($v['position_name'])) $c->position_name = $a->position_applied;
             } else {
                 $c->person_id = $v['person_id'] ?: Employee::where('employee_id', $v['employee_id'])->value('person_id');
-                if ($v['source_contract_id']) $c->parent_contract_id = $v['source_contract_id'];
+                $c->parent_contract_id = ($v['source_contract_id'] && Contract::where('id', $v['source_contract_id'])->exists()) ? $v['source_contract_id'] : null;
             }
             if (!$c->person_id) $c->person_id = $request->input('person_id');
 
@@ -298,7 +312,7 @@ class ContractController extends Controller
 
     public function show(Contract $contract)
     {
-        $contract->load(['unit', 'document', 'person', 'applicant']);
+        $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
         $meta = $contract->remuneration_json ?? [];
         $cand = $this->resolveCandidate($contract);
         $docUrl = ($contract->document_id || in_array($contract->status, ['approved', 'signed'])) ? route('recruitment.contracts.document', $contract) : null;
@@ -384,8 +398,15 @@ class ContractController extends Controller
 
     protected function resolveCandidate(Contract $c)
     {
-        $p = $c->person ?? ($c->person_id ? Person::find($c->person_id) : ($c->applicant ?? ($c->applicant_id ? Applicant::find($c->applicant_id) : null)));
+        $p = $c->person; 
+        if (!$p && $c->applicant_id) {
+             $app = RecruitmentApplicant::with('user.person')->find($c->applicant_id);
+             $p = $app?->user?->person;
+        }
+        if (!$p && $c->person_id) $p = Person::find($c->person_id);
+
         $d = ['name' => 'Kandidat', 'address' => '-', 'nik_ktp' => '-', 'employee_id' => '-', 'pob' => '-', 'dob' => '-', 'gender' => '-'];
+        
         if ($p) {
             $d['name'] = $p->full_name ?? $p->name ?? 'Kandidat';
             $d['address'] = $p->address ?? $p->domicile_address ?? '-';
@@ -398,6 +419,8 @@ class ContractController extends Controller
             $g = strtoupper($p->gender ?? '');
             if (in_array($g, ['L', 'MALE', 'PRIA', 'LAKI-LAKI'])) $d['gender'] = 'Laki-laki';
             elseif (in_array($g, ['P', 'FEMALE', 'WANITA', 'PEREMPUAN'])) $d['gender'] = 'Perempuan';
+        } elseif ($c->applicant) {
+             $d['name'] = $c->applicant->user?->name ?? 'Kandidat';
         }
         return $d;
     }
@@ -622,7 +645,6 @@ class ContractController extends Controller
 
         $duration = '-';
         if ($c->start_date && $c->end_date) {
-            // FIXED: Add 1 day to end date so 6 Jan 26 - 5 Jan 27 counts as full year
             $diff = $c->start_date->diff($c->end_date->copy()->addDay());
             $duration = ($diff->y ? $diff->y . " Tahun " : "") . ($diff->m ? $diff->m . " Bulan" : "");
             if (!$diff->y && !$diff->m) $duration = $diff->days . " Hari";

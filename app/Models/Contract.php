@@ -64,12 +64,11 @@ class Contract extends Model
 
     public function applicant(): BelongsTo
     {
-        return $this->belongsTo(Applicant::class, 'applicant_id');
+        return $this->belongsTo(RecruitmentApplicant::class, 'applicant_id');
     }
 
     public function employee(): BelongsTo
     {
-        // employee_id di contracts mengacu ke kolom employee_id pada employees (bukan id)
         return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 
@@ -95,8 +94,6 @@ class Contract extends Model
 
     public function signatures(): HasMany
     {
-        // Aman untuk skema signature yang foreign key-nya document_id.
-        // Kalau Signature kamu polymorphic, ganti ke morphMany sesuai struktur tabel signature kamu.
         return $this->hasMany(Signature::class, 'document_id', 'document_id');
     }
 
@@ -110,7 +107,6 @@ class Contract extends Model
             return $q;
         }
 
-        // Approver: hanya unit sendiri dan status yang relevan
         if ($user && $user->can('contract.approve')) {
             return $q->where('unit_id', $user->unit_id)
                 ->whereIn('status', ['review', 'approved', 'signed']);
@@ -125,12 +121,13 @@ class Contract extends Model
 
     public function getPartyNameAttribute(): string
     {
-        // dipakai untuk tampilan “pihak” (pegawai/pelamar)
         $p = $this->person;
         if ($p && trim(($p->full_name ?? '')) !== '') return (string)$p->full_name;
 
         $a = $this->applicant;
-        if ($a && trim(($a->full_name ?? '')) !== '') return (string)$a->full_name;
+        if ($a) {
+             return $a->user->person->full_name ?? $a->user->name ?? '-';
+        }
 
         $e = $this->employee;
         if ($e && trim(($e->employee_name ?? $e->name ?? '')) !== '') {

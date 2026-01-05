@@ -6,21 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up()
     {
+        if (Schema::hasTable('applicants') && !Schema::hasTable('recruitment_applicants')) {
+            Schema::rename('applicants', 'recruitment_applicants');
+        }
+
         Schema::table('recruitment_applicants', function (Blueprint $table) {
-            // Menambahkan kolom position_applied setelah recruitment_request_id
-            $table->string('position_applied')->nullable()->after('recruitment_request_id');
+            if (!Schema::hasColumn('recruitment_applicants', 'position_applied')) {
+                $table->string('position_applied')->nullable();
+            }
         });
     }
 
     public function down()
     {
         Schema::table('recruitment_applicants', function (Blueprint $table) {
-            $table->dropColumn('position_applied');
+            if (Schema::hasColumn('recruitment_applicants', 'position_applied')) {
+                $table->dropColumn('position_applied');
+            }
         });
+        
+        if (Schema::hasTable('recruitment_applicants') && !Schema::hasTable('applicants')) {
+            Schema::rename('recruitment_applicants', 'applicants');
+        }
     }
 };
