@@ -69,6 +69,7 @@ class Contract extends Model
 
     public function employee(): BelongsTo
     {
+        // employee_id di contracts mengacu ke kolom employee_id pada employees (bukan id)
         return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 
@@ -94,20 +95,55 @@ class Contract extends Model
 
     public function signatures(): HasMany
     {
+        // Aman untuk skema signature yang foreign key-nya document_id.
+        // Kalau Signature kamu polymorphic, ganti ke morphMany sesuai struktur tabel signature kamu.
         return $this->hasMany(Signature::class, 'document_id', 'document_id');
     }
 
     public function scopeForViewer(Builder $q, $user): Builder
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user && $user->hasRole('Superadmin')) {
             return $q;
         }
-        if ($user->can('contract.approve')) {
-            return $q->where('unit_id', $user->unit_id)->whereIn('status', ['review', 'approved', 'signed']);
+
+        if ($user && $user->hasRole('DHC')) {
+            return $q;
         }
-        if ($user->can('contract.view')) {
+
+        // Approver: hanya unit sendiri dan status yang relevan
+        if ($user && $user->can('contract.approve')) {
+            return $q->where('unit_id', $user->unit_id)
+                ->whereIn('status', ['review', 'approved', 'signed']);
+        }
+
+        if ($user && $user->can('contract.view')) {
             return $q->where('unit_id', $user->unit_id);
         }
+
         return $q->whereRaw('1 = 0');
+    }
+
+    public function getPartyNameAttribute(): string
+    {
+        // dipakai untuk tampilan “pihak” (pegawai/pelamar)
+        $p = $this->person;
+        if ($p && trim(($p->full_name ?? '')) !== '') return (string)$p->full_name;
+
+        $a = $this->applicant;
+        if ($a && trim(($a->full_name ?? '')) !== '') return (string)$a->full_name;
+
+        $e = $this->employee;
+        if ($e && trim(($e->employee_name ?? $e->name ?? '')) !== '') {
+            return (string)($e->employee_name ?? $e->name);
+        }
+
+        return '-';
+    }
+
+    public function getPeriodLabelAttribute(): string
+    {
+        $sd = $this->start_date?->format('d M Y') ?? '-';
+        $ed = $this->end_date?->format('d M Y') ?? '-';
+        return $sd . ' — ' . $ed;
     }
 }
