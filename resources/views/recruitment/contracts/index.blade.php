@@ -871,8 +871,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#detStatus').textContent = d.status;
                 select('#detUnit').textContent = d.unit?.name;
                 select('#detName').textContent = d.person_name;
-                select('#detNik').textContent = d.candidate_nik; 
-                select('#detNikReal').textContent = d.candidate_nik_real; 
+
+                // PERBAIKAN JS: Tampilkan data dari key yang benar (ui_employee_id & ui_nik_ktp)
+                select('#detNik').textContent = d.ui_employee_id || '-'; 
+                select('#detNikReal').textContent = d.ui_nik_ktp || '-'; 
+                
                 select('#detPos').textContent = d.position_name;
                 select('#detEmpType').textContent = d.employment_type;
 
@@ -1226,6 +1229,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         openModal('rejectModal');
     }
+    
+    // Auto-open modal jika ada error validasi saat Create
+    @if($errors->any() && old('contract_type'))
+        openModal('createContractModal');
+    @endif
 });
 </script>
 @endpush

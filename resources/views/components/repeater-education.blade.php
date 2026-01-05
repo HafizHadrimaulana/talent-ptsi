@@ -4,7 +4,6 @@
     </button>
     <h4 class="u-block u-text-sm u-font-bold u-mb-sm text-gray-800 mb-4 border-b pb-2">Data Pendidikan</h4>    
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {{-- Jenjang --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Jenjang</label>
             <select name="education_list[{{$idx}}][level]" class="u-input w-full">
@@ -16,29 +15,27 @@
                 <option value="S3" {{ ($edu['level'] ?? '') == 'S3' ? 'selected' : '' }}>S3</option>
             </select>
         </div>
-
-        {{-- Nama Sekolah --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Universitas / Sekolah</label>
             <input type="text" name="education_list[{{$idx}}][name]" value="{{ $edu['name'] ?? '' }}" placeholder="Nama Institusi" class="u-input w-full">
         </div>
-
-        {{-- Jurusan --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Jurusan</label>
             <input type="text" name="education_list[{{$idx}}][major]" value="{{ $edu['major'] ?? '' }}" placeholder="Jurusan" class="u-input w-full">
         </div>
-
-        {{-- Tahun --}}
-        <div class="u-space-y-sm">
-            <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Tahun Lulus</label>
-            <input type="number" name="education_list[{{$idx}}][year]" value="{{ $edu['year'] ?? '' }}" placeholder="YYYY" class="u-input w-full">
-        </div>
-
-        {{-- IPK --}}
         <div class="u-space-y-sm">
             <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">IPK / Nilai</label>
             <input type="text" name="education_list[{{$idx}}][gpa]" value="{{ $edu['gpa'] ?? '' }}" placeholder="Contoh: 3.50" class="u-input w-full">
+        </div>
+        <div class="md:col-span-2 grid grid-cols-2 gap-4">
+            <div class="u-space-y-sm">
+                <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Tahun Masuk</label>
+                <input type="number" name="education_list[{{$idx}}][year_start]" value="{{ $edu['year_start'] ?? '' }}" placeholder="YYYY" class="u-input w-full">
+            </div>
+            <div class="u-space-y-sm">
+                <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500">Tahun Lulus</label>
+                <input type="number" name="education_list[{{$idx}}][year_end]" value="{{ $edu['year_end'] ?? $edu['year'] ?? '' }}" placeholder="YYYY" class="u-input w-full">
+            </div>
         </div>
     </div>
 </div>

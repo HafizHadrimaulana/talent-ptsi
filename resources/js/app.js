@@ -1,14 +1,11 @@
 import './bootstrap';
 import { initGetDataTable } from './pages/training/training-approval/getData';
 import { initDataTables, bindExternalSearch } from './plugins/datatables';
-
 import $ from 'jquery';
+
 window.$ = window.jQuery = $;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // ================================
-  // DataTables: Users (User Management)
-  // ================================
   const usersTable = document.querySelector('#users-table');
   if (usersTable) {
     initDataTables('#users-table', {
@@ -20,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ],
     });
 
-    // external search hanya di halaman User Management
     bindExternalSearch({
       searchSelector: 'input[name="q"]',
       buttonSelector: 'form [type="submit"]',
@@ -29,9 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ================================
-  // DataTables: Roles / IP / Permissions
-  // ================================
   if (document.querySelector('#roles-table')) {
     initDataTables('#roles-table', {
       columnDefs: [
@@ -62,13 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ================================
-  // DataTables: Contracts
-  // ================================
   if (document.querySelector('#contracts-table')) {
     initDataTables('#contracts-table', {
       columnDefs: [
-        // kolom actions di paling kanan
         { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 160, responsivePriority: 1 },
         { targets: 0, responsivePriority: 2 },
         { targets: 1, responsivePriority: 3 },
@@ -98,17 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ================================
-  // Employees table + External Search
-  // ================================
   if (document.querySelector('#employees-table')) {
     initDataTables('#employees-table', {
       deferRender: true,
       searchDelay: 200,
       pageLength: 25,
       columnDefs: [
-        { targets: 4, visible: false, searchable: true }, // _hEmail
-        { targets: 5, visible: false, searchable: true }, // _hIndex/_AllBlob
+        { targets: 4, visible: false, searchable: true },
+        { targets: 5, visible: false, searchable: true },
         { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 120, responsivePriority: 1 },
         { targets: 0, responsivePriority: 2 },
         { targets: 1, responsivePriority: 3 },
@@ -128,15 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ================================
-  // KONTRAK: Filter auto-apply
-  // ================================
   const contractFilterForm = document.getElementById('contractFilterForm');
   if (contractFilterForm) {
     const filterFields = contractFilterForm.querySelectorAll('select, input[type="date"]');
     filterFields.forEach(el => {
       el.addEventListener('change', () => {
-        // auto submit (support <button type="submit"> & Safari)
         if (typeof contractFilterForm.requestSubmit === 'function') {
           contractFilterForm.requestSubmit();
         } else {
@@ -146,9 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ================================
-  // KONTRAK: Modal trigger (data-modal-target)
-  // ================================
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-modal-target]');
     if (!btn) return;
@@ -168,10 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ================================
-  // KONTRAK: E-Sign / Signature Pad
-  // (pakai window.SignaturePad kalau sudah ada script-nya)
-  // ================================
   (function initContractSignaturePad() {
     const canvas =
       document.getElementById('contractSignatureCanvas') ||
@@ -185,8 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const pad = new window.SignaturePad(canvas, {
       minWidth: 0.6,
       maxWidth: 1.8,
-      penColor: '#0f172a',              // tinta gelap, supaya tidak "putih"
-      backgroundColor: 'rgba(255,255,255,0)', // transparan, ikut background glass
+      penColor: '#0f172a',
+      backgroundColor: 'rgba(255,255,255,0)',
     });
 
     window.ContractSignaturePad = pad;
@@ -216,9 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })();
 
-  // ================================
-  // DataTables: Training / LNA
-  // ================================
   const trainingTables = document.querySelectorAll('.training-table');
   if (trainingTables.length > 0) {
     trainingTables.forEach(table => {
@@ -226,27 +198,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const userRole = table.dataset.role;
       const unitId = table.dataset.unitId;
 
-      // Panggil fungsi yang menggunakan initDataTables di dalamnya
       initGetDataTable(tableBody, { 
         role: userRole, 
         unitId: unitId 
       });
     });
 
-    // Integrasi External Search jika ada input pencarian khusus training
     if (document.querySelector('#trainingSearchInput')) {
       bindExternalSearch({
         searchSelector: '#trainingSearchInput',
         buttonSelector: '#trainingSearchForm [type="submit"]',
-        tableSelector: '.training-table', // akan apply ke semua tabel training yang aktif
+        tableSelector: '.training-table',
         delay: 250,
       });
     }
   }
 
-  // ================================
-  // Modal Detail Employee (iOS glass)
-  // ================================
   const modal          = document.getElementById('empModal');
   const loading        = document.getElementById('empLoading');
   const btnCloseTop    = document.getElementById('empClose');
@@ -264,9 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
   modal?.addEventListener('click', (e) => { if (e.target === modal) closeModalEmp(); });
   document.addEventListener('keydown', (e) => { if (!modal?.hidden && e.key === 'Escape') closeModalEmp(); });
 
-  // ================================
-  // Tabs (click + wheel + drag-scroll)
-  // ================================
   const tabsWrap = document.getElementById('iosTabs');
   const tabBtns  = tabsWrap ? Array.from(tabsWrap.querySelectorAll('.u-tab')) : [];
   const panels   = {
@@ -320,9 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tabsWrap.scrollLeft = startScroll - walk;
   });
 
-  // ================================
-  // Helpers (kv, fmtDate, getMeta, renderList)
-  // ================================
   const kv = (label, value) => (
     `<div class="kv"><div class="k"><strong>${label || ''}</strong></div><div class="v">${(value ?? '—') || '—'}</div></div>`
   );
@@ -360,9 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
     container.appendChild(frag);
   };
 
-  // ================================
-  // Detail Employee (fetch + cache)
-  // ================================
   const el = {
     photo:  document.getElementById('empPhoto'),
     name:   document.getElementById('empName'),
@@ -404,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el.photo) el.photo.src = pic || '';
       if (el.name)  el.name.textContent = emp.full_name || fallback?.full_name || '—';
       if (el.id)    el.id.textContent   = emp.employee_key ? ('ID: ' + emp.employee_key) :
-                            (fallback?.employee_id ? ('ID: ' + fallback.employee_id) : '—');
+                                            (fallback?.employee_id ? ('ID: ' + fallback.employee_id) : '—');
 
       if (el.ovLeft) {
         el.ovLeft.innerHTML =
@@ -518,9 +476,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showEmpByUrl(url, fallback);
   });
 
-  // ================================
-  // Change Password Modal (u-modal) opener (global)
-  // ================================
   window.openPwModal = function () {
     const m = document.getElementById('changePasswordModal');
     if (!m) return;

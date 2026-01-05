@@ -96,26 +96,19 @@ class ContractController extends Controller
 
     public function store(Request $request)
     {
-        set_time_limit(300);
-        ini_set('memory_limit', '512M');
-        $v = $request->validate([
-            'contract_type' => 'required|string', 'unit_id' => 'required|integer', 'new_unit_id' => 'nullable|integer', 'applicant_id' => 'nullable|string', 'employee_id' => 'nullable|string', 'person_id' => 'nullable|string',
-            'position_name' => 'nullable|string', 'employment_type' => 'nullable|string', 'start_date' => 'nullable|date', 'end_date' => 'nullable|date', 'remarks' => 'nullable|string',
-            'salary_amount' => 'nullable|string', 'salary_amount_words' => 'nullable|string', 'lunch_allowance_daily' => 'nullable|string', 'lunch_allowance_words' => 'nullable|string',
-            'allowance_special_amount' => 'nullable|string', 'allowance_special_words' => 'nullable|string', 'allowance_position_amount' => 'nullable|string', 'allowance_position_words' => 'nullable|string',
-            'allowance_communication_amount' => 'nullable|string', 'allowance_communication_words' => 'nullable|string', 'allowance_other_amount' => 'nullable|string', 'allowance_other_words' => 'nullable|string',
-            'allowance_other_desc' => 'nullable|string', 'other_benefits_desc' => 'nullable|string', 'pb_effective_end' => 'nullable|date', 'pb_compensation_amount' => 'nullable|string', 'pb_compensation_amount_words' => 'nullable|string',
-            'submit_action' => 'required|in:draft,submit', 'source_contract_id' => 'nullable|integer', 'requires_draw_signature' => 'nullable', 'requires_camera' => 'nullable', 'requires_geolocation' => 'nullable',
-        ]);
+        $v = $this->validateContract($request);
+        
         if (!$request->user()->hasRole(['Superadmin', 'DHC']) && (int)$v['unit_id'] !== (int)$request->user()->unit_id) {
             return back()->withErrors(['unit_id' => 'Unit tidak valid.'])->withInput();
         }
+
         DB::beginTransaction();
         try {
             $c = new Contract();
             $c->fill($v);
             $c->contract_no = null;
             $c->unit_id = $v['new_unit_id'] ?: $v['unit_id'];
+
             if (in_array($v['contract_type'], ['SPK', 'PKWT_BARU']) && $v['applicant_id']) {
                 $a = Applicant::find($v['applicant_id']);
                 $c->applicant_id = $a->id;
@@ -132,31 +125,40 @@ class ContractController extends Controller
             if (!$c->person_id) {
                 $c->person_id = $request->input('person_id');
             }
+
             $c->requires_draw_signature = $request->has('requires_draw_signature');
             $c->requires_camera = $request->has('requires_camera');
             $c->requires_geolocation = $request->has('requires_geolocation');
+            
             $meta = $this->collectMeta($v);
             $cand = $this->resolveCandidate($c);
             $meta['person_name'] = $cand['name'];
+            
             if ($v['new_unit_id']) {
                 $meta['new_unit_name'] = Unit::find($v['new_unit_id'])?->name;
                 $meta['new_unit_id'] = (int)$v['new_unit_id'];
             }
+            
             $c->remuneration_json = $meta;
             $c->status = ($v['submit_action'] === 'submit') ? 'review' : 'draft';
+            
             if ($c->status === 'review') {
                 $c->contract_no = $this->generateContractNumber($c);
             }
+            
             $c->created_by_user_id = $request->user()->id;
             $c->created_by_person_id = $request->user()->person_id;
             $c->save();
+            
             $this->ensureDocumentRecord($c);
+            
             if ($c->status === 'review') {
                 $this->createApproval($c, $request->user());
                 $this->generatePdfFile($c);
             }
+            
             DB::commit();
-            return redirect()->route('recruitment.contracts.index', ['unit_id' => $c->unit_id])->with('success', 'Berhasil disimpan.');
+            return redirect()->route('recruitment.contracts.index', ['unit_id' => $c->unit_id])->with('success', 'Dokumen berhasil disimpan.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
@@ -166,17 +168,11 @@ class ContractController extends Controller
     public function update(Request $request, Contract $contract)
     {
         if ($contract->status !== 'draft') {
-            return back()->withErrors('Hanya draft yang bisa diedit.');
+            return back()->withErrors('Hanya dokumen status Draft yang bisa diedit.');
         }
-        $v = $request->validate([
-            'contract_type' => 'required', 'unit_id' => 'required', 'new_unit_id' => 'nullable', 'applicant_id' => 'nullable', 'employee_id' => 'nullable', 'person_id' => 'nullable',
-            'position_name' => 'nullable', 'employment_type' => 'nullable', 'start_date' => 'nullable|date', 'end_date' => 'nullable|date', 'remarks' => 'nullable',
-            'salary_amount' => 'nullable', 'salary_amount_words' => 'nullable', 'lunch_allowance_daily' => 'nullable', 'lunch_allowance_words' => 'nullable',
-            'allowance_special_amount' => 'nullable', 'allowance_special_words' => 'nullable', 'allowance_position_amount' => 'nullable', 'allowance_position_words' => 'nullable',
-            'allowance_communication_amount' => 'nullable', 'allowance_communication_words' => 'nullable', 'allowance_other_amount' => 'nullable', 'allowance_other_words' => 'nullable',
-            'allowance_other_desc' => 'nullable', 'other_benefits_desc' => 'nullable', 'pb_effective_end' => 'nullable', 'pb_compensation_amount' => 'nullable', 'pb_compensation_amount_words' => 'nullable',
-            'submit_action' => 'required', 'source_contract_id' => 'nullable', 'requires_draw_signature' => 'nullable', 'requires_camera' => 'nullable', 'requires_geolocation' => 'nullable'
-        ]);
+        
+        $v = $this->validateContract($request);
+
         DB::beginTransaction();
         try {
             $contract->fill($v);
@@ -184,17 +180,22 @@ class ContractController extends Controller
             $contract->requires_draw_signature = $request->has('requires_draw_signature');
             $contract->requires_camera = $request->has('requires_camera');
             $contract->requires_geolocation = $request->has('requires_geolocation');
+
             if ($v['source_contract_id'] && Contract::find($v['source_contract_id'])) {
                 $contract->parent_contract_id = $v['source_contract_id'];
             }
+
             $meta = $this->collectMeta($v);
             $cand = $this->resolveCandidate($contract);
             $meta['person_name'] = $cand['name'];
+
             if ($v['new_unit_id']) {
                 $meta['new_unit_name'] = Unit::find($v['new_unit_id'])?->name;
                 $meta['new_unit_id'] = (int)$v['new_unit_id'];
             }
+
             $contract->remuneration_json = $meta;
+
             if ($v['submit_action'] === 'submit') {
                 $contract->status = 'review';
                 if (!$contract->contract_no) {
@@ -203,13 +204,27 @@ class ContractController extends Controller
                 $this->createApproval($contract, $request->user());
                 $this->generatePdfFile($contract);
             }
+
             $contract->save();
             DB::commit();
-            return back()->with('success', 'Update berhasil.');
+            return back()->with('success', 'Dokumen berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()]);
         }
+    }
+
+    private function validateContract(Request $request)
+    {
+        return $request->validate([
+            'contract_type' => 'required', 'unit_id' => 'required', 'new_unit_id' => 'nullable', 'applicant_id' => 'nullable', 'employee_id' => 'nullable', 'person_id' => 'nullable',
+            'position_name' => 'nullable', 'employment_type' => 'nullable', 'start_date' => 'nullable|date', 'end_date' => 'nullable|date', 'remarks' => 'nullable',
+            'salary_amount' => 'nullable', 'salary_amount_words' => 'nullable', 'lunch_allowance_daily' => 'nullable', 'lunch_allowance_words' => 'nullable',
+            'allowance_special_amount' => 'nullable', 'allowance_special_words' => 'nullable', 'allowance_position_amount' => 'nullable', 'allowance_position_words' => 'nullable',
+            'allowance_communication_amount' => 'nullable', 'allowance_communication_words' => 'nullable', 'allowance_other_amount' => 'nullable', 'allowance_other_words' => 'nullable',
+            'allowance_other_desc' => 'nullable', 'other_benefits_desc' => 'nullable', 'pb_effective_end' => 'nullable', 'pb_compensation_amount' => 'nullable', 'pb_compensation_amount_words' => 'nullable',
+            'submit_action' => 'required', 'source_contract_id' => 'nullable', 'requires_draw_signature' => 'nullable', 'requires_camera' => 'nullable', 'requires_geolocation' => 'nullable'
+        ]);
     }
 
     public function destroy(Contract $contract)
@@ -256,9 +271,7 @@ class ContractController extends Controller
         $data = $request->validate([
             'note' => 'nullable',
             'signature_image' => ($needsDraw ? 'required' : 'nullable'),
-            'geo_lat' => 'nullable|string',
-            'geo_lng' => 'nullable|string',
-            'geo_accuracy' => 'nullable|numeric',
+            'geo_lat' => 'nullable|string', 'geo_lng' => 'nullable|string', 'geo_accuracy' => 'nullable|numeric',
             'snapshot_image' => 'nullable|string',
         ]);
 
@@ -278,7 +291,6 @@ class ContractController extends Controller
                         $path = 'signatures/snapshots/' . $fileName; 
                         
                         Storage::disk('public')->put($path, $image_base64);
-                        
                         $snapshotPath = $path;
                         $camHash = hash('sha256', $image_base64);
                     }
@@ -306,14 +318,9 @@ class ContractController extends Controller
                 'signer_role' => $role, 'signed_at' => now(),
                 'signature_draw_data' => $data['signature_image'] ?? null,
                 'signature_draw_hash' => $sigHash,
-                'geo_lat' => $data['geo_lat'] ?? null,
-                'geo_lng' => $data['geo_lng'] ?? null,
-                'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
-                'camera_photo_path' => $snapshotPath,
-                'camera_photo_hash' => $camHash,
-                'snapshot_data' => $snapshotPath, // Isi juga utk backward compatibility
-                'verification_code' => $verifCode,
-                'ip_address' => $request->ip()
+                'geo_lat' => $data['geo_lat'] ?? null, 'geo_lng' => $data['geo_lng'] ?? null, 'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
+                'camera_photo_path' => $snapshotPath, 'camera_photo_hash' => $camHash, 'snapshot_data' => $snapshotPath, 
+                'verification_code' => $verifCode, 'ip_address' => $request->ip()
             ]);
             
             $contract->update(['status' => $status]);
@@ -394,7 +401,12 @@ class ContractController extends Controller
             'can_sign' => $canSign,
             'doc_url' => $docUrl, 'approve_url' => route('recruitment.contracts.approve', $contract), 'sign_url' => route('recruitment.contracts.sign', $contract),
             'reject_url' => route('recruitment.contracts.reject', $contract),
-            'candidate_nik' => $cand['nik'] ?? '-', 'candidate_nik_real' => $cand['nik_real'] ?? '-', 'target_role_label' => $targetRole,
+            
+            // KEY UNTUK FRONTEND (UI MODAL)
+            'ui_nik_ktp' => $cand['nik_ktp'], 
+            'ui_employee_id' => $cand['employee_id'],
+            
+            'target_role_label' => $targetRole,
             'geolocation' => $geoData,
             'progress' => [ 'ka_unit' => $kaUnitStatus, 'candidate' => $candStatus ]
         ])]);
@@ -455,18 +467,41 @@ class ContractController extends Controller
     protected function resolveCandidate(Contract $c)
     {
         $p = $c->person ?? ($c->person_id ? Person::find($c->person_id) : ($c->applicant ?? ($c->applicant_id ? Applicant::find($c->applicant_id) : null)));
-        $d = ['name' => 'Kandidat', 'address' => '-', 'nik' => '-', 'nik_real' => '-', 'pob' => '-', 'dob' => '-', 'gender' => '-'];
+        
+        $d = [
+            'name' => 'Kandidat',
+            'address' => '-',
+            'nik_ktp' => '-', 
+            'employee_id' => '-',
+            'pob' => '-',
+            'dob' => '-',
+            'gender' => '-'
+        ];
+
         if ($p) {
             $d['name'] = $p->full_name ?? $p->name ?? 'Kandidat';
             $d['address'] = $p->address ?? $p->domicile_address ?? '-';
-            $realNik = DB::table('identities')->where('person_id', $p->id)->whereIn('system', ['nik', 'ktp', 'e_ktp'])->value('external_id');
-            $d['nik'] = $c->employee_id ?? '-'; 
-            $d['nik_real'] = $realNik ?? $p->nik_hash ?? $p->nik ?? '-'; 
+            
+            // LOGIC KTP (nik_hash)
+            $ktpDb = DB::table('identities')
+                ->where('person_id', $p->id)
+                ->whereIn('system', ['nik', 'ktp', 'e_ktp'])
+                ->value('external_id');
+            $d['nik_ktp'] = $ktpDb ?? $p->nik_hash ?? $p->nik ?? '-';
+
+            // LOGIC KARYAWAN (employee_id)
+            $empId = $c->employee_id;
+            if (!$empId) {
+                 $empRecord = Employee::where('person_id', $p->id)->first();
+                 $empId = $empRecord ? $empRecord->employee_id : '-';
+            }
+            $d['employee_id'] = $empId;
+
             $d['pob'] = $p->place_of_birth ?? $p->pob ?? '-';
             $d['dob'] = $p->date_of_birth ? Carbon::parse($p->date_of_birth)->translatedFormat('d F Y') : '-';
             $g = strtoupper($p->gender ?? '');
-            if ($g === 'L' || $g === 'MALE' || $g === 'PRIA') $d['gender'] = 'Laki-laki';
-            elseif ($g === 'P' || $g === 'FEMALE' || $g === 'WANITA') $d['gender'] = 'Perempuan';
+            if (in_array($g, ['L', 'MALE', 'PRIA', 'LAKI-LAKI'])) $d['gender'] = 'Laki-laki';
+            elseif (in_array($g, ['P', 'FEMALE', 'WANITA', 'PEREMPUAN'])) $d['gender'] = 'Perempuan';
         }
         return $d;
     }
@@ -631,8 +666,13 @@ class ContractController extends Controller
         $titleSize = (float)($font['title_size_pt'] ?? 14);
         $pa = (float)($font['paragraph_after_pt'] ?? 6);
 
-        $disk = (string)($cfg['letterhead_disk'] ?? 'public');
-        $path = (string)($cfg['letterhead_path'] ?? '');
+        // KOP SURAT (Priority DB > Config)
+        $disk = 'public';
+        $path = $template->header_image_path; 
+        if (!$path) {
+            $disk = (string)($cfg['letterhead_disk'] ?? 'public');
+            $path = (string)($cfg['letterhead_path'] ?? '');
+        }
         $lhImg = $this->pdfDataUri($disk, $path);
 
         $pathRegular = storage_path((string)($font['regular_file'] ?? 'app/fonts/tahoma.ttf'));
@@ -715,7 +755,10 @@ class ContractController extends Controller
             'signer_signature' => $signerTag,
             'candidate_name' => $cand['name'],
             'candidate_address' => $cand['address'],
-            'candidate_nik' => $cand['nik'],
+            
+            'candidate_nik' => $cand['nik_ktp'], 
+            'candidate_employee_id' => $cand['employee_id'],
+            
             'pob' => $cand['pob'],
             'dob' => $cand['dob'],
             'gender' => $cand['gender'],

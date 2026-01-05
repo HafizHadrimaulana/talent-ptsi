@@ -8,19 +8,19 @@
   @if(session('swal')) <meta name="swal" content='@json(session('swal'))'> @endif
   <script>(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');}}catch(_){}})();</script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  @vite('resources/css/app.css')
-  @vite('resources/css/app-layout.css')
-  @vite('resources/css/app-ui.css')
-  @vite('resources/js/app-layout.js')
-  @vite('resources/js/app.js')
-
+  
+  {{-- VITE ASSETS: Harus Match dengan vite.config.js --}}
+  @vite([
+    'resources/css/app.css', 
+    'resources/css/app-layout.css', 
+    'resources/css/app-ui.css', 
+    'resources/js/app-layout.js', 
+    'resources/js/app.js'
+  ])
 </head>
 @php
-  /** @var \App\Models\User|null $user */
   $user = auth()->user();
   $emp  = $user?->employee;
-
-  // --- Ambil persons.full_name via relasi atau fallback query ---
   try {
       $person = $emp?->person ?: null;
       if (!$person && $emp?->person_id) {
@@ -31,22 +31,14 @@
       }
   } catch (\Throwable $e) { $person = null; }
 
-  // Display name: persons.full_name -> employees.full_name -> user.name -> 'User'
-  $displayName = ($person->full_name ?? null)
-      ?: ($emp->full_name ?? ($user?->name ?: 'User'));
-
+  $displayName = ($person->full_name ?? null) ?: ($emp->full_name ?? ($user?->name ?: 'User'));
   $displayEmail = $user?->email ?: ($emp?->email ?: ($person->email ?? '-'));
   $employeeCode = $user?->employee_id ?: ($emp?->employee_id ?? '-');
-  $jobTitle     = $emp?->latest_jobs_title
-      ?: ($emp?->job_title ?: ($user?->job_title ?? '-'));
-  $unitName     = $emp?->latest_jobs_unit
-      ?: ($emp?->unit_name ?? optional($user?->unit)->name ?? '-');
-
-  // Roles: gabungkan, lalu format badge teks sederhana
+  $jobTitle     = $emp?->latest_jobs_title ?: ($emp?->job_title ?: ($user?->job_title ?? '-'));
+  $unitName     = $emp?->latest_jobs_unit ?: ($emp?->unit_name ?? optional($user?->unit)->name ?? '-');
   $roleNames   = collect($user?->getRoleNames() ?? [])->values();
   $roleBadge   = $roleNames->isEmpty() ? '-' : e($roleNames->implode(', '));
 
-  // Inisial avatar (2 huruf)
   $initials = function(string $name) {
       $name = trim($name);
       if ($name === '') return 'U';
@@ -56,7 +48,6 @@
       return $a.($b ?: '');
   };
 
-  // FOTO: person → employee → user → gravatar(404)
   $urlFrom = function($obj, array $keys){
       foreach($keys as $k){
           if(!$obj) continue;
@@ -79,7 +70,6 @@
 @endphp
 
 <body class="{{ session('sidebar','expanded') === 'collapsed' ? 'sidebar-collapsed' : '' }}">
-  <!-- UNIVERSAL iOS LIQUID GLASS LOADER -->
   <div id="appLoader" aria-live="polite" aria-busy="true">
     <div class="loader-card glass">
       <div class="liquid" aria-hidden="true">
@@ -91,10 +81,8 @@
 
   <div class="overlay" id="overlay" hidden></div>
 
-  {{-- SIDEBAR DIPISAH KE PARTIAL --}}
   @include('partials.sidebar')
 
-  <!-- ===== Topbar ===== -->
   <header class="topbar glass floating" id="topbar">
     <button id="hamburgerBtn" class="hamburger" aria-label="Toggle sidebar" aria-expanded="false">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
@@ -107,12 +95,9 @@
 
     <div class="top-actions">
       <div class="dropdown-wrap">
-        {{-- === GLOBAL NOTIFICATION CENTER === --}}
         @auth
           @php
-             // Gabung notifikasi dari View Composer
              $appNotifs = $globalNotifications ?? collect();
-            
              $sysNotifs = collect();
              $unreadSysCount = 0;
              if (method_exists(auth()->user(), 'notificationsSite')) {
@@ -126,7 +111,7 @@
                              'subtitle' => '',
                              'desc' => $n->message,
                              'status' => 'info',
-                             'url' => '#', // Atau link detail notif sistem
+                             'url' => '#', 
                              'time' => $n->created_at,
                              'icon' => 'fa-bell',
                              'color_class' => 'text-gray-500'
@@ -134,15 +119,12 @@
                      }
                  } catch (\Throwable $e) {}
              }
-
-             // Gabungkan semua
              $allNotifs = $appNotifs->merge($sysNotifs)->sortByDesc('time');
              $totalCount = $appNotifs->count() + $unreadSysCount;
           @endphp
 
           <button id="globalNotifBtn" class="top-btn" type="button" aria-expanded="false" title="Notifications" style="position: relative;">
             <i class="fa-solid fa-bell" style="font-size: 1.1rem; color: #5951f3ff;"></i>
-            
             @if($totalCount > 0)
               <span class="badge" style="color: red;">{{ $totalCount }}</span>
             @endif
@@ -164,8 +146,6 @@
                    @php
                        $bgItem = '#fff';
                        $borderLeft = '4px solid transparent';
-                       
-                       // Warna border kiri berdasarkan tipe notifikasi
                        if ($notif->type === 'izin_prinsip') {
                            $borderLeft = '4px solid #4f46e5'; 
                        } elseif ($notif->type === 'training') {
@@ -173,12 +153,9 @@
                        } else {
                            $borderLeft = '4px solid #9ca3af';
                        }
-
-                       // Warna SLA
                        $daysDiff = $notif->time ? $notif->time->diffInDays(now()) : 0;
                        $timeColor = '#2563eb';
                        $extraLabel = '';
-                       
                        if ($daysDiff >= 5) {
                            $timeColor = '#dc2626';
                            $extraLabel = '🔺';
@@ -191,8 +168,6 @@
                    <li class="notif-item" style="padding: 0;">
                      <a href="{{ $notif->url }}" 
                         style="display: block; padding: 12px 16px; text-decoration: none; border-bottom: 1px solid #f3f4f6; background-color: {{ $bgItem }}; border-left: {{ $borderLeft }}; transition: background-color 0.2s;">
-                        
-                        {{-- Tipe & Waktu --}}
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px; align-items: center;">
                            <div style="display: flex; align-items: center; gap: 6px;">
                                <i class="fa-solid {{ $notif->icon }}" style="font-size: 0.7rem; color: #6b7280;"></i>
@@ -200,18 +175,14 @@
                                  {{ str_replace('_', ' ', $notif->type) }}
                                </span>
                            </div>
-                           
                            <span style="font-size: 0.7rem; font-weight: 700; color: {{ $timeColor }};">
                              {{ $notif->time ? str_replace('yang ', '', $notif->time->locale('id')->diffForHumans()) : '' }}
                              @if($extraLabel) <span style="margin-left: 2px;">{{ $extraLabel }}</span> @endif
                            </span>
                         </div>
-                        {{-- Title --}}
                         <div style="font-size: 0.9rem; font-weight: 600; color: #1f2937; margin-bottom: 4px; line-height: 1.3;">
                           {{ $notif->title }}
                         </div>
-                        
-                        {{-- Subtitle / Deskripsi --}}
                         @if($notif->subtitle || $notif->desc)
                         <div style="display: flex; gap: 8px; align-items: center; font-size: 0.75rem; color: #4b5563;">
                           @if($notif->subtitle) <span>{{ $notif->subtitle }}</span> @endif
@@ -224,18 +195,11 @@
                  @endforeach
               @endif
             </ul>
-            
-            {{-- Footer Dropdown --}}
-            {{-- <div style="padding: 8px; text-align: center; border-top: 1px solid #eee;">
-                <a href="#" style="font-size: 0.75rem; font-weight: 600; text-decoration: none; color: #4f46e5;">Lihat Semua</a>
-            </div> --}}
           </div>
-
           <script>
             document.addEventListener('DOMContentLoaded', function() {
               const btn = document.getElementById('globalNotifBtn');
               const dd = document.getElementById('globalNotifDropdown');
-              
               if(btn && dd) {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
@@ -244,8 +208,6 @@
                   });
                   dd.hidden = !dd.hidden;
                 });
-
-                // Tutup saat klik di luar area notifikasi
                 document.addEventListener('click', (e) => {
                   if (!btn.contains(e.target) && !dd.contains(e.target)) {
                     dd.hidden = true;
@@ -330,7 +292,6 @@
     </div>
   </header>
 
-  <!-- ===== Main ===== -->
   <main class="main" id="main">
     @yield('content')
   </main>
@@ -341,7 +302,6 @@
     $pwAction = \Illuminate\Support\Facades\Route::has('password.update') ? route('password.update') : null;
   @endphp
 
-  <!-- ===== Password Modal ===== -->
   <div id="pwModal" class="u-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pwTitle">
     <div class="u-modal__card" role="document">
       <div class="u-modal__head">
@@ -377,7 +337,6 @@
     </div>
   </div>
 
-  <!-- ===== Loader & Utilities ===== -->
   <script>
   (function () {
     var root = document.getElementById('appLoader');
@@ -421,7 +380,6 @@
     const SHOULD_OPEN_PW = @json(session('modal')==='changePassword' || $errors->has('current_password') || $errors->has('password'));
     if (SHOULD_OPEN_PW) { document.addEventListener('DOMContentLoaded',()=>window.__openModal('pwModal')); }
 
-    // AJAX fallback update password
     const pwForm=document.getElementById('pwForm');
     pwForm?.addEventListener('submit',async function(e){
       if(pwForm.getAttribute('action'))return;
@@ -434,48 +392,21 @@
         password_confirmation:String(fd.get('password_confirmation')||'')
       };
       try{
-        if(!payload.current_password||!payload.password||!payload.password_confirmation)
-          throw new Error('Lengkapi semua kolom.');
-        if(payload.password.length<8)
-          throw new Error('Password minimal 8 karakter.');
-        if(payload.password!==payload.password_confirmation)
-          throw new Error('Konfirmasi tidak cocok.');
+        if(!payload.current_password||!payload.password||!payload.password_confirmation) throw new Error('Lengkapi semua kolom.');
+        if(payload.password.length<8) throw new Error('Password minimal 8 karakter.');
+        if(payload.password!==payload.password_confirmation) throw new Error('Konfirmasi tidak cocok.');
         const csrf=document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';
         const resp=await fetch("{{ url('/account/password') }}",{
           method:'PUT',
-          headers:{
-            'Accept':'application/json',
-            'Content-Type':'application/json',
-            'X-CSRF-TOKEN':csrf
-          },
+          headers:{ 'Accept':'application/json', 'Content-Type':'application/json', 'X-CSRF-TOKEN':csrf },
           body:JSON.stringify(payload),
           credentials:'same-origin'
         });
-        if(resp.status===204){
-          toastOk('Berhasil','Password diperbarui.');
-          window.__closeModal('pwModal');
-          return;
-        }
-        if(resp.ok){
-          let j={};try{j=await resp.json();}catch(_){}
-          toastOk('Berhasil',j.message||'Password diperbarui.');
-          window.__closeModal('pwModal');
-          return;
-        }
-        if(resp.status===422){
-          let j={};try{j=await resp.json();}catch(_){}
-          throw new Error(
-            (j.errors&&(j.errors.current_password?.[0]||j.errors.password?.[0]))
-            || j.message || 'Validasi gagal'
-          );
-        }
-        let j={};try{j=await resp.json();}catch(_){}
-        throw new Error(j.message||'Gagal memperbarui password.');
-      }catch(err){
-        toastErr('Gagal',err?.message||'Terjadi kesalahan.');
-      }finally{
-        btn.disabled=false;
-      }
+        if(resp.status===204){ toastOk('Berhasil','Password diperbarui.'); window.__closeModal('pwModal'); return; }
+        if(resp.ok){ let j={};try{j=await resp.json();}catch(_){} toastOk('Berhasil',j.message||'Password diperbarui.'); window.__closeModal('pwModal'); return; }
+        if(resp.status===422){ let j={};try{j=await resp.json();}catch(_){} throw new Error((j.errors&&(j.errors.current_password?.[0]||j.errors.password?.[0])) || j.message || 'Validasi gagal'); }
+        let j={};try{j=await resp.json();}catch(_){} throw new Error(j.message||'Gagal memperbarui password.');
+      }catch(err){ toastErr('Gagal',err?.message||'Terjadi kesalahan.'); }finally{ btn.disabled=false; }
     });
   })();
   </script>

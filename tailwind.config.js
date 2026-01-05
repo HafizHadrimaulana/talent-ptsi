@@ -18,9 +18,9 @@ export default {
     },
     extend: {
       colors: {
-        brand:      'oklch(0.62 0.12 255)',
-        'brand-600':'oklch(0.58 0.12 255)',
-        'brand-700':'oklch(0.52 0.12 255)',
+        brand:       'oklch(0.62 0.12 255)',
+        'brand-600': 'oklch(0.58 0.12 255)',
+        'brand-700': 'oklch(0.52 0.12 255)',
       },
       borderRadius: {
         md: '0.9rem',
