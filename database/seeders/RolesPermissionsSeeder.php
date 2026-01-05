@@ -98,8 +98,7 @@ class RolesPermissionsSeeder extends Seeder
                 'reports.export',
 
                 // Applicant 
-                'applicant.data.view',  
-                'careers.view',
+                'applicant.data.view',
             ];
 
             foreach ($perms as $p) {
@@ -164,7 +163,7 @@ class RolesPermissionsSeeder extends Seeder
 
             $role['Pelamar']->syncPermissions([
                 'applicant.data.view', 
-                'careers.view',
+                'recruitment.external.apply',
             ]);
         });
 
