@@ -127,7 +127,7 @@
           <div id="nav-training"
               class="nav-children {{ $trOpen ? 'open' : '' }}" 
               data-accordion-panel="nav-training">
-            @if($isSuper || $user?->can('training.view'))
+            @if($isSuper || $user?->can('training.dashboard.view'))
             <a class="nav-item nav-child {{ request()->routeIs('training.dashboard')?'active':'' }}"
               href="{{ Route::has('training.dashboard') ? route('training.dashboard') : '#' }}">
               <span class="icon">📊</span><span class="label">Dashboard</span>
@@ -154,13 +154,6 @@
               <span class="icon">🗂️</span><span class="label">Training Management</span>
             </a>
             @endif
-
-            <!-- @if($isSuper || $user?->can('training.view'))
-            <a class="nav-item nav-child {{ request()->routeIs('training.principal-approval')?'active':'' }}"
-                href="{{ \Illuminate\Support\Facades\Route::has('training.principal-approval') ? route('training.principal-approval') : '#' }}">
-                <span class="icon"></span><span class="label">Principal Approval</span>
-            </a>
-            @endif -->
           </div>
       </div>
     </nav>

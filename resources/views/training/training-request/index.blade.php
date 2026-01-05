@@ -14,17 +14,17 @@
 
     {{-- ===== QUICK STATS (Dynamic) ===== --}}
     <div class="grid grid-cols-1 md:grid-cols-3 u-gap-md u-mb-xl">
-        <div class="u-card u-p-md border-l-4 border-blue-500 bg-blue-50/50">
-            <div class="u-muted u-text-xs u-uppercase u-font-bold">Total Pelatihan</div>
-            <div class="u-text-xl u-font-bold text-blue-700">{{ $totalPelatihan }}</div>
-        </div>
         <div class="u-card u-p-md border-l-4 border-yellow-500 bg-yellow-50/50">
-            <div class="u-muted u-text-xs u-uppercase u-font-bold">Sedang Berjalan</div>
+            <div class="u-muted u-text-xs u-uppercase u-font-bold">Pelatihan Sedang Berjalan</div>
             <div class="u-text-xl u-font-bold text-yellow-700">{{ $sedangBerjalan }}</div>
         </div>
         <div class="u-card u-p-md border-l-4 border-green-500 bg-green-50/50">
             <div class="u-muted u-text-xs u-uppercase u-font-bold">Selesai/Lulus</div>
             <div class="u-text-xl u-font-bold text-green-700">{{ $selesaiPelatihan }}</div>
+        </div>
+        <div class="u-card u-p-md border-l-4 border-blue-500 bg-blue-50/50">
+            <div class="u-muted u-text-xs u-uppercase u-font-bold">Butuh Evaluasi</div>
+            <div class="u-text-xl u-font-bold text-blue-700">{{ $butuhEvaluasi }}</div>
         </div>
     </div>
 

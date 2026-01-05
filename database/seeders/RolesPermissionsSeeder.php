@@ -93,7 +93,7 @@ class RolesPermissionsSeeder extends Seeder
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit','recruitment.approve','recruitment.reject',
                 'recruitment.external.view','recruitment.external.apply','recruitment.external.manage',
                 'contract.view','contract.create','contract.update','contract.delete','contract.approve','contract.sign',
-                'training.view', 
+                'training.dashboard.view', 'training.view', 
                 'training.management.view', 'training.management.approve',
                 'reports.export',
 
@@ -134,7 +134,7 @@ class RolesPermissionsSeeder extends Seeder
                 'recruitment.view','recruitment.create','recruitment.update','recruitment.submit',
                 'contract.view','contract.create','contract.update','contract.delete',
                 'reports.export','recruitment.external.view','recruitment.external.manage',
-                'training.view',
+                'training.dashboard.view', 'training.view',
                 'training.management.view', 
             ]);
 
@@ -143,7 +143,7 @@ class RolesPermissionsSeeder extends Seeder
                 'org.view',
                 'recruitment.view','recruitment.approve','recruitment.reject',
                 'contract.view','contract.approve',
-                'training.view',
+                'training.dashboard.view', 'training.view',
                 'training.management.view', 'training.management.approve',
             ]);
 

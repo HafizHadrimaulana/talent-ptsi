@@ -35,34 +35,31 @@ class TrainingRequestController extends Controller
             return redirect()->back()->with('error', 'Data karyawan tidak ditemukan.');
         }
 
-        $totalPelatihan = TrainingRequest::where('employee_id', $employeeId)
-            ->whereIn('status_approval_training', [
-                'in_review_gmvp', 
-                'in_review_dhc', 
-                'in_review_avpdhc', 
-                'in_review_vpdhc',
-                'approved'
-            ])->count();
-
         $sedangBerjalan = TrainingRequest::where('employee_id', $employeeId)
             ->where('status_approval_training', 'approved')
             ->count();
-
+        
         $selesaiPelatihan = TrainingRequest::where('employee_id', $employeeId)
-            ->where('status_approval_training', 'completed') // Sesuaikan nama status final Anda
+            ->where('status_approval_training', 'completed')
             ->count();
+
+        $butuhEvaluasi = TrainingRequest::where('employee_id', $employeeId)
+            ->whereIn('status_approval_training', [
+                'approved'
+            ])->count();
 
         $listTraining = TrainingRequest::with(['trainingReference'])
             ->where('employee_id', $employeeId)
             ->orderBy('created_at', 'desc')
+            ->where('status_approval_training', 'approved')
             ->get();
 
         Log::info('List Training', ['listTraining' => $listTraining]);
 
         return view('training.training-request.index', compact(
-            'totalPelatihan', 
             'sedangBerjalan', 
             'selesaiPelatihan', 
+            'butuhEvaluasi', 
             'listTraining'
         ));
     }
