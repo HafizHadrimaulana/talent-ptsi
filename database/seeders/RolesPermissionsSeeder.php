@@ -17,7 +17,6 @@ class RolesPermissionsSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // 2. Kosongkan tabel terkait (Hanya untuk memastikan benar-benar bersih)
-        // Matikan foreign key checks sementara agar bisa truncate
         Schema::disableForeignKeyConstraints();
         DB::table('role_has_permissions')->truncate();
         DB::table('model_has_roles')->truncate();
@@ -26,7 +25,7 @@ class RolesPermissionsSeeder extends Seeder
         DB::table('permissions')->truncate();
         Schema::enableForeignKeyConstraints();
 
-        // 3. Buat Permissions
+        // 3. Buat Permissions (Gabungan Lengkap)
         $permissions = [
             'users.view', 'users.create', 'users.update', 'users.delete',
             'rbac.view', 'rbac.assign',
@@ -36,6 +35,7 @@ class RolesPermissionsSeeder extends Seeder
             'recruitment.external.view', 'recruitment.external.apply', 'recruitment.external.manage',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve', 'contract.sign',
             'training.view',
+            'training.dashboard.view', // Ditambahkan dari logika bawah
             'training.management.view', 'training.management.approve',
             'reports.export',
             
@@ -62,7 +62,7 @@ class RolesPermissionsSeeder extends Seeder
             'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.approve', 'recruitment.reject',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve',
             'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
-            'training.view',
+            'training.view', 'training.dashboard.view',
             'training.management.view', 'training.management.approve',
         ]);
 
@@ -85,7 +85,7 @@ class RolesPermissionsSeeder extends Seeder
             'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete',
             'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
-            'training.view',
+            'training.view', 'training.dashboard.view',
             'training.management.view',
         ]);
 
@@ -96,7 +96,7 @@ class RolesPermissionsSeeder extends Seeder
             'org.view',
             'recruitment.view', 'recruitment.approve', 'recruitment.reject',
             'contract.view', 'contract.approve',
-            'training.view',
+            'training.view', 'training.dashboard.view',
             'training.management.view', 'training.management.approve',
         ]);
 
@@ -114,130 +114,20 @@ class RolesPermissionsSeeder extends Seeder
             'training.management.view',
         ]);
 
-<<<<<<< HEAD
-        // --- Role: Karyawan ---
+        // --- Role: Karyawan (Ditambahkan dari logika bawah) ---
         $roleKaryawan = Role::create(['name' => 'Karyawan', 'guard_name' => 'web']);
         $roleKaryawan->givePermissionTo([
-            'employees.view', 'training.view',
+            'employees.view',
+            'training.view',
         ]);
-=======
-                if ($dropIds->isNotEmpty()) {
-                    DB::table('model_has_roles')->whereIn('role_id', $dropIds)->update(['role_id' => $keepId]);
-                    DB::table('role_has_permissions')->whereIn('role_id', $dropIds)->update(['role_id' => $keepId]);
-                    DB::table('roles')->whereIn('id', $dropIds)->delete();
-                }
 
-                /** @var Role $role */
-                $role = Role::query()->findOrFail($keepId);
-                return $role;
-            };
-
-            $finalRoles = ['Superadmin','DHC','Dir SDM','SDM Unit','Kepala Unit','Karyawan','Pelamar', 'AVP', 'DBS Unit'];
-            $role = [];
-            foreach ($finalRoles as $rn) {
-                $role[$rn] = $keepRole($rn);
-            }
-
-            $roleGroups = DB::table('roles')
-                ->select('name','guard_name', DB::raw('COUNT(*) as cnt'))
-                ->groupBy('name','guard_name')
-                ->having('cnt','>',1)
-                ->get();
-
-            foreach ($roleGroups as $g) {
-                $role[$g->name] = $keepRole($g->name);
-            }
-
-            $perms = [
-                'users.view','users.create','users.update','users.delete','rbac.view','rbac.assign',
-                'employees.view',
-                'org.view','org.create','org.update','org.delete',
-                'recruitment.view','recruitment.create','recruitment.update','recruitment.submit','recruitment.approve','recruitment.reject',
-                'recruitment.external.view','recruitment.external.apply','recruitment.external.manage',
-                'contract.view','contract.create','contract.update','contract.delete','contract.approve','contract.sign',
-                'training.dashboard.view', 'training.view', 
-                'training.management.view', 'training.management.approve',
-                'reports.export',
-
-                // Applicant 
-                'applicant.data.view',  
-                'careers.view',
-            ];
-
-            foreach ($perms as $p) {
-                Permission::firstOrCreate(['name' => $p, 'guard_name' => 'web']);
-            }
-
-            $role['Superadmin']->syncPermissions(Permission::all());
-
-            $role['DHC']->syncPermissions([
-                'users.view','rbac.view','rbac.assign',
-                'employees.view',
-                'org.view','org.create','org.update','org.delete',
-                'recruitment.view','recruitment.create','recruitment.update','recruitment.approve','recruitment.reject',
-                'contract.view','contract.create','contract.update','contract.delete','contract.approve',
-                'reports.export','recruitment.external.view','recruitment.external.manage',
-                'training.dashboard.view', 'training.view', 
-                'training.management.view', 'training.management.approve', 
-            ]);
-
-            $role['Dir SDM']->syncPermissions([
-                'employees.view',
-                'org.view','org.update',
-                'recruitment.view','recruitment.approve','recruitment.reject',
-                'contract.view','contract.approve',
-                'training.view','reports.export',
-            ]);
-
-            $role['SDM Unit']->syncPermissions([
-                'users.view',
-                'employees.view',
-                'org.view','org.create','org.update',
-                'recruitment.view','recruitment.create','recruitment.update','recruitment.submit',
-                'contract.view','contract.create','contract.update','contract.delete',
-                'reports.export','recruitment.external.view','recruitment.external.manage',
-                'training.dashboard.view', 'training.view',
-                'training.management.view', 
-            ]);
-
-            $role['Kepala Unit']->syncPermissions([
-                'employees.view',
-                'org.view',
-                'recruitment.view','recruitment.approve','recruitment.reject',
-                'contract.view','contract.approve',
-                'training.dashboard.view', 'training.view',
-                'training.management.view', 'training.management.approve',
-            ]);
-
-            $role['AVP']->syncPermissions([
-                'training.view',
-                'training.management.view', 'training.management.approve',
-            ]);
-
-            $role['DBS Unit']->syncPermissions([
-                'training.view',
-                'training.management.view',
-            ]);
-
-            $role['Karyawan']->syncPermissions([
-                'employees.view','training.view',
-            ]);
-
-
-            $role['Pelamar']->syncPermissions([
-                'applicant.data.view', 
-                'careers.view',
-            ]);
-        });
->>>>>>> develop
-
-        // --- Role: Pelamar ---
+        // --- Role: Pelamar (Ditambahkan dari logika bawah) ---
         $rolePelamar = Role::create(['name' => 'Pelamar', 'guard_name' => 'web']);
         $rolePelamar->givePermissionTo([
-            'applicant.data.view',
+            'applicant.data.view', 
             'recruitment.external.apply',
         ]);
-        
+
         // 5. Final cache clear
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
