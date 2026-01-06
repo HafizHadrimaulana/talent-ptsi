@@ -144,20 +144,20 @@
                                     </button>
                                 @elseif($isPelamar)
                                     @if(count($availableJson) > 0)
-                                        <button class="u-btn u-btn--sm u-btn--info u-btn--outline" 
-                                            onclick="openVacancyDetail({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!}, {!! htmlspecialchars(json_encode($availableJson), ENT_QUOTES, 'UTF-8') !!})">
-                                            <i class="fas fa-info-circle u-mr-xs"></i> Detail
+                                        <button class="u-btn u-btn--sm u-btn--brand" 
+                                                onclick='openApplyModal({{ $row->id }}, @json($availableJson), "{{ $row->ticket_number }}")'>
+                                            <i class="fas fa-paper-plane u-mr-xs"></i> Lamar
                                         </button>
                                     @endif
                                     @foreach($userApps as $app)
-                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200" 
+                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs" 
                                                 type="button" 
                                                 onclick="openMyStatusModal(this)" 
                                                 data-status="{{ $app->status }}" 
                                                 data-date="{{ $app->interview_schedule }}" 
                                                 data-note="{{ $app->hr_notes }}">
                                             <i class="fas fa-info-circle u-mr-xs"></i> 
-                                            Posisi: {{ $app->position_applied ?? 'General' }}
+                                            Status: {{ $app->position_applied ?? 'General' }}
                                         </button>
                                     @endforeach
                                 @endif
