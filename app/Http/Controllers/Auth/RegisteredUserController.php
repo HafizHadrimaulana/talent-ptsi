@@ -54,7 +54,6 @@ class RegisteredUserController extends Controller
         if ($role->permissions->isEmpty()) {
             $role->syncPermissions([
                 'applicant.data.view', 
-                'careers.view',
                 'recruitment.external.view',
                 'recruitment.external.apply'
             ]);

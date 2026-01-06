@@ -25,7 +25,7 @@ class PrincipalApprovalController extends Controller
         }
         $jobTitle = DB::table('employees')
             ->join('positions', 'employees.position_id', '=', 'positions.id')
-            ->where('employees.person_id', $user->person_id) // Gunakan person_id, bukan user_id
+            ->where('employees.person_id', $user->person_id) 
             ->value('positions.name');   
         return $jobTitle;
     }
@@ -492,7 +492,7 @@ class PrincipalApprovalController extends Controller
         return $pdf->stream($filename);
     }
 
-    public function publish(RecruitmentRequest $req, Request $request) // Pastikan Request di-import
+    public function publish(RecruitmentRequest $req, Request $request) 
     {
         $me = Auth::user();
         $isDhc = $me->hasRole('DHC') || $me->hasRole('Superadmin');
