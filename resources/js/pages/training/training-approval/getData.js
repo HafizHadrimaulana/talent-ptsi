@@ -337,9 +337,9 @@ const formatDate = (d) =>
         : "-";
 const renderStatusBadge = (s) => {
     const MAP = {
-        approved: "u-badge--success",
+        approved: "bg-blue-100 text-blue-700",
         rejected: "u-badge--danger",
-        in_review_dhc: "u-badge--info",
+        in_review_gmvp: "u-badge--info",
     };
     return `<div class="text-center"><span class="u-badge ${
         MAP[s] || "u-badge--secondary"

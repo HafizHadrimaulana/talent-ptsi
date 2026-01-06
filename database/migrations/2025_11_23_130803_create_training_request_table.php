@@ -25,6 +25,7 @@ return new class extends Migration
             $table->decimal('estimasi_total_biaya', 15, 2)->nullable();
 
             $table->string('lampiran_penawaran')->nullable();
+            $table->string('dokumen_sertifikat')->nullable();
             
             $table->foreign('training_reference_id')->references('id')->on('training_references')->onDelete('cascade');
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
