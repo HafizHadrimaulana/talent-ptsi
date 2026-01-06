@@ -50,11 +50,12 @@ class ExternalRecruitmentController extends Controller
         $vacancies = $query->orderBy('updated_at', 'desc')
                            ->paginate($perPage)
                            ->withQueryString();
-        $myApplications = [];
+        
+        $myApplications = collect([]); 
         if ($isPelamar) {
             $myApplications = RecruitmentApplicant::where('user_id', $me->id)
-                ->pluck('recruitment_request_id')
-                ->toArray();
+                ->get()
+                ->groupBy('recruitment_request_id');
         }
         $positionsMap = Position::pluck('name', 'id')->toArray();
 

@@ -17,7 +17,6 @@ class RolesPermissionsSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // 2. Kosongkan tabel terkait (Hanya untuk memastikan benar-benar bersih)
-        // Matikan foreign key checks sementara agar bisa truncate
         Schema::disableForeignKeyConstraints();
         DB::table('role_has_permissions')->truncate();
         DB::table('model_has_roles')->truncate();
@@ -26,7 +25,7 @@ class RolesPermissionsSeeder extends Seeder
         DB::table('permissions')->truncate();
         Schema::enableForeignKeyConstraints();
 
-        // 3. Buat Permissions
+        // 3. Buat Permissions (Gabungan Lengkap)
         $permissions = [
             'users.view', 'users.create', 'users.update', 'users.delete',
             'rbac.view', 'rbac.assign',
@@ -36,6 +35,7 @@ class RolesPermissionsSeeder extends Seeder
             'recruitment.external.view', 'recruitment.external.apply', 'recruitment.external.manage',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve', 'contract.sign',
             'training.view',
+            'training.dashboard.view', // Ditambahkan dari logika bawah
             'training.management.view', 'training.management.approve',
             'reports.export',
             
@@ -62,7 +62,7 @@ class RolesPermissionsSeeder extends Seeder
             'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.approve', 'recruitment.reject',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve',
             'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
-            'training.view',
+            'training.view', 'training.dashboard.view',
             'training.management.view', 'training.management.approve',
         ]);
 
@@ -85,7 +85,7 @@ class RolesPermissionsSeeder extends Seeder
             'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete',
             'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
-            'training.view',
+            'training.view', 'training.dashboard.view',
             'training.management.view',
         ]);
 
@@ -96,7 +96,7 @@ class RolesPermissionsSeeder extends Seeder
             'org.view',
             'recruitment.view', 'recruitment.approve', 'recruitment.reject',
             'contract.view', 'contract.approve',
-            'training.view',
+            'training.view', 'training.dashboard.view',
             'training.management.view', 'training.management.approve',
         ]);
 
@@ -114,19 +114,20 @@ class RolesPermissionsSeeder extends Seeder
             'training.management.view',
         ]);
 
-        // --- Role: Karyawan ---
+        // --- Role: Karyawan (Ditambahkan dari logika bawah) ---
         $roleKaryawan = Role::create(['name' => 'Karyawan', 'guard_name' => 'web']);
         $roleKaryawan->givePermissionTo([
-            'employees.view', 'training.view',
+            'employees.view',
+            'training.view',
         ]);
 
-        // --- Role: Pelamar ---
+        // --- Role: Pelamar (Ditambahkan dari logika bawah) ---
         $rolePelamar = Role::create(['name' => 'Pelamar', 'guard_name' => 'web']);
         $rolePelamar->givePermissionTo([
-            'applicant.data.view',
+            'applicant.data.view', 
             'recruitment.external.apply',
         ]);
-        
+
         // 5. Final cache clear
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
