@@ -96,8 +96,6 @@ class RolesPermissionsSeeder extends Seeder
                 'training.view', 
                 'training.management.view', 'training.management.approve',
                 'reports.export',
-
-                // Applicant 
                 'applicant.data.view',
             ];
 

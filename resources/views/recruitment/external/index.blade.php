@@ -388,7 +388,7 @@
         const noteEl = document.getElementById('hr_notes_display');
         const boxTitle = box.querySelector('.u-font-bold');
         badge.textContent = status;
-        badge.className = 'status-badge'; // Reset class
+        badge.className = 'status-badge';
         if (['Passed', 'Hired', 'Offering', 'Diterima'].some(s => status.includes(s))) {
             badge.classList.add('st-passed');
         } else if (['Rejected', 'Failed', 'Ditolak'].some(s => status.includes(s))) {
@@ -504,7 +504,6 @@
         const needSchedule = ['Psikotes','Tes Teknis','FGD', 'Interview HR', 'Interview User', 'Medical Check-Up'];
         if(needSchedule.includes(val)) {
             group.style.display = 'block';
-            // Opsional: Ubah label input sesuai status agar admin lebih yakin
             const label = group.querySelector('label');
             if(label) {
                 if(val.includes('Interview')) label.textContent = 'Jadwal Interview';
@@ -516,7 +515,6 @@
             }
         } else {
             group.style.display = 'none';
-            // Reset nilai input jika disembunyikan agar tidak terkirim ke backend (opsional)
             const input = group.querySelector('input');
             if(input) input.value = '';
         }
@@ -558,38 +556,26 @@
         allBtns.forEach(b => b.classList.remove('active'));
         if(btn) btn.classList.add('active');
     }
-    // --- TAMBAHAN BARU: Fungsi Buka Detail Lowongan ---
+
     function openVacancyDetail(id, rowData, availablePositions) {
-        // 1. Isi Header Modal
         document.getElementById('detail_vacancy_title').textContent = rowData.title || 'Lowongan Kerja';
         document.getElementById('detail_vacancy_ticket').textContent = rowData.ticket_number || '-';
-        
-        // 2. Isi Deskripsi dari kolom 'description' di database
         const descContainer = document.getElementById('detail_vacancy_description');
         
-        // rowData.description otomatis tersedia karena kita pakai @json($row) di HTML
+        // rowData.description otomatis tersedia karena pakai @json($row) di HTML
         if(rowData.description) {
             descContainer.innerHTML = rowData.description;
         } else {
             descContainer.innerHTML = '<div class="u-text-muted u-text-center u-p-sm" style="background:#f9fafb; border-radius:4px;">Tidak ada deskripsi tambahan.</div>';
         }
 
-        // 3. Konfigurasi Tombol Apply di dalam Modal Detail
         const btnApply = document.getElementById('btnApplyFromDetail');
-        
-        // Trik: Clone tombol untuk menghapus event listener lama agar tidak tertumpuk
         const newBtn = btnApply.cloneNode(true);
         btnApply.parentNode.replaceChild(newBtn, btnApply);
-        
-        // Pasang event listener baru ke tombol Apply yang ada di modal detail
         newBtn.addEventListener('click', function() {
-            closeModal('vacancyDetailModal'); // Tutup modal detail
-            
-            // Panggil fungsi openApplyModal yang SUDAH ADA di kode lama Anda
+            closeModal('vacancyDetailModal');
             openApplyModal(id, availablePositions, rowData.ticket_number); 
         });
-
-        // 4. Buka Modal Detail
         openModal('vacancyDetailModal');
     }
 </script>
