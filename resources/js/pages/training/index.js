@@ -181,12 +181,14 @@ const initializeGlobalEventHandlers = () => {
         if (e.target.matches("[data-modal-open]")) {
             const id = e.target.getAttribute("data-modal-open");
             toggleModal(id, true);
+            return;
         }
 
         // Close by button
         if (e.target.matches("[data-modal-close]")) {
             const id = e.target.getAttribute("data-modal-close");
             toggleModal(id, false);
+            return;
         }
 
         // Click outside
@@ -194,6 +196,7 @@ const initializeGlobalEventHandlers = () => {
             if (e.target === modal) {
                 modal.classList.add("hidden");
             }
+            return;
         });
     });
 

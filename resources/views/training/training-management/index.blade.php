@@ -48,6 +48,7 @@
                 >
 
                     {{-- ===== ACTION BUTTONS PER TAB ===== --}}
+
                     @if (!empty($tabConfig['buttons']))
                         <div class="flex gap-4 justify-between u-py-sm">
                             <div class="flex gap-2">
@@ -96,9 +97,5 @@
 @endsection
 
 @push('scripts')
-<script>
-    window.uiConfig = @json($ui);
-</script>
-
-@vite('resources/js/pages/training/index.js')
+    @vite('resources/js/pages/training/index.js')
 @endpush
