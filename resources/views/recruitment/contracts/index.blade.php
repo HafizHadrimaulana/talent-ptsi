@@ -80,7 +80,7 @@
 <div class="u-card u-card--glass u-mb-xl">
     <div class="u-flex u-justify-between u-items-center u-stack-mobile u-gap-md">
         <div>
-            <h2 class="u-title u-text-lg"><i class="fas fa-file-contract u-mr-sm u-text-accent"></i>Dokumen Kontrak</h2>
+            <h2 class="u-title u-text-lg">Dokumen Kontrak</h2>
             <p class="u-text-sm u-muted u-mt-xs">Manajemen SPK, PKWT, dan Perjanjian Bersama.</p>
         </div>
         @can('contract.create')
@@ -160,7 +160,7 @@
                         </td>
                         <td>
                             <div class="u-flex u-items-center u-gap-sm">
-                                <div class="u-avatar u-avatar--sm u-avatar--brand">{{ substr($c->person_name, 0, 1) }}</div>
+                                <div>{{ substr($c->person_name, 0, 1) }}</div>
                                 <div>
                                     <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
                                     <div class="u-text-xs u-muted u-mt-xxs">

@@ -48,8 +48,6 @@ const TRAINING_CONFIG = {
     },
 };
 
-const ROLES_REQUIRING_UNIT_ID = ["SDM Unit"];
-
 const getGlobalVariable = (variableName, defaultValue = null) => {
     const value = window[variableName];
     if (value === undefined || value === null) {

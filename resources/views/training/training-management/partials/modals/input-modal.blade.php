@@ -27,61 +27,61 @@
               </select>
             </div>
             <div class="grid grid-cols-2 gap-x-10 gap-y-2">
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium">Penyelenggara</label>
                 <input type="text"
                     name="penyelenggara"
-                    class="u-input"
+                    class="font-normal u-input"
                     readonly />
                 </select>
               </div>
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium">Nama Proyek</label>
                 <input type="text"
                   name="nama_proyek"
-                  class="u-input"
+                  class="font-normal u-input"
                   readonly>
               </div>
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium">Jumlah Jam</label>
                 <input type="text"
                   name="jumlah_jam"
-                  class="u-input"
+                  class="font-normal u-input"
                   readonly>
               </div>
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium">Waktu Pelaksanaan</label>
                 <input type="text"
                   name="waktu_pelaksanaan"
-                  class="u-input"
+                  class="font-normal u-input"
                   readonly>
               </div>
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium">Jenis Portofolio</label>
                 <input type="text"
                   name="jenis_portofolio"
-                  class="u-input"
+                  class="font-normal u-input"
                   readonly>
               </div>
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium">Jenis Pelatihan</label>
                 <input type="text"
                   name="jenis_pelatihan"
-                  class="u-input"
+                  class="font-normal u-input"
                   readonly>
               </div>
               
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium after:content-['*'] after:text-red-500">Start Date</label>
                 <input type="date" name="start_date" class="u-input font-normal" required>
               </div>
               
-              <div class="font-bold u-mb-sm">
+              <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium after:content-['*'] after:text-red-500">End Date</label>
                 <input type="date" name="end_date" class="u-input font-normal" required>
               </div>
     
-              <!-- <div class="font-bold u-mb-sm">
+              <!-- <div class="font-medium u-mb-sm">
                 <label class="w-48 font-medium after:content-['*'] after:text-red-500">Alasan</label>
                 <input name="alasan" class="u-input bg-white">
               </div> -->
@@ -89,26 +89,26 @@
             </div>
           </div>
     
-          <div class="font-bold u-mb-sm">
+          <div class="font-medium u-mb-sm">
             <h3 class="u-uppercase">Biaya</h3>
           </div>
           <div class="grid grid-cols-2 gap-x-10 gap-y-2 u-space-lg u-mb-xl">
-            <div class="font-bold u-mb-sm">
+            <div class="font-medium u-mb-sm">
               <label class="w-48 font-medium">Biaya Pelatihan (Rp)</label>
               <input type="text" 
                     name="biaya_pelatihan" 
-                    class="u-input u-bg-gray-100 u-text-gray-500 u-pointer-events-none"
+                    class="font-normal u-input u-bg-gray-100 u-text-gray-500 u-pointer-events-none"
                     readonly>
             </div>
 
             <!-- REALISASI BIAYA -->
-            <div id="realisasi-wrapper" class="font-bold u-mb-sm">
+            <div id="realisasi-wrapper" class="font-medium u-mb-sm">
               <label class="font-medium">Realisasi Biaya Pelatihan (Rp)</label>
 
               <input type="text" 
                     id="realisasi_biaya_pelatihan" 
                     name="realisasi_biaya_pelatihan" 
-                    class="u-input u-bg-gray-100 u-text-gray-500 u-pointer-events-none"
+                    class="font-normal u-input u-bg-gray-100 u-text-gray-500 u-pointer-events-none"
                     readonly>
 
               <div class="u-flex u-items-center u-gap-sm u-mt-sm">
@@ -117,28 +117,28 @@
               </div>
             </div>
     
-            <div class="font-bold u-mb-sm">
+            <div class="font-medium u-mb-sm">
               <label class="w-48 font-medium">UHPD (Rp)</label>
-              <input type="text" name="uhpd" class="u-input">
+              <input type="text" name="uhpd" class="font-normal u-input">
             </div>
     
-            <div class="font-bold u-mb-sm">
+            <div class="font-medium u-mb-sm">
               <label class="w-48 font-medium">Biaya Akomodasi (Rp)</label>
-              <input type="text" name="biaya_akomodasi" class="u-input">
+              <input type="text" name="biaya_akomodasi" class="font-normal u-input">
             </div>
     
-            <div class="font-bold u-mb-sm">
+            <div class="font-medium u-mb-sm">
               <label class="w-48 font-medium">Estimasi Total Biaya (Rp)</label>
-              <input type="text" name="estimasi_total_biaya" id="estimasi_total_biaya" class="u-input" readonly>
+              <input type="text" name="estimasi_total_biaya" id="estimasi_total_biaya" class="font-normal u-input" readonly>
             </div>
           </div>
     
-          <div class="font-bold u-mb-sm">
+          <div class="font-medium u-mb-sm">
             <h3 class="u-uppercase">Peserta</h3>
           </div>
           <div class="u-space-lg u-mb-xl">
     
-            <div class="font-bold u-mb-sm">
+            <div class="font-medium u-mb-sm">
               <label class="w-48 font-medium after:content-['*'] after:text-red-500">Tambah Peserta</label>
               <div class="w-full relative">
           
@@ -154,16 +154,16 @@
                 </div>
     
                 <div id="peserta-dropdown" class="dropdown-search"></div>
-                <input type="hidden" name="peserta_list" id="peserta-list-hidden" class="u-input font-normal" required>
+                <input type="hidden" name="peserta_list" id="peserta-list-hidden" class="font-normal u-input font-normal" required>
               </div>
             </div>
           </div>
     
-          <div class="font-bold u-mb-sm">
+          <div class="font-medium u-mb-sm">
             <h3 class="u-uppercase">Lampiran Penawaran</h3>
           </div>
     
-          <div class="font-bold u-mb-xl">
+          <div class="font-medium u-mb-xl">
             <label class="w-48 font-medium after:content-['*'] after:text-red-500">Lampiran Penawaran</label>
             <input type="file" accept=".pdf" name="lampiran_penawaran" class="u-input font-normal" required>
           </div>
