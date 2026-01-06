@@ -64,7 +64,7 @@ class Contract extends Model
 
     public function applicant(): BelongsTo
     {
-        return $this->belongsTo(Applicant::class, 'applicant_id');
+        return $this->belongsTo(RecruitmentApplicant::class, 'applicant_id');
     }
 
     public function employee(): BelongsTo
@@ -99,15 +99,48 @@ class Contract extends Model
 
     public function scopeForViewer(Builder $q, $user): Builder
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user && $user->hasRole('Superadmin')) {
             return $q;
         }
-        if ($user->can('contract.approve')) {
-            return $q->where('unit_id', $user->unit_id)->whereIn('status', ['review', 'approved', 'signed']);
+
+        if ($user && $user->hasRole('DHC')) {
+            return $q;
         }
-        if ($user->can('contract.view')) {
+
+        if ($user && $user->can('contract.approve')) {
+            return $q->where('unit_id', $user->unit_id)
+                ->whereIn('status', ['review', 'approved', 'signed']);
+        }
+
+        if ($user && $user->can('contract.view')) {
             return $q->where('unit_id', $user->unit_id);
         }
+
         return $q->whereRaw('1 = 0');
+    }
+
+    public function getPartyNameAttribute(): string
+    {
+        $p = $this->person;
+        if ($p && trim(($p->full_name ?? '')) !== '') return (string)$p->full_name;
+
+        $a = $this->applicant;
+        if ($a) {
+             return $a->user->person->full_name ?? $a->user->name ?? '-';
+        }
+
+        $e = $this->employee;
+        if ($e && trim(($e->employee_name ?? $e->name ?? '')) !== '') {
+            return (string)($e->employee_name ?? $e->name);
+        }
+
+        return '-';
+    }
+
+    public function getPeriodLabelAttribute(): string
+    {
+        $sd = $this->start_date?->format('d M Y') ?? '-';
+        $ed = $this->end_date?->format('d M Y') ?? '-';
+        return $sd . ' — ' . $ed;
     }
 }

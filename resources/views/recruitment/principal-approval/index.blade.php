@@ -3,7 +3,6 @@
 
 @section('content')
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
-
 <style>
     #createApprovalModal {z-index: 1050 !important;}
     #uraianModal {z-index: 2000 !important; background-color: rgba(0, 0, 0, 0.5); display: none;align-items: center; justify-content: center; position: fixed; inset: 0; }
@@ -19,6 +18,12 @@
     @media (max-width: 768px) { .u-grid-2-custom { grid-template-columns: 1fr; } }
     .ck-editor__editable_inline { min-height: 200px; max-height: 400px; }
     .ck.ck-balloon-panel { z-index: 2060 !important; }
+    #publishDescriptionModal { display: flex !important; align-items: center; justify-content: center; z-index: 2200 !important; }
+    .ck-content ul { list-style-type: disc !important; padding-left: 2rem !important; margin-bottom: 1rem;}
+    .ck-content ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-bottom: 1rem; }
+    .ck-content li { display: list-item !important; }
+    .ck-content h1, .ck-content h2, .ck-content h3 { font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .ck-content p { margin-bottom: 0.75rem; }
 </style>
 @php
   use Illuminate\Support\Facades\DB;
@@ -38,11 +43,7 @@
   $unitMap = $units->pluck('name','id');
   $dhcUnitId = DB::table('units')->where(function($q){ $q->where('code','DHC')->orWhere('name','Divisi Human Capital')->orWhere('name','like','Divisi Human Capital%'); })->value('id');
   $canCreate = Gate::check('recruitment.create') || Gate::check('recruitment.update') || ($me && $me->hasRole('SDM Unit')) || ($me && $me->hasRole('Superadmin'));
-  $rkapList = isset($rkapList) ? $rkapList : collect([
-    (object)['name' => 'Reporter', 'rkap' => 5, 'existing' => 2],
-    (object)['name' => 'KJJJ', 'rkap' => 3, 'existing' => 1],
-    (object)['name' => 'Inspektor', 'rkap' => 4, 'existing' => 4],
-  ]);
+  $rkapList = isset($rkapList) ? $rkapList : collect([ (object)['name' => 'Reporter', 'rkap' => 5, 'existing' => 2],(object)['name' => 'KJJJ', 'rkap' => 3, 'existing' => 1],(object)['name' => 'Inspektor', 'rkap' => 4, 'existing' => 4],]);
   $positions = DB::table('positions')->select('id', 'name')->where('is_active',1)->orderBy('name')->get();
   try {
       $rawPics = DB::table('employees')->join('persons', 'employees.person_id', '=', 'persons.id')->select('employees.id', 'employees.employee_id', 'persons.full_name')->where('employees.unit_id', $selectedUnitId ?? $meUnit)->orderBy('persons.full_name')->get();
@@ -51,10 +52,7 @@
   $locationsJs = $locations
       ->unique('city')
       ->map(function($l) {
-        return [
-            'id' => $l->id, 
-            'name' => $l->city
-        ];
+        return ['id' => $l->id, 'name' => $l->city];
     })->values();
 @endphp
 <div class="u-card u-card--glass u-hover-lift">
@@ -105,12 +103,7 @@
                     $rawNote = $app->note;
                     $cleanNote = preg_replace('/\[stage=[^\]]+\]/', '', $rawNote); 
                     $cleanNote = trim($cleanNote); 
-                    $approvalHistory[] = [
-                        'role'   => $roleTitles[$index] ?? 'Approver',
-                        'status' => $app->status, 
-                        'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') : '-',
-                        'note'   => $cleanNote
-                    ];
+                    $approvalHistory[] = ['role'   => $roleTitles[$index] ?? 'Approver','status' => $app->status, 'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') : '-','note'   => $cleanNote];
                 }
             }
             $myJobTitle = null;
@@ -156,7 +149,6 @@
             $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
             $totalStages = 5;
             $progressStep = null;
-
             if ($status === 'draft') { $progressText = 'Draft di SDM Unit'; $progressStep = 0; }
             elseif ($status === 'rejected') { $progressText = $rejectedByLabel ? 'Ditolak oleh ' . $rejectedByLabel : 'Ditolak'; }
             elseif ($status === 'approved') { $progressText = 'Selesai (Approved Dir SDM)'; $progressStep = $totalStages; }
@@ -300,7 +292,9 @@
                         data-can-approve="{{ $canStage ? 'true' : 'false' }}" 
                         data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" 
                         data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" 
-                        data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'>
+                        data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'
+                        data-is-published="{{ $r->is_published ? '1' : '0' }}"
+                        data-can-publish="{{ ($me->hasRole('DHC') || $me->hasRole('Superadmin') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit')) ? 'true' : 'false' }}">
                         <i class="fas fa-info-circle u-mr-xs"></i> Detail
                 </button>
               </div>
@@ -468,12 +462,12 @@
         @csrf
         <input type="hidden" name="details_json" id="detailsJson">
         <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan</label>
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Permintaan<span class="text-red-500">*</span></label>
           <select class="u-input" name="request_type"><option value="Rekrutmen">Rekrutmen</option><option value="Perpanjang Kontrak">Perpanjang Kontrak</option></select>
         </div>
         <div class="u-grid-2 u-stack-mobile u-gap-md">
           <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak</label>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak<span class="text-red-500">*</span></label>
             <select class="u-input" id="contractTypeSelect" name="employment_type" required>
                 <option value="">Pilih jenis kontrak</option>
                 <option value="Organik">Organik</option>
@@ -484,18 +478,18 @@
             </select>
           </div>
           <div class="u-space-y-sm">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Sumber Anggaran</label>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Sumber Anggaran<span class="text-red-500">*</span></label>
             <select class="u-input" id="budgetSourceSelect" name="budget_source_type" style="-webkit-appearance: none; -moz-appearance: none; appearance: none;"><option value="">Sumber anggaran</option><option value="RKAP">RKAP</option><option value="RAB Proyek">RAB Proyek</option><option value="Lainnya">Lainnya</option></select>
           </div>
         </div>
         <div class="u-space-y-sm">
-          <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount</label>
+          <label class="u-block u-text-sm u-font-medium u-mb-sm">Headcount<span class="text-red-500">*</span></label>
           <input class="u-input" type="number" min="1" name="headcount" id="headcountInput" value="1" placeholder="Jumlah orang" required>
         </div>
         <div id="dataTabsContainer" class="u-flex u-gap-sm u-flex-wrap u-mb-sm" style="display:none;"></div>
         <div id="dynamicContentWrapper" class="u-p-md u-border u-rounded u-bg-light">
             <div class="u-space-y-sm u-mb-md">
-              <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan</label>
+              <label class="u-block u-text-sm u-font-medium u-mb-sm">Judul Permintaan<span class="text-red-500">*</span></label>
               <input class="u-input" id="titleInput" name="title" placeholder="Mis. Rekrutmen Analis TKDN Proyek X" required>
             </div>
             <div id="projectSection" class="u-space-y-md" style="display:none;">
@@ -513,23 +507,23 @@
                     @endforeach
                 </select>
                 </div>
-                <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project</label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
+                <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project<span class="text-red-500">*</span></label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
               </div>
               <div class="u-space-y-sm" style="position: relative;">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label>
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan<span class="text-red-500">*</span></label>
                 <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off">
                 <input type="hidden" name="position" id="positionInput">
                 <div id="positionSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
               </div>
               <div class="u-space-y-sm">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan</label>
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan<span class="text-red-500">*</span></label>
                 <div class="u-flex u-items-center u-gap-sm">
                   <div id="uraianStatusProject" class="u-text-2xs u-muted">Belum ada uraian</div>
                   <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian-project">Isi Uraian</button>
                 </div>
               </div>
               <div class="u-space-y-sm" style="position: relative;">
-                <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC<span class="text-red-500">*</span></label>
                 <input type="text" id="picProjectSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
                 <input type="hidden" name="pic_project" id="picProjectInput">
                 <div id="picProjectSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -554,13 +548,13 @@
                 <div class="u-text-sm u-font-medium">Selected: <span id="rkapSelectedName"></span></div>
                 <div class="u-grid-2 u-stack-mobile u-gap-md">
                   <div>
-                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan</label>
+                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Uraian Jabatan<span class="text-red-500">*</span></label>
                     <div class="u-flex u-items-center u-gap-sm">
                       <div id="uraianStatus" class="u-text-2xs u-muted">Belum ada uraian</div>
                       <button type="button" class="u-btn u-btn--sm u-btn--outline js-open-uraian">Isi Uraian</button>
                     </div>
                     <div style="position: relative;">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan</label> 
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan<span class="text-red-500">*</span></label> 
                       <input type="text" id="positionOrganikSearchInput" class="u-input" placeholder="Cari atau ketik posisi jabatan..." autocomplete="off">
                       <input type="hidden" id="positionOrganikInput"> 
                       <div id="positionOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -568,7 +562,7 @@
                   </div>
                   <div>
                     <div style="position: relative;" class="u-mb-md">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">PIC<span class="text-red-500">*</span></label>
                       <input type="text" id="picOrganikSearchInput" class="u-input" placeholder="Cari PIC (ID / Nama)..." autocomplete="off">
                       <input type="hidden" name="pic" id="picOrganikInput">
                       <div id="picOrganikSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
@@ -580,23 +574,23 @@
             <div id="extraDynamicFields" class="u-mt-md u-pt-md u-border-t">
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Mulai Kerja<span class="text-red-500">*</span></label>
                       <input class="u-input" type="date" id="dyn_start_date" required>
                   </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Selesai Kerja</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Tanggal Selesai Kerja<span class="text-red-500">*</span></label>
                       <input class="u-input" type="date" id="dyn_end_date" required>
                   </div>
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm" style="position: relative;">
-                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Kota Lokasi Penempatan Kerja</label>
+                    <label class="u-block u-text-sm u-font-medium u-mb-sm">Kota Lokasi Penempatan Kerja<span class="text-red-500">*</span></label>
                     <input class="u-input" type="text" id="dyn_location" placeholder="Ketik atau Pilih Kota/Kabupaten" autocomplete="off">
                     <input type="hidden" id="dyn_location_id">
                     <div id="dynLocationSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                 </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pendidikan<span class="text-red-500">*</span></label>
                       <select class="u-input" id="dyn_education" required>
                           <option value="">Pilih Pendidikan</option>
                           <option value="SMA">SMA</option>
@@ -614,14 +608,14 @@
                       <input class="u-input" type="text" id="dyn_brevet" placeholder="Masukkan pelatihan">
                   </div>
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pengalaman</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Pengalaman<span class="text-red-500">*</span></label>
                       <input class="u-input" type="text" id="dyn_experience" placeholder="Masukkan pengalaman" required>
                   </div>
               </div>
               <div class="u-bg-light u-p-sm u-rounded u-font-bold u-text-sm u-mb-sm" style="color:#374151;"><b>Remunerasi</b></div>
               <div class="u-grid-2-custom u-mb-sm">
                 <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Resiko Pekerjaan</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Resiko Pekerjaan<span class="text-red-500">*</span></label>
                       <select class="u-input" id="dyn_resiko" required>
                           <option value="">Pilih Resiko</option>
                           <option value="Tinggi">Tinggi</option>
@@ -631,7 +625,7 @@
               </div>
               <div class="u-grid-2-custom u-mb-sm">
                   <div class="u-space-y-sm">
-                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)</label>
+                      <label class="u-block u-text-sm u-font-medium u-mb-sm">Gaji Pokok (Rp)<span class="text-red-500">*</span></label>
                       <input class="u-input input-currency" type="text" id="dyn_salary" placeholder="1.000.000" required>
                   </div>
                   <div class="u-space-y-sm">
@@ -687,13 +681,13 @@
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">PPH 21</label>
-                      <input class="u-input input-currency" type="text" id="dyn_pph21" readonly placeholder="Autofill">
+                      <input class="u-input input-currency" type="text" id="dyn_pph21" readonly placeholder="0">
                   </div>
               </div>
           </div>
         </div>
         <div class="u-space-y-sm u-mt-md">
-            <label class="u-block u-text-sm u-font-medium u-mb-sm">Detail Penjelasan Kebutuhan</label>
+            <label class="u-block u-text-sm u-font-medium u-mb-sm">Detail Penjelasan Kebutuhan<span class="text-red-500">*</span></label>
             <textarea class="u-input" name="justification" rows="4" placeholder="Jelaskan secara detail..." required></textarea>
         </div>
       </form>
@@ -756,6 +750,9 @@
         <div class="u-muted u-text-sm"><span id="tab-indicator-text">Menampilkan Data 1</span></div>
         <div class="u-flex u-gap-sm action-buttons">
             <button type="button" class="u-btn u-btn--ghost" data-modal-close>Tutup</button>
+            <button type="button" class="u-btn u-btn--info u-hover-lift js-btn-publish" style="display:none; background-color: #0ea5e9; border-color: #0ea5e9; color: white;">
+                <i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan
+            </button>
             <form method="POST" action="" class="detail-reject-form u-inline" style="display:none;">
                 @csrf
                 <input type="hidden" name="note" class="reject-note-input" id="real_reject_note"> 
@@ -855,6 +852,28 @@
         </form>
     </div>
 </div>
+<div id="publishDescriptionModal" class="u-modal" hidden> <div class="u-modal__card" style="width: 800px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="u-modal__head">
+      <div class="u-title"><i class="fas fa-bullhorn u-mr-xs"></i> Publikasi Lowongan</div>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button>
+    </div>
+    <div class="u-modal__body u-p-md" style="overflow-y: auto;"> <div class="u-alert u-alert--info u-mb-md" style="background-color: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 6px; font-size: 0.9rem;">
+        <i class="fas fa-info-circle u-mr-xs"></i> Masukkan deskripsi lowongan yang akan dilihat oleh pelamar.
+      </div>
+      <form id="publishForm">
+          <input type="hidden" id="publish_req_id">
+          <div style="color: #000;"> <textarea id="publishEditorContent"></textarea>
+          </div>
+      </form>
+    </div>
+    <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+      <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+      <button type="button" class="u-btn u-btn--brand" id="btnConfirmPublish">
+        <i class="fas fa-paper-plane u-mr-xs"></i> Simpan & Publikasikan
+      </button>
+    </div>
+  </div>
+</div>
 
 <script>
     function toggleHistoryNote(id) {
@@ -933,6 +952,65 @@
         return temp.trim();
     }
     document.addEventListener('DOMContentLoaded', function() {
+        // --- TAMBAHAN BARU: Inisialisasi Editor & Handler Simpan ---
+        let publishEditor = null;
+        if (document.querySelector('#publishEditorContent')) {
+            ClassicEditor
+                .create(document.querySelector('#publishEditorContent'), {
+                    toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
+                    placeholder: 'Tulis deskripsi pekerjaan, kualifikasi, dll...'
+                })
+                .then(editor => { publishEditor = editor; })
+                .catch(error => { console.error(error); });
+        }
+
+        // Handler tombol "Simpan & Publikasikan" di Modal Baru
+        const btnConfirmPublish = document.getElementById('btnConfirmPublish');
+        if(btnConfirmPublish) {
+            btnConfirmPublish.addEventListener('click', function() {
+                const reqId = document.getElementById('publish_req_id').value;
+                const description = publishEditor ? publishEditor.getData() : '';
+
+                if(!description.trim()) {
+                    alert('Mohon isi deskripsi lowongan terlebih dahulu.');
+                    return;
+                }
+
+                if(!confirm('Apakah Anda yakin ingin mempublikasikan lowongan ini?')) return;
+
+                const btn = this;
+                const originalContent = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
+
+                fetch(`/recruitment/principal-approval/${reqId}/publish`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ description: description }) 
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Gagal: ' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = originalContent;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Terjadi kesalahan sistem.');
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                });
+            });
+        }
+        // --- AKHIR TAMBAHAN BARU ---
         const btnYes = document.getElementById('btn-conf-yes');
         if(btnYes) {
             btnYes.addEventListener('click', function() {
@@ -1129,18 +1207,16 @@
                 currencyInputs.forEach(input => {
                     if(input) {
                         input.addEventListener('input', function(e) {
-                            // Format tampilan saat mengetik
                             this.value = formatRupiahTyping(this.value);
                         });
                     }
                 });
                 const calcTriggers = [
-                    dynInputs.salary, dynInputs.thr, dynInputs.kompensasi,
+                    dynInputs.thr, dynInputs.kompensasi,
                     dynInputs.start_date, dynInputs.end_date, dynInputs.resiko
                 ];
 
                 function calculateRemuneration() {
-                    // [UBAH DISINI] Gunakan parseRupiah, bukan parseFloat biasa
                     const salary = parseRupiah(dynInputs.salary ? dynInputs.salary.value : 0);
                     const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
                     const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
@@ -1148,14 +1224,10 @@
 
                     if (salary <= 0 || !start || !end) return;
 
-                    // [UBAH DISINI] Gunakan parseRupiah
                     let valThr = parseRupiah(dynInputs.thr ? dynInputs.thr.value : 0);
                     let valKomp = parseRupiah(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
-
-                    // Logic paksa samakan Gaji (tetap sama, variabel salary sudah bersih)
                     if (salary > 0 && valThr === 0) {
                         valThr = salary;
-                        // Update tampilan input THR dengan format rupiah
                         if(dynInputs.thr) dynInputs.thr.value = formatRupiahTyping(salary.toString());
                     }
                     if (salary > 0 && valKomp === 0) {
@@ -1164,11 +1236,11 @@
                     }
 
                     const payload = {
-                        salary: salary, // Sudah bersih (integer/float)
+                        salary: salary,
                         start_date: start,
                         end_date: end,
-                        thr: valThr,    // Sudah bersih
-                        kompensasi: valKomp, // Sudah bersih
+                        thr: valThr,
+                        kompensasi: valKomp,
                         risk_level: riskVal,
                         _token: '{{ csrf_token() }}'
                     };
@@ -1184,7 +1256,6 @@
                     .then(data => {
                         console.log("RESPONSE:", data);
                         
-                        // [UBAH DISINI] Format hasil dari server ke Rupiah sebelum ditampilkan
                         if(dynInputs.pph21)   dynInputs.pph21.value   = formatRupiahTyping(data.pph21_bulanan.toString());
                         if(dynInputs.bpjs_kes) dynInputs.bpjs_kes.value = formatRupiahTyping(data.bpjs_kesehatan.toString());
                         if(dynInputs.bpjs_tk)  dynInputs.bpjs_tk.value  = formatRupiahTyping(data.bpjs_ketenagakerjaan.toString());
@@ -1194,29 +1265,39 @@
                 let calcTimeout;
                 calcTriggers.forEach(input => {
                     if(input) {
-                        // Gunakan 'input' atau 'keyup'
-                        input.addEventListener('keyup', function() {
-                            clearTimeout(calcTimeout);
-                            calcTimeout = setTimeout(calculateRemuneration, 800); 
-                        });
-                        // Untuk dropdown/date gunakan 'change'
-                        input.addEventListener('change', calculateRemuneration);
+                        if (input.tagName === 'SELECT' || input.type === 'date') {
+                            input.addEventListener('change', calculateRemuneration);
+                        } else {
+                            input.addEventListener('keyup', function() {
+                                clearTimeout(calcTimeout);
+                                calcTimeout = setTimeout(calculateRemuneration, 800); 
+                            });
+                        }
                     }
                 });
                 if(dynInputs.salary) {
-                    dynInputs.salary.addEventListener('keyup', function(e) { // Ganti ke keyup agar realtime saat ngetik
-                        // Bersihkan titik dulu baru hitung terbilang
-                        const val = parseRupiah(e.target.value);
+                    dynInputs.salary.addEventListener('keyup', function(e) { 
+                        let rawVal = e.target.value;
+                        e.target.value = formatRupiahTyping(rawVal);
+                        
+                        const cleanVal = parseRupiah(rawVal);
+                        const formattedVal = formatRupiahTyping(cleanVal.toString());
+
+                        if(dynInputs.thr) dynInputs.thr.value = formattedVal;
+                        if(dynInputs.kompensasi) dynInputs.kompensasi.value = formattedVal;
                         
                         if(dynInputs.terbilang) {
-                            if(val && !isNaN(val)) {
-                                let text = terbilang(val) + ' RUPIAH';
+                            if(cleanVal && !isNaN(cleanVal)) {
+                                let text = terbilang(cleanVal) + ' RUPIAH';
                                 text = text.charAt(0).toUpperCase() + text.slice(1);
                                 dynInputs.terbilang.value = text;
                             } else {
                                 dynInputs.terbilang.value = '';
                             }
                         }
+
+                        clearTimeout(calcTimeout);
+                        calcTimeout = setTimeout(calculateRemuneration, 800); 
                     });
                 }
                 if(dynInputs.cv) {
@@ -1459,6 +1540,7 @@
                     multiDataStore[idx].education   = dynInputs.education?.value || '';
                     multiDataStore[idx].brevet      = dynInputs.brevet?.value || '';
                     multiDataStore[idx].experience  = dynInputs.experience?.value || '';
+                    multiDataStore[idx].resiko = dynInputs.resiko?.value || '';
                     multiDataStore[idx].salary      = dynInputs.salary?.value || '';
                     multiDataStore[idx].terbilang   = dynInputs.terbilang?.value || '';
                     multiDataStore[idx].allowanceJ  = dynInputs.allowanceJ?.value || '';
@@ -1507,6 +1589,7 @@
                     if(dynInputs.education)  dynInputs.education.value  = data.education || '';
                     if(dynInputs.brevet)     dynInputs.brevet.value     = data.brevet || '';
                     if(dynInputs.experience) dynInputs.experience.value = data.experience || '';
+                    if(dynInputs.resiko) dynInputs.resiko.value = data.resiko || '';
                     if(dynInputs.salary)     dynInputs.salary.value     = data.salary || '';
                     if(dynInputs.terbilang)  dynInputs.terbilang.value  = data.terbilang || '';
                     if(dynInputs.allowanceJ)  dynInputs.allowanceJ.value  = data.allowanceJ || '';
@@ -1929,7 +2012,8 @@
                                         ${makeRow('Lokasi', data.location)}
                                         ${makeRow('Pendidikan', data.education)}
                                         ${makeRow('Pelatihan', data.brevet)}
-                                        ${makeRow('Pengalaman', data.experience)}           
+                                        ${makeRow('Pengalaman', data.experience)}
+                                        ${makeRow('Resiko Pekerjaan', data.resiko)}         
                                         <div class="u-mt-sm u-flex u-justify-between u-items-center">
                                             <span class="u-text-muted u-text-xs u-uppercase u-font-bold">CV KANDIDAT</span> 
                                             ${data.cv_filename ? `<a href="${data.cv_file}" download="${data.cv_filename}" class="u-text-brand u-text-sm u-font-medium hover:u-underline"><i class="fas fa-download u-mr-xs"></i> ${data.cv_filename}</a>` : '<span class="u-text-sm">-</span>'}
@@ -1978,6 +2062,56 @@
                         renderContent(0);
                         detailModal.hidden = false; 
                         document.body.classList.add('modal-open');
+
+                        const isPublished = safeTxt('data-is-published') === '1';
+                        const canPublishUser = btnDetail.getAttribute('data-can-publish') === 'true';
+                        const statusTiket = safeTxt('data-status').toLowerCase();
+                        const noTicket = safeTxt('data-ticket-number');
+                        const reqId = btnDetail.getAttribute('data-id');
+                        const btnPublish = detailModal.querySelector('.js-btn-publish');
+
+                        if (btnPublish) {
+                            btnPublish.style.display = 'none';
+                            btnPublish.disabled = false;
+                            btnPublish.innerHTML = '<i class="fas fa-bullhorn u-mr-xs"></i> Publikasikan';
+                            btnPublish.classList.add('u-btn--info');
+                            btnPublish.classList.remove('u-btn--success');
+                            btnPublish.onclick = null;
+
+                            if (canPublishUser && statusTiket === 'approved' && noTicket && noTicket !== '-') {
+                                
+                                // --- INI KODE PENGGANTI BARU ---
+                                if (isPublished) {
+                                    btnPublish.style.display = 'inline-flex';
+                                    btnPublish.disabled = true;
+                                    btnPublish.innerHTML = '<i class="fas fa-check u-mr-xs"></i> Terpublikasi';
+                                    btnPublish.classList.remove('u-btn--info');
+                                    btnPublish.classList.add('u-btn--success');
+                                } else {
+                                    btnPublish.style.display = 'inline-flex';
+                                    
+                                    // PERUBAHAN UTAMA DISINI:
+                                    // Saat tombol diklik, jangan langsung fetch API.
+                                    // Tapi buka modal deskripsi terlebih dahulu.
+                                    btnPublish.onclick = function() {
+                                        // 1. Set ID ke hidden input di modal baru
+                                        document.getElementById('publish_req_id').value = reqId; 
+                                        
+                                        // 2. Reset Editor (kosongkan isinya)
+                                        if(publishEditor) publishEditor.setData(''); 
+                                        
+                                        // 3. Tampilkan Modal Deskripsi
+                                        const pubModal = document.getElementById('publishDescriptionModal');
+                                        pubModal.hidden = false;
+                                        pubModal.style.display = 'flex';
+                                        
+                                        // 4. Tutup modal detail agar tidak tumpang tindih (opsional, tergantung selera)
+                                        document.getElementById('detailApprovalModal').hidden = true; 
+                                    };
+                                }
+                                // --- AKHIR KODE PENGGANTI ---
+                            }
+                        }
                     }
                 });
                 form.addEventListener('click', function(e) {
@@ -2093,6 +2227,7 @@
             bindExternalSearch() { /* ... */ }
         };
         page.init();
+        
         const urlParams = new URLSearchParams(window.location.search);
             const ticketId = urlParams.get('open_ticket_id');
             if (ticketId) {

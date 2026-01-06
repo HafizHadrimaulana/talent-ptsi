@@ -411,6 +411,7 @@ class PrincipalApprovalController extends Controller
 
     protected function closePending(RecruitmentRequest $req, string $status, ?string $note = null): void
     {
+        /** @var \App\Models\Approval|null $appr */
         $appr = $req->approvals()->where('status', 'pending')->latest('id')->first();
         if ($appr) {
             $payload = [
@@ -489,5 +490,27 @@ class PrincipalApprovalController extends Controller
         $safeName = preg_replace('/[^A-Za-z0-9\-]/', '_', $d['nama'] ?? 'Draft');
         $filename = 'Uraian_Jabatan_' . $safeName . '.pdf';
         return $pdf->stream($filename);
+    }
+
+    public function publish(RecruitmentRequest $req, Request $request) // Pastikan Request di-import
+    {
+        $me = Auth::user();
+        $isDhc = $me->hasRole('DHC') || $me->hasRole('Superadmin');
+        $isSdmUnit = $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit'); 
+        if (!$isDhc && !$isSdmUnit) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki akses untuk mempublikasikan lowongan.'], 403);
+        }
+        if (strtolower($req->status) !== 'approved' || empty($req->ticket_number)) {
+            return response()->json(['success' => false, 'message' => 'Hanya Izin Prinsip yang sudah Approved dan memiliki No Ticket yang dapat dipublikasikan.'], 422);
+        }
+        $request->validate([
+            'description' => 'required|string'
+        ]);
+        $req->update([
+            'is_published' => true,
+            'published_at' => now(),
+            'description'  => $request->description 
+        ]);
+        return response()->json(['success' => true, 'message' => 'Lowongan berhasil dipublikasikan dengan deskripsi!']);
     }
 }

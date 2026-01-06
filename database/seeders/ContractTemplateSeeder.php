@@ -9,7 +9,6 @@ class ContractTemplateSeeder extends Seeder
 {
     public function run()
     {
-        // CSS Default (Tahoma 11pt, Title 14pt)
         $css = "
         @page { margin: 3.5cm 2.54cm 2.54cm 2.54cm; }
         body { font-family: 'Tahoma', sans-serif; font-size: 11pt; line-height: 1.3; color: #000000; }
@@ -67,16 +66,16 @@ class ContractTemplateSeeder extends Seeder
 
         $header = '';
 
-        // 1. PKWT (Full Content)
+        // 1. PKWT
         ContractTemplate::updateOrCreate(['code' => 'PKWT'], [
-            'name' => 'PKWT Rev 2025',
+            'name' => 'Perjanjian Kerja Waktu Tertentu',
             'css'  => $css,
             'body' => $header . '
             <div class="content">
                 <div class="title" style="font-size: 14pt;">PERJANJIAN KERJA WAKTU TERTENTU</div>
                 <div class="subtitle">NOMOR: {{contract_no}}</div>
 
-                <p class="justify">Pada hari ini, <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date}}), bertempat di Jakarta:</p>
+                <p class="justify">Pada hari ini, <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date_numeric}}), bertempat di Jakarta:</p>
 
                 <table class="info">
                     <tr>
@@ -93,7 +92,8 @@ class ContractTemplateSeeder extends Seeder
                 <p class="justify">PIHAK PERTAMA dan PIHAK KEDUA yang selanjutnya secara bersama-sama disebut ”PARA PIHAK” dan secara masing-masing disebut ”PIHAK” dengan ini menerangkan terlebih dahulu hal-hal sebagai berikut:</p>
                 <ol>
                     <li>Bahwa dengan mempertimbangkan kebutuhan operasional Perusahaan PIHAK PERTAMA, termasuk namun tidak terbatas pada purchase order/permintaan/project baru/pekerjaan waktu tertentu, dan hasil seleksi terhadap PIHAK KEDUA, maka PIHAK PERTAMA setuju dan sepakat untuk mengikatkan diri dalam hubungan kerja waktu tertentu melalui Perjanjian Kerja Waktu Tertentu yang selanjutnya disebut ”Perjanjian Kerja”.</li>
-                    <li>Bahwa kebutuhan operasional Perusahaan PIHAK PERTAMA dipengaruhi oleh volume permintaan pekerjaan atau kontrak kerja antara PIHAK PERTAMA dan Pemberi Kerja, yang merupakan pelanggan dari PIHAK PERTAMA. Sehubungan dengan hal tersebut, PIHAK KEDUA memahami dan menyetujui bahwa dinamika bisnis, termasuk fluktuasi jumlah purchase order/permintaan pekerjaan/project baru/pekerjaan waktu tertentu, dapat memengaruhi keberlangsungan hubungan kerja antara PARA PIHAK.</li>
+                    <li>Bahwa kebutuhan operasional Perusahaan PIHAK PERTAMA dipengaruhi oleh volume permintaan pekerjaan atau kontrak kerja antara PIHAK PERTAMA dan Pemberi Kerja, yang merupakan pelanggan dari PIHAK PERTAMA.</li>
+                    <li>Sehubungan dengan hal tersebut, PIHAK KEDUA memahami dan menyetujui bahwa dinamika bisnis, termasuk fluktuasi jumlah purchase order/permintaan pekerjaan/project baru/pekerjaan waktu tertentu, dapat memengaruhi keberlangsungan hubungan kerja antara PARA PIHAK.</li>
                     <li>Bahwa PIHAK PERTAMA telah memberikan penjelasan terhadap PIHAK KEDUA mengenai sifat dan jenis pekerjaan yang akan dilakukan oleh PIHAK KEDUA dan PIHAK KEDUA telah memahami dan menerima pekerjaan tersebut serta bersedia bekerja pada PIHAK PERTAMA untuk jangka waktu tertentu.</li>
                     <li>Bahwa dengan memperhatikan ketentuan / peraturan perundang-undangan ketenagakerjaan yang mengatur Perjanjian Kerja Waktu Tertentu dan Kebiasaan yang berlaku di PIHAK PERTAMA, maka PIHAK PERTAMA setuju untuk menerima PIHAK KEDUA sebagai Pekerja pada PIHAK PERTAMA melalui Perjanjian Kerja Waktu Tertentu yang didasarkan atas jangka waktu tertentu sesuai syarat-syarat dan ketentuan sebagai berikut:</li>
                 </ol>
@@ -107,14 +107,19 @@ class ContractTemplateSeeder extends Seeder
                 </ol>
 
                 <div class="pasal-title">Pasal 2<br>HARI KERJA DAN WAKTU ISTIRAHAT</div>
-                <p class="justify">Hari kerja ditentukan : Hari Senin s/d hari Jumat;<br>Waktu kerja : Jam 07.30 WIB s/d 16.30 WIB;<br>Waktu istirahat : Jam 12.00 WIB s/d 13.00 WIB.<br>Hari kerja, waktu kerja dan waktu istirahat dapat ditentukan lain berdasarkan ketentuan PIHAK PERTAMA dan tidak bertentangan dengan Perundang-undangan dan Peraturan Ketenagakerjaan yang berlaku.</p>
+                <p class="justify">
+                    Hari kerja ditentukan : {{work_days}};<br>
+                    Waktu kerja : {{work_hours}};<br>
+                    Waktu istirahat : {{break_hours}}.
+                </p>
+                <p class="justify">Hari kerja, waktu kerja dan waktu istirahat dapat ditentukan lain berdasarkan ketentuan PIHAK PERTAMA dan tidak bertentangan dengan Perundang-undangan dan Peraturan Ketenagakerjaan yang berlaku.</p>
 
                 <div class="pasal-title">Pasal 3<br>TEMPAT, TUGAS KERJA DAN TANGGUNG JAWAB</div>
                 <ol>
                     <li>Tempat tugas PIHAK KEDUA adalah di kantor Jakarta dan sekitarnya atau sesuai penugasan dari PIHAK PERTAMA atau pejabat lain yang ditunjuk.</li>
                     <li>Bidang tugas/ tugas kerja, tanggung jawab dan wewenang PIHAK KEDUA akan ditentukan kemudian oleh PIHAK PERTAMA atau pejabat lain yang ditunjuk setelah perjanjian kerja waktu tertentu ini ditandatangani.</li>
                     <li>PIHAK KEDUA bertanggung jawab atas semua pelaksanaan tugas yang disebutkan dalam ayat (2) pasal ini kepada PIHAK PERTAMA atau pejabat lain ditunjuk.</li>
-                    <li>Pejabat lain yang ditunjuk/ dimaksud sebagaimana ditetapkan dalam ayat (1), (2), (3) pasal ini adalah VP Divisi Teknologi Informasi.</li>
+                    <li>Pejabat lain yang ditunjuk/ dimaksud sebagaimana ditetapkan dalam ayat (1), (2), (3) pasal ini adalah {{unit_head_position}} / Pejabat yang ditunjuk.</li>
                     <li>PIHAK KEDUA wajib mematuhi dan melaksanakan peraturan perusahaan dan peraturan perusahaan dilokasi penugasan.</li>
                 </ol>
 
@@ -141,12 +146,12 @@ class ContractTemplateSeeder extends Seeder
                         <br>6.2. Pengakhiran Hubungan Kerja karena PIHAK KEDUA mengundurkan diri atau melakukan pelanggaran sebagaimana diatur di dalam Perjanjian Kerja, Perjanjian Kerja Bersama atau ketentuan hukum lainnya yang berlaku di Perusahaan.
                     </li>
                     <li>Fasilitas kesehatan menggunakan BPJS Kesehatan dan pembayaran iuran sesuai dengan ketentuan yang berlaku.</li>
-                    <li>Apabila melakukan perjalanan dinas melebihi 60 km dari tempat penugasan, maka diberikan uang harian perjalanan dinas (UHPD) menginap sebesar Rp. 150.000,-/hari dan apabila tidak menginap diberikan sebesar Rp. 75.000,-/hari.</li>
-                    <li>Apabila PIHAK KEDUA atas perintah PIHAK PERTAMA, melakukan pekerjaan melebihi waktu kerja yang telah ditentukan diberikan upah lembur. Perhitungan upah lembur mengacu pada peraturan ketenagakerjaan yang berlaku.</li>
+                    <li>Apabila melakukan perjalanan dinas melebihi 60 km dari tempat penugasan, maka diberikan uang harian perjalanan dinas (UHPD) menginap sebesar {{travel_allowance_stay}}/hari dan apabila tidak menginap diberikan sebesar {{travel_allowance_non_stay}}/hari.</li>
+                    <li>Apabila PIHAK KEDUA atas perintah PIHAK PERTAMA, melakukan pekerjaan melebihi waktu kerja yang telah ditentukan diberikan upah lembur.</li>
+                    <li>Perhitungan upah lembur mengacu pada peraturan ketenagakerjaan yang berlaku.</li>
                     <li>Pajak penghasilan (Pph) ditanggung oleh PIHAK PERTAMA.</li>
                     <li>PIHAK PERTAMA dapat memberikan insentif atau jasa produksi sesuai dengan kebijakan dan kemampuan PIHAK PERTAMA.</li>
                     <li>Selain gaji/ upah, dan fasilitas yang disebutkan dalam pasal ini, PIHAK KEDUA tidak berhak atas fasilitas perusahaan lainnya yang tidak disebutkan dalam perjanjian kerja ini.</li>
-                    <li>Tunjangan Lainnya: {{allowance_list}}.</li>
                 </ol>
 
                 <div class="pasal-title">Pasal 5<br>MUTASI, ROTASI DAN PENEMPATAN KERJA</div>
@@ -179,14 +184,16 @@ class ContractTemplateSeeder extends Seeder
 
                 <div class="pasal-title">Pasal 9<br>TINGKAT PELANGGARAN DAN SANKSI</div>
                 <ol>
-                    <li>PIHAK PERTAMA berhak memberikan sanksi terhadap PIHAK KEDUA apabila terbukti melakukan pelanggaran terhadap Ketentuan Perusahaan yang berlaku. Tindakan tersebut perlu dilakukan demi menjaga dan mempertahankan nama baik Perusahaan, moral kerja serta pembinaan pekerja untuk mematuhi dan menegakkan disiplin.</li>
+                    <li>PIHAK PERTAMA berhak memberikan sanksi terhadap PIHAK KEDUA apabila terbukti melakukan pelanggaran terhadap Ketentuan Perusahaan yang berlaku.</li>
+                    <li>Tindakan tersebut perlu dilakukan demi menjaga dan mempertahankan nama baik Perusahaan, moral kerja serta pembinaan pekerja untuk mematuhi dan menegakkan disiplin.</li>
                     <li>Pemberian sanksi PIHAK KEDUA didasarkan pada berat ringannya kesalahan/pelanggaran yang dilakukan, frekuensi, jenis pelanggaran serta hal-hal yang mempengaruhi terjadinya kesalahan/pelanggaran tersebut, sebagaimana diatur dalam Ketentuan Perusahaan, dan merupakan dokumen yang tidak terpisahkan dari PKWT ini.</li>
                     <li>Segala hal yang berkaitan dengan tingkat pelanggaran dan sanksi mengikuti ketentuan yang berlaku di PIHAK PERTAMA.</li>
                 </ol>
 
                 <div class="pasal-title">Pasal 10<br>TIDAK MASUK KERJA</div>
                 <ol>
-                    <li>Apabila PIHAK KEDUA tidak masuk kerja pada hari kerja karena alasan sakit, maka harus dibuktikan dengan surat keterangan dokter. Tanpa surat keterangan dokter, maka PIHAK KEDUA dapat dianggap tidak masuk kerja tanpa ijin (mangkir).</li>
+                    <li>Apabila PIHAK KEDUA tidak masuk kerja pada hari kerja karena alasan sakit, maka harus dibuktikan dengan surat keterangan dokter.</li>
+                    <li>Tanpa surat keterangan dokter, maka PIHAK KEDUA dapat dianggap tidak masuk kerja tanpa ijin (mangkir).</li>
                     <li>Apabila PIHAK KEDUA tidak masuk kerja (mangkir) tanpa keterangan/tanpa alasan yang sah, maka PIHAK PERTAMA tidak membayar upah PIHAK KEDUA, berdasarkan hari mangkirnya PIHAK KEDUA sesuai peraturan perundangan yang berlaku.</li>
                     <li>Jika PIHAK KEDUA tidak masuk kerja selama 5 (lima) hari kerja berturut-turut tanpa pemberitahuan baik lisan maupun secara tertulis sebelumnya, maka PIHAK KEDUA dinyatakan telah mengundurkan diri dari Perusahaan dan akan diproses sesuai dengan Undang-udang dan peraturan ketenagakerjaan yang berlaku.</li>
                 </ol>
@@ -205,8 +212,9 @@ class ContractTemplateSeeder extends Seeder
 
                 <div class="pasal-title">Pasal 12<br>PEMUTUSAN HUBUNGAN KERJA (PHK)</div>
                 <ol>
-                    <li>PARA PIHAK sepakat bahwa terhadap pelanggaran tertentu yang dapat dikenakan sanksi Pemutusan Hubungan Kerja (PHK) atau yang menyebabkan hubungan kerja berakhir demi hukum karena alasan mendesak, tindakan tersebut akan dilaksanakan sesuai dengan ketentuan peraturan perundang-undangan yang berlaku. Dalam hal demikian, PARA PIHAK juga sepakat bahwa PIHAK PERTAMA tidak memiliki kewajiban untuk memberikan kompensasi atau ganti rugi dalam bentuk apapun kepada PIHAK KEDUA.
-                        <br>1.1. Adapun tindakan atau pelanggaran yang dimaksud dalam ayat (1) di atas, apabila dilakukan oleh PIHAK KEDUA, antara lain namun tidak terbatas pada sebab-sebab berikut:
+                    <li>PARA PIHAK sepakat bahwa terhadap pelanggaran tertentu yang dapat dikenakan sanksi Pemutusan Hubungan Kerja (PHK) atau yang menyebabkan hubungan kerja berakhir demi hukum karena alasan mendesak, tindakan tersebut akan dilaksanakan sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.</li>
+                    <li>Dalam hal demikian, PARA PIHAK juga sepakat bahwa PIHAK PERTAMA tidak memiliki kewajiban untuk memberikan kompensasi atau ganti rugi dalam bentuk apapun kepada PIHAK KEDUA.</li>
+                    <li>Adapun tindakan atau pelanggaran yang dimaksud dalam ayat (1) di atas, apabila dilakukan oleh PIHAK KEDUA, antara lain namun tidak terbatas pada sebab-sebab berikut:
                         <ul style="list-style-type:disc">
                             <li>Memberikan keterangan palsu atau dipalsukan kepada PIHAK PERTAMA dalam pembuatan perjanjian kerja ini;</li>
                             <li>Melakukan kelalaian yang menyebabkan PIHAK PERTAMA atau Perusahaan tempat bertugas/pihak ketiga menderita kerugian;</li>
@@ -224,14 +232,14 @@ class ContractTemplateSeeder extends Seeder
                             <li>Membongkar, membocorkan rahasia PIHAK PERTAMA atau Perusahaan tempat bertugas atau mencemarkan nama baik Pimpinan Perusahaan dan atau keluarga Pimpinan Perusahaan yang seharusnya dirahasiakan kecuali untuk kepentingan negara;</li>
                             <li>Dengan sengaja walaupun sudah diperingatkan membiarkan dirinya atau teman sekerjanya dalam keadaan bahaya;</li>
                             <li>Tidak melaksanakan tugas-tugas / perintah sesuai yang telah ditetapkan oleh PIHAK PERTAMA atau pejabat lain yang ditunjuk untuk itu, sedangkan tugas /perintah tersebut sesuai dengan maksud perjanjian kerja ini;</li>
-                            <li>Melakukan tindakan pribadi yang merugikan dan/atau merusak nama baik Perusahaan;</li>
+                            <li>Melakukan tindakan pribadi yang merugikan dan/atau merusak nama baik Perusahaan</li>
                             <li>Tidak taat dengan peraturan kerja yang telah ditetapkan (Indisipliner).</li>
                         </ul>
                     </li>
                     <li>PIHAK PERTAMA tidak berkewajiban memberikan kompensasi / ganti rugi dalam bentuk apapun juga bila terjadi Pemutusan Hubungan Kerja (PHK) dengan alasan Perusahaan melakukan restrukturisasi organisasi.</li>
                     <li>PARA PIHAK sepakat bahwa apabila terjadi salah satu dari keadaan berikut:
-                        <br>- Berakhirnya atau dihentikannya kontrak kerja antara PIHAK PERTAMA dan Pemberi Kerja, baik sebelum maupun pada saat berakhirnya masa kontrak; dan/atau
-                        <br>- Terjadinya penurunan volume pekerjaan, pengurangan kebutuhan tenaga kerja, atau berakhirnya proyek/pekerjaan dari Pemberi Kerja yang berada di luar kendali PIHAK PERTAMA;
+                        <br>5.1. Berakhirnya atau dihentikannya kontrak kerja antara PIHAK PERTAMA dan Pemberi Kerja, baik sebelum maupun pada saat berakhirnya masa kontrak; and/or
+                        <br>5.2. Terjadinya penurunan volume pekerjaan, pengurangan kebutuhan tenaga kerja, atau berakhirnya proyek/pekerjaan dari Pemberi Kerja yang berada di luar kendali PIHAK PERTAMA;
                         <br>maka PIHAK PERTAMA berhak untuk melakukan Pemutusan Hubungan Kerja (PHK) terhadap PIHAK KEDUA tanpa kewajiban untuk memberikan kompensasi, ganti rugi, atau pembayaran dalam bentuk apapun.
                     </li>
                     <li>PIHAK PERTAMA tidak berkewajiban memberikan ganti rugi dalam bentuk apapun juga bila terjadinya Pemutusan Hubungan Kerja (PHK) karena hal-hal yang tercantum dalam pasal 10 ayat (2) dan Pasal 12 ayat (1) perjanjian kerja ini.</li>
@@ -313,6 +321,7 @@ class ContractTemplateSeeder extends Seeder
             </div>'
         ]);
 
+        // 2. SPK
         ContractTemplate::updateOrCreate(['code' => 'SPK'], [
             'name' => 'Surat Penawaran Kerja',
             'css'  => $css,
@@ -333,7 +342,7 @@ class ContractTemplateSeeder extends Seeder
                     <tr><td width="180"><strong>Jabatan</strong></td><td width="10">:</td><td>{{position_name}}</td></tr>
                     <tr><td><strong>Penempatan</strong></td><td>:</td><td>{{unit_name}}</td></tr>
                     <tr><td><strong>Status Kepegawaian</strong></td><td>:</td><td>{{employment_type}}</td></tr>
-                    <tr><td><strong>Periode</strong></td><td>:</td><td>{{duration}} ({{start_date}} s/d {{end_date}})</td></tr>
+                    <tr><td><strong>Periode</strong></td><td>:</td><td>{{duration}}</td></tr>
                     <tr><td><strong>Gaji/Upah</strong></td><td>:</td><td><strong>{{salary}}</strong> ({{salary_words}}) per bulan, dibayarkan tanggal 25 setiap bulannya.</td></tr>
                     <tr><td><strong>Tanggal Efektif</strong></td><td>:</td><td>{{start_date}}</td></tr>
                 </table>
@@ -346,17 +355,16 @@ class ContractTemplateSeeder extends Seeder
                     <tr><td>BPJS Pensiun</td><td>:</td><td>Dipotong 1% dari Gaji/Upah.</td></tr>
                     <tr><td>BPJS Kesehatan</td><td>:</td><td>Dipotong 1% dari Upah.</td></tr>
                     <tr><td>Bantuan Makan</td><td>:</td><td>{{meal_allowance}} per hari kerja dalam bentuk kupon.</td></tr>
-                    <tr><td>Uang Kompensasi</td><td>:</td><td>Diberikan di akhir perjanjian kerja sesuai ketentuan perundang-undangan yang berlaku.</td></tr>
-                    <tr><td>Fasilitas Kesehatan</td><td>:</td><td>Menggunakan program BPJS Kesehatan.</td></tr>
-                    <tr><td>Perjalanan Dinas</td><td>:</td><td>Sesuai ketentuan perusahaan (UHPD) jika jarak > 60 Km.</td></tr>
-                    <tr><td>Benefit Lain</td><td>:</td><td>{{other_benefits}}</td></tr>
+                    <tr><td>Uang Kompensasi</td><td>:</td><td>Uang kompensasi diberikan di akhir perjanjian kerja dengan tata cara yang diatur sesuai dengan perundang-undangan yang berlaku.</td></tr>
+                    <tr><td>Fasilitas Kesehatan</td><td>:</td><td>Menggunakan program BPJS kesehatan.</td></tr>
+                    <tr><td>Perjalanan Dinas</td><td>:</td><td>Apabila ditugaskan melakukan perjalanan dinas berjarak lebih dari 60 Km, maka diberikan UHPD (Uang Harian Perjalanan Dinas) sebesar {{travel_allowance_stay}} / hari apabila perjalanan dinas menginap, dan {{travel_allowance_non_stay}}/ hari apabila perjalanan dinas tidak menginap.</td></tr>
                 </table>
 
                 <p class="bold" style="margin-bottom:5px;">II. Kewajiban:</p>
                 <p class="justify" style="margin-top:-5pt;">Mentaati, mematuhi dan melaksanakan disiplin kerja dan peraturan kerja perusahaan yang berlaku.</p>
 
                 <p class="bold">III. Ruang lingkup tugas, wewenang dan tanggung jawab</p>
-                <p class="justify" style="margin-top:-5pt;">Rincian tugas dan tanggung jawab (akuntabilitas) dan target (KPI) akan ditetapkan kemudian oleh Sekretaris Perusahaan.</p>
+                <p class="justify" style="margin-top:-5pt;">Rincian tugas dan tanggung jawab (akuntabilitas) dan target (KPI) akan ditetapkan kemudian oleh {{unit_head_position}}.</p>
 
                 <p class="justify">Demikian penawaran kami, mohon jawaban Saudara dapat diisi pada kolom yang tersedia dan segera dikirim kembali kepada kami.</p>
                 <p class="justify">Atas kerjasama Saudara kami ucapkan terima kasih.</p>
@@ -379,6 +387,7 @@ class ContractTemplateSeeder extends Seeder
             </div>'
         ]);
 
+        // 3. PB
         ContractTemplate::updateOrCreate(['code' => 'PB'], [
             'name' => 'Perjanjian Bersama',
             'css'  => $css,
@@ -387,7 +396,7 @@ class ContractTemplateSeeder extends Seeder
                 <div class="title" style="font-size: 14pt;">PERJANJIAN BERSAMA (PB)<br>PENGAKHIRAN HUBUNGAN KERJA</div>
                 <div class="subtitle">NOMOR: {{contract_no}}</div>
 
-                <p class="justify">Pada hari ini <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong>, bertempat di Jakarta, telah dibuat dan ditandatangani Perjanjian Bersama (PB), oleh dan antara:</p>
+                <p class="justify">Pada hari ini <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date_numeric}}), bertempat di Jakarta, telah dibuat dan ditandatangani Perjanjian Bersama (PB), oleh dan antara:</p>
                 
                 <table class="info">
                     <tr><td width="150">Nama</td><td width="10">:</td><td><strong>{{signer_name}}</strong></td></tr>
@@ -407,13 +416,17 @@ class ContractTemplateSeeder extends Seeder
                     <li>Bahwa PARA PIHAK sebelumnya telah saling mengikatkan diri dalam suatu Perjanjian Kerja Waktu Tertentu.</li>
                     <li>Bahwa Perjanjian Kerja Waktu Tertentu tersebut berakhir sampai dengan tanggal <strong>{{pb_date}}</strong>.</li>
                     <li>Bahwa karena disebabkan berakhirnya jangka waktu Perjanjian Kerja Perjanjian Kerja Waktu Tertentu tersebut, maka PARA PIHAK dengan ini sepakat untuk melakukan pengakhiran hubungan kerja yang efektif berlaku per tanggal tersebut.</li>
-                    <li>PARA PIHAK sepakat bahwa pengakhiran hubungan kerja sebagaimana dimaksud dalam Perjanjian ini berlaku demi hukum. Sehubungan dengan itu, PIHAK PERTAMA memberikan kebijakan khusus berupa sejumlah uang sebesar <strong>{{pb_amount}}</strong> ({{pb_words}}), yang merupakan kebijakan internal Perusahaan sebagai bentuk itikad baik dan bentuk penghargaan PIHAK PERTAMA terhadap PIHAK KEDUA atas pengakhiran hubungan kerja dimaksud.</li>
+                    <li>PARA PIHAK sepakat bahwa pengakhiran hubungan kerja sebagaimana dimaksud dalam Perjanjian ini berlaku demi hukum.</li>
+                    <li>Sehubungan dengan itu, PIHAK PERTAMA memberikan kebijakan khusus berupa sejumlah uang sebesar <strong>{{pb_amount}}</strong> ({{pb_words}}), yang merupakan kebijakan internal Perusahaan sebagai bentuk itikad baik dan bentuk penghargaan PIHAK PERTAMA terhadap PIHAK KEDUA atas pengakhiran hubungan kerja dimaksud.</li>
                     <li>PIHAK KEDUA dengan ini menyatakan memahami dan menyetujui bahwa pemberian kebijakan khusus tersebut bukan merupakan kewajiban hukum, kewajiban kontraktual, maupun bentuk tanggung jawab PIHAK PERTAMA, serta tidak dapat dijadikan dasar untuk mengajukan tuntutan, klaim, atau keberatan dalam bentuk apapun di kemudian hari.</li>
                     <li>Bahwa PARA PIHAK menerima dan menyetujui pengakhiran hubungan kerja dan akan melaksanakan dan/atau membayarkan kewajibannya masing - masing atas pengakhiran hubungan kerja.</li>
                     <li>Perjanjian Bersama ini berlaku terhitung sejak tanggal ditandatangani.</li>
                     <li>PARA PIHAK sepakat bahwa setiap perubahan dalam Perjanjian Bersama ini hanya dapat dilakukan atas persetujuan tertulis PARA PIHAK.</li>
                     <li>Bahwa setelah berakhirnya hubungan kerja, PIHAK KEDUA berjanji untuk menjaga, tidak memberikan atau membocorkan data-data Perusahaan kepada pihak lain dengan tujuan untuk kepentingan dan keuntungan pribadi dan/atau pihak lain yang secara langsung atau tidak langsung merugikan PIHAK PERTAMA, dan apabila hal ini dilanggar maka PIHAK PERTAMA akan menempuh gugatan melalui jalur hukum.</li>
+                    <li>Apabila PARA PIHAK sepakat untuk melanjutkan Perjanjian Kerja Waktu Tertentu di PT Surveyor Indonesia, maka PARA PIHAK sepakat bahwa perhitungan masa kerja dihitung semenjak perjanjian kerja berikutnya berlaku.</li>
+                    <li>Apabila PARA PIHAK sepakat untuk mengakhiri masa kerja sebelumnya, segala akibat hukumnya tidak adanya ganti rugi apapun atas keberlanjutan hubungan kerja dan diikatkan dengan Perjanjian Kerja Waktu Tertentu terbaru di PT Surveyor Indonesia.</li>
                     <li>Apabila dikemudian hari terjadi perselisihan dalam penafsiran atau pelaksanaan ketentuan – ketentuan dari Perjanjian Bersama ini, PARA PIHAK sepakat untuk menyelesaikan secara musyawarah dan mufakat.</li>
+                    <li>Perjanjian Bersama ini dibuat oleh PARA PIHAK dalam keadaan sadar tanpa paksaan dari pihak manapun dan untuk dilaksanakan dengan penuh tanggung jawab.</li>
                 </ol>
                 <p class="justify">Demikian Perjanjian Bersama ini dibuat dan ditandatangani oleh PARA PIHAK dalam rangkap 2 (dua) bermaterai cukup dan masing-masing memiliki kekuatan hukum yang sama.</p>
                 <table class="ttd">
