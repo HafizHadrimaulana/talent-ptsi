@@ -562,7 +562,6 @@
         document.getElementById('detail_vacancy_ticket').textContent = rowData.ticket_number || '-';
         const descContainer = document.getElementById('detail_vacancy_description');
         
-        // rowData.description otomatis tersedia karena pakai @json($row) di HTML
         if(rowData.description) {
             descContainer.innerHTML = rowData.description;
         } else {
