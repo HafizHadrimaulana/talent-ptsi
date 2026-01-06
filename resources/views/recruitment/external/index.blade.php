@@ -562,7 +562,6 @@
         document.getElementById('detail_vacancy_ticket').textContent = rowData.ticket_number || '-';
         const descContainer = document.getElementById('detail_vacancy_description');
         
-       
         if(rowData.description) {
             descContainer.innerHTML = rowData.description;
         } else {
