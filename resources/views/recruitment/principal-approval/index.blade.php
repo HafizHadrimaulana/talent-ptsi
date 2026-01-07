@@ -782,17 +782,11 @@
     <div class="u-modal__card" style="width: 100%; max-width: 400px; background: white; border-radius: 12px; overflow: hidden; animation: u-slide-up 0.2s ease-out; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
         <div class="u-p-lg u-text-center">
             <div class="u-mb-lg">
-                <h3 id="conf-title" class="u-font-bold u-text-dark" style="font-size: 1.1rem; line-height: 1.5;">
-                    Apakah Anda yakin menyetujui izin prinsip ini?
-                </h3>
+                <h3 id="conf-title" class="u-font-bold u-text-dark" style="font-size: 1.1rem; line-height: 1.5;">Apakah Anda yakin menyetujui izin prinsip ini?</h3>
             </div>
             <div style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 25px;">
-                <button type="button" id="btn-conf-yes" class="u-btn" style="background-color: #22c55e; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
-                    Ya
-                </button>
-                <button type="button" id="btn-conf-no" class="u-btn" style="background-color: #ef4444; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">
-                    Tidak
-                </button>
+                <button type="button" id="btn-conf-yes" class="u-btn" style="background-color: #22c55e; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">Ya</button>
+                <button type="button" id="btn-conf-no" class="u-btn" style="background-color: #ef4444; color: white; border: none; padding: 10px 35px; border-radius: 50px; font-weight: 600; min-width: 100px; cursor: pointer;">Tidak</button>
             </div>
         </div>
     </div>
@@ -845,9 +839,7 @@
             </div>
             <div class="u-modal__foot u-p-md u-border-t u-flex u-justify-end u-gap-sm">
                 <button type="button" class="u-btn u-btn--ghost js-close-project-modal">Batal</button>
-                <button type="submit" class="u-btn u-btn--brand" id="btnSaveProject">
-                    <i class="fas fa-save u-mr-xs"></i> Simpan Project
-                </button>
+                <button type="submit" class="u-btn u-btn--brand" id="btnSaveProject"><i class="fas fa-save u-mr-xs"></i> Simpan Project</button>
             </div>
         </form>
     </div>
@@ -952,7 +944,6 @@
         return temp.trim();
     }
     document.addEventListener('DOMContentLoaded', function() {
-        // --- TAMBAHAN BARU: Inisialisasi Editor & Handler Simpan ---
         let publishEditor = null;
         if (document.querySelector('#publishEditorContent')) {
             ClassicEditor
@@ -963,26 +954,20 @@
                 .then(editor => { publishEditor = editor; })
                 .catch(error => { console.error(error); });
         }
-
-        // Handler tombol "Simpan & Publikasikan" di Modal Baru
         const btnConfirmPublish = document.getElementById('btnConfirmPublish');
         if(btnConfirmPublish) {
             btnConfirmPublish.addEventListener('click', function() {
                 const reqId = document.getElementById('publish_req_id').value;
                 const description = publishEditor ? publishEditor.getData() : '';
-
                 if(!description.trim()) {
                     alert('Mohon isi deskripsi lowongan terlebih dahulu.');
                     return;
                 }
-
                 if(!confirm('Apakah Anda yakin ingin mempublikasikan lowongan ini?')) return;
-
                 const btn = this;
                 const originalContent = btn.innerHTML;
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
-
                 fetch(`/recruitment/principal-approval/${reqId}/publish`, {
                     method: 'POST',
                     headers: {
@@ -1010,7 +995,6 @@
                 });
             });
         }
-        // --- AKHIR TAMBAHAN BARU ---
         const btnYes = document.getElementById('btn-conf-yes');
         if(btnYes) {
             btnYes.addEventListener('click', function() {
@@ -1052,7 +1036,6 @@
                 searchInput.addEventListener('input', (e) => { renderOptions(e.target.value); resultsContainer.style.display = 'block'; });
                 document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) resultsContainer.style.display = 'none'; });
             }
-
         const page = {
             dt: null,
             init() { 
@@ -1133,28 +1116,21 @@
                 }
             },
             bindModal() {
-                // --- HELPER FORMAT RUPIAH ---
                 const formatRupiahTyping = (angka, prefix) => {
                     let number_string = angka.replace(/[^,\d]/g, '').toString(),
                         split = number_string.split(','),
                         sisa = split[0].length % 3,
                         rupiah = split[0].substr(0, sisa),
                         ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-
                     if (ribuan) {
                         let separator = sisa ? '.' : '';
                         rupiah += separator + ribuan.join('.');
                     }
-
                     rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
                     return prefix == undefined ? rupiah : (rupiah ? 'Rp. ' + rupiah : '');
                 };
-
-                // Fungsi untuk mengubah "1.000.000" kembali menjadi integer 1000000 untuk kalkulasi
                 const parseRupiah = (str) => {
                     if (!str) return 0;
-                    // Hapus semua karakter kecuali angka dan koma (jika ada desimal)
-                    // Disini kita asumsi bulat, jadi hapus titik saja
                     return parseFloat(str.toString().replace(/\./g, '')) || 0;
                 };
                 const modalMain   = document.getElementById('createApprovalModal');
@@ -1195,7 +1171,6 @@
                     cv:          form.querySelector('#dyn_cv'),
                     cv_preview:  form.querySelector('#dyn_cv_preview_text')
                 };
-                
                 const dynLocationId = document.getElementById('dyn_location_id');
                 const dynLocationResults = document.getElementById('dynLocationSearchResults');
                 setupSearchableDropdown(dynInputs.location, dynLocationId, dynLocationResults, locationsData, true);
@@ -1215,15 +1190,12 @@
                     dynInputs.thr, dynInputs.kompensasi,
                     dynInputs.start_date, dynInputs.end_date, dynInputs.resiko
                 ];
-
                 function calculateRemuneration() {
                     const salary = parseRupiah(dynInputs.salary ? dynInputs.salary.value : 0);
                     const start  = dynInputs.start_date ? dynInputs.start_date.value : '';
                     const end    = dynInputs.end_date ? dynInputs.end_date.value : '';
                     const riskVal = dynInputs.resiko ? dynInputs.resiko.value : 'Rendah';
-
                     if (salary <= 0 || !start || !end) return;
-
                     let valThr = parseRupiah(dynInputs.thr ? dynInputs.thr.value : 0);
                     let valKomp = parseRupiah(dynInputs.kompensasi ? dynInputs.kompensasi.value : 0);
                     if (salary > 0 && valThr === 0) {
@@ -1234,7 +1206,6 @@
                         valKomp = salary;
                         if(dynInputs.kompensasi) dynInputs.kompensasi.value = formatRupiahTyping(salary.toString());
                     }
-
                     const payload = {
                         salary: salary,
                         start_date: start,
@@ -1244,9 +1215,7 @@
                         risk_level: riskVal,
                         _token: '{{ csrf_token() }}'
                     };
-
                     if(dynInputs.pph21) dynInputs.pph21.placeholder = "Menghitung...";
-
                     fetch("{{ route('api.calculate.salary') }}", {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -1255,7 +1224,6 @@
                     .then(response => response.json())
                     .then(data => {
                         console.log("RESPONSE:", data);
-                        
                         if(dynInputs.pph21)   dynInputs.pph21.value   = formatRupiahTyping(data.pph21_bulanan.toString());
                         if(dynInputs.bpjs_kes) dynInputs.bpjs_kes.value = formatRupiahTyping(data.bpjs_kesehatan.toString());
                         if(dynInputs.bpjs_tk)  dynInputs.bpjs_tk.value  = formatRupiahTyping(data.bpjs_ketenagakerjaan.toString());
@@ -1279,13 +1247,10 @@
                     dynInputs.salary.addEventListener('keyup', function(e) { 
                         let rawVal = e.target.value;
                         e.target.value = formatRupiahTyping(rawVal);
-                        
                         const cleanVal = parseRupiah(rawVal);
                         const formattedVal = formatRupiahTyping(cleanVal.toString());
-
                         if(dynInputs.thr) dynInputs.thr.value = formattedVal;
                         if(dynInputs.kompensasi) dynInputs.kompensasi.value = formattedVal;
-                        
                         if(dynInputs.terbilang) {
                             if(cleanVal && !isNaN(cleanVal)) {
                                 let text = terbilang(cleanVal) + ' RUPIAH';
@@ -1295,7 +1260,6 @@
                                 dynInputs.terbilang.value = '';
                             }
                         }
-
                         clearTimeout(calcTimeout);
                         calcTimeout = setTimeout(calculateRemuneration, 800); 
                     });
@@ -1427,7 +1391,6 @@
                     } else {
                         btnPreviewPdf.style.display = 'none';
                     }
-
                     uraianModal.hidden = false;
                     uraianModal.style.zIndex = '2000'; 
                     document.body.classList.add('modal-open');
@@ -1480,7 +1443,6 @@
                         }
                     }
                 });
-
                 function submitPdfForm(jsonData) {
                     if(!jsonData) return;
                     let formPdf = document.getElementById('pdf-generator-form');
@@ -1831,8 +1793,6 @@
                         let detailsArray = [];
                         try { detailsArray = JSON.parse(metaJsonStr); } catch(e){}
                         if(!Array.isArray(detailsArray) || detailsArray.length===0) detailsArray = [{}];
-
-
                         const historyJson = btnDetail.getAttribute('data-history');
                         const canViewNotes = btnDetail.getAttribute('data-can-view-notes') === 'true';
                         let historyData = [];
@@ -1911,22 +1871,16 @@
                             };
                             const formatRp = (val) => {
                                 if (!val) return '-';
-                                // Bersihkan titik dulu kalau inputnya string "1.000.000"
                                 let cleanVal = val.toString().replace(/\./g, '');
                                 let num = parseFloat(cleanVal);
                                 if (isNaN(num)) return '-';
                                 return 'Rp ' + num.toLocaleString('id-ID'); 
                             };
-
-                            // Helper Parse: String "1.000.000" -> Integer 1000000 (Utk Penjumlahan)
                             const parseVal = (v) => {
                                 if (!v) return 0;
                                 if (typeof v === 'number') return v;
-                                // Hapus titik pemisah ribuan sebelum di-parse
                                 return parseFloat(v.toString().replace(/\./g, '')) || 0;
                             };
-                            
-                            // Hitung Total Per Bulan
                             const totalAnggaranPerBulan = 
                                 parseVal(data.salary) + 
                                 parseVal(data.allowanceJ) + 
@@ -1938,18 +1892,15 @@
                                 parseVal(data.bpjs_tk) + 
                                 parseVal(data.bpjs_kes) + 
                                 parseVal(data.pph21);
-
-                            // Hitung Durasi
                             let duration = 1; 
                             if (data.start_date && data.end_date) {
                                 const d1 = new Date(data.start_date);
                                 const d2 = new Date(data.end_date);
-                                d2.setDate(d2.getDate() + 1); // Inklusif
+                                d2.setDate(d2.getDate() + 1);
                                 let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
                                 if (d2.getDate() < d1.getDate()) months--;
                                 duration = months > 0 ? months : 1;
                             }
-
                             const grandTotal = totalAnggaranPerBulan * duration;
                             let historyHtml = '';
                             if (historyData.length > 0) {
@@ -2069,7 +2020,6 @@
                         const noTicket = safeTxt('data-ticket-number');
                         const reqId = btnDetail.getAttribute('data-id');
                         const btnPublish = detailModal.querySelector('.js-btn-publish');
-
                         if (btnPublish) {
                             btnPublish.style.display = 'none';
                             btnPublish.disabled = false;
@@ -2077,10 +2027,7 @@
                             btnPublish.classList.add('u-btn--info');
                             btnPublish.classList.remove('u-btn--success');
                             btnPublish.onclick = null;
-
                             if (canPublishUser && statusTiket === 'approved' && noTicket && noTicket !== '-') {
-                                
-                                // --- INI KODE PENGGANTI BARU ---
                                 if (isPublished) {
                                     btnPublish.style.display = 'inline-flex';
                                     btnPublish.disabled = true;
@@ -2089,27 +2036,15 @@
                                     btnPublish.classList.add('u-btn--success');
                                 } else {
                                     btnPublish.style.display = 'inline-flex';
-                                    
-                                    // PERUBAHAN UTAMA DISINI:
-                                    // Saat tombol diklik, jangan langsung fetch API.
-                                    // Tapi buka modal deskripsi terlebih dahulu.
                                     btnPublish.onclick = function() {
-                                        // 1. Set ID ke hidden input di modal baru
                                         document.getElementById('publish_req_id').value = reqId; 
-                                        
-                                        // 2. Reset Editor (kosongkan isinya)
                                         if(publishEditor) publishEditor.setData(''); 
-                                        
-                                        // 3. Tampilkan Modal Deskripsi
                                         const pubModal = document.getElementById('publishDescriptionModal');
                                         pubModal.hidden = false;
                                         pubModal.style.display = 'flex';
-                                        
-                                        // 4. Tutup modal detail agar tidak tumpang tindih (opsional, tergantung selera)
                                         document.getElementById('detailApprovalModal').hidden = true; 
                                     };
                                 }
-                                // --- AKHIR KODE PENGGANTI ---
                             }
                         }
                     }
@@ -2227,7 +2162,6 @@
             bindExternalSearch() { /* ... */ }
         };
         page.init();
-        
         const urlParams = new URLSearchParams(window.location.search);
             const ticketId = urlParams.get('open_ticket_id');
             if (ticketId) {

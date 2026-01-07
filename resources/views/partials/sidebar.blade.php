@@ -79,9 +79,9 @@
               <span class="icon">✅</span><span class="label">Principal Approval</span>
             </a>
           @endif
-          @if($isSuper || $user?->can('recruitment.external.view'))
+          @if(!$isPelamar && ($isSuper || $user?->can('recruitment.external.view')))
             <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}"
-               href="{{ \Illuminate\Support\Facades\Route::has('recruitment.external.index') ? route('recruitment.external.index') : '#' }}">
+              href="{{ \Illuminate\Support\Facades\Route::has('recruitment.external.index') ? route('recruitment.external.index') : '#' }}">
               <span class="icon">➕</span>
               <span class="label">External Recruitment</span>
             </a>

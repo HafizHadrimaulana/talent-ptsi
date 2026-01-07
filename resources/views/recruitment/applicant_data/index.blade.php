@@ -267,8 +267,13 @@
                                         <td class="px-4 py-5 text-center">
                                             @php
                                                 $statusColor = match($app->status) {
-                                                    'Applied', 'Screening CV' => 'bg-blue-100 text-blue-700 border-blue-200',
-                                                    'Interview', 'Psikotes' => 'bg-purple-100 text-purple-700 border-purple-200',
+                                                    'Applied', 'Screening CV' => 'bg-gray-100 text-gray-600 border-gray-200',
+                                                    'Psikotes' => 'bg-purple-100 text-purple-700 border-purple-200',
+                                                    'Interview HR' => 'bg-indigo-100 text-indigo-700 border-indigo-200',
+                                                    'FGD' => 'bg-orange-100 text-orange-700 border-orange-200',
+                                                    'Interview User' => 'bg-blue-100 text-blue-700 border-blue-200',
+                                                    'Tes Teknis' => 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                                                    'Medical Checkup' => 'bg-teal-100 text-teal-700 border-teal-200',
                                                     'Offering', 'Hired', 'Passed' => 'bg-green-100 text-green-700 border-green-200',
                                                     'Rejected', 'Failed' => 'bg-red-100 text-red-700 border-red-200',
                                                     default => 'bg-gray-100 text-gray-600 border-gray-200'

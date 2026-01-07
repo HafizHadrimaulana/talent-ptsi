@@ -263,7 +263,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (firstPane) firstPane.classList.add('is-active');
   }
 
-  // open/close + preload
   document.addEventListener('click', (e) => {
     const opener = e.target.closest('[data-modal-open="editPermModal"]');
     if (opener) {
@@ -298,7 +297,6 @@ document.addEventListener('DOMContentLoaded', function () {
       document.body.classList.remove('modal-open');
     }
 
-    // Select all / none roles
     const allRolesBtn  = e.target.closest('[data-check="roles-all"]');
     const noneRolesBtn = e.target.closest('[data-check="roles-none"]');
     if (allRolesBtn || noneRolesBtn) {

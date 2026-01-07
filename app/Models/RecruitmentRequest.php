@@ -11,7 +11,6 @@ use App\Support\TicketNumberGenerator;
 class RecruitmentRequest extends Model
 {
     use HasFactory;
-
     protected $fillable = [
         'unit_id','title','type','position','position_id','headcount','justification',
         'status','requested_by','approved_by','approved_at','meta',
@@ -32,23 +31,16 @@ class RecruitmentRequest extends Model
         return RecruitmentRequestFactory::new();
     }
 
-    /** Approvals (polymorphic) */
     public function approvals(): MorphMany
     {
         return $this->morphMany(Approval::class, 'approvable');
     }
 
-    /**
-     * Generate dan assign ticket number jika belum ada
-     */
     public function generateTicketNumber(): void
     {
         if ($this->ticket_number) return;
-
         $unitCode = $this->unit?->code ?? 'UNKNOWN';
         $createdAt = $this->created_at ?? now();
-
-        // coba generate beberapa kali untuk menghindari collision pada kolom unique
         $tries = 10;
         for ($i = 0; $i < $tries; $i++) {
             $candidate = TicketNumberGenerator::generate($unitCode, $createdAt instanceof \DateTimeInterface ? $createdAt : \Carbon\Carbon::parse($createdAt));
@@ -58,14 +50,10 @@ class RecruitmentRequest extends Model
                 return;
             }
         }
-
         $this->ticket_number = TicketNumberGenerator::generate($unitCode, $createdAt instanceof \DateTimeInterface ? $createdAt : \Carbon\Carbon::parse($createdAt)) . '-' . substr(uniqid(), -6);
         $this->save();
     }
 
-    /**
-     * Relasi ke Unit
-     */
     public function unit()
     {
         return $this->belongsTo(Unit::class);
@@ -77,20 +65,14 @@ class RecruitmentRequest extends Model
  
     public function scopeForViewer($q, \App\Models\User $user)
     {
-        
         if ($user->hasRole('Superadmin')) return $q;
-
-       
         if ($user->can('recruitment.approve')) {
             return $q->where('unit_id', $user->unit_id)
                      ->whereIn('status', ['submitted','approved']);
         }
-
-       
         if ($user->can('recruitment.view')) {
             return $q->where('unit_id', $user->unit_id);
         }
-
         return $q->whereRaw('1=0');
     }
 
