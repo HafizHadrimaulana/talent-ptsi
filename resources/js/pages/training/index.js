@@ -162,7 +162,7 @@ const initializeModals = () => {
         const role = document.querySelector(openBtn)?.dataset?.role || "training";
         
         initModalHandler(openBtn, modal, closeBtn);
-        initDragDropUpload(modal, role);
+        initDragDropUpload(modal);
     }
 };
 
