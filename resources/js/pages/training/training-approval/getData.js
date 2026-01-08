@@ -1,5 +1,4 @@
 import { getJSON } from "@/utils/fetch";
-import { initDragDropUpload } from "./handler/dragDropImport";
 import { initDataTables } from "../../../plugins/datatables";
 import {
     executeApprove,
@@ -20,9 +19,6 @@ const TABLE_CONFIGS = {
             "jumlah_jam",
             "waktu_pelaksanaan",
             "biaya_pelatihan",
-            "uhpd",
-            "biaya_akomodasi",
-            "estimasi_total_biaya",
             "nama_proyek",
             "jenis_portofolio",
             "fungsi",
@@ -136,7 +132,6 @@ const COLUMN_RENDERERS = {
 };
 
 // --- CORE HANDLER ---
-
 const initModalSystem = () => {
     const $body = $("body");
 
@@ -157,10 +152,30 @@ const initModalSystem = () => {
         console.log("row data aaa", rowData);
 
         if ($modal.length && rowData) {
+            toggleEditMode($modal, false);
             populateModalData($modal, rowData);
-
-            // Tampilkan Modal
             $modal.removeClass("hidden").show();
+        }
+    });
+
+    $body.on("click", "#btn-toggle-edit", function() {
+        const $modal = $(this).closest(".u-modal");
+        const isEditing = $modal.hasClass('is-editing-active');
+        toggleEditMode($modal, !isEditing);
+    });
+
+    $body.on("click", "#btn-submit-action", function () {
+        const $modal = $(this).closest(".u-modal");
+        const isEditMode = $modal.hasClass('is-editing-active');
+        const id = $modal.attr("data-current-id");
+        
+        if (isEditMode) {
+            // LOGIKA UPDATE (AJAX)
+            const formData = $modal.find("#lna-detail-form").serialize();
+            handleUpdateAction(id, formData, $modal);
+        } else {
+            // LOGIKA HAPUS (EX: Approve/Decline lama anda)
+            handleDeleteAction(id);
         }
     });
 
@@ -210,6 +225,7 @@ const initModalSystem = () => {
 const populateModalData = ($modal, data) => {
     // Mapping ID Modal (Opsional: untuk logika spesifik berdasarkan modal)
     $modal.attr("data-current-id", data.id);
+    $modal.find("#edit-id").val(data.id);
 
     // Informasi Dasar (Menggunakan selector lama & baru agar kompatibel)
     $modal
@@ -288,6 +304,53 @@ const populateModalData = ($modal, data) => {
                 '<span class="u-muted u-text-sm italic">Tidak ada lampiran</span>'
             );
     }
+};
+
+const toggleEditMode = ($modal, isEditing) => {
+    if (isEditing) {
+        $modal.addClass('is-editing-active');
+        $modal.find('.view-mode').addClass('hidden');
+        $modal.find('.edit-mode').removeClass('hidden');
+        
+        // Sync data dari view ke input
+        $modal.find('input[name="judul_pelatihan"]').val($modal.find('.detail-judul-text').text().trim());
+        $modal.find('input[name="unit"]').val($modal.find('.detail-unit').text().trim());
+        $modal.find('input[name="penyelenggara"]').val($modal.find('.detail-penyelenggara').text().trim());
+        $modal.find('input[name="nama_proyek"]').val($modal.find('.detail-nama_proyek').text().trim());
+        $modal.find('input[name="fungsi"]').val($modal.find('.detail-fungsi').text().trim());
+        $modal.find('input[name="portofolio"]').val($modal.find('.detail-portofolio').text().trim());
+        $modal.find('input[name="biaya_pelatihan"]').val($modal.find('.detail-biaya-pelatihan').text().replace(/[^0-9]/g, ''));
+
+        // Ubah UI Tombol
+        $modal.find('#btn-toggle-edit span').text('Batal');
+        $modal.find('#btn-submit-action span').text('Simpan Perubahan');
+        $modal.find('#btn-submit-action').addClass('u-btn--brand u-btn--fill').removeClass('u-btn--outline');
+    } else {
+        $modal.removeClass('is-editing-active');
+        $modal.find('.view-mode').removeClass('hidden');
+        $modal.find('.edit-mode').addClass('hidden');
+        
+        // Reset UI Tombol
+        $modal.find('#btn-toggle-edit span').text('Edit');
+        $modal.find('#btn-submit-action span').text('Hapus');
+        $modal.find('#btn-submit-action').removeClass('u-btn--brand u-btn--fill').addClass('u-btn--outline');
+    }
+};
+
+const handleUpdateAction = (id, formData, $modal) => {
+    $.ajax({
+        url: `/training/training-request/${id}/edit-data-lna`, // Sesuaikan route
+        method: 'POST',
+        data: formData,
+        beforeSend: () => $modal.find('#btn-submit-action').prop('disabled', true).text('Menyimpan...'),
+        success: (res) => {
+            Swal.fire('Berhasil', 'Data telah diperbarui', 'success');
+            toggleEditMode($modal, false);
+            $(".dataTable").DataTable().ajax.reload(null, false);
+        },
+        error: () => Swal.fire('Gagal', 'Terjadi kesalahan sistem', 'error'),
+        complete: () => $modal.find('#btn-submit-action').prop('disabled', false)
+    });
 };
 
 // --- DATATABLE INITIALIZATION ---

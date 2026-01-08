@@ -14,17 +14,18 @@
         <div class="mx-4 u-mb-xl">
             <div
                 id="training-tabs"
-                class="u-tabs__list flex font-medium"
+                class="u-tabs__list flex"
             >
                 <div class="flex space-x-4 border-b-2 border-slate-300">
                     @foreach ($ui['tabs'] as $tab)
                         <button
                             type="button"
                             data-tab="{{ $tab }}"
-                            class="u-tabs__item pb-2 -mb-0.5 border-b-2 whitespace-nowrap
+                            class="u-tabs__item pb-2 -mb-0.5 border-b-2 whitespace-nowrap transition-all duration-200 
+                                hover:text-blue-500 hover:border-blue-600
                                 {{ $activeTab === $tab
-                                    ? 'border-blue-600 text-slate-900 font-semibold'
-                                    : 'border-transparent text-slate-500' }}"
+                                    ? 'border-blue-600 text-slate-900 u-font-semibold' 
+                                    : 'border-transparent text-slate-400' }}"
                         >
                             {{ $ui['tab_labels'][$tab] ?? ucwords(str_replace('-', ' ', $tab)) }}
                         </button>

@@ -28,12 +28,12 @@ const TRAINING_CONFIG = {
         lnaImport: {
             openBtn: "#lna-import-btn",
             modal: "#lna-import-modal",
-            closeBtn: "#lna-close-modal",
+            closeBtn: ".lna-close-modal",
         },
         lnaInput: {
             openBtn: "#lna-input-btn",
             modal: "#lna-input-modal",
-            closeBtn: "#lna-input-close-modal",
+            closeBtn: ".lna-input-close-modal",
         }, 
     },
     buttons: {
@@ -72,54 +72,27 @@ const initializeTrainingTables = () => {
 
 const initializeTabs = () => {
     const container = document.querySelector("#training-tabs");
-    if (!container) return; // bukan DHC atau tabs belum dirender
+    if (!container) return;
 
     const buttons = container.querySelectorAll(".u-tabs__item");
     const panels = document.querySelectorAll(".u-tabs__panel");
 
-    if (!buttons.length || !panels.length) return;
-
     buttons.forEach((btn) => {
         btn.addEventListener("click", () => {
-            const target = btn.dataset.tab; // 'training' atau 'lna'
+            const target = btn.dataset.tab;
             if (!target) return;
 
-            // Toggle active di tabs__list
             buttons.forEach((b) => {
-                b.classList.remove(TRAINING_CONFIG.tabs.activeClass);
-
-                b.classList.remove(
-                    "border-blue-600",
-                    "text-slate-900",
-                    "font-semibold"
-                );
-
-                b.classList.add(
-                    "border-transparent",
-                    "text-slate-500",
-                );
+                b.classList.remove("border-blue-600", "text-slate-900", "u-font-semibold");
+                b.classList.add("border-transparent", "text-slate-400");
             });
             
-            btn.classList.remove(
-                "border-transparent",
-                "text-slate-500"
-            );
+            btn.classList.remove("border-transparent", "text-slate-400");
+            btn.classList.add("border-blue-600", "text-slate-900", "u-font-semibold");
 
-            btn.classList.add(
-                "border-blue-600",
-                "text-slate-900",
-                "font-semibold"
-            );
-
-            // Toggle panel
-            panels.forEach((panel) => {
-                if (panel.id === `tab-${target}`) {
-                    panel.classList.add(TRAINING_CONFIG.tabs.activeClass);
-                    panel.classList.remove(TRAINING_CONFIG.tabs.hiddenClass);
-                } else {
-                    panel.classList.remove(TRAINING_CONFIG.tabs.activeClass);
-                    panel.classList.add(TRAINING_CONFIG.tabs.hiddenClass);
-                }
+            // Toggle Panel
+            panels.forEach((p) => {
+                p.classList.toggle("hidden", p.id !== `tab-${target}`);
             });
         });
     });

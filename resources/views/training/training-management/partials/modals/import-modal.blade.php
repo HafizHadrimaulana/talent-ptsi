@@ -1,7 +1,6 @@
 <div id="lna-import-modal" class="u-modal" hidden>
-  <div class="u-modal__backdrop js-close-modal"></div>
   <div class="u-modal__card">
-    <div class="u-modal__head u-mb-sm">
+    <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
         <div>
@@ -9,39 +8,37 @@
           <div class="u-muted u-text-sm" id="ip-modal-subtitle">Import data</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
+      <button class="u-btn u-btn--ghost u-btn--sm lna-close-modal" aria-label="Close">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
 
     <div class="u-modal__body">
-      <div class="u-modal__body">
-        <form id="import-form" enctype="multipart/form-data">
-          @csrf
-          <div class="u-panels">
-            <div class="u-card">
-                <div id="dragdrop-wrapper">
-                  <div
-                      id="drag-drop-area"
-                      class="w-full border-2 border-dashed border-gray-200 rounded-lg u-p-lg text-center cursor-pointer hover:border-blue-500 transition bg-gray-50"
-                  >
-                    <div class="u-flex u-flex-col u-items-center u-justify-center u-gap-md">
-                        <p class="text-gray-600 text-lg font-medium">
-                            Drag & Drop your Excel file here
-                        </p>
-                        <p class="text-gray-400 text-sm">
-                            or click to select a file
-                        </p>
+      <form id="import-form" enctype="multipart/form-data">
+        @csrf
+        <div class="u-card">
+            <div id="dragdrop-wrapper">
+              <div
+                  id="drag-drop-area"
+                  class="w-full border-2 border-dashed border-gray-200 rounded-lg u-p-sm text-center cursor-pointer hover:border-blue-500 transition bg-gray-50"
+              >
+                <div class="u-flex u-flex-col u-items-center u-justify-center u-gap-md">
+                    <p class="text-gray-600 text-lg font-medium">
+                        Drag & Drop your Excel file here
+                    </p>
+                    <p class="text-gray-400 text-sm">
+                        or click to select a file
+                    </p>
 
-                        <input type="file" name="file" id="drag-drop-input" class="hidden" accept=".xlsx,.xls">
-                    </div>
-                  </div>
+                    <input type="file" name="file" id="drag-drop-input" class="hidden" accept=".xlsx,.xls">
                 </div>
-
-              <div id="selected-file-info" class="hidden"></div>
-
+              </div>
             </div>
-          </div>
-        </form>
-      </div>
+
+          <div id="selected-file-info" class="hidden"></div>
+
+        </div>
+      </form>
     </div>
 
         <!-- Footer -->
