@@ -93,19 +93,51 @@
         <tbody>
           @foreach($list as $r)
           @php
-            $meUnit = auth()->user()->unit_id; 
-            $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
             $me = auth()->user();
+            $meUnit = $me->unit_id; 
+            $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
+            
+            // 1. History & Parsing Notes
             $approvalHistory = [];
-            $roleTitles = ['Kepala Unit', 'DHC', 'AVP HC Ops', 'VP Human Capital', 'Dir SDM'];
+            $activeApp = null;
+            $currentStage = ''; // Ini pengganti $sKey dan $stageKey
+
             if ($r->relationLoaded('approvals')) {
-                foreach ($r->approvals as $index => $app) {
+                foreach ($r->approvals as $app) {
+                    // Cek pending approval untuk menentukan posisi stage saat ini
+                    if ($app->status == 'pending') {
+                        $activeApp = $app;
+                        preg_match('/\[stage=([^\]]+)\]/', $app->note, $m);
+                        $currentStage = $m[1] ?? '';
+                    }
+
+                    // Parsing history note
                     $rawNote = $app->note;
-                    $cleanNote = preg_replace('/\[stage=[^\]]+\]/', '', $rawNote); 
-                    $cleanNote = trim($cleanNote); 
-                    $approvalHistory[] = ['role'   => $roleTitles[$index] ?? 'Approver','status' => $app->status, 'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->setTimezone('Asia/Jakarta')->format('d M Y H:i') : '-','note'   => $cleanNote];
+                    preg_match('/\[stage=([^\]]+)\]/', $rawNote, $matches);
+                    $histKey = $matches[1] ?? '';
+                    
+                    // Labeling untuk History
+                    $lbl = 'Approver';
+                    if ($histKey == 'admin_ops') $lbl = 'Admin Ops';
+                    elseif ($histKey == 'kepala_mp') $lbl = 'Kepala MP';
+                    elseif ($histKey == 'sdm_unit') $lbl = 'SDM Unit';
+                    elseif ($histKey == 'kepala_unit') $lbl = 'Kepala Unit';
+                    elseif ($histKey == 'dhc_checker') $lbl = 'DHC';
+                    elseif ($histKey == 'avp_hc_ops') $lbl = 'AVP DHC';
+                    elseif ($histKey == 'vp_hc') $lbl = 'VP DHC';
+                    elseif ($histKey == 'dir_sdm') $lbl = 'Dir SDM';
+
+                    $cleanNote = trim(preg_replace('/\[stage=[^\]]+\]/', '', $rawNote));
+                    $approvalHistory[] = [
+                        'role' => $lbl,
+                        'status' => $app->status,
+                        'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->format('d M Y H:i') : '-',
+                        'note' => $cleanNote
+                    ];
                 }
             }
+
+            // 2. Cek Jabatan User
             $myJobTitle = null;
             if ($me->person_id) {
                 $myJobTitle = DB::table('employees')
@@ -113,32 +145,26 @@
                     ->where('employees.person_id', $me->person_id)
                     ->value('positions.name');
             }
-            $isRequester = $me->id === $r->created_by || $me->id === $r->requested_by;
-            $isApprover = $me->hasRole('Kepala Unit') 
-                       || $me->hasRole('DHC') 
-                       || $me->hasRole('Dir SDM')
-                       || $me->hasRole('Superadmin')
-                       || $me->hasRole('SDM Unit')
-                       || ($me->hasRole('AVP Human Capital Operation') || $myJobTitle === 'AVP Human Capital Operation')
-                       || ($me->hasRole('VP Human Capital') || $myJobTitle === 'VP Human Capital');
-            $canViewNotes = $isRequester || $isApprover;
-            $stageIndex = null; 
-            $rejectedByLabel = ''; 
-            if ($r->relationLoaded('approvals')) { 
-                foreach ($r->approvals as $i => $ap) { 
-                    if ($stageIndex === null && ($ap->status ?? 'pending') === 'pending') { $stageIndex = $i; }
-                    if (($ap->status ?? '') === 'rejected') { $rejectedByLabel = $roleTitles[$i] ?? 'Approver'; }
-                } 
-            }
-            $me = auth()->user();
-            $meRoles = [ 
-                'Superadmin'  => $me && $me->hasRole('Superadmin'), 
-                'Kepala Unit' => $me && $me->hasRole('Kepala Unit'), 
-                'DHC'         => $me && $me->hasRole('DHC'), 
-                'AVP HC Ops'  => $me && $me->hasRole('AVP Human Capital Operation'), 
-                'VP HC'       => $me && $me->hasRole('VP Human Capital'),
-                'Dir SDM'     => $me && $me->hasRole('Dir SDM') 
+            $clnTitle = strtoupper($myJobTitle ?? '');
+
+            // 3. Define Roles User (PERBAIKAN KUNCI ARRAY)
+            $meRoles = [
+                'Superadmin' => $me->hasRole('Superadmin'),
+                'Admin Ops'  => $me->hasRole('Admin Operasi Unit') || str_contains($clnTitle, 'STAF ADMINISTRASI OPERASI'),
+                'Kepala MP'  => $me->hasRole('Kepala Proyek (MP)') || str_contains($clnTitle, 'KEPALA PROYEK (MP)'),
+                'SDM Unit'   => $me->hasRole('SDM Unit'),
+                'Kepala Unit'=> $me->hasRole('Kepala Unit'),
+                'DHC'        => $me->hasRole('DHC'),
+                'AVP HC Ops' => $me->hasRole('AVP Human Capital Operation') || $clnTitle == 'AVP HUMAN CAPITAL OPERATION',
+                'VP HC'      => $me->hasRole('VP Human Capital') || $clnTitle == 'VP HUMAN CAPITAL',
+                'Dir SDM'    => $me->hasRole('Dir SDM')
             ];
+
+            $isRequester = $me->id === $r->created_by || $me->id === $r->requested_by;
+            $isApprover = in_array(true, $meRoles, true);
+            $canViewNotes = $isRequester || $isApprover;
+
+            // 4. Data Tampilan
             $status          = $r->status ?? 'draft';
             $employmentType  = $r->employment_type ?? $r->contract_type ?? null;
             $targetStart     = $r->target_start_date ?? $r->start_date ?? null;
@@ -147,65 +173,67 @@
             $budgetRef       = $r->budget_ref ?? $r->rkap_ref ?? $r->rab_ref ?? $r->budget_reference ?? '';
             $justif          = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
             $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
-            $totalStages = 5;
-            $progressStep = null;
-            if ($status === 'draft') { $progressText = 'Draft di SDM Unit'; $progressStep = 0; }
-            elseif ($status === 'rejected') { $progressText = $rejectedByLabel ? 'Ditolak oleh ' . $rejectedByLabel : 'Ditolak'; }
-            elseif ($status === 'approved') { $progressText = 'Selesai (Approved Dir SDM)'; $progressStep = $totalStages; }
-            elseif ($stageIndex === 0) { $progressText = 'Menunggu Kepala Unit'; $progressStep = 1; }
-            elseif ($stageIndex === 1) { $progressText = 'Menunggu DHC';         $progressStep = 2; }
-            elseif ($stageIndex === 2) { $progressText = 'Menunggu AVP HC Ops';     $progressStep = 3; }
-            elseif ($stageIndex === 3) { $progressText = 'Menunggu VP HC';      $progressStep = 4; }
-            elseif ($stageIndex === 4) { $progressText = 'Menunggu Dir SDM';     $progressStep = 5; }
-            else { $progressText = 'In Review'; }
+
+            // 5. Progress Text & Button Logic
+            $progressText = 'In Review';
+            if ($status === 'draft') $progressText = 'Draft';
+            elseif ($status === 'rejected') $progressText = 'Ditolak';
+            elseif ($status === 'approved') $progressText = 'Selesai (Approved Dir SDM)';
+            else {
+                if ($currentStage == 'admin_ops') $progressText = 'Menunggu Admin Ops';
+                elseif ($currentStage == 'kepala_mp') $progressText = 'Menunggu Kepala MP';
+                elseif ($currentStage == 'sdm_unit') $progressText = 'Menunggu SDM Unit';
+                elseif ($currentStage == 'kepala_unit') $progressText = 'Menunggu Ka. Unit';
+                elseif ($currentStage == 'dhc_checker') $progressText = 'Menunggu DHC';
+                elseif ($currentStage == 'avp_hc_ops') $progressText = 'Menunggu AVP DHC';
+                elseif ($currentStage == 'vp_hc') $progressText = 'Menunggu VP DHC';
+                elseif ($currentStage == 'dir_sdm') $progressText = 'Menunggu Dir SDM';
+            }
+
+            // --- LOGIKA TOMBOL APPROVE (PERBAIKAN UTAMA) ---
             $canStage = false;
-            $isKepalaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
-            if(in_array($status, ['in_review','submitted']) && $stageIndex !== null) {
-                if ($meRoles['Superadmin']) { $canStage = true; } 
-                else {
-                    if ($stageIndex === 0) { 
-                        $canStage = $meRoles['Kepala Unit'] && $sameUnit; 
-                    } 
-                    elseif ($stageIndex === 1) { 
-                        $canStage = $meRoles['DHC'] || $isKepalaUnitDHC; 
-                    } 
-                    elseif ($stageIndex === 2) { 
-                        $isAvp = $me->hasRole('AVP Human Capital Operation') || ($myJobTitle === 'AVP Human Capital Operation');
-                        $canStage = $isAvp || $isKepalaUnitDHC; 
-                    }
-                    elseif ($stageIndex === 3) { 
-                        $canStage = $meRoles['VP HC'] || $isKepalaUnitDHC; 
-                    } 
-                    elseif ($stageIndex === 4) { 
-                        $canStage = $meRoles['Dir SDM']; 
-                    }
+            $isKaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
+
+            if (in_array($status, ['in_review','submitted'])) {
+                if ($meRoles['Superadmin']) {
+                    $canStage = true;
+                } else {
+                    // Pastikan Key Array ($meRoles) sama dengan pemanggilan di sini
+                    if ($currentStage === 'admin_ops' && $meRoles['Admin Ops'] && $sameUnit) $canStage = true;
+                    elseif ($currentStage === 'kepala_mp' && $meRoles['Kepala MP'] && $sameUnit) $canStage = true;
+                    elseif ($currentStage === 'sdm_unit' && $meRoles['SDM Unit'] && $sameUnit) $canStage = true;
+                    elseif ($currentStage === 'kepala_unit' && $meRoles['Kepala Unit'] && $sameUnit) $canStage = true;
+                    elseif ($currentStage === 'dhc_checker' && ($meRoles['DHC'] || $isKaUnitDHC)) $canStage = true;
+                    
+                    // Perbaikan pemanggilan key AVP dan VP
+                    elseif ($currentStage === 'avp_hc_ops' && $meRoles['AVP HC Ops']) $canStage = true; 
+                    elseif ($currentStage === 'vp_hc' && $meRoles['VP HC']) $canStage = true;
+                    
+                    elseif ($currentStage === 'dir_sdm' && $meRoles['Dir SDM']) $canStage = true;
                 }
             }
+
+            // 6. SLA & Meta Data
             $recruitmentDetails = collect($r->meta['recruitment_details'] ?? []);
             $hasMultiData = $recruitmentDetails->count() > 1;
             $posObj = $positions->firstWhere('id', $r->position);
             $positionDisplay = $posObj ? $posObj->name : $r->position;
-            $slaBadgeClass = '';
-            $slaText = '-';
-            $kaUnitApp = $r->approvals->sortBy('id')->first();
-            $isApprovedByKaUnit = ($kaUnitApp && $kaUnitApp->status === 'approved' && $kaUnitApp->decided_at);
-            if (in_array($status, ['submitted', 'in_review']) && $isApprovedByKaUnit) {
+
+            $slaBadgeClass = ''; $slaText = '-';
+            // Hitung SLA dari approval Kepala Unit
+            $kaUnitApp = null;
+            foreach($r->approvals as $ap) { 
+                if(strpos($ap->note, 'stage=kepala_unit')!==false && $ap->status=='approved') $kaUnitApp = $ap; 
+            }
+            if (in_array($status, ['submitted', 'in_review']) && $kaUnitApp) {
                 $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
                 $daysDiff = $slaTimeBase->diffInDays(now());
-                $rawText = $slaTimeBase->locale('id')->diffForHumans(['parts' => 2,'join' => true,'syntax' => \Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW, ]);
-                $cleanText = str_replace(
-                    ['yang ', 'setelahnya', 'sebelumnya', ' dan '], 
-                    ['', '', '', ', '], 
-                    $rawText
-                );                
+                $rawText = $slaTimeBase->locale('id')->diffForHumans(['parts'=>2,'join'=>true,'syntax'=>\Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW]);
+                $cleanText = str_replace(['yang ', 'setelahnya', 'sebelumnya', ' dan '], ['', '', '', ', '], $rawText);
                 $slaText = trim($cleanText);
-                if ($daysDiff >= 5) {
-                    $slaBadgeClass = 'u-badge--danger';
-                } elseif ($daysDiff >= 3) {
-                    $slaBadgeClass = 'u-badge--warning';
-                } else {
-                    $slaBadgeClass = 'u-badge--info';
-                }
+                if ($daysDiff >= 5) { $slaBadgeClass = 'u-badge--danger'; } 
+                elseif ($daysDiff >= 3) { $slaBadgeClass = 'u-badge--warning'; } 
+                else { $slaBadgeClass = 'u-badge--info'; }
             }
           @endphp
           <tr class="recruitment-main-row u-align-top" data-recruitment-id="{{ $r->id }}">

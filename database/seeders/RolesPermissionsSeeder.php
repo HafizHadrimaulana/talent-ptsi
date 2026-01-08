@@ -37,6 +37,9 @@ class RolesPermissionsSeeder extends Seeder
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
+        // $rolesToDelete = ['Admin Operasional Unit', 'Kepala MP Unit']; // Role salah/lama
+        // Role::whereIn('name', $rolesToDelete)->where('guard_name', 'web')->delete();
+
         // 4. Buat/Cari Roles dan Sync Permissions
         // --- Role: Superadmin ---
         $roleSuperadmin = Role::firstOrCreate(['name' => 'Superadmin', 'guard_name' => 'web']);
@@ -71,7 +74,7 @@ class RolesPermissionsSeeder extends Seeder
             'users.view',
             'employees.view',
             'org.view', 'org.create', 'org.update',
-            'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit',
+            'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'recruitment.approve', 'recruitment.reject',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete',
             'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
             'training.view', 'training.dashboard.view',
@@ -89,7 +92,31 @@ class RolesPermissionsSeeder extends Seeder
             'training.management.view', 'training.management.approve',
         ]);
 
-        // --- Role: AVP ---
+        $roleAdminOps = Role::firstOrCreate(['name' => 'Admin Operasi Unit', 'guard_name' => 'web']);
+        $roleAdminOps->syncPermissions([
+            'employees.view',
+            'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit',
+            'training.view',
+        ]);
+
+        $roleKepalaMP = Role::firstOrCreate(['name' => 'Kepala Proyek (MP)', 'guard_name' => 'web']);
+        $roleKepalaMP->syncPermissions([
+            'employees.view',
+            'recruitment.view', 'recruitment.approve', 'recruitment.reject',
+            'training.view',
+        ]);
+
+        $roleAvpHcOps = Role::firstOrCreate(['name' => 'AVP Human Capital Operation', 'guard_name' => 'web']);
+        $roleAvpHcOps->syncPermissions([
+            'users.view', 
+            'employees.view',
+            'org.view', 
+            'recruitment.view', 'recruitment.approve', 'recruitment.reject', // Wajib untuk flow approval
+            'contract.view', 'contract.approve',
+            'training.view', 'training.dashboard.view',
+            'training.management.view', 'training.management.approve',
+        ]);
+
         $roleAvp = Role::firstOrCreate(['name' => 'AVP', 'guard_name' => 'web']);
         $roleAvp->syncPermissions([
             'training.view',
