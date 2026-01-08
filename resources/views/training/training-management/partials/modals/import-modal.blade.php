@@ -31,7 +31,7 @@
                             or click to select a file
                         </p>
 
-                        <input type="file" name="file" id="drag-drop-input" class="hidden" accept=".xlsx,.xls" required>
+                        <input type="file" name="file" id="drag-drop-input" class="hidden" accept=".xlsx,.xls">
                     </div>
                   </div>
                 </div>

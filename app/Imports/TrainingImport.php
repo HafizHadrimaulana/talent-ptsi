@@ -28,8 +28,16 @@ class TrainingImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
     {
         $row = $this->normalizeRowKeys($row);
 
-        if (!isset($row['judul_sertifikasi'])) {
-            throw new \Exception("Format Excel tidak sesuai. Kolom 'Judul Sertifikasi' tidak ditemukan atau header bergeser.");
+        // Identifikasi kolom Judul Sertifikasi dan Unit Kerja
+        $judul = strtolower(trim($row['waktu_pelaksanaan'] ?? ''));
+        $unit  = strtolower(trim($row['unit_kerja'] ?? ''));
+
+        if (str_contains($judul, 'total') || str_contains($unit, 'total')) {
+            Log::info("Baris TOTAL terdeteksi dan diabaikan:", [
+                'judul' => $judul,
+                'unit' => $unit
+            ]);
+            return null;
         }
 
         $isRowEmpty = empty(array_filter($row, function($value) {

@@ -114,7 +114,7 @@ const COLUMN_RENDERERS = {
     tanggal_berakhir: (d) => `<div>${formatDate(d)}</div>`,
     biaya_pelatihan: (d) => `<div>${formatRupiah(d)}</div>`,
     estimasi_total_biaya: (d) =>
-        `<div class="font-bold u-text-primary">${formatRupiah(d)}</div>`,
+        `<div class="font-bold u-text-sm">${formatRupiah(d)}</div>`,
 
     lampiran_penawaran: (d) => {
         const hasFile = d && d !== "null" && d !== "";
@@ -302,7 +302,6 @@ export function initGetDataTable(tableBody, options = {}) {
     // Inisialisasi sistem modal (hanya sekali)
     if (!isGlobalInitialized) {
         initModalSystem();
-        initDragDropUpload();
         isGlobalInitialized = true;
     }
 
@@ -381,7 +380,7 @@ const renderApprovalTimeline = (approvals) => {
                     <span class="u-text-xs u-font-bold u-uppercase text-gray-800">${
                         item.role
                     }</span>
-                    <span class="u-text-xxs u-muted">${date}</span>
+                    <span class="u-text-xs u-muted">${date}</span>
                 </div>
                 <div class="u-mt-xs u-p-xs u-rounded ${bgClass} border border-gray-100">
                     <p class="u-text-xs italic text-gray-600">"${

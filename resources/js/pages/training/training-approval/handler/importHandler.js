@@ -4,11 +4,10 @@ import { postFormData } from "@/utils/fetch";
  * Handler untuk upload file besar dengan metode Chunking.
  * @param {File} file - Objek file dari input.
  * @param {string} type - Jenis import (contoh: 'lna').
- * @param {Function} onProgress - Callback untuk mengupdate UI progress (optional).
  */
 export async function initImportHandler(file) {
     const uploadUrl = "/training/training-management/import-lna"
-    const chunkSize = 1024 * 1024; // 500KB per chunk
+    const chunkSize = 500 * 1024; // 500KB per chunk
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     let lastResponse = null;

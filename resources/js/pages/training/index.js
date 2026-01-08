@@ -25,11 +25,6 @@ const TRAINING_CONFIG = {
             modal: "#input-training-modal",
             closeBtn: "#training-close-modal",
         },
-        trainingImport: {
-            openBtn: "#training-import-btn",
-            modal: "#lna-import-modal",
-            closeBtn: "#lna-close-modal",
-        },
         lnaImport: {
             openBtn: "#lna-import-btn",
             modal: "#lna-import-modal",

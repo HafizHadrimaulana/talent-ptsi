@@ -1,5 +1,9 @@
 import { initImportHandler } from "./importHandler";
 
+/**
+ * @param {string} modalSelector
+ * @param {Function} reloadCallback
+ */
 export function initDragDropUpload(modalSelector) {
     const area = document.getElementById("drag-drop-area");
     const input = document.getElementById("drag-drop-input");
@@ -51,6 +55,7 @@ export function initDragDropUpload(modalSelector) {
         selectedFile = input.files[0];
         if (!selectedFile) {
             console.log("tidak ada file dipilih");
+            alert("tidak ada file dipilih");
         }
 
         wrapper.classList.add("hidden");
@@ -95,19 +100,27 @@ export function initDragDropUpload(modalSelector) {
     uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        if (!selectedFile) {
-            return Swal.fire(
-                "Peringatan",
-                "Pilih file terlebih dahulu!",
-                "warning"
-            );
-        }
+        const closeMyModal = () => {
+            if (modal) {
+                $(modal).fadeOut(150, function () {
+                    $(this).addClass("hidden").hide();
+                    modal.classList.add("hidden");
+                });
+            }
+        };
 
-        if (modal) {
-            $(modal).fadeOut(150, function () {
-                $(this).addClass("hidden").hide();
+        if (!selectedFile) {
+            closeMyModal(); // Tutup modal dulu
+
+            return Swal.fire({
+                icon: "warning",
+                title: "Peringatan",
+                text: "Pilih file terlebih dahulu!",
+                confirmButtonText: "Oke",
             });
         }
+
+        closeMyModal();
 
         Swal.fire({
             title: "Mengunggah Data...",
@@ -122,7 +135,6 @@ export function initDragDropUpload(modalSelector) {
             console.log("res data import", res);
 
             if (res.status === "error") {
-                // lempar agar ditangkap oleh blok catch(err) di bawah
                 throw new Error(res.message || "Terjadi kesalahan sistem");
             }
 
@@ -139,7 +151,7 @@ export function initDragDropUpload(modalSelector) {
                     result.isConfirmed ||
                     result.dismiss === Swal.DismissReason.timer
                 ) {
-                    // window.location.reload();
+                    reloadCallback();
                 }
             });
         } catch (err) {
