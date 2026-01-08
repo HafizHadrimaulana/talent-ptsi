@@ -15,66 +15,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-{{-- Custom Style Overrides --}}
-<style>
-    /* Utility Classes */
-    .is-hidden { display: none !important; }
-    
-    /* Modal Styling - Center & Glass */
-    .u-modal {
-        display: flex !important; align-items: center; justify-content: center;
-        padding: 1rem; background-color: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
-        z-index: 99999 !important; /* Super High Z-Index to cover sidebar */
-        position: fixed; inset: 0;
-    }
-    .u-modal[hidden] { display: none !important; }
 
-    .u-modal__card {
-        margin: auto; width: 100%; max-width: 750px; max-height: 90vh;
-        display: flex; flex-direction: column;
-        background: var(--surface-0); border: 1px solid var(--border);
-        border-radius: var(--radius-xl); box-shadow: var(--shadow-xl);
-        overflow: hidden; animation: modalFloatIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .u-modal__card--xl { max-width: 900px; }
-    .u-modal__card--md { max-width: 500px; }
-
-    @keyframes modalFloatIn {
-        from { opacity: 0; transform: scale(0.96) translateY(12px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-
-    .u-modal__body { overflow-y: auto; padding: 1.5rem; }
-    .u-modal__foot { padding: 1.25rem 1.5rem; background: var(--surface-1); border-top: 1px solid var(--border); }
-    .u-modal__head { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface-1); }
-
-    /* Section & Form Styling */
-    .u-bg-section {
-        background-color: var(--surface-1); border: 1px solid var(--border);
-        border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem;
-    }
-    .section-divider {
-        display: flex; align-items: center; gap: 0.75rem;
-        padding-bottom: 0.75rem; margin-bottom: 1rem;
-        border-bottom: 1px solid var(--border);
-        font-size: 0.8rem; font-weight: 700; text-transform: uppercase; 
-        letter-spacing: 0.05em; color: var(--muted);
-    }
-    .section-divider i { color: var(--accent); font-size: 1rem; }
-
-    /* Currency Input */
-    .has-prefix { position: relative; }
-    .currency-prefix {
-        position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-        color: var(--muted); font-size: 0.875rem; font-weight: 600; pointer-events: none;
-    }
-    .has-prefix .u-input {
-        padding-left: 38px; text-align: right; 
-        font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; font-weight: 500;
-    }
-    .map-container { height: 250px; width: 100%; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); z-index: 1; }
-    .float-in { animation: modalFloatIn 0.4s ease forwards; }
-</style>
 
 {{-- PAGE HEADER --}}
 <div class="u-card u-card--glass u-mb-xl">
@@ -108,7 +49,7 @@
 <div class="u-card u-p-md u-mb-lg" style="background: var(--surface-1);">
     <form method="get" class="u-grid-2 u-gap-lg">
         <div>
-            <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs u-block">Unit Kerja</label>
+            <label class="u-text-sm u-font-bold u-muted u-uppercase u-mb-xs u-block">Unit Kerja</label>
             @if ($canSeeAll)
                 <div class="u-search">
                     <span class="u-search__icon"><i class="fas fa-building"></i></span>
@@ -119,13 +60,13 @@
                 </div>
             @else
                 <div class="u-input u-input--sm u-bg-light u-text-muted u-flex u-items-center u-gap-sm">
-                    <i class="fas fa-lock u-text-xs"></i> {{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}
+                    <i class="fas fa-lock u-text-sm"></i> {{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}
                 </div>
                 <input type="hidden" name="unit_id" value="{{ $meUnit }}">
             @endif
         </div>
         <div>
-            <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs u-block">Status Dokumen</label>
+            <label class="u-text-sm u-font-bold u-muted u-uppercase u-mb-xs u-block">Status Dokumen</label>
             <div class="u-search">
                 <span class="u-search__icon"><i class="fas fa-filter"></i></span>
                 <select name="status" class="u-search__input" onchange="this.form.submit()" style="background: transparent;">
@@ -144,6 +85,7 @@
             <thead>
                 <tr>
                     <th>Dokumen</th>
+                    <th>Ticket (Izin Prinsip)</th>
                     <th>Personil</th>
                     <th>Posisi & Unit</th>
                     <th>Periode / Efektif</th>
@@ -156,14 +98,21 @@
                     <tr class="u-hover-bright">
                         <td>
                             <div class="u-font-mono u-font-bold u-text-sm">{{ $c->contract_no ?: '(Draft)' }}</div>
-                            <span class="u-badge u-badge--glass u-mt-xs u-text-xs">{{ $c->contract_type_label ?? $c->contract_type }}</span>
+                            <span class="u-badge u-badge--glass u-mt-xs u-text-sm">{{ $c->contract_type_label ?? $c->contract_type }}</span>
+                        </td>
+                        <td>
+                            @if($c->ticket_number)
+                                <span class="u-badge u-badge--info u-text-2xs">{{ $c->ticket_number }}</span>
+                            @else
+                                <span class="u-text-muted u-text-sm">-</span>
+                            @endif
                         </td>
                         <td>
                             <div class="u-flex u-items-center u-gap-sm">
                                 <div>{{ substr($c->person_name, 0, 1) }}</div>
                                 <div>
                                     <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
-                                    <div class="u-text-xs u-muted u-mt-xxs">
+                                    <div class="u-text-sm u-muted u-mt-xxs">
                                         @if($c->applicant_id) <span class="u-text-accent"><i class="fas fa-user-check u-mr-xxs"></i> Pelamar</span>
                                         @elseif($c->employee_id) <i class="fas fa-id-badge u-mr-xxs"></i> {{ $c->employee_id }}
                                         @else - @endif
@@ -173,16 +122,16 @@
                         </td>
                         <td>
                             <div class="u-text-sm u-font-medium">{{ $c->position_name ?? '-' }}</div>
-                            <div class="u-text-xs u-muted"><i class="fas fa-building u-mr-xxs"></i> {{ $c->unit?->name ?? '-' }}</div>
+                            <div class="u-text-sm u-muted"><i class="fas fa-building u-mr-xxs"></i> {{ $c->unit?->name ?? '-' }}</div>
                         </td>
                         <td>
                             @if($c->contract_type === 'PB_PENGAKHIRAN')
-                                <span class="u-text-danger u-font-bold u-text-xs">
+                                <span class="u-text-danger u-font-bold u-text-sm">
                                     <i class="fas fa-stop-circle u-mr-xxs"></i> End: {{ isset($c->remuneration_json['pb_effective_end']) ? \Carbon\Carbon::parse($c->remuneration_json['pb_effective_end'])->format('d M Y') : '-' }}
                                 </span>
                             @else
                                 <div class="u-text-sm">{{ $c->start_date?->format('d/m/Y') }}</div>
-                                <div class="u-text-xs u-muted">s/d {{ $c->end_date?->format('d/m/Y') }}</div>
+                                <div class="u-text-sm u-muted">s/d {{ $c->end_date?->format('d/m/Y') }}</div>
                             @endif
                         </td>
                         <td>
@@ -216,7 +165,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="u-empty"><div class="u-empty__icon"><i class="far fa-folder-open"></i></div>Tidak ada data dokumen ditemukan.</td></tr>
+                    <tr><td colspan="7" class="u-empty"><div class="u-empty__icon"><i class="far fa-folder-open"></i></div>Tidak ada data dokumen ditemukan.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -262,7 +211,7 @@
                         </select>
                     </div>
                     <div id="createSubtypeWrap" class="u-form-group is-hidden float-in">
-                        <label class="u-text-accent u-text-xs u-mb-xxs u-uppercase u-font-bold">Spesifikasi PKWT:</label>
+                        <label class="u-text-accent u-text-sm u-mb-xxs u-uppercase u-font-bold">Spesifikasi PKWT:</label>
                         <select id="createSubtypeSelect" class="u-input">
                             <option value="">-- Baru / Perpanjangan --</option>
                             <option value="PKWT_BARU" data-mode="new">PKWT Baru</option>
@@ -293,8 +242,9 @@
                                                 data-fullname="{{ $a->full_name }}" 
                                                 data-pos="{{ $a->position_applied }}" 
                                                 data-unit="{{ $a->unit_name ?? '' }}" 
-                                                data-unit-id="{{ $a->unit_id ?? '' }}">
-                                                {{ $a->full_name }} — {{ $a->position_applied }}
+                                                data-unit-id="{{ $a->unit_id ?? '' }}"
+                                                data-ticket="{{ $a->ticket_number ?? '' }}">
+                                                {{ $a->full_name }} — {{ $a->position_applied }} [Ticket: {{ $a->ticket_number ?? '-' }}]
                                             </option>
                                         @endforeach
                                     </select>
@@ -375,13 +325,14 @@
                                 <div>
                                     <div class="u-font-bold u-text-lg" id="prevName">-</div>
                                     <div class="u-text-sm u-muted u-font-mono" id="prevNik">-</div>
+                                    <div class="u-text-sm u-text-info u-mt-xxs" id="prevTicket"></div>
                                 </div>
                             </div>
                             <div class="u-grid-2 u-gap-md u-text-sm">
-                                <div><span class="u-muted u-text-xs u-uppercase u-font-bold">Posisi</span><div class="u-font-medium u-mt-xxs" id="prevPos">-</div></div>
-                                <div><span class="u-muted u-text-xs u-uppercase u-font-bold">Unit</span><div class="u-font-medium u-mt-xxs" id="prevUnit">-</div></div>
+                                <div><span class="u-muted u-text-sm u-uppercase u-font-bold">Posisi</span><div class="u-font-medium u-mt-xxs" id="prevPos">-</div></div>
+                                <div><span class="u-muted u-text-sm u-uppercase u-font-bold">Unit</span><div class="u-font-medium u-mt-xxs" id="prevUnit">-</div></div>
                                 <div class="u-grid-col-span-2 u-border-t u-pt-md">
-                                    <span class="u-muted u-text-xs u-uppercase u-font-bold">Periode Lama</span>
+                                    <span class="u-muted u-text-sm u-uppercase u-font-bold">Periode Lama</span>
                                     <div class="u-font-medium u-mt-xxs" id="prevDate">-</div>
                                 </div>
                             </div>
@@ -485,11 +436,11 @@
 
             <div class="u-card u-card--glass u-p-lg u-mb-xl u-grid-2">
                 <div>
-                    <div class="u-text-xs u-muted u-uppercase u-font-bold u-mb-xs">Personil</div>
+                    <div class="u-text-sm u-muted u-uppercase u-font-bold u-mb-xs">Personil</div>
                     <div id="editDisplayPerson" class="u-text-xl u-font-bold">-</div>
                 </div>
                 <div>
-                    <div class="u-text-xs u-muted u-uppercase u-font-bold u-mb-xs">Tipe Dokumen</div>
+                    <div class="u-text-sm u-muted u-uppercase u-font-bold u-mb-xs">Tipe Dokumen</div>
                     <div id="editDisplayType" class="u-badge u-badge--glass u-text-sm">-</div>
                 </div>
             </div>
@@ -542,7 +493,7 @@
                                 <div class="u-form-group has-prefix"><label>Uang Makan</label><div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="lunch_allowance_daily" id="editLunch" class="u-input" data-rupiah="true" data-terbilang-target="editLunchW"></div><input id="editLunchW" name="lunch_allowance_words" class="u-input u-input--sm u-mt-sm u-bg-light" readonly tabindex="-1"></div>
                             </div>
                             <div class="u-space-y-md">
-                                <label class="u-font-bold u-text-xs u-muted u-uppercase">Tunjangan</label>
+                                <label class="u-font-bold u-text-sm u-muted u-uppercase">Tunjangan</label>
                                 <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" id="editAP" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
                                 <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" id="editAC" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
                                 <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" id="editAS" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
@@ -604,7 +555,8 @@
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nomor</span><span id="detNo" class="u-font-mono u-font-bold u-text-md">-</span></div>
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Tipe</span><span id="detType" class="u-badge u-badge--glass">-</span></div>
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Status</span><span id="detStatus" class="u-badge">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Ticket (Izin Prinsip)</span><span id="detTicket" class="u-badge u-badge--info u-text-sm">-</span></div>
                     </div>
                 </div>
                 <div class="u-bg-section u-p-lg">
@@ -650,23 +602,23 @@
                     <div class="section-divider"><i class="fas fa-map-marked-alt u-text-brand"></i> Verifikasi Lokasi & Wajah</div>
                     <div class="u-grid-2 u-stack-mobile">
                         <div id="wrapperMapHead" class="is-hidden">
-                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Lokasi Kepala Unit (Saat Approval)</div>
+                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Lokasi Kepala Unit (Saat Approval)</div>
                             <div id="map-head" class="map-container u-mb-sm"></div>
-                            <div class="u-text-xs u-muted u-mb-sm text-right" id="ts-head"></div>
-                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
+                            <div class="u-text-sm u-muted u-mb-sm text-right" id="ts-head"></div>
+                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
                             <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 250px; width: 100%;">
                                 <img id="img-head" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
-                                <span id="no-img-head" class="u-text-xs u-text-muted" style="display:none;">Tidak ada foto</span>
+                                <span id="no-img-head" class="u-text-sm u-text-muted" style="display:none;">Tidak ada foto</span>
                             </div>
                         </div>
                         <div id="wrapperMapCand" class="is-hidden">
-                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Lokasi Kandidat/Pegawai (Saat Ttd)</div>
+                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Lokasi Kandidat/Pegawai (Saat Ttd)</div>
                             <div id="map-cand" class="map-container u-mb-sm"></div>
-                            <div class="u-text-xs u-muted u-mb-sm text-right" id="ts-cand"></div>
-                            <div class="u-text-xs u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
+                            <div class="u-text-sm u-muted u-mb-sm text-right" id="ts-cand"></div>
+                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
                             <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 250px; width: 100%;">
                                 <img id="img-cand" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
-                                <span id="no-img-cand" class="u-text-xs u-text-muted" style="display:none;">Tidak ada foto</span>
+                                <span id="no-img-cand" class="u-text-sm u-text-muted" style="display:none;">Tidak ada foto</span>
                             </div>
                         </div>
                     </div>
@@ -701,7 +653,7 @@
         </div>
         <form id="signForm" class="u-modal__body">
             <div id="cameraSection" class="u-mb-md is-hidden">
-                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Verifikasi Wajah</label>
+                <label class="u-text-sm u-font-bold u-muted u-uppercase u-mb-xs">Verifikasi Wajah</label>
                 <div id="wrapperCamera" class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 360px; position:relative;">
                     <video id="cameraStream" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
                     <img id="snapshotPreview" style="width: 100%; height: 100%; object-fit: cover; display:none;">
@@ -718,7 +670,7 @@
             </div>
             <div class="u-mb-md">
                 <div class="u-flex u-justify-between u-items-end u-mb-xs">
-                    <label class="u-text-xs u-font-bold u-muted u-uppercase">Tanda Tangan Digital</label>
+                    <label class="u-text-sm u-font-bold u-muted u-uppercase">Tanda Tangan Digital</label>
                     <button type="button" id="clearSign" class="u-btn u-btn--xs u-btn--ghost u-text-danger u-font-bold" style="border-radius: 999px;">
                         <i class="fas fa-eraser u-mr-xs"></i> Hapus
                     </button>
@@ -730,7 +682,7 @@
             <div class="u-card u-p-sm u-bg-light u-mb-lg u-flex u-items-center u-gap-sm">
                 <i class="fas fa-map-marker-alt u-text-muted" id="geoIcon"></i>
                 <div class="u-flex-1">
-                    <div class="u-text-xs u-font-bold u-muted">Lokasi Saat Ini</div>
+                    <div class="u-text-sm u-font-bold u-muted">Lokasi Saat Ini</div>
                     <div id="geoStatus" class="u-text-sm u-font-medium">Menunggu Izin Lokasi...</div>
                 </div>
             </div>
@@ -807,6 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const secRemun = select('#sectionRemun');
         const secNew = select('[data-mode-section="new"]'); 
         const secExist = select('[data-mode-section="existing"]');
+        const prevTicket = select('#prevTicket');
 
         let existingSource = null;
 
@@ -821,6 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hide(secPkwtSpk); hide(secPb); hide(secRemun);
             hide(secNew); hide(secExist);
             hide(select('#createPersonPreview'));
+            if(prevTicket) prevTicket.textContent = '';
         };
 
         btnCreate.onclick = (e) => { 
@@ -939,6 +893,8 @@ document.addEventListener('DOMContentLoaded', () => {
                  select('#prevUnit').textContent = o.dataset.unit || '-'; 
                  select('#prevNik').textContent = '-'; 
                  select('#prevDate').textContent = '-';
+                 if(prevTicket) prevTicket.textContent = o.dataset.ticket ? `Ticket: ${o.dataset.ticket}` : '';
+                 
                  showBlock(select('#createPersonPreview'));
 
                  // Auto fill
@@ -997,6 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#prevUnit').textContent = existingSource.unitName || '-'; 
                 select('#prevNik').textContent = existingSource.nik || '-'; 
                 select('#prevDate').textContent = 'Exp: ' + existingSource.endHuman;
+                if(prevTicket) prevTicket.textContent = ''; // Existing contracts might not have ticket info readily available here unless added to dataset
                 showBlock(select('#createPersonPreview'));
                 
                 applyAutoFill();
@@ -1155,6 +1112,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) { e.preventDefault(); try { const res = await fetch(btnDet.dataset.showUrl).then(r => r.json()); if(!res.success) throw new Error(res.message); const d = res.data; const m = safeJSON(d.remuneration_json); const isPb = (d.contract_type === 'PB_PENGAKHIRAN'); 
             select('#detNo').textContent = d.contract_no; select('#detType').textContent = d.contract_type_label; select('#detStatus').textContent = d.status; select('#detUnit').textContent = d.unit?.name || '-'; select('#detName').textContent = d.person_name; select('#detNik').textContent = d.ui_employee_id || '-'; select('#detNikReal').textContent = d.ui_nik_ktp || '-'; select('#detPos').textContent = d.position_name || '-'; select('#detEmpType').textContent = d.employment_type || '-'; 
+            
+            // Populate Ticket Number
+            select('#detTicket').textContent = d.ticket_number || '-';
+
             if(d.progress) { const cMap = {'Waiting':'u-badge--glass', 'Approved':'u-badge--success', 'Signed':'u-badge--success', 'Rejected':'u-badge--danger', 'Pending':'u-badge--warn'}; select('#progKaUnit').textContent = d.progress.ka_unit; select('#progKaUnit').className = `u-badge ${cMap[d.progress.ka_unit]||'u-badge--glass'}`; select('#progCand').textContent = d.progress.candidate; select('#progCand').className = `u-badge ${cMap[d.progress.candidate]||'u-badge--glass'}`; }
             if(d.target_role_label) select('#roleLabel').textContent = `${d.target_role_label} (Sign)`;
             if (isPb) { hide(select('#detRemunBox')); hide(select('#detPeriodRow')); showBlock(select('#detPbBox')); select('#detPbEff').textContent = m.pb_effective_end || '-'; select('#detPbVal').textContent = 'Rp '+money(m.pb_compensation_amount); } 
