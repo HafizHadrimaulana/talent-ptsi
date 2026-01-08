@@ -523,20 +523,21 @@
             <div id="projectSection" class="u-space-y-md" style="display:none;">
               <div class="u-flex u-items-center u-justify-between"><div><label class="u-block u-text-sm u-font-medium u-mb-sm">Data Project</label><div class="u-text-2xs u-muted">Pilih kode project, nama project akan otomatis terisi</div></div></div>
               <div class="u-grid-2 u-stack-mobile u-gap-md">
-                <div class="u-space-y-sm">
-                  <label class="u-block u-text-sm u-font-medium u-mb-sm">Kode Project</label>
-                  <select class="u-input" id="kodeProjectSelect" name="kode_project">
-                    <option value="">Pilih kode project</option>
-                    <option value="NEW" class="u-font-bold u-text-brand" style="font-weight:bold; color:#0055ff;">+ Buat Project Baru</option> 
-                    @foreach($projects as $p) 
-                        <option value="{{ $p->project_code }}" data-nama="{{ $p->project_name }}">
-                            {{ $p->project_code }} - {{ $p->project_name }}
-                        </option> 
-                    @endforeach
-                </select>
+                <div class="u-space-y-sm" style="position: relative;">
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Kode Project / Nama Project</label>
+                
+                <input type="text" id="kodeProjectSearchInput" class="u-input" placeholder="Ketik Kode atau Nama Project..." autocomplete="off">
+                
+                <input type="hidden" id="kodeProjectInput" name="kode_project">
+                
+                <div id="kodeProjectSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                 </div>
-                <div class="u-space-y-sm"><label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project<span class="text-red-500">*</span></label><input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis"></div>
-              </div>
+
+                <div class="u-space-y-sm">
+                <label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project<span class="text-red-500">*</span></label>
+                <input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis" style="background-color: #f3f4f6;">
+                </div>
+            </div>
               <div class="u-space-y-sm" style="position: relative;">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Posisi Jabatan<span class="text-red-500">*</span></label>
                 <input type="text" id="positionSearchInput" name="position_text" class="u-input" placeholder="Ketik untuk mencari jabatan..." autocomplete="off">
@@ -753,6 +754,17 @@
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Headcount</div><div id="view-headcount">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">PIC Request</div><div id="view-pic">-</div></div>
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Detail Penjelasan</div><div id="view-justification">-</div></div>
+                    <div id="view-project-info-container" style="display:none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e5e7eb;">
+                        <div class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs">Informasi Proyek</div>
+                        <div class="u-bg-light u-p-sm u-rounded" style="font-size: 0.9rem;">
+                            <div class="u-grid-2" style="grid-template-columns: 100px 1fr; gap: 4px;">
+                                <div class="u-muted">Kode Project:</div>
+                                <div class="u-font-medium u-text-dark" id="view-project-code">-</div>           
+                                <div class="u-muted">Nama Project:</div>
+                                <div class="u-font-medium u-text-dark" id="view-project-name">-</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="u-card u-p-md">
                     <div><div class="u-text-xs u-font-bold u-muted u-uppercase">Status</div><div id="view-status">-</div></div>
@@ -1495,6 +1507,9 @@
                     btnPreviewPdf.addEventListener('click', function() { submitPdfForm(this.dataset.json); });
                 }
                 function resetDynamicInputs() {
+                    const projectSearchInput = document.getElementById('kodeProjectSearchInput');
+                    const projectHiddenInput = document.getElementById('kodeProjectInput');
+                    const namaProjectInput   = document.getElementById('namaProjectInput');
                     if(titleInput) titleInput.value = '';
                     Object.values(dynInputs).forEach(el => {
                         if(el && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) el.value = '';
@@ -1512,7 +1527,9 @@
                     if(picOrganikSearchInput) picOrganikSearchInput.value = '';
                     if(positionOrganikSearchInput) positionOrganikSearchInput.value = '';
                     if(positionOrganikInput) positionOrganikInput.value = '';
-                    if(kodeProjectSelect) kodeProjectSelect.value = '';
+                    if(projectSearchInput) projectSearchInput.value = '';
+                    if(projectHiddenInput) projectHiddenInput.value = '';
+                    if(namaProjectInput)   namaProjectInput.value = '';
                     if(namaProjectInput) namaProjectInput.value = '';
                     if(positionSearchInput) positionSearchInput.value = '';
                     if(positionInput) positionInput.value = '';
@@ -1559,13 +1576,21 @@
                         multiDataStore[idx].position_text = positionOrganikSearchInput.value;
                     } 
                     else if (isProjectVisible) {
-                        multiDataStore[idx].type = getActiveContractType();
-                        multiDataStore[idx].project_code = kodeProjectSelect.value;
-                        multiDataStore[idx].project_name = namaProjectInput.value;
-                        multiDataStore[idx].position = positionInput.value; 
-                        multiDataStore[idx].position_text = positionSearchInput.value;
-                        multiDataStore[idx].pic_id = picProjectInput.value;
-                        multiDataStore[idx].pic_text = picProjectSearchInput.value;
+                        const projectSearchInput = document.getElementById('kodeProjectSearchInput');
+                        const projectHiddenInput = document.getElementById('kodeProjectInput');
+                        const namaProjectInput   = document.getElementById('namaProjectInput');
+                        const positionInput       = document.getElementById('positionInput');
+                        const positionSearchInput = document.getElementById('positionSearchInput');
+                        const picProjectInput     = document.getElementById('picProjectInput');
+                        const picProjectSearch    = document.getElementById('picProjectSearchInput');
+                        multiDataStore[idx].type = document.getElementById('contractTypeSelect').value;
+                        multiDataStore[idx].project_code = projectHiddenInput ? projectHiddenInput.value : '';
+                        multiDataStore[idx].project_name = namaProjectInput ? namaProjectInput.value : '';
+                        multiDataStore[idx].project_search_text = projectSearchInput ? projectSearchInput.value : '';
+                        multiDataStore[idx].position = positionInput ? positionInput.value : '';
+                        multiDataStore[idx].position_text = positionSearchInput ? positionSearchInput.value : '';
+                        multiDataStore[idx].pic_id = picProjectInput ? picProjectInput.value : '';
+                        multiDataStore[idx].pic_text = picProjectSearch ? picProjectSearch.value : '';
                     }
                 }
                 function loadTabData(idx) {
@@ -1592,9 +1617,14 @@
                     if(dynInputs.thr)        dynInputs.thr.value        = data.thr || '';
                     if(dynInputs.kompensasi) dynInputs.kompensasi.value = data.kompensasi || '';
                     if(data.salary && dynInputs.terbilang) {
-                        let text = terbilang(data.salary) + 'RUPIAH';
-                        text = text.charAt(0).toUpperCase() + text.slice(1);
-                        dynInputs.terbilang.value = text;
+                        let numericSalary = parseRupiah(data.salary); 
+                        if (!isNaN(numericSalary) && numericSalary !== 0) {
+                            let text = terbilang(numericSalary) + ' RUPIAH';
+                            text = text.charAt(0).toUpperCase() + text.slice(1);
+                            dynInputs.terbilang.value = text;
+                        } else {
+                            dynInputs.terbilang.value = data.terbilang || ''; 
+                        }
                     } else if (dynInputs.terbilang) {
                         dynInputs.terbilang.value = data.terbilang || '';
                     }
@@ -1605,7 +1635,8 @@
                     }
                     const type = getActiveContractType();
                     const statusText = (data.uraian_status === 'Final') ? 'Tersimpan (Final)' : (data.uraian_status === 'Draft' ? 'Tersimpan (Draft)' : 'Belum ada uraian');
-                    const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
+                    const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call','Alihdaya'];
+                    const currentType = document.getElementById('contractTypeSelect').value;
                     if (data.rkap_job || (type === 'Organik' && data.type === 'Organik') || (budgetSourceSelect && budgetSourceSelect.value === 'RKAP')) {
                         if (data.rkap_job) {
                             const rows = form.querySelectorAll('#rkap-table tbody tr');
@@ -1621,16 +1652,35 @@
                         if(data.pic_text) picOrganikSearchInput.value = data.pic_text;
                         if(data.position) positionOrganikInput.value = data.position;
                         if(data.position_text) positionOrganikSearchInput.value = data.position_text;
-                    } else if (projectTypes.includes(type) && projectTypes.includes(data.type)) {
+                    } else if (projectTypes.includes(type) || (data.type && projectTypes.includes(data.type))) {
+                        const projectSearchInput = document.getElementById('kodeProjectSearchInput');
+                        const projectHiddenInput = document.getElementById('kodeProjectInput');
+                        const namaProjectInput   = document.getElementById('namaProjectInput');
+                        const positionInput      = document.getElementById('positionInput');
+                        const positionSearchInput= document.getElementById('positionSearchInput');
+                        const picProjectInput    = document.getElementById('picProjectInput');
+                        const picProjectSearch   = document.getElementById('picProjectSearchInput');
+                        const uraianStatusProj   = document.getElementById('uraianStatusProject');
                             if(data.project_code) {
-                                kodeProjectSelect.value = data.project_code;
-                                namaProjectInput.value = data.project_name || ''; 
+                                if(projectHiddenInput) projectHiddenInput.value = data.project_code;
+                                if(namaProjectInput)   namaProjectInput.value   = data.project_name || ''; 
+                                if(projectSearchInput) {
+                                    if (data.project_search_text) {
+                                        projectSearchInput.value = data.project_search_text;
+                                    } else {
+                                        projectSearchInput.value = `${data.project_code} - ${data.project_name || ''}`;
+                                    }
+                                }
                             }
-                            if(data.position) positionInput.value = data.position;
-                            if(data.position_text) positionSearchInput.value = data.position_text;
-                            if(uraianStatusProject) uraianStatusProject.textContent = statusText;
-                            if(data.pic_id) picProjectInput.value = data.pic_id;
-                            if(data.pic_text) picProjectSearchInput.value = data.pic_text;
+                            if(data.position && positionInput) positionInput.value = data.position;
+                            if(data.position_text && positionSearchInput) positionSearchInput.value = data.position_text;
+
+                            // 4. Isi Status Uraian Jabatan
+                            if(uraianStatusProj) uraianStatusProj.textContent = statusText;
+
+                            // 5. Isi PIC
+                            if(data.pic_id && picProjectInput) picProjectInput.value = data.pic_id;
+                            if(data.pic_text && picProjectSearch) picProjectSearch.value = data.pic_text;
                     }
                 }
                 function renderTabs(count) {
@@ -1832,6 +1882,17 @@
                         setTxt('view-request-type', safeTxt('data-request-type'));
                         setTxt('view-justification', safeTxt('data-justification'));
                         setTxt('view-budget-source', safeTxt('data-budget-source'));   
+                        const projectContainer = document.getElementById('view-project-info-container');
+                        const viewProjCode     = document.getElementById('view-project-code');
+                        const viewProjName     = document.getElementById('view-project-name');
+                        const firstDetail = (detailsArray && detailsArray.length > 0) ? detailsArray[0] : {};
+                        if (firstDetail.project_code || firstDetail.project_name) {
+                            projectContainer.style.display = 'block';
+                            viewProjCode.textContent = firstDetail.project_code || '-';
+                            viewProjName.textContent = firstDetail.project_name || '-';
+                        } else {
+                            projectContainer.style.display = 'none';
+                        }
                         const tabsContainer = document.getElementById('detailTabsContainer');
                         tabsContainer.innerHTML = '';
                         const canApprove = btnDetail.getAttribute('data-can-approve') === 'true';
@@ -2187,7 +2248,86 @@
                     }
                 }, 800);
             },
-            bindExternalSearch() { /* ... */ }
+            bindExternalSearch() {
+                const projectSearchInput = document.getElementById('kodeProjectSearchInput');
+                const projectHiddenInput = document.getElementById('kodeProjectInput');
+                const projectNameInput   = document.getElementById('namaProjectInput');
+                const projectResults     = document.getElementById('kodeProjectSearchResults');
+                let projectSearchTimeout = null;
+                const fetchProjects = (query) => {
+                    projectResults.innerHTML = '<div class="u-p-sm u-text-muted"><i class="fas fa-circle-notch fa-spin"></i> Memuat...</div>';
+                    projectResults.style.display = 'block';
+                    fetch(`{{ route('api.project_codes.index') }}?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            projectResults.innerHTML = '';
+                            const addNewDiv = document.createElement('div');
+                            addNewDiv.className = 'u-p-sm u-text-brand u-font-bold';
+                            addNewDiv.style.cursor = 'pointer';
+                            addNewDiv.style.borderBottom = '1px solid #e5e7eb';
+                            addNewDiv.innerHTML = `<i class="fas fa-plus-circle"></i> Buat Project Baru (Manual)`;
+                            addNewDiv.onclick = function() {
+                                    const projectModal = document.getElementById('createProjectModal');
+                                    const projectForm = document.getElementById('formCreateProject');
+                                    if(projectForm) projectForm.reset();
+                                    if(projectModal) projectModal.style.display = 'flex';
+                                    projectResults.style.display = 'none';
+                                    projectSearchInput.value = ""; 
+                            };
+                            projectResults.appendChild(addNewDiv);
+                            if (data.results && data.results.length > 0) {
+                                data.results.forEach(item => {
+                                    const div = document.createElement('div');
+                                    div.className = 'u-p-sm u-hover-bg-light';
+                                    div.style.cursor = 'pointer';
+                                    div.style.borderBottom = '1px solid #f0f0f0';
+                                    const codeDisplay = item.client_id ? `<span class="u-font-bold text-primary">${item.client_id}</span>` : '<span class="u-text-muted">No Code</span>';
+                                    const nameDisplay = item.nama_proyek || '(Tanpa Nama)';
+                                    const clientDisplay = item.nama_klien ? item.nama_klien : '-';
+                                    div.innerHTML = `
+                                        <div class="u-font-medium text-sm">${codeDisplay} - ${nameDisplay}</div>
+                                        <div class="u-text-2xs u-muted">Klien: ${clientDisplay}</div>
+                                    `;
+
+                                    div.addEventListener('click', () => {
+                                        projectSearchInput.value = item.client_id; 
+                                        projectHiddenInput.value = item.client_id; 
+                                        if(projectNameInput) projectNameInput.value = item.nama_proyek;
+                                        projectResults.style.display = 'none';
+                                    });
+                                    projectResults.appendChild(div);
+                                });
+                            } else {
+                                const noRes = document.createElement('div');
+                                noRes.className = 'u-p-sm u-text-muted';
+                                noRes.textContent = 'Tidak ditemukan di CRM.';
+                                projectResults.appendChild(noRes);
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            projectResults.innerHTML = '<div class="u-p-sm u-text-danger">Gagal memuat data</div>';
+                        });
+                };
+
+                if (projectSearchInput) {
+                    projectSearchInput.addEventListener('focus', function() {
+                        fetchProjects(this.value); 
+                    });
+                    projectSearchInput.addEventListener('input', function(e) {
+                        const query = e.target.value;
+                        clearTimeout(projectSearchTimeout);
+                        projectSearchTimeout = setTimeout(() => {
+                            fetchProjects(query);
+                        }, 300);
+                    });
+                    document.addEventListener('click', (e) => {
+                        if (!projectSearchInput.contains(e.target) && !projectResults.contains(e.target)) {
+                            projectResults.style.display = 'none';
+                        }
+                    });
+                }
+            }
         };
         page.init();
         const urlParams = new URLSearchParams(window.location.search);

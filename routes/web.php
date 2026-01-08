@@ -44,6 +44,8 @@ Route::middleware('web')->group(function () {
         Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
         Route::post('/ajax/calculate-salary', [SalaryController::class, 'calculate'])->name('api.calculate.salary');
+        Route::get('/api/project-codes', [\App\Http\Controllers\ProjectCodeController::class, 'index'])
+            ->name('api.project_codes.index');
     });
 
     require __DIR__ . '/admin.php';

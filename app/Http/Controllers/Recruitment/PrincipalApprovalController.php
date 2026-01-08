@@ -133,7 +133,7 @@ class PrincipalApprovalController extends Controller
                       ->paginate(50)
                       ->withQueryString();
 
-        $projects = Project::orderBy('project_code', 'asc')->get();
+        $projects = [];
         $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
 
         return view('recruitment.principal-approval.index', [
