@@ -144,6 +144,7 @@
             <thead>
                 <tr>
                     <th>Dokumen</th>
+                    <th>Ticket (Izin Prinsip)</th>
                     <th>Personil</th>
                     <th>Posisi & Unit</th>
                     <th>Periode / Efektif</th>
@@ -157,6 +158,13 @@
                         <td>
                             <div class="u-font-mono u-font-bold u-text-sm">{{ $c->contract_no ?: '(Draft)' }}</div>
                             <span class="u-badge u-badge--glass u-mt-xs u-text-xs">{{ $c->contract_type_label ?? $c->contract_type }}</span>
+                        </td>
+                        <td>
+                            @if($c->ticket_number)
+                                <span class="u-badge u-badge--info u-text-2xs">{{ $c->ticket_number }}</span>
+                            @else
+                                <span class="u-text-muted u-text-xs">-</span>
+                            @endif
                         </td>
                         <td>
                             <div class="u-flex u-items-center u-gap-sm">
@@ -216,7 +224,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="u-empty"><div class="u-empty__icon"><i class="far fa-folder-open"></i></div>Tidak ada data dokumen ditemukan.</td></tr>
+                    <tr><td colspan="7" class="u-empty"><div class="u-empty__icon"><i class="far fa-folder-open"></i></div>Tidak ada data dokumen ditemukan.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -293,8 +301,9 @@
                                                 data-fullname="{{ $a->full_name }}" 
                                                 data-pos="{{ $a->position_applied }}" 
                                                 data-unit="{{ $a->unit_name ?? '' }}" 
-                                                data-unit-id="{{ $a->unit_id ?? '' }}">
-                                                {{ $a->full_name }} — {{ $a->position_applied }}
+                                                data-unit-id="{{ $a->unit_id ?? '' }}"
+                                                data-ticket="{{ $a->ticket_number ?? '' }}">
+                                                {{ $a->full_name }} — {{ $a->position_applied }} [Ticket: {{ $a->ticket_number ?? '-' }}]
                                             </option>
                                         @endforeach
                                     </select>
@@ -375,6 +384,7 @@
                                 <div>
                                     <div class="u-font-bold u-text-lg" id="prevName">-</div>
                                     <div class="u-text-sm u-muted u-font-mono" id="prevNik">-</div>
+                                    <div class="u-text-xs u-text-info u-mt-xxs" id="prevTicket"></div>
                                 </div>
                             </div>
                             <div class="u-grid-2 u-gap-md u-text-sm">
@@ -604,7 +614,8 @@
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nomor</span><span id="detNo" class="u-font-mono u-font-bold u-text-md">-</span></div>
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Tipe</span><span id="detType" class="u-badge u-badge--glass">-</span></div>
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Status</span><span id="detStatus" class="u-badge">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Ticket (Izin Prinsip)</span><span id="detTicket" class="u-badge u-badge--info u-text-xs">-</span></div>
                     </div>
                 </div>
                 <div class="u-bg-section u-p-lg">
@@ -807,6 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const secRemun = select('#sectionRemun');
         const secNew = select('[data-mode-section="new"]'); 
         const secExist = select('[data-mode-section="existing"]');
+        const prevTicket = select('#prevTicket');
 
         let existingSource = null;
 
@@ -821,6 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hide(secPkwtSpk); hide(secPb); hide(secRemun);
             hide(secNew); hide(secExist);
             hide(select('#createPersonPreview'));
+            if(prevTicket) prevTicket.textContent = '';
         };
 
         btnCreate.onclick = (e) => { 
@@ -939,6 +952,8 @@ document.addEventListener('DOMContentLoaded', () => {
                  select('#prevUnit').textContent = o.dataset.unit || '-'; 
                  select('#prevNik').textContent = '-'; 
                  select('#prevDate').textContent = '-';
+                 if(prevTicket) prevTicket.textContent = o.dataset.ticket ? `Ticket: ${o.dataset.ticket}` : '';
+                 
                  showBlock(select('#createPersonPreview'));
 
                  // Auto fill
@@ -997,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#prevUnit').textContent = existingSource.unitName || '-'; 
                 select('#prevNik').textContent = existingSource.nik || '-'; 
                 select('#prevDate').textContent = 'Exp: ' + existingSource.endHuman;
+                if(prevTicket) prevTicket.textContent = ''; // Existing contracts might not have ticket info readily available here unless added to dataset
                 showBlock(select('#createPersonPreview'));
                 
                 applyAutoFill();
@@ -1155,6 +1171,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) { e.preventDefault(); try { const res = await fetch(btnDet.dataset.showUrl).then(r => r.json()); if(!res.success) throw new Error(res.message); const d = res.data; const m = safeJSON(d.remuneration_json); const isPb = (d.contract_type === 'PB_PENGAKHIRAN'); 
             select('#detNo').textContent = d.contract_no; select('#detType').textContent = d.contract_type_label; select('#detStatus').textContent = d.status; select('#detUnit').textContent = d.unit?.name || '-'; select('#detName').textContent = d.person_name; select('#detNik').textContent = d.ui_employee_id || '-'; select('#detNikReal').textContent = d.ui_nik_ktp || '-'; select('#detPos').textContent = d.position_name || '-'; select('#detEmpType').textContent = d.employment_type || '-'; 
+            
+            // Populate Ticket Number
+            select('#detTicket').textContent = d.ticket_number || '-';
+
             if(d.progress) { const cMap = {'Waiting':'u-badge--glass', 'Approved':'u-badge--success', 'Signed':'u-badge--success', 'Rejected':'u-badge--danger', 'Pending':'u-badge--warn'}; select('#progKaUnit').textContent = d.progress.ka_unit; select('#progKaUnit').className = `u-badge ${cMap[d.progress.ka_unit]||'u-badge--glass'}`; select('#progCand').textContent = d.progress.candidate; select('#progCand').className = `u-badge ${cMap[d.progress.candidate]||'u-badge--glass'}`; }
             if(d.target_role_label) select('#roleLabel').textContent = `${d.target_role_label} (Sign)`;
             if (isPb) { hide(select('#detRemunBox')); hide(select('#detPeriodRow')); showBlock(select('#detPbBox')); select('#detPbEff').textContent = m.pb_effective_end || '-'; select('#detPbVal').textContent = 'Rp '+money(m.pb_compensation_amount); } 

@@ -17,6 +17,7 @@ class Contract extends Model
 
     protected $fillable = [
         'contract_no',
+        'ticket_number', // Added ticket_number
         'contract_type',
         'person_id',
         'employee_id',
