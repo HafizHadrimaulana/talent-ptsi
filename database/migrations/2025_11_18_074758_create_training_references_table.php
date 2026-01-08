@@ -22,9 +22,6 @@ return new class extends Migration
             $table->string('waktu_pelaksanaan')->nullable();
             
             $table->decimal('biaya_pelatihan', 15, 2)->nullable();
-            $table->decimal('uhpd', 15, 2)->nullable();
-            $table->decimal('biaya_akomodasi', 15, 2)->nullable();
-            $table->decimal('estimasi_total_biaya', 15, 2)->nullable();
 
             $table->string('nama_proyek')->nullable();
             $table->string('jenis_portofolio')->nullable();

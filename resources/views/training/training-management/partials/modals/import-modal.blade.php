@@ -1,5 +1,5 @@
-<div id="lna-import-modal"
-  class="u-modal" hidden>
+<div id="lna-import-modal" class="u-modal" hidden>
+  <div class="u-modal__backdrop js-close-modal"></div>
   <div class="u-modal__card">
     <div class="u-modal__head u-mb-sm">
       <div class="u-flex u-items-center u-gap-md">
@@ -9,9 +9,7 @@
           <div class="u-muted u-text-sm" id="ip-modal-subtitle">Import data</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
-        <i class="fas fa-times"></i>
-      </button>
+      <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
     </div>
 
     <div class="u-modal__body">

@@ -1,19 +1,34 @@
 import { getJSON } from "@/utils/fetch";
 import { initDragDropUpload } from "./handler/dragDropImport";
 import { initDataTables } from "../../../plugins/datatables";
-import { executeApprove, executeApproveReference } from "./handler/approveHandler";
+import {
+    executeApprove,
+    executeApproveReference,
+} from "./handler/approveHandler";
 import { executeReject, executeRejectPengajuan } from "./handler/rejectHandler";
-
 
 const TABLE_CONFIGS = {
     "data-lna-table": {
         tableId: "data-lna-table",
         modalId: "#lna-modal",
         apiEndpoint: () => "/training/training-request/get-data-lna",
-        columns: [ "no", "judul_sertifikasi", "unit_kerja", "penyelenggara",
-            "jumlah_jam", "waktu_pelaksanaan", "biaya_pelatihan", "uhpd",
-            "biaya_akomodasi", "estimasi_total_biaya", "nama_proyek", "jenis_portofolio",
-            "fungsi", "status_training_reference","actions"],
+        columns: [
+            "no",
+            "judul_sertifikasi",
+            "unit_kerja",
+            "penyelenggara",
+            "jumlah_jam",
+            "waktu_pelaksanaan",
+            "biaya_pelatihan",
+            "uhpd",
+            "biaya_akomodasi",
+            "estimasi_total_biaya",
+            "nama_proyek",
+            "jenis_portofolio",
+            "fungsi",
+            "status_training_reference",
+            "actions",
+        ],
         dataMapper: (res) => res.data || [],
     },
 
@@ -22,10 +37,23 @@ const TABLE_CONFIGS = {
         modalId: "#pengajuan-training-modal",
         apiEndpoint: () =>
             `/training/training-request/get-approval-pengajuan-training`,
-        columns: [ "no", "judul_sertifikasi", "unit_kerja", "penyelenggara",
-            "jumlah_jam", "waktu_pelaksanaan", "biaya_pelatihan", "uhpd",
-            "biaya_akomodasi", "estimasi_total_biaya", "nama_proyek", "jenis_portofolio",
-            "fungsi", "status_training_reference", "actions" ],
+        columns: [
+            "no",
+            "judul_sertifikasi",
+            "unit_kerja",
+            "penyelenggara",
+            "jumlah_jam",
+            "waktu_pelaksanaan",
+            "biaya_pelatihan",
+            "uhpd",
+            "biaya_akomodasi",
+            "estimasi_total_biaya",
+            "nama_proyek",
+            "jenis_portofolio",
+            "fungsi",
+            "status_training_reference",
+            "actions",
+        ],
         dataMapper: (res) => res.data || [],
     },
 
@@ -34,9 +62,18 @@ const TABLE_CONFIGS = {
         modalId: "#training-peserta-modal",
         apiEndpoint: (unitId) =>
             `/training/training-request/${unitId}/get-training-request-list`,
-        columns: [ "no", "judul_sertifikasi", "peserta", "tanggal_mulai",
-            "tanggal_berakhir", "realisasi_biaya_pelatihan", "estimasi_total_biaya", "lampiran_penawaran",
-            "status_approval_training", "actions" ],
+        columns: [
+            "no",
+            "judul_sertifikasi",
+            "peserta",
+            "tanggal_mulai",
+            "tanggal_berakhir",
+            "realisasi_biaya_pelatihan",
+            "estimasi_total_biaya",
+            "lampiran_penawaran",
+            "status_approval_training",
+            "actions",
+        ],
         dataMapper: (res) =>
             (res.data || []).map((item) => ({
                 id: item.id,
@@ -104,65 +141,63 @@ const initModalSystem = () => {
     const $body = $("body");
 
     // 1. Handler Buka Modal
-    $body
-        .off("click", ".btn-trigger-modal")
-        .on("click", ".btn-trigger-modal", function () {
-            const $btn = $(this);
-            const tableId = $btn.data("table");
-            const config = TABLE_CONFIGS[tableId];
+    $body.on("click", ".btn-trigger-modal", function () {
+        const $btn = $(this);
+        const tableId = $btn.data("table");
+        const config = TABLE_CONFIGS[tableId];
 
-            if (!config) return;
+        if (!config) return;
 
-            const rowData = $(`#${tableId}`)
-                .DataTable()
-                .row($btn.closest("tr"))
-                .data();
-            const $modal = $(config.modalId);
+        const rowData = $(`#${tableId}`)
+            .DataTable()
+            .row($btn.closest("tr"))
+            .data();
+        const $modal = $(config.modalId);
 
-            console.log('row data aaa', rowData);
-            
-            if ($modal.length && rowData) {
-                populateModalData($modal, rowData);
+        console.log("row data aaa", rowData);
 
-                // Tampilkan Modal
-                $modal.removeClass("hidden").show();
-            }
-        });
+        if ($modal.length && rowData) {
+            populateModalData($modal, rowData);
+
+            // Tampilkan Modal
+            $modal.removeClass("hidden").show();
+        }
+    });
 
     // 2. Handler Tutup Modal (Tombol dengan atribut data-modal-close atau tombol Batal)
-    $body
-        .off("click", "[data-modal-close], .u-btn--ghost")
-        .on("click", "[data-modal-close], .u-btn--ghost", function () {
-            $(this)
-                .closest(".u-modal")
-                .fadeOut(150, function () {
-                    $(this).addClass("hidden").hide();
-                });
-        });
+    $body.on("click", "[data-modal-close], .u-btn--ghost", function () {
+        $(this)
+            .closest(".u-modal")
+            .fadeOut(150, function () {
+                $(this).addClass("hidden").hide();
+            });
+    });
 
-    $body.off("click", "#btn-approve-request").on("click", "#btn-approve-request", function () {
+    $body.on("click", "#btn-approve-request", function () {
         const $modal = $(this).closest(".u-modal");
-        const id = $modal.attr('data-current-id');
-        const modalId = $modal.attr('id');
+        const id = $modal.attr("data-current-id");
+        const modalId = $modal.attr("id");
         const note = $modal.find("#catatan").val();
 
-        const reloadTable = () => $(".dataTable").DataTable().ajax.reload(null, false);
-    
+        const reloadTable = () =>
+            $(".dataTable").DataTable().ajax.reload(null, false);
+
         if (modalId === "training-peserta-modal") {
-            console.log('id data', id);
+            console.log("id data", id);
             executeApprove(id, reloadTable, note);
         } else {
             executeApproveReference(id, reloadTable, note);
         }
     });
 
-    $body.off("click", "#btn-decline-request").on("click", "#btn-decline-request", function () {
+    $body.on("click", "#btn-decline-request", function () {
         const $modal = $(this).closest(".u-modal");
-        const id = $modal.attr('data-current-id');
-        const modalId = $modal.attr('id');
+        const id = $modal.attr("data-current-id");
+        const modalId = $modal.attr("id");
         const note = $modal.find("#catatan").val();
 
-        const reloadTable = () => $(".dataTable").DataTable().ajax.reload(null, false);
+        const reloadTable = () =>
+            $(".dataTable").DataTable().ajax.reload(null, false);
 
         if (modalId === "training-peserta-modal") {
             executeReject(id, reloadTable, note);
@@ -174,37 +209,59 @@ const initModalSystem = () => {
 
 const populateModalData = ($modal, data) => {
     // Mapping ID Modal (Opsional: untuk logika spesifik berdasarkan modal)
-    $modal.attr('data-current-id', data.id);
+    $modal.attr("data-current-id", data.id);
 
     // Informasi Dasar (Menggunakan selector lama & baru agar kompatibel)
-    $modal.find(".detail-judul-text, .detail-judul_sertifikasi").text(data.judul_sertifikasi || "-");
-    $modal.find(".detail-unit, .detail-unit_kerja").text(data.unit_kerja || "-");
+    $modal
+        .find(".detail-judul-text, .detail-judul_sertifikasi")
+        .text(data.judul_sertifikasi || "-");
+    $modal
+        .find(".detail-unit, .detail-unit_kerja")
+        .text(data.unit_kerja || "-");
     $modal.find(".detail-penyelenggara").text(data.penyelenggara || "-");
     $modal.find(".detail-jam, .detail-jumlah_jam").text(data.jumlah_jam || "-");
     $modal.find(".detail-no").text(data.no || "-");
-    
+
     // Status (Handle dua versi status)
-    $modal.find(".detail-status_training_reference").text(`Status: ${data.status_training_reference || "-"}`);
-    $modal.find(".detail-status_approval_training").text(`Status: ${data.status_approval_training || "-"}`);
+    $modal
+        .find(".detail-status_training_reference")
+        .text(`Status: ${data.status_training_reference || "-"}`);
+    $modal
+        .find(".detail-status_approval_training")
+        .text(`Status: ${data.status_approval_training || "-"}`);
 
     // Penanganan Waktu (Satu tanggal vs Range)
-    $modal.find(".detail-waktu, .detail-waktu_pelaksanaan").text(data.waktu_pelaksanaan || "-");
+    $modal
+        .find(".detail-waktu, .detail-waktu_pelaksanaan")
+        .text(data.waktu_pelaksanaan || "-");
     $modal.find(".detail-tanggal_mulai").text(data.tanggal_mulai || "-");
     $modal.find(".detail-tanggal_berakhir").text(data.tanggal_berakhir || "-");
 
     // Proyek & Fungsi
-    $modal.find(".detail-proyek, .detail-nama_proyek").text(data.nama_proyek || "-");
+    $modal
+        .find(".detail-proyek, .detail-nama_proyek")
+        .text(data.nama_proyek || "-");
     $modal.find(".detail-fungsi").text(data.fungsi || "-");
-    $modal.find(".detail-portofolio, .detail-jenis_portofolio").text(data.jenis_portofolio || "-");
+    $modal
+        .find(".detail-portofolio, .detail-jenis_portofolio")
+        .text(data.jenis_portofolio || "-");
 
     // Informasi Biaya
-    $modal.find(".detail-biaya-pelatihan, .detail-biaya_pelatihan").text(formatRupiah(data.biaya_pelatihan || 0));
+    $modal
+        .find(".detail-biaya-pelatihan, .detail-biaya_pelatihan")
+        .text(formatRupiah(data.biaya_pelatihan || 0));
     $modal.find(".detail-uhpd").text(formatRupiah(data.uhpd || 0));
-    $modal.find(".detail-biaya-akomodasi, .detail-biaya_akomodasi").text(formatRupiah(data.biaya_akomodasi || 0));
-    $modal.find(".detail-total-biaya, .detail-estimasi_total_biaya").text(formatRupiah(data.estimasi_total_biaya || 0));
-    $modal.find(".detail-realisasi_biaya_pelatihan").text(formatRupiah(data.realisasi_biaya_pelatihan || 0));
+    $modal
+        .find(".detail-biaya-akomodasi, .detail-biaya_akomodasi")
+        .text(formatRupiah(data.biaya_akomodasi || 0));
+    $modal
+        .find(".detail-total-biaya, .detail-estimasi_total_biaya")
+        .text(formatRupiah(data.estimasi_total_biaya || 0));
+    $modal
+        .find(".detail-realisasi_biaya_pelatihan")
+        .text(formatRupiah(data.realisasi_biaya_pelatihan || 0));
 
-    $modal.find('#catatan').val('');
+    $modal.find("#catatan").val("");
 
     renderApprovalTimeline(data.approvals || []);
 
@@ -225,7 +282,11 @@ const populateModalData = ($modal, data) => {
             </a>
         `);
     } else {
-        $modal.find(".detail-lampiran_penawaran").html('<span class="u-muted u-text-sm italic">Tidak ada lampiran</span>');
+        $modal
+            .find(".detail-lampiran_penawaran")
+            .html(
+                '<span class="u-muted u-text-sm italic">Tidak ada lampiran</span>'
+            );
     }
 };
 
@@ -236,11 +297,16 @@ export function initGetDataTable(tableBody, options = {}) {
     const baseConfig = TABLE_CONFIGS[tableId];
     if (!baseConfig) return;
 
-    // Inisialisasi sistem modal (hanya sekali)
-    initModalSystem();
-    initDragDropUpload();
+    let isGlobalInitialized = false;
 
-    initDataTables(`#${tableId}`, {
+    // Inisialisasi sistem modal (hanya sekali)
+    if (!isGlobalInitialized) {
+        initModalSystem();
+        initDragDropUpload();
+        isGlobalInitialized = true;
+    }
+
+    return initDataTables(`#${tableId}`, {
         serverSide: true,
         ajax: async (data, callback) => {
             const params = new URLSearchParams({
@@ -283,38 +349,44 @@ export function initGetDataTable(tableBody, options = {}) {
 // --- HELPERS ---
 
 const renderApprovalTimeline = (approvals) => {
-    console.log('approval', approvals)
-    const $container = $('#approval-timeline-container');
+    const $container = $("#approval-timeline-container");
     $container.empty();
 
-    if (!approvals || approvals.length === 0) {
-        $container.append(`
-            <div class="u-text-center u-py-md u-muted u-text-xs italic">
-                Belum ada riwayat catatan.
-            </div>
-        `);
+    if (!approvals?.length) {
+        $container.append('<div class="u-text-center u-py-md u-muted u-text-xs italic">Belum ada riwayat.</div>');
         return;
     }
 
     approvals.forEach((item) => {
-        const isApprove = item.action === 'approve';
-        const colorClass = isApprove ? 'text-green-600' : 'text-red-600';
-        const bgClass = isApprove ? 'bg-green-50' : 'bg-red-50';
-        
+        const isApprove = item.action === "approve";
+        const colorClass = isApprove ? "text-green-600" : "text-red-600";
+        const bgClass = isApprove ? "bg-green-50" : "bg-red-50";
+
         // Format tanggal sederhana (bisa disesuaikan)
-        const date = item.created_at ? new Date(item.created_at).toLocaleString('id-ID', {
-            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
-        }) : '-';
+        const date = item.created_at
+            ? new Date(item.created_at).toLocaleString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+              })
+            : "-";
 
         $container.append(`
             <div class="u-mb-md u-pl-md border-l-2 border-gray-200 u-relative">
-                <div class="u-absolute" style="left: -7px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; border: 2px solid ${isApprove ? '#10b981' : '#ef4444'}"></div>
+                <div class="u-absolute" style="left: -7px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; border: 2px solid ${
+                    isApprove ? "#10b981" : "#ef4444"
+                }"></div>
                 <div class="u-flex u-justify-between">
-                    <span class="u-text-xs u-font-bold u-uppercase text-gray-800">${item.role}</span>
+                    <span class="u-text-xs u-font-bold u-uppercase text-gray-800">${
+                        item.role
+                    }</span>
                     <span class="u-text-xxs u-muted">${date}</span>
                 </div>
                 <div class="u-mt-xs u-p-xs u-rounded ${bgClass} border border-gray-100">
-                    <p class="u-text-xs italic text-gray-600">"${item.note || 'Tanpa catatan'}"</p>
+                    <p class="u-text-xs italic text-gray-600">"${
+                        item.note || "Tanpa catatan"
+                    }"</p>
                 </div>
             </div>
         `);

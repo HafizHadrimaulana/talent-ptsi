@@ -1,25 +1,25 @@
 import { postFormData } from "@/utils/fetch";
 
-export async function initImportHandler(file, role) {
-    const endpoints = {
-        lna: "/training/training-request/import-lna",
-        training: "/training/training-request/import-training",
-    };
-
-    const uploadUrl = endpoints[role] || endpoints["training"];
-    const chunkSize = 500 * 1024;
+/**
+ * Handler untuk upload file besar dengan metode Chunking.
+ * @param {File} file - Objek file dari input.
+ * @param {string} type - Jenis import (contoh: 'lna').
+ * @param {Function} onProgress - Callback untuk mengupdate UI progress (optional).
+ */
+export async function initImportHandler(file) {
+    const uploadUrl = "/training/training-management/import-lna"
+    const chunkSize = 1024 * 1024; // 500KB per chunk
     const totalChunks = Math.ceil(file.size / chunkSize);
 
     let lastResponse = null;
 
+    // Loop pengiriman chunk secara berurutan (Sequential)
     for (let i = 0; i < totalChunks; i++) {
-        const start = i * chunkSize;
-        const end = start + chunkSize;
-
-        const chunk = file.slice(start, end);
-
         const formData = new FormData();
-        formData.append("chunk", chunk);
+        formData.append(
+            "chunk",
+            file.slice(i * chunkSize, Math.min((i + 1) * chunkSize, file.size))
+        );
         formData.append("index", i);
         formData.append("total", totalChunks);
         formData.append("filename", file.name);
@@ -27,9 +27,7 @@ export async function initImportHandler(file, role) {
         const res = await postFormData(uploadUrl, formData);
 
         if (!res || res.status !== "success") {
-            throw new Error(
-                res?.message || `Upload gagal di chunk ${i + 1}`
-            );
+            throw new Error(res?.message || "Gagal mengunggah file.");
         }
 
         lastResponse = res;
