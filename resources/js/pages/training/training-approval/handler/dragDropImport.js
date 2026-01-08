@@ -7,6 +7,9 @@ export function initDragDropUpload(modalSelector) {
     const wrapper = document.getElementById("dragdrop-wrapper");
     const uploadForm = document.getElementById("import-form");
 
+    if (!uploadForm || uploadForm.dataset.initialized === "true") return;
+    uploadForm.dataset.initialized = "true";
+
     const modal = document.querySelector(modalSelector);
 
     let selectedFile = null;
@@ -100,7 +103,11 @@ export function initDragDropUpload(modalSelector) {
             );
         }
 
-        if (modal) modal.classList.add("hidden");
+        if (modal) {
+            $(modal).fadeOut(150, function () {
+                $(this).addClass("hidden").hide();
+            });
+        }
 
         Swal.fire({
             title: "Mengunggah Data...",
@@ -110,16 +117,12 @@ export function initDragDropUpload(modalSelector) {
         });
 
         try {
-            const res = await initImportHandler(selectedFile, (percent) => {
-                const b =
-                    Swal.getHtmlContainer().querySelector("#swal-progress");
-                if (b) b.textContent = `${percent}%`;
-            });
+            const res = await initImportHandler(selectedFile);
 
-            console.log("res data import", res.data);
+            console.log("res data import", res);
 
-            if (res.data.status === "error") {
-                // Kita lempar agar ditangkap oleh blok catch(err) di bawah
+            if (res.status === "error") {
+                // lempar agar ditangkap oleh blok catch(err) di bawah
                 throw new Error(res.message || "Terjadi kesalahan sistem");
             }
 

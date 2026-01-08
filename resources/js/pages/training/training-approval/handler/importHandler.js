@@ -6,7 +6,7 @@ import { postFormData } from "@/utils/fetch";
  * @param {string} type - Jenis import (contoh: 'lna').
  * @param {Function} onProgress - Callback untuk mengupdate UI progress (optional).
  */
-export async function initImportHandler(file, type = "lna", onProgress = null) {
+export async function initImportHandler(file) {
     const uploadUrl = "/training/training-management/import-lna"
     const chunkSize = 1024 * 1024; // 500KB per chunk
     const totalChunks = Math.ceil(file.size / chunkSize);
@@ -31,12 +31,6 @@ export async function initImportHandler(file, type = "lna", onProgress = null) {
         }
 
         lastResponse = res;
-
-        // Kirim update ke UI tanpa memicu notifikasi baru
-        if (typeof onProgress === "function") {
-            const percent = Math.round(((i + 1) / totalChunks) * 100);
-            onProgress(percent);
-        }
     }
 
     return lastResponse;

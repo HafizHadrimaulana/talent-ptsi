@@ -154,16 +154,6 @@ const initializeModals = () => {
         initModalHandler(openBtn, modal, closeBtn);
         initInputLnaHandler(modal);
     }
-
-    if (document.querySelector(TRAINING_CONFIG.modals.trainingImport.modal)) {
-        console.log("Initializing training import modal");
-        const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.trainingImport;
-
-        const role = document.querySelector(openBtn)?.dataset?.role || "training";
-        
-        initModalHandler(openBtn, modal, closeBtn);
-        initDragDropUpload(modal);
-    }
 };
 
 const initializeButtonHandlers = () => {

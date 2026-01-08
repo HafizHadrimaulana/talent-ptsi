@@ -17,10 +17,9 @@ class TrainingImportServices
     public function handleImport($filePath, $userId)
     {
         try {
-            // 1. Bersihkan temp di awal
             TrainingTemp::truncate();
 
-            // 2. Import file ke TrainingTemp (Tanpa transaksi luar)
+            // Import file ke TrainingTemp
             $importer = new TrainingImport();
             Excel::import($importer, $filePath);
             $rowsCount = $importer->getRowCount();
@@ -33,7 +32,7 @@ class TrainingImportServices
                 ];
             }
 
-            // 3. Proses pemindahan data menggunakan Transaksi
+            // Proses pemindahan data
             $processed = DB::transaction(function () use ($userId) {
                 $uniqueTrainings = DB::table('training_temp')
                     ->select(
@@ -43,9 +42,6 @@ class TrainingImportServices
                         DB::raw('MAX(jumlah_jam) as jumlah_jam'),
                         DB::raw('MAX(waktu_pelaksanaan) as waktu_pelaksanaan'),
                         DB::raw('MAX(biaya_pelatihan) as biaya_pelatihan'),
-                        DB::raw('MAX(uhpd) as uhpd'),
-                        DB::raw('MAX(biaya_akomodasi) as biaya_akomodasi'),
-                        DB::raw('MAX(estimasi_total_biaya) as estimasi_total_biaya'),
                         DB::raw('MAX(nama_proyek) as nama_proyek'),
                         DB::raw('MAX(jenis_portofolio) as jenis_portofolio'),
                         DB::raw('MAX(fungsi) as fungsi'),
@@ -69,9 +65,6 @@ class TrainingImportServices
                         "jumlah_jam"           => $row->jumlah_jam,
                         "waktu_pelaksanaan"    => $row->waktu_pelaksanaan,
                         "biaya_pelatihan"      => $row->biaya_pelatihan,
-                        "uhpd"                 => $row->uhpd,
-                        "biaya_akomodasi"      => $row->biaya_akomodasi,
-                        "estimasi_total_biaya" => $row->estimasi_total_biaya,
                         "nama_proyek"          => $row->nama_proyek,
                         "jenis_portofolio"     => $row->jenis_portofolio,
                         "fungsi"               => $row->fungsi,
@@ -123,9 +116,6 @@ class TrainingImportServices
             'jumlah_jam',
             'waktu_pelaksanaan',
             'biaya_pelatihan',
-            'uhpd',
-            'biaya_akomodasi',
-            'estimasi_total_biaya',
             'nama_proyek',
             'jenis_portofolio',
             'fungsi',
