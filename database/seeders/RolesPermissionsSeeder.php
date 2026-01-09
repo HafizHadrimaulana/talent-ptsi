@@ -69,10 +69,8 @@ class RolesPermissionsSeeder extends Seeder
 
         $roleKepalaUnit = Role::firstOrCreate(['name' => 'Kepala Unit', 'guard_name' => 'web']);
         $roleKepalaUnit->syncPermissions([
-            'employees.view',
-            'org.view',
             'recruitment.view', 'recruitment.approve', 'recruitment.reject',
-            'contract.view', 'contract.approve',
+            'contract.view', 'contract.approve', 'contract.sign', 
             'training.dashboard.view', 'training.view',
             'training.management.view', 'training.management.approve',
         ]);
@@ -116,7 +114,7 @@ class RolesPermissionsSeeder extends Seeder
 
         $roleKaryawan = Role::firstOrCreate(['name' => 'Karyawan', 'guard_name' => 'web']);
         $roleKaryawan->syncPermissions([
-            'employees.view',
+            'contract.view', 'contract.sign',
             'training.view',
         ]);
 
