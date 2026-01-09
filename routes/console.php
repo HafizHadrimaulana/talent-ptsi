@@ -54,7 +54,22 @@ Schedule::command($cmd)
     ->appendOutputTo(storage_path('logs/scheduler-sitms-sync-dev.log'));
 
 
+/* ---------------------------------------------------------------------
+ |  CRM PROJECT CODES SYNC SCHEDULER
+ |  Sinkronisasi data Master Project Code dari CRM API.
+ |  Command Class: App\Console\Commands\SyncProjectCodes
+ |  Signature: sync:project-codes {year}
+ * --------------------------------------------------------------------- */
 
+// Menggunakan tahun saat ini secara dinamis (misal: 2026)
+$currentYear = date('Y');
+
+// Jalankan setiap hari jam 02:00 Pagi
+Schedule::command("sync:project-codes {$currentYear}")
+    ->everySecond()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/scheduler-crm-projects.log'));
 /* ---------------------------------------------------------------------
  |  PLACEHOLDER UNTUK COMMAND LAIN
  |  (biarkan file ini tetap ringan — command complex pakai class)
