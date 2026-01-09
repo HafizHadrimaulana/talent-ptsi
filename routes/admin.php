@@ -124,6 +124,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
             ->name('dashboard.update-realisasi-date');
 
+    /// Start Training ///
         Route::get('training-request', [TrainingRequestController::class, 'index'])
             ->name('training-request');
         Route::get('training-request/detail-training-request/{id}', [TrainingRequestController::class, 'getDetailTrainingRequest'])
@@ -133,18 +134,11 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])
             ->name('training-request.get-data-lna');
 
-        Route::get('training-request/{id}/get-lna-by-id', [TrainingRequestController::class, 'getLnaById'])
-            ->name('training-request.edit-data-lna');
-        Route::post('training-request/{id}/edit-data-lna', [TrainingRequestController::class, 'editDataLna'])
-            ->name('training-request.update-data-lna');
-
         Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'destroyLna'])
             ->name('training-request.delete-lna');
         Route::delete('training-request/{id}/delete-training-request', [TrainingRequestController::class, 'destroyTrainingRequest'])
             ->name('training-request.delete-training-request');
 
-        Route::post('training-request/input-lna', [TrainingRequestController::class, 'inputLna'])
-            ->name('training-request.input-lna');
         Route::get('training-request/get-data-units', [TrainingRequestController::class, 'getDataUnits'])
             ->name('training-request.get-data-units');
 
@@ -163,7 +157,9 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.approve-training-request');
         Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
             ->name('training-request.reject-training-request');
+    /// End Training ///
         
+    /// Start Training Management ///
         Route::get('training-management', [TrainingManagementController::class, 'index'])->middleware('permission:training.management.view')->name('training-management');
         Route::post('training-management/{id}/approve-training-submission', [TrainingManagementController::class,'approveTrainingSubmission']);
         Route::post('training-management/{id}/reject-training-submission', [TrainingManagementController::class,'rejectTrainingSubmission']);
@@ -175,6 +171,12 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
         Route::post('training-management/import-lna', [TrainingImportController::class, 'importLna'])
             ->name('training-management.import-lna');
+
+        Route::post('training-request/{id}/edit-data-lna', [TrainingManagementController::class, 'editDataLna'])
+            ->name('training-request.update-data-lna');
+        Route::post('training-request/input-lna', [TrainingManagementController::class, 'inputLna'])
+            ->name('training-request.input-lna');
+    /// End Training Management ///
 
         Route::get('self-learning', fn () => view('training.self-learning.index'))
             ->middleware('permission:training.view')->name('self-learning');

@@ -375,6 +375,149 @@ class TrainingManagementController extends Controller
         }
     }
 
+    public function editDataLna(Request $request, $id)
+    {
+        Log::info('Mulai edit data lna', ['id' => $id, 'payload' => $request->all()]);
+
+        try {
+            $item = TrainingReference::findOrFail($id);
+            $data = [];
+            $fields = [
+                'judul_sertifikasi', 'penyelenggara', 'jumlah_jam', 
+                'waktu_pelaksanaan', 'nama_proyek', 'jenis_portofolio', 'fungsi'
+            ];
+
+            // Field biasa (string)
+            foreach ($fields as $field) {
+                if ($request->has($field)) {
+                    $value = $request->input($field);
+                    $data[$field] = ($value === '' || $value === null) ? null : $value;
+                }
+            }
+
+            if ($request->filled('unit_id')) {
+                $data['unit_id'] = $request->unit_id;
+            }
+            
+            // Field decimal (bersihkan Rupiah)
+            foreach ([
+                'biaya_pelatihan',
+            ] as $field) {
+                $value = $request->input($field);
+                $cleanValue = preg_replace('/[^\d]/', '', $value);
+                $data[$field] = ($cleanValue === '') ? 0 : $cleanValue;
+            }
+            
+            $item->update($data);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Data berhasil diperbarui!',
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak ditemukan.',
+            ], 404);
+        } catch (ValidationException $e) {
+            Log::info('eror', $e->errors());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Edit gagal',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+    }
+
+    public function inputLna(Request $request) 
+    {
+        $user = auth()->user();
+        $role = $user->getRoleNames()->first();
+
+        Log::info("Mulai input LNA sdm request:", $request->all());
+
+        $statusTrainingReference = 'active';
+
+        if ($role === 'SDM Unit') {
+            $unitId = optional($user->employee)->unit_id 
+                ?? optional($user->person)->unit_id;
+
+            if (!$unitId) {
+                return response()->json([
+                    "status" => "error",
+                    "message" => "Unit kerja SDM Unit tidak ditemukan"
+                ], 422);
+            }
+
+            // unit_id dari backend
+            $request->merge([
+                'unit_id' => $unitId
+            ]);
+
+            $statusTrainingReference = 'pending';
+        };
+
+        $request->merge([
+            'biaya_pelatihan'      => $this->cleanRupiah($request->biaya_pelatihan),
+            'uhpd'                 => $this->cleanRupiah($request->uhpd),
+            'biaya_akomodasi'      => $this->cleanRupiah($request->biaya_akomodasi),
+            'estimasi_total_biaya' => $this->cleanRupiah($request->estimasi_total_biaya),
+        ]);
+
+        try {
+            // Validasi sederhana
+            $request->validate([
+                'unit_id'               => 'nullable|exists:units,id',
+                'judul_sertifikasi'     => 'nullable|string|max:255',
+                'penyelenggara'         => 'nullable|string|max:255',
+                'jumlah_jam'            => 'nullable|string|max:255',
+                'waktu_pelaksanaan'     => 'nullable|string|max:255',
+                'biaya_pelatihan'       => 'nullable|numeric',
+                'uhpd'                  => 'nullable|numeric',
+                'biaya_akomodasi'       => 'nullable|numeric',
+                'estimasi_total_biaya'  => 'nullable|numeric',
+                'nama_proyek'           => 'nullable|string|max:255',
+                'jenis_portofolio'      => 'nullable|string|max:255',
+                'fungsi'                => 'nullable|string|max:255',
+            ]);
+    
+            // Simpan ke tabel training_reference
+            $data = TrainingReference::create([
+                'judul_sertifikasi'      => $request->judul_sertifikasi,
+                'unit_id'                => $request->unit_id,
+                'penyelenggara'          => $request->penyelenggara,
+                'jumlah_jam'             => $request->jumlah_jam,
+                'waktu_pelaksanaan'      => $request->waktu_pelaksanaan,
+                'nama_proyek'            => $request->nama_proyek,
+                'jenis_portofolio'       => $request->jenis_portofolio,
+                'fungsi'                 => $request->fungsi,
+                'biaya_pelatihan'        => $request->biaya_pelatihan,
+                'uhpd'                   => $request->uhpd,
+                'biaya_akomodasi'        => $request->biaya_akomodasi,
+                'estimasi_total_biaya'   => $request->estimasi_total_biaya,
+
+                // pending jika sdm unit
+                'status_training_reference' => $statusTrainingReference,
+            ]);
+    
+            Log::info("Data training berhasil disimpan.", $data->toArray());
+    
+            return response()->json([
+                "status" => "success",
+                'message' => 'Data training berhasil disimpan.',
+                'data'    => $data
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                "status" => "error",
+                "message" => $e->getMessage()
+            ], 500);
+        }
+        
+    }
+
     /// UTILS APPROVAL ///
     private function processApproval(TrainingRequest $trainingRequest, string $action, ?string $note = null): array
     {
