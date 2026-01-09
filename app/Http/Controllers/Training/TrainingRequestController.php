@@ -711,53 +711,50 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function getLnaById($id)
-    {
-        $item = TrainingReference::with('unit:id,name')->findOrFail($id);
+    // public function getLnaById($id)
+    // {
+    //     $item = TrainingReference::with('unit:id,name')->findOrFail($id);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'id' => $item->id,
-                'judul_sertifikasi' => $item->judul_sertifikasi,
-                'penyelenggara' => $item->penyelenggara,
-                'jumlah_jam' => $item->jumlah_jam,
-                'waktu_pelaksanaan' => $item->waktu_pelaksanaan,
-                'biaya_pelatihan' => $item->biaya_pelatihan,
-                'uhpd' => $item->uhpd,
-                'biaya_akomodasi' => $item->biaya_akomodasi,
-                'estimasi_total_biaya' => $item->estimasi_total_biaya,
-                'nama_proyek' => $item->nama_proyek,
-                'jenis_portofolio' => $item->jenis_portofolio,
-                'fungsi' => $item->fungsi,
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => [
+    //             'id' => $item->id,
+    //             'judul_sertifikasi' => $item->judul_sertifikasi,
+    //             'penyelenggara' => $item->penyelenggara,
+    //             'jumlah_jam' => $item->jumlah_jam,
+    //             'waktu_pelaksanaan' => $item->waktu_pelaksanaan,
+    //             'biaya_pelatihan' => $item->biaya_pelatihan,
+    //             'uhpd' => $item->uhpd,
+    //             'biaya_akomodasi' => $item->biaya_akomodasi,
+    //             'estimasi_total_biaya' => $item->estimasi_total_biaya,
+    //             'nama_proyek' => $item->nama_proyek,
+    //             'jenis_portofolio' => $item->jenis_portofolio,
+    //             'fungsi' => $item->fungsi,
 
-                // hanya nama unit
-                'unit_kerja' => $item->unit?->name,
-            ]
-        ]);
-    }
+    //             // hanya nama unit
+    //             'unit_kerja' => $item->unit?->name,
+    //         ]
+    //     ]);
+    // }
 
     public function editDataLna(Request $request, $id)
     {
-        $item = TrainingReference::findOrFail($id);
-
-        Log::info('item', $item->toArray());
+        Log::info('Mulai edit data lna', ['id' => $id, 'payload' => $request->all()]);
 
         try {
+            $item = TrainingReference::findOrFail($id);
             $data = [];
+            $fields = [
+                'judul_sertifikasi', 'penyelenggara', 'jumlah_jam', 
+                'waktu_pelaksanaan', 'nama_proyek', 'jenis_portofolio', 'fungsi'
+            ];
 
             // Field biasa (string)
-            foreach ([
-                'judul_sertifikasi',
-                'penyelenggara',
-                'jumlah_jam',
-                'waktu_pelaksanaan',
-                'nama_proyek',
-                'jenis_portofolio',
-                'fungsi',
-            ] as $field) {
-                $value = $request->input($field);
-                $data[$field] = $value === '' ? null : $value;
+            foreach ($fields as $field) {
+                if ($request->has($field)) {
+                    $value = $request->input($field);
+                    $data[$field] = ($value === '' || $value === null) ? null : $value;
+                }
             }
 
             if ($request->filled('unit_id')) {
@@ -767,18 +764,10 @@ class TrainingRequestController extends Controller
             // Field decimal (bersihkan Rupiah)
             foreach ([
                 'biaya_pelatihan',
-                'uhpd',
-                'biaya_akomodasi',
-                'estimasi_total_biaya',
             ] as $field) {
                 $value = $request->input($field);
-
-                if ($value === '' || $value === null) {
-                    $data[$field] = null;
-                } else {
-                    // 🔥 HANYA AMBIL ANGKA
-                    $data[$field] = preg_replace('/[^\d]/', '', $value);
-                }
+                $cleanValue = preg_replace('/[^\d]/', '', $value);
+                $data[$field] = ($cleanValue === '') ? 0 : $cleanValue;
             }
             
             $item->update($data);
@@ -788,6 +777,11 @@ class TrainingRequestController extends Controller
                 'message' => 'Data berhasil diperbarui!',
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data tidak ditemukan.',
+            ], 404);
         } catch (ValidationException $e) {
             Log::info('eror', $e->errors());
             return response()->json([
