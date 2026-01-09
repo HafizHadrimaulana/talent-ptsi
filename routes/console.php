@@ -61,11 +61,8 @@ Schedule::command($cmd)
  |  Signature: sync:project-codes {year}
  * --------------------------------------------------------------------- */
 
-// Menggunakan tahun saat ini secara dinamis (misal: 2026)
-$currentYear = date('Y');
-
 // Jalankan setiap hari jam 02:00 Pagi
-Schedule::command("sync:project-codes {$currentYear}")
+Schedule::command("sync:project-codes --all")
     ->everySecond()
     ->withoutOverlapping()
     ->runInBackground()

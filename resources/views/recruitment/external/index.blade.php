@@ -249,7 +249,7 @@
     </div>
 </div>
 
-<div id="manageModal" class="u-modal" hidden>
+<div id="manageModal" class="u-modal" hidden style="z-index: 1050;">
     <div class="u-modal__card modal-card-wide">
         <div class="u-modal__head">
             <div>
