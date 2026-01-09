@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Training;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Imports\TrainingImportServices;
 use Illuminate\Support\Facades\Storage;
 use App\Models\TrainingReference;
 use App\Models\Employee;
@@ -19,13 +18,6 @@ use Illuminate\Support\Facades\Log;
 
 class TrainingRequestController extends Controller
 {
-    protected $importService;
-
-    public function __construct(TrainingImportServices $importService)
-    {
-        $this->importService = $importService;
-    }
-
     public function index()
     {
         $user = auth()->user();
@@ -143,115 +135,6 @@ class TrainingRequestController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['status' => 'error', 'message' => 'Gagal: ' . $e->getMessage()], 500);
-        }
-    }
-    
-    // Import LNA
-    public function importLna(Request $request)
-    {
-        $request->validate([
-            "chunk" => "required|file",
-            "index" => "required|integer",
-            "total" => "required|integer",
-            "filename" => "required|string",
-        ]);
-
-        try {
-            $chunk = $request->file('chunk');
-            $index = (int) $request->index;
-            $total = (int) $request->total;
-            
-            $safeName = pathinfo($request->filename, PATHINFO_FILENAME);
-
-            // Simpan chunk
-            $tempDir = $this->saveChunkFile($chunk, $index, $safeName);
-
-            Log::info("Temp dir: " . $tempDir);
-            
-            if ($index + 1 < $total) {
-                return response()->json([
-                    "status"  => "success",
-                    "message" => "Chunk {$index} uploaded."
-                ]);
-            }
-
-            // Gabungkan chunks
-            [$finalPath, $fullPath] = $this->mergeChunks($tempDir, $safeName, $total);
-
-            if (!file_exists($fullPath)) {
-                throw new \Exception("File gabungan tidak ditemukan");
-            }
-
-            Log::info("File gabungan: " . $fullPath);
-            
-            // Import sesuai LNA
-            $result = $this->processImport($fullPath);
-
-            // Hapus file gabungan
-            Storage::delete($finalPath);
-
-            return response()->json([
-                "status"         => "success",
-                "message"        => $result['message'] ?? 'Import selesai',
-                "imported_rows"  => $result['imported_rows'] ?? 0,
-                "processed_rows" => $result['processed_rows'] ?? 0,
-                "data"           => $result
-            ]);
-    
-        } catch (\Exception $e) {
-            Log::error("Error import chunk: " . $e->getMessage());
-            return response()->json([
-                "status" => "error",
-                "message" => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function importTraining(Request $request)
-    {
-        $request->validate([
-            "chunk" => "required|file",
-            "index" => "required|integer",
-            "total" => "required|integer",
-            "filename" => "required|string",
-        ]);
-
-        try {
-            $chunk = $request->file('chunk');
-            $index    = (int) $request->index;
-            $total    = (int) $request->total;
-            $filename = trim($request->filename);
-
-            $tempDir = $this->saveChunkFile($chunk, $index, $total, $filename);
-            
-            if ($index + 1 < $total) {
-                return response()->json([
-                    "status"  => "success",
-                    "message" => "Chunk {$index} uploaded."
-                ]);
-            }
-
-            // Gabungkan chunks
-            [$finalPath, $fullPath] = $this->mergeChunks($tempDir, $filename, $total);
-
-            // Import sesuai LNA
-            $result = $this->processImport($fullPath);
-
-            // Hapus file gabungan
-            Storage::delete($finalPath);
-
-            return response()->json([
-                "status"         => "success",
-                "message"        => $result['message'] ?? 'Import selesai',
-                "data"           => $result
-            ]);
-    
-        } catch (\Exception $e) {
-            Log::error("Error import chunk: " . $e->getMessage());
-            return response()->json([
-                "status" => "error",
-                "message" => $e->getMessage(),
-            ], 500);
         }
     }
 
@@ -970,64 +853,6 @@ class TrainingRequestController extends Controller
             'status' => 'success',
             'message' => 'Data berhasil dihapus!',
         ], 200);
-    }
-
-    // PRIVATE FUNCTION //
-    private function saveChunkFile($chunk, int $index, string $safeName): string
-    {
-        $hashDir = md5($safeName); // 🔥 CEGAH TABRAKAN FILE
-        $tempDir = storage_path("app/chunks/{$hashDir}");
-
-        if (!is_dir($tempDir)) {
-            mkdir($tempDir, 0777, true);
-        }
-
-        $chunk->move($tempDir, "chunk_{$index}");
-
-        return $tempDir;
-    }
-
-    private function mergeChunks(string $tempDir, string $safeName, int $total): array
-    {
-        $relativePath = "uploads/{$safeName}";
-        $fullPath     = storage_path("app/{$relativePath}");
-
-        $uploadDir = dirname($fullPath);
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-        
-        $output = fopen($fullPath, 'ab');
-
-        for ($i = 0; $i < $total; $i++) {
-            $chunkPath = "{$tempDir}/chunk_{$i}";
-
-            if (!file_exists($chunkPath)) {
-                fclose($output);
-                throw new \Exception("Chunk {$i} tidak ditemukan");
-            }
-
-            $input = fopen($chunkPath, 'rb');
-            stream_copy_to_stream($input, $output);
-            fclose($input);
-        }
-
-        fclose($output);
-
-        array_map('unlink', glob("{$tempDir}/chunk_*"));
-        @rmdir($tempDir);
-
-        return [$relativePath, $fullPath];
-    }
-
-    private function processImport($fullPath)
-    {
-        $result = $this->importService->handleImport(
-            $fullPath,
-            auth()->id()
-        );
-
-        return $result;
     }
 
     private function cleanRupiah($value)

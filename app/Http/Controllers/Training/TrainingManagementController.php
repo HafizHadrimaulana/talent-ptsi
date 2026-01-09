@@ -30,25 +30,18 @@ class TrainingManagementController extends Controller
                 'tab_configs' => [
 
                     'update-data-LNA' => [
-                        'buttons' => [
-                            'import',
-                            'lna-input',
-                        ],
-                        'show_download_template' => true,
                         'tables' => [
                             'data-lna-table',
                         ],
                     ],
 
                     'approval-training-peserta' => [
-                        'buttons' => [],
                         'tables' => [
                             'training-peserta-table',
                         ],
                     ],
 
                     'approval-training-data' => [
-                        'buttons' => [],
                         'tables' => [
                             'approval-data-training-table',
                         ],

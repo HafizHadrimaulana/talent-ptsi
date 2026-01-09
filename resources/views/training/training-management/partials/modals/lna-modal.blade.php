@@ -1,142 +1,135 @@
 <div id="lna-modal" class="u-modal hidden">
-  <div class="u-modal__card u-modal__card--xl">
-
-    {{-- Modal Header --}}
-    <div class="u-modal__head u-mb-sm">
-      <div class="u-flex u-items-center u-gap-md">
-        <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
-        <div>
-          <div class="u-title detail-judul">Detail LNA</div>
-          <div class="u-muted u-text-sm detail-status">Data LNA</div>
+    <div class="u-modal__card u-modal__card--xl">
+        {{-- Modal Header --}}
+        <div class="u-modal__head border-b u-pb-md">
+            <div class="u-flex u-items-center u-gap-md">
+                <div class="u-avatar u-avatar--lg u-avatar--brand u-shadow-sm"><i class="fas fa-clipboard-check"></i></div>
+                <div>
+                    <div class="u-title detail-judul">Detail LNA</div>
+                    <div class="u-muted u-text-sm edit-indicator">Mode Pratinjau Data</div>
+                </div>
+            </div>
+            <button class="u-btn u-btn--ghost u-btn--sm close-modal-review" aria-label="Close"><i class="fas fa-times"></i></button>
         </div>
-      </div>
-      <button class="u-btn u-btn--ghost u-btn--sm close-modal-review" aria-label="Close">
-        <i class="fas fa-times"></i>
-      </button>
+
+        {{-- Modal Body --}}
+        <div class="u-modal__body u-p-md bg-slate-50/50">
+            <form id="lna-detail-form" class="u-space-y-md">
+                @csrf
+                <input type="hidden" name="id" id="edit-id">
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 u-gap-md">
+                    {{-- Card 1: Informasi Utama --}}
+                    <div class="u-card u-p-md u-shadow-sm border-0">
+                        <div class="u-mb-md border-b u-pb-sm u-flex u-items-center u-justify-between">
+                            <div class="u-flex u-items-center u-gap-sm">
+                                <i class="fas fa-info-circle text-brand"></i>
+                                <h3 class="u-text-sm u-font-bold u-uppercase text-brand tracking-wide">Informasi Umum</h3>
+                            </div>
+                            <span class="u-badge detail-status_training_reference u-text-xs u-font-bold px-3 py-1 u-rounded-full">-</span>
+                        </div>
+                        
+                        <div class="u-space-y-md">
+                            <div class="u-p-md u-bg-white u-rounded-md border-l-4 border-brand u-shadow-sm">
+                                <label class="u-text-xs u-muted u-uppercase font-bold tracking-widest u-block u-mb-xs">Judul Pelatihan</label>
+                                {{-- View Mode --}}
+                                <div class="view-mode u-text-lg u-font-semibold detail-judul-text text-gray-900">-</div>
+                                {{-- Edit Mode --}}
+                                <input type="text" name="judul_pelatihan" class="edit-mode u-input hidden w-full">
+                            </div>
+
+                            <div class="grid grid-cols-2 u-gap-md">
+                                <div class="u-space-y-xs">
+                                    <label class="u-text-xs u-muted u-uppercase font-semibold">Unit</label>
+                                    <div class="view-mode u-font-semibold detail-unit text-gray-700">-</div>
+                                    <input type="text" name="unit" class="edit-mode u-input hidden w-full">
+                                </div>
+                                <div class="u-space-y-xs">
+                                    <label class="u-text-xs u-muted u-uppercase font-semibold">Penyelenggara</label>
+                                    <div class="view-mode u-font-semibold detail-penyelenggara text-gray-700">-</div>
+                                    <input type="text" name="penyelenggara" class="edit-mode u-input hidden w-full">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Card 2: Detail Pekerjaan --}}
+                    <div class="u-card u-p-md u-shadow-sm border-0">
+                        <div class="u-mb-md border-b u-pb-sm u-flex u-items-center u-gap-sm">
+                            <i class="fas fa-tasks text-brand"></i>
+                            <h3 class="u-text-sm u-font-bold u-uppercase text-brand tracking-wide">Detail Pekerjaan</h3>
+                        </div>
+                        <div class="u-space-y-md">
+                            <div class="u-space-y-xs">
+                                <label class="u-text-xs u-muted u-uppercase font-semibold">Nama Proyek</label>
+                                <div class="view-mode u-font-semibold detail-nama_proyek text-gray-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                                <input type="text" name="nama_proyek" class="edit-mode u-input hidden w-full">
+                            </div>
+                            <div class="u-space-y-xs">
+                                <label class="u-text-xs u-muted u-uppercase font-semibold">Fungsi</label>
+                                <div class="view-mode u-font-semibold detail-fungsi text-gray-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                                <input type="text" name="fungsi" class="edit-mode u-input hidden w-full">
+                            </div>
+                            <div class="u-space-y-xs">
+                              <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Portofolio</label>
+                              <div class="view-mode u-font-semibold detail-portofolio text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                              <input type="text" name="edit-portofolio" class="edit-mode u-input hidden w-full">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 3: Biaya --}}
+                <div class="u-card u-p-md u-mt-md u-border-t-4 u-border-green-500 u-bg-white u-shadow-md">
+                    <div class="u-mb-md border-b u-pb-sm u-flex u-items-center u-gap-md">
+                        <i class="fas fa-wallet text-green-600"></i>
+                        <h3 class="u-text-sm u-font-bold u-uppercase text-brand tracking-wide">Estimasi Biaya</h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 u-gap-md">
+                      <div class="u-p-md u-bg-green-50 u-rounded-md border border-green-100">
+                          <label class="u-text-xs u-muted u-uppercase font-bold u-block u-mb-xs tracking-wider">
+                              Biaya Pelatihan
+                          </label>
+                          
+                          {{-- View Mode --}}
+                          <div class="view-mode u-text-lg u-font-bold text-green-700 detail-biaya-pelatihan u-flex u-items-center u-h-10">
+                              Rp 0
+                          </div>
+
+                          {{-- Edit Mode: RP di dalam Input --}}
+                          <div class="edit-mode hidden u-relative">
+                              <div class="u-relative u-flex u-items-center u-gap-md">
+                                  <span class="u-absolute u-left-0 u-ml-3 u-font-bold text-green-600 u-pointer-events-none">
+                                      Rp
+                                  </span>
+                                  
+                                  <input type="text" 
+                                        name="biaya_pelatihan" 
+                                        class="u-input input-biaya u-font-bold text-green-700 border-green-200 focus:u-border-green-500 w-full"
+                                        placeholder="0">
+                              </div>
+                              <small class="u-text-xs u-muted u-mt-xs u-block">Gunakan angka saja</small>
+                          </div>
+                      </div>
+                  </div>
+                </div>
+            </form>
+        </div>
+
+        {{-- Modal Footer --}}
+        <div class="u-modal__foot u-flex u-justify-between u-items-center">
+            <div class="u-muted u-text-sm">Status: <span class="detail-status_training_reference">Active</span></div>
+            <div class="u-flex u-gap-sm">
+                {{-- Tombol Sekunder (Bisa Edit / Batal) --}}
+                <button type="button" id="btn-toggle-edit" class="u-btn u-btn--outline u-btn--danger">
+                    <i class="fas fa-edit u-mr-xs"></i> <span>Edit</span>
+                </button>
+                
+                {{-- Tombol Utama (Bisa Hapus / Simpan) --}}
+                <button type="button" id="btn-submit-action" class="u-btn u-btn--outline">
+                    <i class="fas fa-trash u-mr-xs"></i> <span>Hapus</span>
+                </button>
+            </div>
+        </div>
     </div>
-
-    {{-- Modal Body --}}
-    <div class="u-modal__body u-p-md">
-      <form id="lna-detail-form" class="u-space-y-md">
-        
-        <div class="grid grid-cols-1 lg:grid-cols-2 u-gap-md">
-          
-          {{-- Card 1: Informasi Utama --}}
-          <div class="u-card u-p-md">
-            <div class="u-mb-md border-b u-pb-xs">
-              <h3 class="u-text-sm u-font-bold u-uppercase text-brand">Informasi Umum</h3>
-            </div>
-            
-            <div class="u-space-y-md">
-              <div class="u-space-y-xs">
-                <label class="u-text-xs u-muted u-uppercase font-semibold">Judul Sertifikasi</label>
-                <div class="u-text-lg u-font-bold detail-judul-text text-gray-800">-</div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-md">
-                <div class="u-space-y-xs">
-                  <label class="u-text-xs u-muted u-uppercase font-semibold">Unit</label>
-                  <div class="u-font-semibold detail-unit text-gray-700">-</div>
-                </div>
-                <div class="u-space-y-xs">
-                  <label class="u-text-xs u-muted u-uppercase font-semibold">Penyelenggara</label>
-                  <div class="u-font-semibold detail-penyelenggara text-gray-700">-</div>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-md">
-                <div class="u-space-y-xs">
-                  <label class="u-text-xs u-muted u-uppercase font-semibold">Waktu Pelaksanaan</label>
-                  <div class="u-font-semibold detail-waktu text-gray-700">-</div>
-                </div>
-                <div class="u-space-y-xs">
-                  <label class="u-text-xs u-muted u-uppercase font-semibold">Durasi (Jam)</label>
-                  <div class="u-font-semibold detail-jam text-gray-700">-</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {{-- Card 2: Detail Proyek & Portofolio --}}
-          <div class="u-card u-p-md">
-            <div class="u-mb-md border-b u-pb-xs">
-              <h3 class="u-text-sm u-font-bold u-uppercase text-brand">Detail Pekerjaan</h3>
-            </div>
-            
-            <div class="u-space-y-md">
-              <div class="u-space-y-xs">
-                <label class="u-text-xs u-muted u-uppercase font-semibold">Nama Proyek</label>
-                <div class="u-font-semibold detail-proyek text-gray-700">-</div>
-              </div>
-
-              <div class="u-space-y-xs">
-                <label class="u-text-xs u-muted u-uppercase font-semibold">Fungsi</label>
-                <div class="u-font-semibold detail-fungsi text-gray-700">-</div>
-              </div>
-
-              <div class="u-space-y-xs">
-                <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Portofolio</label>
-                <div class="u-font-semibold detail-portofolio text-gray-700">-</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {{-- Card 3: Rincian Biaya (Full Width) --}}
-        <div class="u-card u-p-md bg-gray-50">
-          <div class="u-mb-md border-b u-pb-xs">
-            <h3 class="u-text-sm u-font-bold u-uppercase text-brand">Rincian Estimasi Biaya</h3>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
-            <div class="u-p-sm">
-              <label class="u-text-xs u-muted u-uppercase font-semibold">Biaya Pelatihan</label>
-              <div class="u-font-bold detail-biaya-pelatihan">Rp 0</div>
-            </div>
-
-            <div class="u-p-sm">
-              <label class="u-text-xs u-muted u-uppercase font-semibold">UHPD</label>
-              <div class="u-font-bold detail-uhpd">Rp 0</div>
-            </div>
-
-            <div class="u-p-sm">
-              <label class="u-text-xs u-muted u-uppercase font-semibold">Biaya Akomodasi</label>
-              <div class="u-font-bold detail-biaya-akomodasi">Rp 0</div>
-            </div>
-
-            <div class="u-p-sm bg-blue-50 u-rounded-sm">
-              <label class="u-text-xs text-blue-600 u-uppercase font-bold">Total Estimasi</label>
-              <div class="u-text-xl u-font-bold text-blue-700 detail-total-biaya">Rp 0</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="u-card u-p-md">
-          <div class="u-mb-md border-b u-pb-xs">
-            <h3 class="u-text-sm u-font-bold u-uppercase text-brand">Catatan (opsional)</h3>
-          </div>
-          <div>
-              <input type="text" name="catatan" class="u-input u-font-semibold">
-            </div>
-        </div>
-
-      </form>
-    </div>
-
-    {{-- Modal Footer --}}
-    <div class="u-modal__foot u-flex u-justify-between u-items-center">
-      <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
-      @role('DHC')
-      <div class="modal-footer-actions u-flex u-gap-sm">
-        <button type="button" id="btn-decline-request" class="u-btn u-btn--danger u-btn--outline">
-          <i class="fas fa-times u-mr-xs"></i> Edit
-        </button>
-        <button type="button" id="btn-approve-request" class="u-btn u-btn--outline">
-          <i class="fas fa-check u-mr-xs"></i> Hapus
-        </button>
-      </div>
-      @endrole
-    </div>
-
-  </div>
 </div>

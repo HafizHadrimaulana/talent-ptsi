@@ -43,8 +43,17 @@ export async function postFormData(url, formData) {
                 .content,
         },
     });
-    console.log("res in post form data", res);
-    return res.json();
+    const data = await res.json();
+
+    if (!res.ok) {
+        const error = new Error(
+            data.message || "Terjadi kesalahan pada server"
+        );
+        error.status = res.status;
+        throw error;
+    }
+
+    return data;
 }
 
 export async function deleteJSON(url, options = {}) {

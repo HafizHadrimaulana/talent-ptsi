@@ -10,7 +10,7 @@
           <div class="u-muted u-text-sm" id="ip-modal-subtitle">Tambah pelatihan</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+      <button class="u-btn u-btn--ghost u-btn--sm lna-input-close-modal" aria-label="Close">
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -120,9 +120,7 @@
     <div class="u-modal__foot">
       <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
       <div class="u-flex u-gap-sm">
-        <button type="button" id="lna-input-close-modal" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-        
-        {{-- FIXED: gunakan ID FORM YANG BENAR --}}
+        <button type="button" class="u-btn u-btn--ghost lna-input-close-modal">Batal</button>
         <button type="submit" form="lna-input-form" class="u-btn u-btn--brand u-hover-lift">Simpan</button>
       </div>
     </div>

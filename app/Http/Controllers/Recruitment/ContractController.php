@@ -60,6 +60,7 @@ class ContractController extends Controller
             $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
         }
 
+        // Updated: Fetch RecruitmentRequest to get Ticket Number
         $applicants = RecruitmentApplicant::with(['user.person', 'recruitmentRequest.unit'])
             ->whereIn('status', config('recruitment.contract_applicant_statuses', ['APPROVED']))
             ->get()
@@ -72,6 +73,8 @@ class ContractController extends Controller
                     'position_applied' => $item->position_applied,
                     'unit_name' => $item->recruitmentRequest?->unit?->name,
                     'unit_id' => $item->recruitmentRequest?->unit_id,
+                    'ticket_number' => $item->recruitmentRequest?->ticket_number, // Added Ticket Number
+                    'request_title' => $item->recruitmentRequest?->title,
                 ];
             })
             ->sortBy('full_name')
@@ -117,13 +120,24 @@ class ContractController extends Controller
             $c->unit_id = $v['unit_id'];
 
             if (in_array($v['contract_type'], ['SPK', 'PKWT_BARU']) && $v['applicant_id']) {
-                $a = RecruitmentApplicant::with('user')->find($v['applicant_id']);
+                $a = RecruitmentApplicant::with(['user', 'recruitmentRequest'])->find($v['applicant_id']);
                 $c->applicant_id = $a->id;
                 $c->person_id = $a->user?->person_id ?? null;
+                // Auto-fill Ticket Number from Izin Prinsip
+                if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number) {
+                    $c->ticket_number = $a->recruitmentRequest->ticket_number;
+                }
                 if (empty($v['position_name'])) $c->position_name = $a->position_applied;
             } else {
                 $c->person_id = $v['person_id'] ?: Employee::where('employee_id', $v['employee_id'])->value('person_id');
-                $c->parent_contract_id = ($v['source_contract_id'] && Contract::where('id', $v['source_contract_id'])->exists()) ? $v['source_contract_id'] : null;
+                // Inherit ticket number from source contract if available (for renewal)
+                if ($v['source_contract_id']) {
+                    $parent = Contract::find($v['source_contract_id']);
+                    if ($parent) {
+                        $c->parent_contract_id = $parent->id;
+                        $c->ticket_number = $parent->ticket_number; // Inherit ticket
+                    }
+                }
             }
             if (!$c->person_id) $c->person_id = $request->input('person_id');
 
@@ -347,7 +361,8 @@ class ContractController extends Controller
             'ui_nik_ktp' => $cand['nik_ktp'], 'ui_employee_id' => $cand['employee_id'],
             'target_role_label' => $targetRole,
             'geolocation' => $geoData,
-            'progress' => ['ka_unit' => $kaUnitStatus, 'candidate' => $candStatus]
+            'progress' => ['ka_unit' => $kaUnitStatus, 'candidate' => $candStatus],
+            'ticket_number' => $contract->ticket_number // Pass ticket number
         ])]);
     }
 
@@ -659,6 +674,7 @@ class ContractController extends Controller
 
         return [
             'contract_no' => $c->contract_no ?? 'DRAFT',
+            'ticket_number' => $c->ticket_number ?? '-', // Added ticket number variable
             'today_date' => now()->translatedFormat('d F Y'),
             'today_date_numeric' => now()->format('d/m/Y'),
             'day_name' => now()->translatedFormat('l'),

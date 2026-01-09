@@ -203,15 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
         unitId: unitId 
       });
     });
-
-    if (document.querySelector('#trainingSearchInput')) {
-      bindExternalSearch({
-        searchSelector: '#trainingSearchInput',
-        buttonSelector: '#trainingSearchForm [type="submit"]',
-        tableSelector: '.training-table',
-        delay: 250,
-      });
-    }
   }
 
   const modal          = document.getElementById('empModal');

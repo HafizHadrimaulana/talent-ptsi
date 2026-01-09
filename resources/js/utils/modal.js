@@ -3,29 +3,32 @@ export function initModalHandler(
     modalSelector,
     closeBtnSelector
 ) {
-    console.log("modal handler");
     const openBtn = document.querySelector(openBtnSelector);
     const modal = document.querySelector(modalSelector);
     const closeBtn = document.querySelector(closeBtnSelector);
 
-    console.log("openBtn", openBtn);
-    console.log("modal", modal);
-    console.log("closeBtn", closeBtn);
-
     if (!openBtn || !modal || !closeBtn) return;
 
+    // FUNGSI BUKA
     openBtn.addEventListener("click", () => {
         modal.classList.remove("hidden");
+        modal.style.display = "flex";
         modal.hidden = false;
     });
 
-    closeBtn.addEventListener("click", () => {
+    // FUNGSI TUTUP
+    const closeModal = () => {
+        modal.classList.add("hidden");
+        modal.style.display = "none";
         modal.hidden = true;
-    });
+    };
 
+    closeBtn.addEventListener("click", closeModal);
+
+    // FUNGSI KLIK LUAR (Overlay)
     modal.addEventListener("click", (e) => {
         if (e.target === modal) {
-            modal.hidden = false;
+            closeModal();
         }
     });
 }

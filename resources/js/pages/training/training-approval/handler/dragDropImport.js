@@ -1,11 +1,18 @@
 import { initImportHandler } from "./importHandler";
 
-export function initDragDropUpload(modalSelector, role) {
+/**
+ * @param {string} modalSelector
+ * @param {Function} reloadCallback
+ */
+export function initDragDropUpload(modalSelector) {
     const area = document.getElementById("drag-drop-area");
     const input = document.getElementById("drag-drop-input");
     const fileInfo = document.getElementById("selected-file-info");
     const wrapper = document.getElementById("dragdrop-wrapper");
     const uploadForm = document.getElementById("import-form");
+
+    if (!uploadForm || uploadForm.dataset.initialized === "true") return;
+    uploadForm.dataset.initialized = "true";
 
     const modal = document.querySelector(modalSelector);
 
@@ -48,6 +55,7 @@ export function initDragDropUpload(modalSelector, role) {
         selectedFile = input.files[0];
         if (!selectedFile) {
             console.log("tidak ada file dipilih");
+            alert("tidak ada file dipilih");
         }
 
         wrapper.classList.add("hidden");
@@ -92,15 +100,27 @@ export function initDragDropUpload(modalSelector, role) {
     uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
+        const closeMyModal = () => {
+            if (modal) {
+                $(modal).fadeOut(150, function () {
+                    $(this).addClass("hidden").hide();
+                    modal.classList.add("hidden");
+                });
+            }
+        };
+
         if (!selectedFile) {
-            return Swal.fire(
-                "Peringatan",
-                "Pilih file terlebih dahulu!",
-                "warning"
-            );
+            closeMyModal(); // Tutup modal dulu
+
+            return Swal.fire({
+                icon: "warning",
+                title: "Peringatan",
+                text: "Pilih file terlebih dahulu!",
+                confirmButtonText: "Oke",
+            });
         }
 
-        if (modal) modal.classList.add("hidden");
+        closeMyModal();
 
         Swal.fire({
             title: "Mengunggah Data...",
@@ -110,29 +130,52 @@ export function initDragDropUpload(modalSelector, role) {
         });
 
         try {
-            const res = await initImportHandler(selectedFile, role);
+            const res = await initImportHandler(selectedFile);
 
-            // if (modal) modal.classList.add("hidden");
-            Swal.close();
+            console.log("res data import", res);
 
-            console.log("res data import", res.data);
+            if (res.status === "error") {
+                throw new Error(res.message || "Terjadi kesalahan sistem");
+            }
 
             Swal.fire({
                 icon: "success",
                 title: "Berhasil!",
-                text: res.message || "Import selesai!",
+                text: `Import selesai! ${
+                    res.processed_rows || 0
+                } data berhasil diproses.`,
                 timer: 2000,
                 showConfirmButton: false,
+            }).then((result) => {
+                if (
+                    result.isConfirmed ||
+                    result.dismiss === Swal.DismissReason.timer
+                ) {
+                    reloadCallback();
+                }
             });
-            console.log("reload");
-            window.location.reload();
         } catch (err) {
             Swal.close();
 
+            let errorTitle = "Terjadi Kesalahan";
+            let errorMessage = "Gagal memproses permintaan.";
+
+            // Jika error mengandung kata tertentu atau flag dari backend
+            if (err.message.includes("sistem") || err.message.includes("500")) {
+                errorTitle = "System Error";
+                errorMessage =
+                    "Mohon maaf, sistem sedang mengalami kendala teknis.";
+            } else {
+                // Jika error adalah masalah input (seperti kolom Excel salah)
+                errorTitle = "Gagal Import";
+                errorMessage = err.message;
+            }
+
             Swal.fire({
                 icon: "error",
-                title: "Gagal Import",
-                text: err.message || "Terjadi kesalahan",
+                title: errorTitle,
+                text: errorMessage,
+                confirmButtonText: "Oke",
             });
         }
     });

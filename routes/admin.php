@@ -17,10 +17,10 @@ use App\Http\Controllers\Recruitment\PublishingController;
 use App\Http\Controllers\Recruitment\ApplicantDataController;
 use App\Http\Controllers\Public\CareerController;
 use App\Http\Controllers\Training\{
-    MonitoringController as TrainingMonitoringController,
     DashboardController as TrainingDashboardController,
     TrainingRequestController,
-    TrainingManagementController
+    TrainingManagementController,
+    TrainingImportController
 };
 
 use App\Http\Controllers\Admin\Org\OrgController;
@@ -69,7 +69,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     });
 
     Route::prefix('recruitment')->name('recruitment.')->group(function () {
-        Route::get('monitoring', [RecruitmentMonitoringController::class, 'index'])->middleware('permission:recruitment.view')->name('monitoring');
 
         Route::get('principal-approval', [RecruitmentApprovalController::class, 'index'])->middleware('permission:recruitment.view')->name('principal-approval.index');
         Route::post('principal-approval', [RecruitmentApprovalController::class, 'store'])->middleware('permission:recruitment.update')->name('principal-approval.store');
@@ -131,8 +130,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request/detail-training-request');
         Route::post('training-request/submit-evaluasi-training', [TrainingRequestController::class, 'submitEvaluasiTraining'])
             ->name('training-request/submit-evaluasi-training');
-        Route::post('training-request/import-lna', [TrainingRequestController::class, 'importLna'])
-            ->name('training-request.import-lna');
         Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])
             ->name('training-request.get-data-lna');
 
@@ -161,8 +158,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.get-training-request-list');
         Route::post('training-request/input-training-request', [TrainingRequestController::class, 'inputTrainingRequest'])
             ->name('training-request.input-training-request');
-        Route::post('training-request/import-training', [TrainingRequestController::class, 'importTraining'])
-            ->name('training-request.import-training');
 
         Route::post('training-request/{id}/approve-training-request', [TrainingRequestController::class,'approveTrainingRequest'])
             ->name('training-request.approve-training-request');
@@ -178,8 +173,8 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('training-management/{id}/reject-training-pengajuan', [TrainingManagementController::class,'rejectTrainingReference'])
             ->name('training-management.reject-training-pengajuan');
 
-        Route::get('download-template', [TrainingMonitoringController::class,'downloadTemplate'])
-            ->name('download-template');
+        Route::post('training-management/import-lna', [TrainingImportController::class, 'importLna'])
+            ->name('training-management.import-lna');
 
         Route::get('self-learning', fn () => view('training.self-learning.index'))
             ->middleware('permission:training.view')->name('self-learning');
