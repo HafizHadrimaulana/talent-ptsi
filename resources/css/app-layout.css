@@ -535,3 +535,4 @@ body.sidebar-collapsed .main{margin-left:calc(var(--sbw-collapsed) + var(--side-
   background:color-mix(in srgb,var(--accent) 55%,transparent);
   height:3px;border-radius:999px;
 }
+
