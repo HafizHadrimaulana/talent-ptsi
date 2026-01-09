@@ -15,6 +15,7 @@ class RolesPermissionsSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // 2. Daftar Permissions
+        // 2. Daftar Permissions
         $permissions = [
             'users.view', 'users.create', 'users.update', 'users.delete',
             'rbac.view', 'rbac.assign',
@@ -32,7 +33,9 @@ class RolesPermissionsSeeder extends Seeder
         ];
 
         // 3. Buat Permissions (Pakai firstOrCreate agar tidak error duplicate entry)
+        // 3. Buat Permissions (Pakai firstOrCreate agar tidak error duplicate entry)
         foreach ($permissions as $perm) {
+            Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
@@ -40,8 +43,12 @@ class RolesPermissionsSeeder extends Seeder
         // --- Role: Superadmin ---
         $roleSuperadmin = Role::firstOrCreate(['name' => 'Superadmin', 'guard_name' => 'web']);
         $roleSuperadmin->syncPermissions(Permission::all());
+        $roleSuperadmin = Role::firstOrCreate(['name' => 'Superadmin', 'guard_name' => 'web']);
+        $roleSuperadmin->syncPermissions(Permission::all());
 
         // --- Role: DHC ---
+        $roleDhc = Role::firstOrCreate(['name' => 'DHC', 'guard_name' => 'web']);
+        $roleDhc->syncPermissions([
         $roleDhc = Role::firstOrCreate(['name' => 'DHC', 'guard_name' => 'web']);
         $roleDhc->syncPermissions([
             'users.view', 'rbac.view', 'rbac.assign',
@@ -57,6 +64,8 @@ class RolesPermissionsSeeder extends Seeder
         // --- Role: Dir SDM ---
         $roleDirSdm = Role::firstOrCreate(['name' => 'Dir SDM', 'guard_name' => 'web']);
         $roleDirSdm->syncPermissions([
+        $roleDirSdm = Role::firstOrCreate(['name' => 'Dir SDM', 'guard_name' => 'web']);
+        $roleDirSdm->syncPermissions([
             'employees.view',
             'org.view', 'org.update',
             'recruitment.view', 'recruitment.approve', 'recruitment.reject',
@@ -67,10 +76,12 @@ class RolesPermissionsSeeder extends Seeder
         // --- Role: SDM Unit ---
         $roleSdmUnit = Role::firstOrCreate(['name' => 'SDM Unit', 'guard_name' => 'web']);
         $roleSdmUnit->syncPermissions([
+        $roleSdmUnit = Role::firstOrCreate(['name' => 'SDM Unit', 'guard_name' => 'web']);
+        $roleSdmUnit->syncPermissions([
             'users.view',
             'employees.view',
             'org.view', 'org.create', 'org.update',
-            'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit',
+            'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'recruitment.approve', 'recruitment.reject',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete',
             'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
             'training.view', 'training.dashboard.view',
@@ -78,6 +89,8 @@ class RolesPermissionsSeeder extends Seeder
         ]);
 
         // --- Role: Kepala Unit ---
+        $roleKepalaUnit = Role::firstOrCreate(['name' => 'Kepala Unit', 'guard_name' => 'web']);
+        $roleKepalaUnit->syncPermissions([
         $roleKepalaUnit = Role::firstOrCreate(['name' => 'Kepala Unit', 'guard_name' => 'web']);
         $roleKepalaUnit->syncPermissions([
             'employees.view',
@@ -88,7 +101,31 @@ class RolesPermissionsSeeder extends Seeder
             'training.management.view', 'training.management.approve',
         ]);
 
-        // --- Role: AVP ---
+        $roleAdminOps = Role::firstOrCreate(['name' => 'Admin Operasi Unit', 'guard_name' => 'web']);
+        $roleAdminOps->syncPermissions([
+            'employees.view',
+            'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit',
+            'training.view',
+        ]);
+
+        $roleKepalaMP = Role::firstOrCreate(['name' => 'Kepala Proyek (MP)', 'guard_name' => 'web']);
+        $roleKepalaMP->syncPermissions([
+            'employees.view',
+            'recruitment.view', 'recruitment.approve', 'recruitment.reject',
+            'training.view',
+        ]);
+
+        $roleAvpHcOps = Role::firstOrCreate(['name' => 'AVP Human Capital Operation', 'guard_name' => 'web']);
+        $roleAvpHcOps->syncPermissions([
+            'users.view', 
+            'employees.view',
+            'org.view', 
+            'recruitment.view', 'recruitment.approve', 'recruitment.reject', // Wajib untuk flow approval
+            'contract.view', 'contract.approve',
+            'training.view', 'training.dashboard.view',
+            'training.management.view', 'training.management.approve',
+        ]);
+
         $roleAvp = Role::firstOrCreate(['name' => 'AVP', 'guard_name' => 'web']);
         $roleAvp->syncPermissions([
             'training.view',
@@ -98,6 +135,8 @@ class RolesPermissionsSeeder extends Seeder
         // --- Role: DBS Unit ---
         $roleDbsUnit = Role::firstOrCreate(['name' => 'DBS Unit', 'guard_name' => 'web']);
         $roleDbsUnit->syncPermissions([
+        $roleDbsUnit = Role::firstOrCreate(['name' => 'DBS Unit', 'guard_name' => 'web']);
+        $roleDbsUnit->syncPermissions([
             'training.view',
             'training.management.view',
         ]);
@@ -105,10 +144,16 @@ class RolesPermissionsSeeder extends Seeder
         // --- Role: Karyawan ---
         $roleKaryawan = Role::firstOrCreate(['name' => 'Karyawan', 'guard_name' => 'web']);
         $roleKaryawan->syncPermissions([
+        // --- Role: Karyawan ---
+        $roleKaryawan = Role::firstOrCreate(['name' => 'Karyawan', 'guard_name' => 'web']);
+        $roleKaryawan->syncPermissions([
             'employees.view',
             'training.view',
         ]);
 
+        // --- Role: Pelamar ---
+        $rolePelamar = Role::firstOrCreate(['name' => 'Pelamar', 'guard_name' => 'web']);
+        $rolePelamar->syncPermissions([
         // --- Role: Pelamar ---
         $rolePelamar = Role::firstOrCreate(['name' => 'Pelamar', 'guard_name' => 'web']);
         $rolePelamar->syncPermissions([

@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    /* CRM project list */
+    'crm_project_list_url' => env('CRM_PROJECT_LIST_URL', 'https://crm-api.ptsi.co.id/rest/list-project'),
+    'crm_basic_auth' => env('CRM_BASIC_AUTH', null),
+
 ];

@@ -32,11 +32,13 @@ class PrincipalApprovalController extends Controller
     protected function stages(): array
     {
         return [
-            ['key' => 'kepala_unit', 'roles' => ['Kepala Unit']],
-            ['key' => 'dhc_checker', 'roles' => ['DHC']],
-            ['key' => 'avp_hc_ops',  'roles' => ['AVP Human Capital Operation']], 
-            ['key' => 'vp_hc',       'roles' => ['VP Human Capital']],
-            ['key' => 'dir_sdm',     'roles' => ['Dir SDM']],
+            ['key' => 'kepala_mp',    'roles' => ['Kepala Proyek (MP)'],     'title' => 'Kepala Proyek (MP)'],
+            ['key' => 'sdm_unit',     'roles' => ['SDM Unit']],
+            ['key' => 'kepala_unit',  'roles' => ['Kepala Unit']],
+            ['key' => 'dhc_checker',  'roles' => ['DHC']],
+            ['key' => 'avp_hc_ops',   'roles' => ['AVP Human Capital Operation']], 
+            ['key' => 'vp_hc',        'roles' => ['VP Human Capital']],
+            ['key' => 'dir_sdm',      'roles' => ['Dir SDM']],
         ];
     }
 
@@ -131,7 +133,7 @@ class PrincipalApprovalController extends Controller
                       ->paginate(50)
                       ->withQueryString();
 
-        $projects = Project::orderBy('project_code', 'asc')->get();
+        $projects = [];
         $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
 
         return view('recruitment.principal-approval.index', [
@@ -334,17 +336,35 @@ class PrincipalApprovalController extends Controller
     public function submit(RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
+        $user = Auth::user();
+
         if (($req->status ?? null) !== 'draft') {
             return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat disubmit.');
         }
         if (Schema::hasColumn($req->getTable(), 'status')) {
             $req->update(['status' => 'submitted']);
         }
-        $this->createPendingApproval($req, 0);
+        $startStage = 0; 
+        if ($user->hasRole('SDM Unit')) {
+            $startStage = 2; 
+        } 
+        else {
+            $hasKepalaMP = $this->checkUnitHasPosition($req->unit_id, 'KEPALA PROYEK (MP)');
+            
+            if (!$hasKepalaMP) {
+                // Jika TIDAK ADA Kepala MP, baru lompat ke SDM Unit (Stage 1)
+                $startStage = 1;
+            }
+            // Jika ADA Kepala MP, tetap $startStage = 0 (masuk ke Kepala MP)
+        }
+        
+        $this->createPendingApproval($req, $startStage);
+        
         if (Schema::hasColumn($req->getTable(), 'status')) {
             $req->update(['status' => 'in_review']);
         }
-        return back()->with('ok', 'Permintaan dikirim ke Kepala Unit.');
+        
+        return back()->with('ok', 'Permintaan berhasil dikirim.');
     }
 
     public function approve(RecruitmentRequest $req, Request $r)
@@ -353,9 +373,12 @@ class PrincipalApprovalController extends Controller
         if ($stageIdx === null) {
             return back()->withErrors('Tidak ada approval yang pending.');
         }
+        
+        // Pastikan user punya hak akses
         if (!$this->canActOnStage(Auth::user(), $stageIdx, $req->unit_id)) {
-            abort(403);
+            abort(403, 'Unauthorized.');
         }
+        
         $note = $r->input('note'); 
         $extendedNote = $r->input('extended_note');
         if (!empty($extendedNote)) {
@@ -363,16 +386,21 @@ class PrincipalApprovalController extends Controller
             $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
         }
         $this->closePending($req, 'approved', $note);
-        $isLast = $stageIdx >= (count($this->stages()) - 1);
-        if ($isLast) {
+
+        $totalStages = count($this->stages());
+        $nextStage = $stageIdx + 1;
+
+        // Cek Final Stage
+        if ($nextStage >= $totalStages) {
             if (Schema::hasColumn($req->getTable(), 'status')) {
                 $req->update(['status' => 'approved']);
             }        
             $req->generateTicketNumber();
-
             return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui. Nomor Ticket: ' . $req->ticket_number);
         }
-        $this->createPendingApproval($req, $stageIdx + 1);
+
+        // Buat approval untuk stage berikutnya
+        $this->createPendingApproval($req, $nextStage);
         return back()->with('ok', 'Disetujui dan diteruskan ke approver berikutnya.');
     }
 
@@ -394,8 +422,17 @@ class PrincipalApprovalController extends Controller
 
     protected function currentStageIndex(RecruitmentRequest $req): ?int
     {
-        foreach ($req->approvals()->orderBy('id', 'asc')->get() as $i => $ap) {
-            if (($ap->status ?? 'pending') === 'pending') return $i;
+        foreach ($req->approvals()->orderBy('id', 'asc')->get() as $ap) {
+            if (($ap->status ?? 'pending') === 'pending') {
+                preg_match('/\[stage=([^\]]+)\]/', $ap->note, $matches);
+                $key = $matches[1] ?? null;
+                if ($key) {
+                    foreach ($this->stages() as $idx => $s) {
+                        if ($s['key'] === $key) return $idx;
+                    }
+                }
+                return 0; // Fallback logic
+            }
         }
         return null;
     }
@@ -405,7 +442,7 @@ class PrincipalApprovalController extends Controller
         $rel = $req->approvals();
         $m   = $rel->getRelated()->newInstance();
         $stageKey = $this->stages()[$stageIdx]['key'] ?? ('stage_' . $stageIdx);
-        $m->forceFill(['status' => 'pending','note'   => "[stage={$stageKey}]",]);
+        $m->forceFill(['status' => 'pending','note'    => "[stage={$stageKey}]",]);
         $rel->save($m);
     }
 
@@ -426,12 +463,19 @@ class PrincipalApprovalController extends Controller
         }
     }
 
+    // GANTI METHOD canActOnStage() SEPENUHNYA:
     protected function canActOnStage($user, int $stageIdx, $reqUnitId): bool
     {
         if (!$user) return false;
         if ($user->hasRole('Superadmin')) return true;
+        
         $stage = $this->stages()[$stageIdx] ?? null;
         if (!$stage) return false;
+        
+        $jobTitle = $this->getUserJobTitle($user->id);
+        $cleanJobTitle = trim(strtoupper($jobTitle));
+
+        // Logic Default Role Spatie
         $allowed = false;
         foreach ($stage['roles'] as $r) {
             if ($user->hasRole($r)) {
@@ -439,22 +483,40 @@ class PrincipalApprovalController extends Controller
                 break;
             }
         }
-        $jobTitle = $this->getUserJobTitle($user->id);
-        $cleanJobTitle = trim(strtoupper($jobTitle));
+
+        // Logic Spesifik per Stage Key
+        if ($stage['key'] === 'kepala_mp') {
+             // Cek Role atau Jabatan "Kepala Proyek (MP)" + Wajib satu unit
+             $isTitleMatch = str_contains($cleanJobTitle, 'KEPALA PROYEK (MP)');
+             return ($allowed || $isTitleMatch) && ((string) $user->unit_id === (string) $reqUnitId);
+        }
+
+        if ($stage['key'] === 'sdm_unit') {
+             // Cek Role SDM Unit + Wajib satu unit
+             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
+        }
+
         if ($stage['key'] === 'kepala_unit') {
+            // Cek Role Kepala Unit + Wajib satu unit
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
+
         if ($stage['key'] === 'dhc_checker') {
+            // DHC (Pusat) atau Kepala Unit DHC (Cabang DHC)
             if ($allowed) return true;
             $isKepalaUnit = $user->hasRole('Kepala Unit');
             return $isKepalaUnit && $this->dhcUnitId() && ((string) $user->unit_id === (string) $this->dhcUnitId());
         }
+
         if ($stage['key'] === 'avp_hc_ops') {
             return $allowed || ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
         }
+
         if ($stage['key'] === 'vp_hc') {
             return $allowed || ($cleanJobTitle === 'VP HUMAN CAPITAL');
         }
+
+        // Dir SDM (Default allowed check sudah cukup)
         return $allowed;
     }
 
@@ -463,6 +525,8 @@ class PrincipalApprovalController extends Controller
         $me = Auth::user();
         if (!$me) abort(401);
         $jobTitle = $this->getUserJobTitle($me->id);
+        
+        // Daftar role pusat yang boleh lintas unit
         if ($me->hasRole('Superadmin') 
             || $me->hasRole('DHC') 
             || $me->hasRole('Dir SDM')
@@ -473,6 +537,7 @@ class PrincipalApprovalController extends Controller
             return;
         }
 
+        // Untuk unit user biasa, harus sama unit_id nya
         if ($me->unit_id && $unitId && (string) $me->unit_id !== (string) $unitId) {
             abort(403);
         }
@@ -512,5 +577,13 @@ class PrincipalApprovalController extends Controller
             'description'  => $request->description 
         ]);
         return response()->json(['success' => true, 'message' => 'Lowongan berhasil dipublikasikan dengan deskripsi!']);
+    }
+    protected function checkUnitHasPosition($unitId, $positionNameFragment)
+    {
+        return DB::table('employees')
+            ->join('positions', 'employees.position_id', '=', 'positions.id')
+            ->where('employees.unit_id', $unitId)
+            ->where('positions.name', 'like', '%' . $positionNameFragment . '%')
+            ->exists();
     }
 }
