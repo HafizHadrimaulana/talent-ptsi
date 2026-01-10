@@ -136,39 +136,41 @@ const initModalSystem = () => {
     const $body = $("body");
 
     // 1. Handler Buka Modal
-    $body.on("click", ".btn-trigger-modal", function () {
-        const $btn = $(this);
-        const tableId = $btn.data("table");
-        const config = TABLE_CONFIGS[tableId];
+    $body
+        .off("click.modalSystem")
+        .on("click.modalSystem", ".btn-trigger-modal", function () {
+            const $btn = $(this);
+            const tableId = $btn.data("table");
+            const config = TABLE_CONFIGS[tableId];
 
-        if (!config) return;
+            if (!config) return;
 
-        const rowData = $(`#${tableId}`)
-            .DataTable()
-            .row($btn.closest("tr"))
-            .data();
-        const $modal = $(config.modalId);
+            const rowData = $(`#${tableId}`)
+                .DataTable()
+                .row($btn.closest("tr"))
+                .data();
+            const $modal = $(config.modalId);
 
-        console.log("row data aaa", rowData);
+            console.log("row data aaa", rowData);
 
-        if ($modal.length && rowData) {
-            toggleEditMode($modal, false);
-            populateModalData($modal, rowData);
-            $modal.removeClass("hidden").show();
-        }
-    });
+            if ($modal.length && rowData) {
+                toggleEditMode($modal, false);
+                populateModalData($modal, rowData);
+                $modal.removeClass("hidden").show();
+            }
+        });
 
-    $body.on("click", "#btn-toggle-edit", function() {
+    $body.on("click", "#btn-toggle-edit", function () {
         const $modal = $(this).closest(".u-modal");
-        const isEditing = $modal.hasClass('is-editing-active');
+        const isEditing = $modal.hasClass("is-editing-active");
         toggleEditMode($modal, !isEditing);
     });
 
     $body.on("click", "#btn-submit-action", function () {
         const $modal = $(this).closest(".u-modal");
-        const isEditMode = $modal.hasClass('is-editing-active');
+        const isEditMode = $modal.hasClass("is-editing-active");
         const id = $modal.attr("data-current-id");
-        
+
         if (isEditMode) {
             // LOGIKA UPDATE (AJAX)
             const formData = $modal.find("#lna-detail-form").serialize();
@@ -235,7 +237,7 @@ const populateModalData = ($modal, data) => {
         .find(".detail-unit, .detail-unit_kerja")
         .text(data.unit_kerja || "-");
     $modal.find(".detail-penyelenggara").text(data.penyelenggara || "-");
-    $modal.find(".detail-jam, .detail-jumlah_jam").text(data.jumlah_jam || "-");
+    $modal.find(".detail-jumlah_jam").text(data.jumlah_jam || "-");
     $modal.find(".detail-no").text(data.no || "-");
 
     // Status (Handle dua versi status)
@@ -248,7 +250,7 @@ const populateModalData = ($modal, data) => {
 
     // Penanganan Waktu (Satu tanggal vs Range)
     $modal
-        .find(".detail-waktu, .detail-waktu_pelaksanaan")
+        .find(".detail-waktu_pelaksanaan")
         .text(data.waktu_pelaksanaan || "-");
     $modal.find(".detail-tanggal_mulai").text(data.tanggal_mulai || "-");
     $modal.find(".detail-tanggal_berakhir").text(data.tanggal_berakhir || "-");
@@ -308,59 +310,72 @@ const populateModalData = ($modal, data) => {
 
 const toggleEditMode = ($modal, isEditing) => {
     if (isEditing) {
-        $modal.addClass('is-editing-active');
-        $modal.find('.view-mode').addClass('hidden');
-        $modal.find('.edit-mode').removeClass('hidden');
-        
+        $modal.addClass("is-editing-active");
+        $modal.find(".view-mode").addClass("hidden");
+        $modal.find(".edit-mode").removeClass("hidden");
+
         // Sync data dari view ke input
-        $modal.find('input[name="judul_pelatihan"]').val($modal.find('.detail-judul-text').text().trim());
-        $modal.find('input[name="unit"]').val($modal.find('.detail-unit').text().trim());
-        $modal.find('input[name="penyelenggara"]').val($modal.find('.detail-penyelenggara').text().trim());
-        $modal.find('input[name="nama_proyek"]').val($modal.find('.detail-nama_proyek').text().trim());
-        $modal.find('input[name="fungsi"]').val($modal.find('.detail-fungsi').text().trim());
-        $modal.find('input[name="portofolio"]').val($modal.find('.detail-portofolio').text().trim());
-        $modal.find('input[name="biaya_pelatihan"]').val($modal.find('.detail-biaya-pelatihan').text().replace(/[^0-9]/g, ''));
+        // $modal
+        //     .find('input[name="judul_sertifikasi"]')
+        //     .val($modal.find(".judul_sertifikasi").text().trim());
+        // $modal
+        //     .find('input[name="unit"]')
+        //     .val($modal.find(".detail-unit").text().trim());
+        $modal
+            .find('input[name="penyelenggara"]')
+            .val($modal.find(".detail-penyelenggara").text().trim());
+        $modal
+            .find('input[name="jumlah_jam"]')
+            .val($modal.find(".detail-jumlah_jam").text().trim());
+        $modal
+            .find('input[name="waktu_pelaksanaan"]')
+            .val($modal.find(".detail-waktu_pelaksanaan").text().trim());
+        $modal
+            .find('input[name="nama_proyek"]')
+            .val($modal.find(".detail-nama_proyek").text().trim());
+        $modal
+            .find('input[name="fungsi"]')
+            .val($modal.find(".detail-fungsi").text().trim());
+        $modal
+            .find('input[name="jenis_portofolio"]')
+            .val($modal.find(".detail-jenis_portofolio").text().trim());
+        $modal.find('input[name="biaya_pelatihan"]').val(
+            $modal
+                .find(".detail-biaya-pelatihan")
+                .text()
+                .replace(/[^0-9]/g, "")
+        );
 
         // Ubah UI Tombol
-        $modal.find('#btn-toggle-edit span').text('Batal');
-        $modal.find('#btn-submit-action span').text('Simpan Perubahan');
-        $modal.find('#btn-submit-action').addClass('u-btn--brand u-btn--fill').removeClass('u-btn--outline');
+        $modal.find("#btn-toggle-edit span").text("Batal");
+        $modal.find("#btn-submit-action span").text("Simpan Perubahan");
+        $modal
+            .find("#btn-submit-action")
+            .addClass("u-btn--brand u-btn--fill")
+            .removeClass("u-btn--outline");
     } else {
-        $modal.removeClass('is-editing-active');
-        $modal.find('.view-mode').removeClass('hidden');
-        $modal.find('.edit-mode').addClass('hidden');
-        
+        $modal.removeClass("is-editing-active");
+        $modal.find(".view-mode").removeClass("hidden");
+        $modal.find(".edit-mode").addClass("hidden");
+
         // Reset UI Tombol
-        $modal.find('#btn-toggle-edit span').text('Edit');
-        $modal.find('#btn-submit-action span').text('Hapus');
-        $modal.find('#btn-submit-action').removeClass('u-btn--brand u-btn--fill').addClass('u-btn--outline');
+        $modal.find("#btn-toggle-edit span").text("Edit");
+        $modal.find("#btn-submit-action span").text("Hapus");
+        $modal
+            .find("#btn-submit-action")
+            .removeClass("u-btn--brand u-btn--fill")
+            .addClass("u-btn--outline");
     }
 };
 
-const handleUpdateAction = (id, formData, $modal) => {
-    $.ajax({
-        url: `/training/training-request/${id}/edit-data-lna`, // Sesuaikan route
-        method: 'POST',
-        data: formData,
-        beforeSend: () => $modal.find('#btn-submit-action').prop('disabled', true).text('Menyimpan...'),
-        success: (res) => {
-            Swal.fire('Berhasil', 'Data telah diperbarui', 'success');
-            toggleEditMode($modal, false);
-            $(".dataTable").DataTable().ajax.reload(null, false);
-        },
-        error: () => Swal.fire('Gagal', 'Terjadi kesalahan sistem', 'error'),
-        complete: () => $modal.find('#btn-submit-action').prop('disabled', false)
-    });
-};
-
 // --- DATATABLE INITIALIZATION ---
+
+let isGlobalInitialized = false;
 
 export function initGetDataTable(tableBody, options = {}) {
     const tableId = $(tableBody).closest("table").attr("id");
     const baseConfig = TABLE_CONFIGS[tableId];
     if (!baseConfig) return;
-
-    let isGlobalInitialized = false;
 
     // Inisialisasi sistem modal (hanya sekali)
     if (!isGlobalInitialized) {
@@ -409,13 +424,55 @@ export function initGetDataTable(tableBody, options = {}) {
 }
 
 // --- HELPERS ---
+const handleUpdateAction = (id, formData, $modal) => {
+    console.log("handleUpdateAction", id, formData, $modal);
+
+    const $submitBtn = $modal.find("#btn-submit-action"); // Pastikan ID tombol sesuai
+    const originalContent = $submitBtn.html();
+
+    $.ajax({
+        url: `/training/training-request/${id}/edit-data-lna`,
+        method: "POST",
+        data: formData,
+        beforeSend: () => {
+            $submitBtn
+                .prop("disabled", true)
+                .html(
+                    '<i class="fas fa-spinner fa-spin u-mr-xs"></i> Menyimpan...'
+                );
+        },
+        success: (res) => {
+            $modal.fadeOut(200, function () {
+                $(this).addClass("hidden").hide();
+                toggleEditMode($modal, false);
+            });
+
+            Swal.fire("Berhasil", res.message, "success");
+
+            // Reload table agar data terbaru muncul
+            if ($.fn.DataTable.isDataTable(".dataTable")) {
+                $(".dataTable").DataTable().ajax.reload(null, false);
+            }
+        },
+        error: (xhr) => {
+            const errorMsg =
+                xhr.responseJSON?.message || "Terjadi kesalahan sistem";
+            Swal.fire("Gagal", errorMsg, "error");
+        },
+        complete: () => {
+            $submitBtn.prop("disabled", false).html(originalContent);
+        },
+    });
+};
 
 const renderApprovalTimeline = (approvals) => {
     const $container = $("#approval-timeline-container");
     $container.empty();
 
     if (!approvals?.length) {
-        $container.append('<div class="u-text-center u-py-md u-muted u-text-xs italic">Belum ada riwayat.</div>');
+        $container.append(
+            '<div class="u-text-center u-py-md u-muted u-text-xs italic">Belum ada riwayat.</div>'
+        );
         return;
     }
 

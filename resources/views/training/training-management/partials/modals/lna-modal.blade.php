@@ -6,7 +6,7 @@
                 <div class="u-avatar u-avatar--lg u-avatar--brand u-shadow-sm"><i class="fas fa-clipboard-check"></i></div>
                 <div>
                     <div class="u-title detail-judul">Detail LNA</div>
-                    <div class="u-muted u-text-sm edit-indicator">Mode Pratinjau Data</div>
+                    <div class="u-muted u-text-sm edit-indicator">Pratinjau Data</div>
                 </div>
             </div>
             <button class="u-btn u-btn--ghost u-btn--sm close-modal-review" aria-label="Close"><i class="fas fa-times"></i></button>
@@ -32,22 +32,32 @@
                         <div class="u-space-y-md">
                             <div class="u-p-md u-bg-white u-rounded-md border-l-4 border-brand u-shadow-sm">
                                 <label class="u-text-xs u-muted u-uppercase font-bold tracking-widest u-block u-mb-xs">Judul Pelatihan</label>
-                                {{-- View Mode --}}
-                                <div class="view-mode u-text-lg u-font-semibold detail-judul-text text-gray-900">-</div>
-                                {{-- Edit Mode --}}
-                                <input type="text" name="judul_pelatihan" class="edit-mode u-input hidden w-full">
+                                <div class="u-text-lg u-font-semibold detail-judul_sertifikasi text-gray-900">-</div>
+                                <!-- <input type="text" name="judul_sertifikasi" class="edit-mode u-input hidden w-full"> -->
                             </div>
 
                             <div class="grid grid-cols-2 u-gap-md">
                                 <div class="u-space-y-xs">
                                     <label class="u-text-xs u-muted u-uppercase font-semibold">Unit</label>
-                                    <div class="view-mode u-font-semibold detail-unit text-gray-700">-</div>
-                                    <input type="text" name="unit" class="edit-mode u-input hidden w-full">
+                                    <div class="u-font-semibold detail-unit text-gray-700">-</div>
+                                    <!-- <input type="text" name="unit" class="edit-mode u-input hidden w-full"> -->
                                 </div>
                                 <div class="u-space-y-xs">
                                     <label class="u-text-xs u-muted u-uppercase font-semibold">Penyelenggara</label>
                                     <div class="view-mode u-font-semibold detail-penyelenggara text-gray-700">-</div>
                                     <input type="text" name="penyelenggara" class="edit-mode u-input hidden w-full">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 u-gap-md">
+                                 <div class="u-space-y-xs">
+                                    <label class="u-text-xs u-muted u-uppercase font-semibold">Jumlah Jam</label>
+                                    <div class="view-mode u-font-semibold detail-jumlah_jam text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                                    <input type="text" name="jumlah_jam" class="edit-mode u-input hidden w-full">
+                                </div>
+                                <div class="u-space-y-xs">
+                                    <label class="u-text-xs u-muted u-uppercase font-semibold">Waktu Pelaksanaan</label>
+                                    <div class="view-mode u-font-semibold detail-waktu_pelaksanaan text-gray-700">-</div>
+                                    <input type="text" name="waktu_pelaksanaan" class="edit-mode u-input hidden w-full">
                                 </div>
                             </div>
                         </div>
@@ -72,8 +82,8 @@
                             </div>
                             <div class="u-space-y-xs">
                               <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Portofolio</label>
-                              <div class="view-mode u-font-semibold detail-portofolio text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
-                              <input type="text" name="edit-portofolio" class="edit-mode u-input hidden w-full">
+                              <div class="view-mode u-font-semibold detail-jenis_portofolio text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                              <input type="text" name="jenis_portofolio" class="edit-mode u-input hidden w-full">
                             </div>
                         </div>
                     </div>
@@ -91,24 +101,21 @@
                               Biaya Pelatihan
                           </label>
                           
-                          {{-- View Mode --}}
                           <div class="view-mode u-text-lg u-font-bold text-green-700 detail-biaya-pelatihan u-flex u-items-center u-h-10">
                               Rp 0
                           </div>
 
-                          {{-- Edit Mode: RP di dalam Input --}}
                           <div class="edit-mode hidden u-relative">
                               <div class="u-relative u-flex u-items-center u-gap-md">
                                   <span class="u-absolute u-left-0 u-ml-3 u-font-bold text-green-600 u-pointer-events-none">
                                       Rp
                                   </span>
                                   
-                                  <input type="text" 
+                                  <input type="number" 
                                         name="biaya_pelatihan" 
                                         class="u-input input-biaya u-font-bold text-green-700 border-green-200 focus:u-border-green-500 w-full"
                                         placeholder="0">
                               </div>
-                              <small class="u-text-xs u-muted u-mt-xs u-block">Gunakan angka saja</small>
                           </div>
                       </div>
                   </div>
