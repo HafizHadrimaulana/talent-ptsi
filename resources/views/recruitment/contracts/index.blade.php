@@ -11,13 +11,9 @@
     $currentUnitId = $selectedUnitId ?? $meUnit;
 @endphp
 
-{{-- External Libs for Map --}}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-
-
-{{-- PAGE HEADER --}}
 <div class="u-card u-card--glass u-mb-xl">
     <div class="u-flex u-justify-between u-items-center u-stack-mobile u-gap-md">
         <div>
@@ -32,7 +28,6 @@
     </div>
 </div>
 
-{{-- ERROR ALERT --}}
 @if ($errors->any())
     <div class="u-card u-p-md u-mb-lg u-error u-flex u-gap-md u-items-start">
         <div class="u-text-danger u-text-xl"><i class="fas fa-exclamation-triangle"></i></div>
@@ -45,7 +40,6 @@
     </div>
 @endif
 
-{{-- FILTER --}}
 <div class="u-card u-p-md u-mb-lg" style="background: var(--surface-1);">
     <form method="get" class="u-grid-2 u-gap-lg">
         <div>
@@ -78,7 +72,6 @@
     </form>
 </div>
 
-{{-- DATA TABLE --}}
 <div class="dt-wrapper">
     <div class="u-scroll-x">
         <table id="contracts-table" class="u-table u-table-mobile">
@@ -152,7 +145,7 @@
                                 </button>
                                 @if ($c->status === 'draft' && auth()->user()->can('contract.update', $c))
                                     <button type="button" class="u-btn u-btn--outline u-btn--icon u-btn--sm js-btn-edit" 
-                                        data-show-url="{{ route('recruitment.contracts.show', $c) }}" 
+                                        data-show-url="{{ route('recruitment.contracts.show', $c ) }}" 
                                         data-update-url="{{ route('recruitment.contracts.update', $c) }}" title="Edit">
                                         <i class="fas fa-pencil-alt"></i>
                                     </button>
@@ -175,7 +168,6 @@
     @endif
 </div>
 
-{{-- ================= MODAL CREATE ================= --}}
 @can('contract.create')
 <div id="createContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
@@ -190,14 +182,12 @@
         
         <form method="POST" action="{{ route('recruitment.contracts.store') }}" class="u-modal__body" id="createContractForm" autocomplete="off">
             @csrf
-            {{-- Hidden Fields --}}
             <input type="hidden" name="contract_type" id="createTypeInput" value="{{ old('contract_type') }}">
             <input type="hidden" name="mode" id="createModeInput" value="{{ old('mode') }}">
             <input type="hidden" name="source_contract_id" id="createSourceIdInput" disabled>
             <input type="hidden" name="employee_id" id="createEmployeeIdInput" disabled>
             <input type="hidden" name="person_id" id="createPersonIdInput" disabled>
 
-            {{-- STEP 1: PILIH JENIS --}}
             <div class="u-bg-section">
                 <div class="section-divider"><i class="fas fa-layer-group"></i> 1. Jenis Dokumen</div>
                 <div class="u-grid-2 u-stack-mobile">
@@ -221,16 +211,13 @@
                 </div>
             </div>
 
-            {{-- MAIN FORM CONTAINER (Hidden until type selected) --}}
             <div id="createMainSection" class="is-hidden float-in">
                 <div class="u-grid-2 u-stack-mobile u-gap-lg">
                     
-                    {{-- LEFT COL: SOURCE --}}
                     <div class="u-space-y-lg">
                         <div class="u-bg-section">
                             <div class="section-divider"><i class="fas fa-database"></i> 2. Sumber Data</div>
                             
-                            {{-- Mode NEW --}}
                             <div data-mode-section="new" class="is-hidden u-space-y-md">
                                 <div class="u-form-group">
                                     <label>Pilih Pelamar (Status Approved)</label>
@@ -260,7 +247,6 @@
                                 </div>
                             </div>
 
-                            {{-- Mode EXISTING --}}
                             <div data-mode-section="existing" class="is-hidden u-space-y-md">
                                 <div class="u-form-group">
                                     <label id="labelSourceExisting">Pilih Kontrak Dasar</label>
@@ -298,7 +284,6 @@
                             </div>
                         </div>
 
-                        {{-- DETAILS --}}
                         <div class="u-bg-section">
                             <div class="section-divider"><i class="fas fa-pen-fancy"></i> 3. Detail Posisi</div>
                             <div class="u-grid-2 u-stack-mobile">
@@ -313,11 +298,20 @@
                                         @foreach ($employmentTypes as $opt) <option value="{{ $opt['value'] }}" @selected(old('employment_type') == $opt['value'])>{{ $opt['label'] }}</option> @endforeach
                                     </select>
                                 </div>
+                                <!-- LOKASI KERJA HANYA UNTUK PKWT -->
+                                <div id="createLocationSection" class="u-form-group is-hidden">
+                                    <label>Lokasi Kerja</label>
+                                    <input type="text" name="work_location" id="createLocation" class="u-input" list="locationList" placeholder="Pilih/Ketik Lokasi (Nama, Kota)">
+                                    <datalist id="locationList">
+                                        @foreach($locations as $l)
+                                            <option value="{{ $l->location_label }}">
+                                        @endforeach
+                                    </datalist>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- RIGHT COL: PREVIEW & DATES --}}
                     <div class="u-space-y-lg">
                         <div id="createPersonPreview" class="u-card u-card--glass u-p-lg is-hidden float-in">
                             <div class="u-flex u-items-center u-gap-md u-mb-lg">
@@ -338,7 +332,6 @@
                             </div>
                         </div>
 
-                        {{-- DATES & OPS (PKWT/SPK) --}}
                         <div id="sectionPkwtSpk" class="is-hidden">
                             <div class="u-bg-section">
                                 <div class="section-divider"><i class="far fa-calendar-alt"></i> Durasi & Operasional</div>
@@ -358,7 +351,6 @@
                             </div>
                         </div>
 
-                        {{-- PB (TERMINATION) --}}
                         <div id="sectionPb" class="is-hidden u-bg-section" style="border-left: 4px solid #ef4444;">
                             <div class="section-divider u-text-danger"><i class="fas fa-hand-holding-usd"></i> Kompensasi Pengakhiran</div>
                             <div class="u-grid-2 u-stack-mobile">
@@ -373,7 +365,6 @@
                     </div>
                 </div>
 
-                {{-- REMUNERATION --}}
                 <div id="sectionRemun" class="u-bg-section u-mt-lg is-hidden">
                     <div class="section-divider u-text-brand"><i class="fas fa-money-check-alt"></i> Rincian Remunerasi</div>
                     <div class="u-grid-2 u-stack-mobile u-gap-lg">
@@ -417,7 +408,6 @@
 </div>
 @endcan
 
-{{-- ================= MODAL EDIT ================= --}}
 <div id="editContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -459,6 +449,16 @@
                             @endif
                         </div>
                         <div class="u-form-group"><label>Jabatan</label><input type="text" name="position_name" id="editPos" class="u-input"></div>
+                        <!-- LOKASI KERJA HANYA UNTUK PKWT -->
+                        <div id="editLocationSection" class="u-form-group is-hidden">
+                            <label>Lokasi Kerja</label>
+                            <input type="text" name="work_location" id="editLocation" class="u-input" list="locationListEdit" placeholder="Pilih/Ketik Lokasi (Nama, Kota)">
+                            <datalist id="locationListEdit">
+                                @foreach($locations as $l)
+                                    <option value="{{ $l->location_label }}">
+                                @endforeach
+                            </datalist>
+                        </div>
                     </div>
                     <div class="u-form-group u-mt-md" id="editNewUnitWrapper" hidden>
                         <label>Unit Kerja Baru (Pindah Unit)</label>
@@ -466,7 +466,6 @@
                     </div>
                 </div>
 
-                {{-- PKWT/SPK EDIT --}}
                 <div id="editSectionPkwtSpk" class="is-hidden">
                     <div class="u-bg-section">
                         <div class="section-divider"><i class="far fa-calendar-alt"></i> Durasi & Ops</div>
@@ -504,7 +503,6 @@
                     </div>
                 </div>
 
-                {{-- PB EDIT --}}
                 <div id="editSectionPb" class="is-hidden u-bg-section" style="border-left: 4px solid #ef4444;">
                       <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
                       <div class="u-grid-2 u-stack-mobile">
@@ -536,7 +534,6 @@
     </div>
 </div>
 
-{{-- MODAL DETAIL --}}
 <div id="detailContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -566,6 +563,11 @@
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK (Employee ID)</span><span id="detNik" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK (KTP)</span><span id="detNikReal" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
+                          <!-- LOKASI KERJA HANYA UNTUK PKWT -->
+                          <div id="detLocationRow" class="u-flex u-justify-between u-items-center u-py-xs u-border-b is-hidden">
+                              <span class="u-text-sm u-muted">Lokasi Kerja</span>
+                              <span id="detLocation" class="u-font-medium">-</span>
+                          </div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
                           <div id="detPeriodRow" class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
                       </div>
@@ -643,7 +645,6 @@
     </div>
 </div>
 
-{{-- MODAL SIGNATURE --}}
 <div id="signModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--md">
@@ -731,7 +732,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const openModal = (id) => { const m = document.getElementById(id); if(m) { m.hidden = false; m.style.display = 'flex'; document.body.classList.add('modal-open'); } };
     const closeModal = (m) => { if(m) { m.hidden = true; m.style.display = 'none'; document.body.classList.remove('modal-open'); } };
     
-    // Global Modal Handlers
     doc.body.addEventListener('click', (e) => { 
         if(e.target.closest('.js-close-modal') || e.target.classList.contains('u-modal__backdrop')) { closeModal(e.target.closest('.u-modal')); } 
         const btn = e.target.closest('[data-modal-open]'); 
@@ -763,13 +763,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let existingSource = null;
 
-        // Reset UI State on Open
         const resetCreateUI = () => {
             formCreate.reset();
             famSel.value = ""; subSel.value = ""; srcSel.value = ""; appSel.value = "";
             existingSource = null;
-            
-            // Hide Everything Initially
             hide(secSubtype); hide(secMain); 
             hide(secPkwtSpk); hide(secPb); hide(secRemun);
             hide(secNew); hide(secExist);
@@ -777,33 +774,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if(prevTicket) prevTicket.textContent = '';
         };
 
-        btnCreate.onclick = (e) => { 
-            e.preventDefault(); 
-            resetCreateUI(); 
-            openModal('createContractModal'); 
-        };
+        btnCreate.onclick = (e) => { e.preventDefault(); resetCreateUI(); openModal('createContractModal'); };
 
-        // UI Update Logic
         const updateUI = () => {
             const mode = inpMode.value;
             const isNew = (mode === 'new');
             const type = inpType.value;
-
-            // 1. Show Main Section
             showBlock(secMain);
-
-            // 2. Toggle Source Section
             if (isNew) {
                 showBlock(secNew); hide(secExist);
-                // Enable inputs inside new, disable inside existing
                 toggleInputs(secNew, true); toggleInputs(secExist, false);
             } else {
                 hide(secNew); showBlock(secExist);
                 toggleInputs(secNew, false); toggleInputs(secExist, true);
                 select('#labelSourceExisting').textContent = (type === 'PB_PENGAKHIRAN') ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
             }
-
-            // 3. Toggle Form Sections
             const isPb = (type === 'PB_PENGAKHIRAN');
             if (isPb) {
                 hide(secPkwtSpk); hide(secRemun);
@@ -812,8 +797,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 showBlock(secPkwtSpk); showBlock(secRemun);
                 hide(secPb);
             }
-
-            // 4. Apply Auto-fill Rules
+            
+            // Tampilkan/sembunyikan lokasi kerja hanya untuk PKWT
+            const isPKWT = type.includes('PKWT');
+            const locSection = select('#createLocationSection');
+            if (locSection) {
+                if (isPKWT) {
+                    showBlock(locSection);
+                } else {
+                    hide(locSection);
+                }
+            }
+            
             applyAutoFill();
         };
 
@@ -821,20 +816,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const type = inpType.value;
             if (!existingSource) return;
             const nextDay = addDays(existingSource.end, 1); 
-
             if (type === 'PB_PENGAKHIRAN') {
-                const inpPbEnd = select('#createPbEnd');
-                if(inpPbEnd) inpPbEnd.value = nextDay; 
+                const inpPbEnd = select('#createPbEnd'); if(inpPbEnd) inpPbEnd.value = nextDay; 
             } else if (type === 'PKWT_PERPANJANGAN') {
-                const inpStart = select('#createStartDate');
-                if(inpStart) inpStart.value = nextDay; 
+                const inpStart = select('#createStartDate'); if(inpStart) inpStart.value = nextDay; 
             }
-            
-            // Auto fill fields from source
             const inpPos = select('#createPosName'); 
             const inpEmpType = select('#createEmpType'); 
             const inpUnitExisting = select('#createUnitSelectExisting');
-
             if(inpPos) inpPos.value = existingSource.pos || '';
             if(inpEmpType && existingSource.empType) inpEmpType.value = existingSource.empType;
             if(inpUnitExisting) inpUnitExisting.value = existingSource.unitId || '';
@@ -845,22 +834,15 @@ document.addEventListener('DOMContentLoaded', () => {
             container.querySelectorAll('input, select, textarea').forEach(el => el.disabled = !enable);
         };
 
-        // Event Listeners
         famSel.addEventListener('change', () => {
             const val = famSel.value;
             existingSource = null;
-            
-            // Hide everything first
             hide(secMain); hide(secSubtype);
-            
             if (!val) return;
-
             if (val === 'PKWT') {
                 showBlock(secSubtype); 
-                // Don't show main section yet, wait for subtype
                 inpType.value = ''; inpMode.value = '';
             } else {
-                // SPK or PB
                 const opt = famSel.options[famSel.selectedIndex];
                 inpType.value = (val === 'SPK') ? 'SPK' : ((val === 'PB') ? 'PB_PENGAKHIRAN' : '');
                 inpMode.value = opt.dataset.mode || '';
@@ -877,30 +859,22 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI();
         });
 
-        // Source: Applicant
         appSel.addEventListener('change', () => {
              const o = appSel.options[appSel.selectedIndex];
              const hidPerson = select('#createPersonIdInput');
              const hidEmp = select('#createEmployeeIdInput');
-             
              if (appSel.value) {
                  hidPerson.value = o.dataset.personId || ''; hidPerson.disabled = false; 
                  hidEmp.value = ''; hidEmp.disabled = true;
-
-                 // Preview
                  select('#prevName').textContent = o.dataset.fullname || '-'; 
                  select('#prevPos').textContent = o.dataset.pos || '-'; 
                  select('#prevUnit').textContent = o.dataset.unit || '-'; 
                  select('#prevNik').textContent = '-'; 
                  select('#prevDate').textContent = '-';
                  if(prevTicket) prevTicket.textContent = o.dataset.ticket ? `Ticket: ${o.dataset.ticket}` : '';
-                 
                  showBlock(select('#createPersonPreview'));
-
-                 // Auto fill
                  const uSel = select('#createUnitSelectNew'); 
                  if(uSel && o.dataset.unitId) uSel.value = o.dataset.unitId;
-                 
                  const inpPos = select('#createPosName');
                  if(inpPos) inpPos.value = o.dataset.pos || '';
              } else { 
@@ -908,7 +882,6 @@ document.addEventListener('DOMContentLoaded', () => {
              }
         });
 
-        // Source: Existing Contract
         if(filterUnit && srcSel) {
             filterUnit.addEventListener('change', () => {
                 const uId = filterUnit.value;
@@ -925,13 +898,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hidSrc = select('#createSourceIdInput');
                 const hidPerson = select('#createPersonIdInput');
                 const hidEmp = select('#createEmployeeIdInput');
-
                 if (!srcSel.value) { 
                     existingSource = null; hide(select('#createPersonPreview')); 
                     hidSrc.disabled = true; hidPerson.disabled = true; hidEmp.disabled = true;
                     return; 
                 }
-
                 existingSource = { 
                     id: srcSel.value, unitId: o.dataset.unitId, unitName: o.dataset.unitName, 
                     personId: o.dataset.personId, employeeId: o.dataset.employeeId, 
@@ -940,41 +911,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     endHuman: o.dataset.endHuman,
                     nik: o.dataset.nik, empType: o.dataset.empType 
                 };
-
                 hidSrc.value = existingSource.id; hidSrc.disabled = false; 
                 hidPerson.value = existingSource.personId; hidPerson.disabled = false; 
                 hidEmp.value = existingSource.employeeId; hidEmp.disabled = false;
-                
                 const uExist = select('#createUnitSelectExisting');
                 if(uExist) { uExist.value = existingSource.unitId; uExist.disabled = false; }
-
                 select('#prevName').textContent = existingSource.person || '-'; 
                 select('#prevPos').textContent = existingSource.pos || '-'; 
                 select('#prevUnit').textContent = existingSource.unitName || '-'; 
                 select('#prevNik').textContent = existingSource.nik || '-'; 
                 select('#prevDate').textContent = 'Exp: ' + existingSource.endHuman;
-                if(prevTicket) prevTicket.textContent = ''; // Existing contracts might not have ticket info readily available here unless added to dataset
+                if(prevTicket) prevTicket.textContent = ''; 
                 showBlock(select('#createPersonPreview'));
-                
                 applyAutoFill();
             });
         }
         
-        // Handle Laravel Validation Errors (Re-open modal & restore state)
         @if($errors->any() && old('contract_type'))
             openModal('createContractModal');
-            // Restore hidden inputs
             inpType.value = "{{ old('contract_type') }}";
             inpMode.value = "{{ old('mode') }}";
-            
-            // Restore UI state
             if(inpType.value) {
-                // If PKWT, show subtype wrapper
                 if(inpType.value.startsWith('PKWT')) {
                     showBlock(secSubtype);
                     subSel.value = inpType.value;
                 }
-                // Show main section
                 updateUI(); 
             }
         @endif
@@ -986,75 +947,62 @@ document.addEventListener('DOMContentLoaded', () => {
             const btnEdit = e.target.closest('.js-btn-edit');
             if(!btnEdit) return;
             e.preventDefault();
-
             try {
                 const res = await fetch(btnEdit.dataset.showUrl).then(r => r.json());
                 if(!res.success) throw new Error(res.message);
-                
                 const d = res.data;
                 const m = safeJSON(d.remuneration_json);
                 const form = select('#editContractForm');
                 bindCalc(form); 
                 form.action = btnEdit.dataset.updateUrl;
-
-                // Populate Hidden Fields
                 select('#editTypeInput').value = d.contract_type;
                 select('#editDisplayPerson').textContent = d.person_name;
                 select('#editDisplayType').textContent = d.contract_type_label;
                 select('#editPos').value = d.position_name || '';
                 select('#editRemarks').value = d.remarks || '';
                 
-                if(select('#editUnitSelect')) select('#editUnitSelect').value = d.unit_id;
-                else if(select('#editUnitIdHidden')) { 
-                    select('#editUnitIdHidden').value = d.unit_id; 
-                    select('#editUnitDisplay').value = d.unit?.name || ''; 
+                // Tampilkan/sembunyikan lokasi kerja berdasarkan tipe dokumen
+                const isPKWT = d.contract_type.includes('PKWT');
+                const editLocSection = select('#editLocationSection');
+                if (editLocSection) {
+                    if (isPKWT) {
+                        showBlock(editLocSection);
+                        select('#editLocation').value = m.work_location || '';
+                    } else {
+                        hide(editLocSection);
+                    }
                 }
-
-                // Show/Hide Sections based on Type
+                
+                if(select('#editUnitSelect')) select('#editUnitSelect').value = d.unit_id;
+                else if(select('#editUnitIdHidden')) { select('#editUnitIdHidden').value = d.unit_id; select('#editUnitDisplay').value = d.unit?.name || ''; }
                 const isPb = (d.contract_type === 'PB_PENGAKHIRAN');
                 if(isPb) {
-                    hide(select('#editSectionPkwtSpk')); 
-                    showBlock(select('#editSectionPb'));
+                    hide(select('#editSectionPkwtSpk')); showBlock(select('#editSectionPb'));
                     select('#editPbEnd').value = m.pb_effective_end || '';
                     const el = select('#editPbComp'); el.value = money(m.pb_compensation_amount); el.dispatchEvent(new Event('input'));
                 } else {
-                    showBlock(select('#editSectionPkwtSpk')); 
-                    hide(select('#editSectionPb'));
+                    showBlock(select('#editSectionPkwtSpk')); hide(select('#editSectionPb'));
                     select('#editStart').value = d.start_date_raw || '';
                     select('#editEnd').value = d.end_date_raw || '';
-                    
-                    // Fill Remuneration
                     const setM = (sel, val) => { const el = select(sel); if(el){ el.value = money(val); el.dispatchEvent(new Event('input')); } };
-                    setM('#editSalary', m.salary_amount);
-                    setM('#editLunch', m.lunch_allowance_daily);
-                    setM('#editAP', m.allowance_position_amount);
-                    setM('#editAC', m.allowance_communication_amount);
-                    setM('#editAS', m.allowance_special_amount);
-                    setM('#editAO', m.allowance_other_amount);
-                    setM('#editTravelStay', m.travel_allowance_stay || 150000);
-                    setM('#editTravelNonStay', m.travel_allowance_non_stay || 75000);
-                    
+                    setM('#editSalary', m.salary_amount); setM('#editLunch', m.lunch_allowance_daily);
+                    setM('#editAP', m.allowance_position_amount); setM('#editAC', m.allowance_communication_amount);
+                    setM('#editAS', m.allowance_special_amount); setM('#editAO', m.allowance_other_amount);
+                    setM('#editTravelStay', m.travel_allowance_stay || 150000); setM('#editTravelNonStay', m.travel_allowance_non_stay || 75000);
                     select('#editOB').value = m.other_benefits_desc || '';
                     select('#editWorkDays').value = m.work_days || 'Senin s/d hari Jumat';
                     select('#editWorkHours').value = m.work_hours || 'Jam 07.30 WIB s/d 16.30 WIB';
                     select('#editBreakHours').value = m.break_hours || 'Jam 12.00 WIB s/d 13.00 WIB';
                 }
-
-                // Show New Unit if Extended
                 const boxNew = select('#editNewUnitWrapper');
                 if(d.contract_type === 'PKWT_PERPANJANGAN') {
-                    showBlock(boxNew);
-                    if(m.new_unit_id) select('#editNewUnitId').value = m.new_unit_id;
+                    showBlock(boxNew); if(m.new_unit_id) select('#editNewUnitId').value = m.new_unit_id;
                 } else hide(boxNew);
-
                 openModal('editContractModal');
-            } catch(err) {
-                window.toastErr(err.message);
-            }
+            } catch(err) { window.toastErr(err.message); }
         });
     };
 
-    // Other Init...
     initCreateModal();
     initEditModal();
     
@@ -1073,7 +1021,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const m = select('#signModal'); const f = select('#signForm'); const cvs = select('#signCanvas'); const vid = select('#cameraStream'); const camSec = select('#cameraSection'); const btnSubmit = select('#btnSubmitSign'); const geoStat = select('#geoStatus'); const btnCap = select('#btnCapture'); const btnRet = select('#btnRetake'); const snapPrev = select('#snapshotPreview'); let captured = false;
         f.reset(); select('[name="signature_image"]').value = ''; select('[name="geo_lat"]').value = ''; select('[name="geo_lng"]').value = ''; select('[name="snapshot_image"]').value = ''; captured = false; snapPrev.style.display = 'none'; vid.style.display = 'block'; hide(btnRet); if(btnCap) { showBlock(btnCap); btnCap.disabled = false; } btnSubmit.disabled = true; openModal('signModal');
         setTimeout(() => { cvs.width = cvs.offsetWidth; cvs.height = 200; const ctx = cvs.getContext('2d'); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000'; ctx.clearRect(0, 0, cvs.width, cvs.height); }, 150);
-        
         const getGeo = () => {
             if (!window.isSecureContext && location.hostname !== 'localhost') { geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS!</span>'; return; }
             navigator.geolocation.getCurrentPosition((pos) => {
@@ -1081,16 +1028,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 geoStat.textContent = `Akurasi: ${pos.coords.accuracy.toFixed(0)}m`; geoStat.className = "u-text-sm u-font-medium u-text-success"; select('#geoIcon').className = "fas fa-map-marker-alt u-text-success"; checkReady();
             }, (err) => { geoStat.textContent = "Gagal Deteksi Lokasi"; geoStat.className = "u-text-sm u-font-medium u-text-danger"; }, { enableHighAccuracy: true, timeout: 30000 });
         }; getGeo();
-
         let streamObj = null;
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === 'localhost')) {
             showBlock(camSec); select('#cameraPlaceholder').hidden = false;
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then((stream) => { streamObj = stream; vid.srcObject = stream; select('#cameraPlaceholder').hidden = true; }).catch(() => { select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak"; });
         } else { hide(camSec); }
-
         if(btnCap) btnCap.onclick = () => { if (vid.videoWidth > 0) { const snapCanvas = document.createElement('canvas'); snapCanvas.width = 640; snapCanvas.height = 480; snapCanvas.getContext('2d').drawImage(vid, 0, 0, snapCanvas.width, snapCanvas.height); const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.8); select('[name="snapshot_image"]').value = dataUrl; snapPrev.src = dataUrl; vid.style.display = 'none'; snapPrev.style.display = 'block'; hide(btnCap); showBlock(btnRet); captured = true; checkReady(); } };
         if(btnRet) btnRet.onclick = () => { select('[name="snapshot_image"]').value = ''; snapPrev.style.display = 'none'; vid.style.display = 'block'; showBlock(btnCap); hide(btnRet); captured = false; checkReady(); };
-
         let isDown = false; let hasSigned = false; const ctx = cvs.getContext('2d'); let rect = cvs.getBoundingClientRect();
         const getXY = (e) => { const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; return { x: clientX - rect.left, y: clientY - rect.top }; };
         const drawMove = (e) => { if (!isDown) return; e.preventDefault(); const p = getXY(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
@@ -1100,7 +1044,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cvs.ontouchmove = drawMove; window.addEventListener('touchend', () => { if(isDown) { isDown = false; hasSigned = true; checkReady(); } });
         select('#clearSign').onclick = () => { ctx.clearRect(0, 0, cvs.width, cvs.height); hasSigned = false; btnSubmit.disabled = true; };
         function checkReady() { const locOk = select('[name="geo_lat"]').value !== ""; const camOk = !camSec.classList.contains('is-hidden') ? captured : true; btnSubmit.disabled = !(locOk && hasSigned && camOk); }
-
         f.onsubmit = async (e) => { e.preventDefault(); select('[name="signature_image"]').value = cvs.toDataURL('image/png'); const fd = new FormData(f); if (streamObj) streamObj.getTracks().forEach(track => track.stop());
             try { const r = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, body: fd }); const j = await r.json(); if (r.ok) { window.toastOk('Berhasil!'); closeModal(m); setTimeout(() => location.reload(), 1000); } else throw new Error(j.message); } catch (err) { window.toastErr(err.message); }
         };
@@ -1111,11 +1054,21 @@ document.addEventListener('DOMContentLoaded', () => {
     doc.body.addEventListener('click', async (e) => {
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) { e.preventDefault(); try { const res = await fetch(btnDet.dataset.showUrl).then(r => r.json()); if(!res.success) throw new Error(res.message); const d = res.data; const m = safeJSON(d.remuneration_json); const isPb = (d.contract_type === 'PB_PENGAKHIRAN'); 
-            select('#detNo').textContent = d.contract_no; select('#detType').textContent = d.contract_type_label; select('#detStatus').textContent = d.status; select('#detUnit').textContent = d.unit?.name || '-'; select('#detName').textContent = d.person_name; select('#detNik').textContent = d.ui_employee_id || '-'; select('#detNikReal').textContent = d.ui_nik_ktp || '-'; select('#detPos').textContent = d.position_name || '-'; select('#detEmpType').textContent = d.employment_type || '-'; 
+            select('#detNo').textContent = d.contract_no; select('#detType').textContent = d.contract_type_label; select('#detStatus').textContent = d.status; select('#detUnit').textContent = d.unit?.name || '-'; select('#detName').textContent = d.person_name; select('#detNik').textContent = d.ui_employee_id || '-'; select('#detNikReal').textContent = d.ui_nik_ktp || '-'; select('#detPos').textContent = d.position_name || '-'; select('#detEmpType').textContent = d.employment_type || '-';
             
-            // Populate Ticket Number
+            // Tampilkan/sembunyikan lokasi kerja berdasarkan tipe dokumen
+            const isPKWT = d.contract_type.includes('PKWT');
+            const detLocRow = select('#detLocationRow');
+            if (detLocRow) {
+                if (isPKWT) {
+                    showBlock(detLocRow);
+                    select('#detLocation').textContent = m.work_location || '-';
+                } else {
+                    hide(detLocRow);
+                }
+            }
+            
             select('#detTicket').textContent = d.ticket_number || '-';
-
             if(d.progress) { const cMap = {'Waiting':'u-badge--glass', 'Approved':'u-badge--success', 'Signed':'u-badge--success', 'Rejected':'u-badge--danger', 'Pending':'u-badge--warn'}; select('#progKaUnit').textContent = d.progress.ka_unit; select('#progKaUnit').className = `u-badge ${cMap[d.progress.ka_unit]||'u-badge--glass'}`; select('#progCand').textContent = d.progress.candidate; select('#progCand').className = `u-badge ${cMap[d.progress.candidate]||'u-badge--glass'}`; }
             if(d.target_role_label) select('#roleLabel').textContent = `${d.target_role_label} (Sign)`;
             if (isPb) { hide(select('#detRemunBox')); hide(select('#detPeriodRow')); showBlock(select('#detPbBox')); select('#detPbEff').textContent = m.pb_effective_end || '-'; select('#detPbVal').textContent = 'Rp '+money(m.pb_compensation_amount); } 
@@ -1137,7 +1090,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (geo.candidate) { showBlock(wCand); select('#ts-cand').textContent = `Ditandatangani: ${geo.candidate.ts}`; initMap('map-cand', geo.candidate.lat, geo.candidate.lng); if(geo.candidate.image_url) { select('#img-cand').src = geo.candidate.image_url; showBlock(select('#img-cand')); } else showBlock(select('#no-img-cand')); } else hide(wCand);
             openModal('detailContractModal'); } catch(err) { window.toastErr(err.message); }
         }
-        
+    
         const btnDelete = e.target.closest('.js-btn-delete');
         if(btnDelete) {
             e.preventDefault();

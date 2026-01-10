@@ -66,7 +66,7 @@ class ContractTemplateSeeder extends Seeder
 
         $header = '';
 
-        // 1. PKWT
+        // 1. PKWT (Updated Pasal 3 to be dynamic)
         ContractTemplate::updateOrCreate(['code' => 'PKWT'], [
             'name' => 'Perjanjian Kerja Waktu Tertentu',
             'css'  => $css,
@@ -116,7 +116,7 @@ class ContractTemplateSeeder extends Seeder
 
                 <div class="pasal-title">Pasal 3<br>TEMPAT, TUGAS KERJA DAN TANGGUNG JAWAB</div>
                 <ol>
-                    <li>Tempat tugas PIHAK KEDUA adalah di kantor Jakarta dan sekitarnya atau sesuai penugasan dari PIHAK PERTAMA atau pejabat lain yang ditunjuk.</li>
+                    <li>Tempat tugas PIHAK KEDUA adalah di <strong>{{work_location}}</strong> atau sesuai penugasan dari PIHAK PERTAMA atau pejabat lain yang ditunjuk.</li>
                     <li>Bidang tugas/ tugas kerja, tanggung jawab dan wewenang PIHAK KEDUA akan ditentukan kemudian oleh PIHAK PERTAMA atau pejabat lain yang ditunjuk setelah perjanjian kerja waktu tertentu ini ditandatangani.</li>
                     <li>PIHAK KEDUA bertanggung jawab atas semua pelaksanaan tugas yang disebutkan dalam ayat (2) pasal ini kepada PIHAK PERTAMA atau pejabat lain ditunjuk.</li>
                     <li>Pejabat lain yang ditunjuk/ dimaksud sebagaimana ditetapkan dalam ayat (1), (2), (3) pasal ini adalah {{unit_head_position}} / Pejabat yang ditunjuk.</li>

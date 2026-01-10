@@ -60,7 +60,6 @@ class ContractController extends Controller
             $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
         }
 
-        // Updated: Fetch RecruitmentRequest to get Ticket Number
         $applicants = RecruitmentApplicant::with(['user.person', 'recruitmentRequest.unit'])
             ->whereIn('status', config('recruitment.contract_applicant_statuses', ['APPROVED']))
             ->get()
@@ -73,17 +72,21 @@ class ContractController extends Controller
                     'position_applied' => $item->position_applied,
                     'unit_name' => $item->recruitmentRequest?->unit?->name,
                     'unit_id' => $item->recruitmentRequest?->unit_id,
-                    'ticket_number' => $item->recruitmentRequest?->ticket_number, // Added Ticket Number
+                    'ticket_number' => $item->recruitmentRequest?->ticket_number,
                     'request_title' => $item->recruitmentRequest?->title,
                 ];
             })
             ->sortBy('full_name')
             ->values();
 
+        // Ambil Data Locations untuk Pasal 3 dengan name dan city
+        $locations = DB::table('locations')->select('id', DB::raw("CONCAT(name, ', ', city) as location_label"), 'name', 'city')->orderBy('name')->get();
+
         return view('recruitment.contracts.index', [
             'contracts' => $contracts,
             'units' => $units,
             'positions' => DB::table('positions')->select('id', 'name')->orderBy('name')->get(),
+            'locations' => $locations, 
             'selectedUnitId' => $selectedUnitId,
             'statusFilter' => $request->input('status'),
             'statusOptions' => config('recruitment.contract_statuses'),
@@ -123,19 +126,17 @@ class ContractController extends Controller
                 $a = RecruitmentApplicant::with(['user', 'recruitmentRequest'])->find($v['applicant_id']);
                 $c->applicant_id = $a->id;
                 $c->person_id = $a->user?->person_id ?? null;
-                // Auto-fill Ticket Number from Izin Prinsip
                 if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number) {
                     $c->ticket_number = $a->recruitmentRequest->ticket_number;
                 }
                 if (empty($v['position_name'])) $c->position_name = $a->position_applied;
             } else {
                 $c->person_id = $v['person_id'] ?: Employee::where('employee_id', $v['employee_id'])->value('person_id');
-                // Inherit ticket number from source contract if available (for renewal)
                 if ($v['source_contract_id']) {
                     $parent = Contract::find($v['source_contract_id']);
                     if ($parent) {
                         $c->parent_contract_id = $parent->id;
-                        $c->ticket_number = $parent->ticket_number; // Inherit ticket
+                        $c->ticket_number = $parent->ticket_number;
                     }
                 }
             }
@@ -150,6 +151,12 @@ class ContractController extends Controller
             $meta['person_name'] = $cand['name'];
             $meta['new_unit_name'] = Unit::find($v['unit_id'])?->name;
             $meta['new_unit_id'] = (int)$v['unit_id'];
+            
+            // Hanya set work_location untuk PKWT
+            if (!in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+                unset($meta['work_location']);
+            }
+            
             $c->remuneration_json = $meta;
 
             if ($v['submit_action'] === 'submit') {
@@ -182,9 +189,10 @@ class ContractController extends Controller
 
     private function validateContract(Request $request)
     {
-        return $request->validate([
+        $rules = [
             'contract_type' => 'required', 'unit_id' => 'required', 'applicant_id' => 'nullable', 'employee_id' => 'nullable', 'person_id' => 'nullable',
             'position_name' => 'nullable', 'employment_type' => 'nullable', 'start_date' => 'nullable|date', 'end_date' => 'nullable|date', 'remarks' => 'nullable',
+            'work_location' => 'nullable|string', 
             'salary_amount' => 'nullable', 'salary_amount_words' => 'nullable', 'lunch_allowance_daily' => 'nullable', 'lunch_allowance_words' => 'nullable',
             'allowance_special_amount' => 'nullable', 'allowance_special_words' => 'nullable', 'allowance_position_amount' => 'nullable', 'allowance_position_words' => 'nullable',
             'allowance_communication_amount' => 'nullable', 'allowance_communication_words' => 'nullable', 'allowance_other_amount' => 'nullable', 'allowance_other_words' => 'nullable',
@@ -192,7 +200,14 @@ class ContractController extends Controller
             'travel_allowance_stay' => 'nullable', 'travel_allowance_non_stay' => 'nullable',
             'pb_effective_end' => 'nullable', 'pb_compensation_amount' => 'nullable', 'pb_compensation_amount_words' => 'nullable',
             'submit_action' => 'required', 'source_contract_id' => 'nullable', 'requires_draw_signature' => 'nullable', 'requires_camera' => 'nullable', 'requires_geolocation' => 'nullable'
-        ]);
+        ];
+
+        // Validasi work_location hanya untuk PKWT
+        if (!in_array($request->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+            unset($rules['work_location']);
+        }
+
+        return $request->validate($rules);
     }
 
     public function destroy(Contract $contract)
@@ -362,7 +377,7 @@ class ContractController extends Controller
             'target_role_label' => $targetRole,
             'geolocation' => $geoData,
             'progress' => ['ka_unit' => $kaUnitStatus, 'candidate' => $candStatus],
-            'ticket_number' => $contract->ticket_number // Pass ticket number
+            'ticket_number' => $contract->ticket_number
         ])]);
     }
 
@@ -518,7 +533,8 @@ class ContractController extends Controller
         $last = end($parts) ?: '';
         $a = mb_strtoupper(mb_substr($first, 0, 1));
         $b = mb_strtoupper(mb_substr($last, 0, 1));
-        return trim($a . $b) ?: null;
+        $return = trim($a . $b);
+        return $return ?: null;
     }
 
     protected function resolveHeadUnit(?Unit $unit)
@@ -658,11 +674,23 @@ class ContractController extends Controller
         $signerTag = $signerImg ? "<img src='{$signerImg}' style='height:70px;'>" : "<div style='height:70px'></div>";
         $candTag = $candImg ? "<img src='{$candImg}' style='height:70px;'>" : "<div style='height:70px'></div>";
 
+        // PERBAIKAN DURASI: Hitung durasi yang benar
         $duration = '-';
         if ($c->start_date && $c->end_date) {
-            $diff = $c->start_date->diff($c->end_date->copy()->addDay());
-            $duration = ($diff->y ? $diff->y . " Tahun " : "") . ($diff->m ? $diff->m . " Bulan" : "");
-            if (!$diff->y && !$diff->m) $duration = $diff->days . " Hari";
+            // Tambah 1 hari ke end_date untuk menghitung inklusif
+            $endDatePlusOne = $c->end_date->copy()->addDay();
+            $diff = $c->start_date->diff($endDatePlusOne);
+            
+            $parts = [];
+            if ($diff->y) $parts[] = $diff->y . " Tahun";
+            if ($diff->m) $parts[] = $diff->m . " Bulan";
+            if ($diff->d && $diff->d > 0) $parts[] = $diff->d . " Hari";
+            
+            if (empty($parts)) {
+                $duration = '0 Hari';
+            } else {
+                $duration = implode(' ', $parts);
+            }
         }
 
         $workDays = $meta['work_days'] ?? 'Senin s/d hari Jumat';
@@ -674,7 +702,7 @@ class ContractController extends Controller
 
         return [
             'contract_no' => $c->contract_no ?? 'DRAFT',
-            'ticket_number' => $c->ticket_number ?? '-', // Added ticket number variable
+            'ticket_number' => $c->ticket_number ?? '-',
             'today_date' => now()->translatedFormat('d F Y'),
             'today_date_numeric' => now()->format('d/m/Y'),
             'day_name' => now()->translatedFormat('l'),
@@ -711,7 +739,9 @@ class ContractController extends Controller
             'travel_allowance_non_stay' => $travelNonStay,
             'pb_date' => isset($meta['pb_effective_end']) ? Carbon::parse($meta['pb_effective_end'])->translatedFormat('d F Y') : '-',
             'pb_amount' => $fmt($meta['pb_compensation_amount'] ?? 0),
-            'pb_words' => ucwords($meta['pb_compensation_amount_words'] ?? '')
+            'pb_words' => ucwords($meta['pb_compensation_amount_words'] ?? ''),
+            // Hanya tampilkan work_location untuk PKWT
+            'work_location' => in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN']) ? ($meta['work_location'] ?? 'Jakarta') : ''
         ];
     }
 
