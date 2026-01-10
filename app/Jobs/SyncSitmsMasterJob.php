@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use App\Support\DateSanitizer as DS;
+use Carbon\Carbon;
 
 class SyncSitmsMasterJob implements ShouldQueue
 {
@@ -22,598 +22,680 @@ class SyncSitmsMasterJob implements ShouldQueue
     public int $page;
     public int $perPage;
     public bool $continuePaging;
+    public int $maxPages;
+    public bool $dryRun;
+    public int $sampleMax;
+    public bool $uniqueCount;
+    public ?string $rawExportPath;
+    
+    protected $reporter;
 
-    protected static array $seenExternalIds=[];
-    protected static array $seenEmployeeIds=[];
-    protected static array $seenJobHistoryIds=[];
-    protected static array $seenEducationIds=[];
-    protected static array $seenTrainingIds=[];
-    protected static array $seenCertificationIds=[];
-    protected static array $seenDocumentIds=[];
-    protected static array $seenPortfolioIds=[];
-    protected static array $seenPortfolioJobIds=[];
-    protected static bool $dryRun=false;
-    protected static bool $uniqueCount=true;
-    protected static int $sampleMax=0;
-    protected static array $samples=[];
-    protected static ?string $rawExportPath=null;
-    protected static $reporter=null;
-    protected static array $lastSummary=[];
-    protected static array $tableColumnsCache=[];
-    protected static array $tableColumnsMeta=[];
-    protected static int $errInserts=0;
-    protected static array $successfulRows=[];
-    protected static int $successfulCount=0;
+    protected array $seenExternalIds = [];
+    protected array $seenEmployeeIds = [];
+    protected array $seenJobHistoryIds = [];
+    protected array $seenEducationIds = [];
+    protected array $seenTrainingIds = [];
+    protected array $seenCertificationIds = [];
+    protected array $seenDocumentIds = [];
+    protected array $seenPortfolioIds = [];
+    protected array $seenPortfolioJobIds = [];
+    protected array $samples = [];
+    protected array $summary = [];
+    protected array $tableColumnsCache = [];
+    protected array $tableColumnsMeta = [];
+    protected array $lookupCache = []; 
+    protected int $errInserts = 0;
+    protected int $successfulCount = 0;
 
-    public function __construct(int $page,int $perPage,bool $continuePaging){$this->page=$page;$this->perPage=$perPage;$this->continuePaging=$continuePaging;}
+    public function __construct(
+        int $page,
+        int $perPage,
+        bool $continuePaging,
+        int $maxPages = 0,
+        bool $dryRun = false,
+        int $sampleMax = 0,
+        bool $uniqueCount = true,
+        ?string $rawExportPath = null,
+        ?callable $reporter = null
+    ) {
+        $this->page = $page;
+        $this->perPage = $perPage;
+        $this->continuePaging = $continuePaging;
+        $this->maxPages = $maxPages;
+        $this->dryRun = $dryRun;
+        $this->sampleMax = $sampleMax;
+        $this->uniqueCount = $uniqueCount;
+        $this->rawExportPath = $rawExportPath;
+        $this->reporter = $reporter;
+    }
 
-    public static function setDryRun(bool $dry,int $sampleMax=0,bool $unique=true,?string $rawExportPath=null):void{self::$dryRun=$dry;self::$sampleMax=max(0,$sampleMax);self::$uniqueCount=$unique;self::$rawExportPath=$rawExportPath;}
-    public static function setReporter(?callable $fn):void{self::$reporter=$fn;}
-    public static function getLastSummary():array{return self::$lastSummary;}
-
-    public static function dispatchSync(HttpSitmsClient $client,int $page,int $perPage,bool $continuePaging,int $maxPages=0,int $stopNoGrowth=0):void{self::runSinglePage($client,$page,$perPage,$continuePaging,$maxPages,$stopNoGrowth);}
-
-    public static function runSinglePage(HttpSitmsClient $client,int $page,int $perPage,bool $continuePaging,int $maxPages=0,int $stopNoGrowth=0):void
+    public function getSummary(): array
     {
-        self::$seenExternalIds=self::$seenEmployeeIds=self::$samples=self::$successfulRows=[];
-        self::$seenJobHistoryIds=self::$seenEducationIds=self::$seenTrainingIds=self::$seenCertificationIds=self::$seenDocumentIds=self::$seenPortfolioIds=self::$seenPortfolioJobIds=[];
-        self::$errInserts=self::$successfulCount=0;
+        return $this->summary;
+    }
 
-        $processed=0;$reportedTotal=null;$pagesDone=0;$stopReason='-';$current=max(1,$page);$limit=max(1,$perPage);$lastFromApi=null;
+    public function handle(HttpSitmsClient $client): void
+    {
+        $this->resetState();
 
-        $csv=null;
-        if(self::$dryRun&&self::$rawExportPath){$csv=fopen(self::$rawExportPath,'w');if($csv){fputcsv($csv,['external_id','full_name','unit','position','email']);}}
+        $processed = 0;
+        $reportedTotal = null;
+        $pagesDone = 0;
+        $stopReason = '-';
+        $current = max(1, $this->page);
+        $limit = max(1, $this->perPage);
+        $lastFromApi = null;
+        $csv = null;
 
-        do{
-            $resp=$client->fetchEmployeesPage($current,$limit);
-            $rows=Arr::get($resp,'rows',[]);
-            $total=Arr::get($resp,'total');
-            $lastFromApi=Arr::get($resp,'last')?:$lastFromApi;
-            if(is_numeric($total)){$reportedTotal=(int)$total;}
-            $countRows=is_countable($rows)?count($rows):0;
-            $processed+=$countRows;
-            $beforeSeen=self::currentSeenCount();
+        if ($this->dryRun && $this->rawExportPath) {
+            $csv = fopen($this->rawExportPath, 'w');
+            if ($csv) fputcsv($csv, ['external_id', 'full_name', 'unit', 'position', 'email']);
+        }
 
-            foreach($rows as $row){
-                $row=(array)$row;
-                $sitmsId=self::nullIfEmpty($row['id_sitms']??null);
-                $employeeId=self::nullIfEmpty($row['employee_id']??null);
-                $genericId=self::nullIfEmpty($row['id']??null);
-                $externalId=$sitmsId??$employeeId??$genericId;
-                if($externalId){self::$seenExternalIds[]=(string)$externalId;}
-                if($employeeId){self::$seenEmployeeIds[]=(string)$employeeId;}
+        do {
+            $resp = $client->fetchEmployeesPage($current, $limit);
+            $rows = Arr::get($resp, 'rows', []);
+            $total = Arr::get($resp, 'total');
+            $lastFromApi = Arr::get($resp, 'last') ?: $lastFromApi;
+            if (is_numeric($total)) $reportedTotal = (int) $total;
 
-                if(self::$dryRun){
-                    [$extId,$fullName,$unit,$pos,$email]=self::rowFingerprint($row);
-                    self::$seenExternalIds[]=(string)($extId??uniqid('raw-',true));
-                    if($csv){fputcsv($csv,[(string)($extId??''),$fullName,$unit,$pos,$email]);}
-                    if(count(self::$samples)<self::$sampleMax){self::$samples[]=['external_id'=>(string)($extId??''),'full_name'=>$fullName,'unit'=>$unit,'position'=>$pos,'email'=>$email];}
-                }else{
-                    try{$success=self::upsertEmployeeRawFromSitmsRow($row);if($success){self::$successfulCount++;self::$successfulRows[]=$row['id']??$row['employee_id']??'unknown';}}catch(\Throwable $e){self::$errInserts++;Log::error('SITMS employees insert failed',['error'=>$e->getMessage(),'peek'=>Arr::only($row,['id','id_sitms','employee_id','full_name','working_unit_name','position_name','email'])]);}
+            $countRows = is_countable($rows) ? count($rows) : 0;
+            $processed += $countRows;
+            $beforeSeen = $this->currentSeenCount();
+
+            foreach ($rows as $row) {
+                $row = (array) $row;
+                $sitmsId = $this->nullIfEmpty($row['id_sitms'] ?? null);
+                $employeeId = $this->nullIfEmpty($row['employee_id'] ?? null);
+                $genericId = $this->nullIfEmpty($row['id'] ?? null);
+                $externalId = $sitmsId ?? $employeeId ?? $genericId;
+
+                if ($externalId) $this->seenExternalIds[] = (string) $externalId;
+                if ($employeeId) $this->seenEmployeeIds[] = (string) $employeeId;
+
+                if ($this->dryRun) {
+                    [$extId, $fullName, $unit, $pos, $email] = $this->rowFingerprint($row);
+                    $this->seenExternalIds[] = (string) ($extId ?? uniqid('raw-', true));
+                    if ($csv) fputcsv($csv, [(string) ($extId ?? ''), $fullName, $unit, $pos, $email]);
+                    if (count($this->samples) < $this->sampleMax) {
+                        $this->samples[] = ['external_id' => (string) ($extId ?? ''), 'full_name' => $fullName, 'unit' => $unit, 'position' => $pos, 'email' => $email];
+                    }
+                } else {
+                    try {
+                        if ($this->upsertEmployeeRawFromSitmsRow($row)) {
+                            $this->successfulCount++;
+                        }
+                    } catch (\Throwable $e) {
+                        $this->errInserts++;
+                        Log::error('SITMS employees insert failed', ['error' => $e->getMessage(), 'peek' => Arr::only($row, ['id', 'employee_id', 'full_name'])]);
+                    }
                 }
             }
 
-            $afterSeen=self::currentSeenCount();
-            $grown=$afterSeen-$beforeSeen;
+            $afterSeen = $this->currentSeenCount();
+            $grown = $afterSeen - $beforeSeen;
 
-            Log::info('SITMS page result',['page'=>$current,'per_page'=>Arr::get($resp,'per_page'),'rows'=>$countRows,'processed'=>$processed,'seen_unique'=>$afterSeen,'grown'=>$grown,'successful_rows'=>self::$successfulCount,'total_hint'=>$reportedTotal,'attempt'=>$resp['attempt']??null,'dry'=>self::$dryRun]);
+            Log::info('SITMS page result', ['page' => $current, 'rows' => $countRows, 'processed' => $processed, 'grown' => $grown]);
 
-            if(is_callable(self::$reporter)){(self::$reporter)(['page'=>$current,'rows'=>$countRows,'processed'=>$processed,'seen_unique'=>$afterSeen,'grown'=>$grown,'successful_rows'=>self::$successfulCount,'total_hint'=>$reportedTotal,'attempt'=>$resp['attempt']??null]);}
+            if (is_callable($this->reporter)) {
+                ($this->reporter)(['page' => $current, 'rows' => $countRows, 'processed' => $processed, 'seen_unique' => $afterSeen, 'grown' => $grown, 'successful_rows' => $this->successfulCount, 'total_hint' => $reportedTotal, 'attempt' => $resp['attempt'] ?? null]);
+            }
 
             $pagesDone++;
-            if(!$continuePaging){$stopReason='single_page';break;}
-            if($maxPages>0&&$pagesDone>=$maxPages){$stopReason='max_pages';break;}
-            if($countRows<$limit){$stopReason='short_page';break;}
-            if($current>30000){Log::warning('SITMS guard (page>30000)');$stopReason='guard_page_limit';break;}
+            if (!$this->continuePaging) { $stopReason = 'single_page'; break; }
+            if ($this->maxPages > 0 && $pagesDone >= $this->maxPages) { $stopReason = 'max_pages'; break; }
+            if ($countRows < $limit) { $stopReason = 'short_page'; break; }
+            if ($current > 30000) { $stopReason = 'guard_page_limit'; break; }
             $current++;
-        }while(true);
+        } while (true);
 
-        if($csv){fclose($csv);}
+        if ($csv) fclose($csv);
 
-        if($continuePaging&&!self::$dryRun){self::mirrorEmployeesSoft(self::uniqueEmployeeIds());}
-        if(!self::$dryRun){
-            if(!empty(self::$seenJobHistoryIds)){self::mirrorJobHistoriesHard();}
-            if(!empty(self::$seenEducationIds)){self::mirrorEducationsHard();}
-            if(!empty(self::$seenTrainingIds)){self::mirrorTrainingsHard();}
-            if(!empty(self::$seenCertificationIds)){self::mirrorCertificationsHard();}
-            if(!empty(self::$seenDocumentIds)){self::mirrorDocumentsHard();}
-            if(!empty(self::$seenPortfolioIds)){self::mirrorPortfolioHard();}
+        if ($this->continuePaging && !$this->dryRun) {
+            $this->mirrorEmployeesSoft($this->uniqueEmployeeIds());
         }
 
-        self::$lastSummary=['processed_total'=>$processed,'reported_total'=>$reportedTotal,'seen_unique'=>self::$uniqueCount?count(self::uniqueExternalIds()):$processed,'successful_rows'=>self::$successfulCount,'pages'=>$pagesDone,'stop_reason'=>$stopReason,'samples'=>self::$samples,'last'=>$lastFromApi,'err_inserts'=>self::$errInserts];
-        Log::info('SITMS sync summary',self::$lastSummary);
+        if (!$this->dryRun) {
+            if (!empty($this->seenJobHistoryIds)) $this->mirrorJobHistoriesHard();
+            if (!empty($this->seenEducationIds)) $this->mirrorEducationsHard();
+            if (!empty($this->seenTrainingIds)) $this->mirrorTrainingsHard();
+            if (!empty($this->seenCertificationIds)) $this->mirrorCertificationsHard();
+            if (!empty($this->seenDocumentIds)) $this->mirrorDocumentsHard();
+            if (!empty($this->seenPortfolioIds)) $this->mirrorPortfolioHard();
+        }
+
+        $this->summary = [
+            'processed_total' => $processed,
+            'reported_total' => $reportedTotal,
+            'seen_unique' => $this->uniqueCount ? count($this->uniqueExternalIds()) : $processed,
+            'successful_rows' => $this->successfulCount,
+            'pages' => $pagesDone,
+            'stop_reason' => $stopReason,
+            'samples' => $this->samples,
+            'last' => $lastFromApi,
+            'err_inserts' => $this->errInserts
+        ];
+
+        Log::info('SITMS sync summary', $this->summary);
     }
 
-    protected static function mirrorEmployeesSoft(array $seenIds):void
+    protected function resetState(): void
     {
-        if(!Schema::hasTable('employees')||empty($seenIds))return;
-        DB::table('employees')->whereNotIn('employee_id',$seenIds)->update(['is_active'=>0,'updated_at'=>now()]);
+        $this->seenExternalIds = [];
+        $this->seenEmployeeIds = [];
+        $this->seenJobHistoryIds = [];
+        $this->seenEducationIds = [];
+        $this->seenTrainingIds = [];
+        $this->seenCertificationIds = [];
+        $this->seenDocumentIds = [];
+        $this->seenPortfolioIds = [];
+        $this->seenPortfolioJobIds = [];
+        $this->samples = [];
+        $this->errInserts = 0;
+        $this->successfulCount = 0;
+        $this->lookupCache = [];
     }
 
-    protected static function mirrorJobHistoriesHard():void
+    protected function mirrorEmployeesSoft(array $seenIds): void
     {
-        if(!Schema::hasTable('job_histories'))return;
-        $cols=self::tableColumns('job_histories');$hasSource=in_array('source_system',$cols,true);
-        foreach(self::$seenJobHistoryIds as $personId=>$ids){
-            $ids=array_values(array_unique(array_filter($ids,fn($v)=>$v)));
-            $q=DB::table('job_histories')->where('person_id',$personId);
-            if($hasSource){$q->where(fn($qq)=>$qq->where('source_system','sitms')->orWhereNull('source_system'));}
-            if(!empty($ids)){$q->whereNotIn('id',$ids);}
+        if (!Schema::hasTable('employees') || empty($seenIds)) return;
+        DB::table('employees')->whereNotIn('employee_id', $seenIds)->update(['is_active' => 0, 'updated_at' => now()]);
+    }
+
+    protected function mirrorJobHistoriesHard(): void
+    {
+        $this->genericMirrorHard('job_histories', $this->seenJobHistoryIds);
+    }
+
+    protected function mirrorEducationsHard(): void
+    {
+        $this->genericMirrorHard('educations', $this->seenEducationIds);
+    }
+
+    protected function mirrorTrainingsHard(): void
+    {
+        $this->genericMirrorHard('trainings', $this->seenTrainingIds);
+    }
+
+    protected function mirrorCertificationsHard(): void
+    {
+        $this->genericMirrorHard('certifications', $this->seenCertificationIds);
+    }
+
+    protected function mirrorDocumentsHard(): void
+    {
+        $this->genericMirrorHard('documents', $this->seenDocumentIds);
+    }
+
+    protected function mirrorPortfolioHard(): void
+    {
+        $this->genericMirrorHard('portfolio_histories', $this->seenPortfolioIds);
+    }
+
+    protected function genericMirrorHard(string $table, array $seenMap): void
+    {
+        if (!Schema::hasTable($table) || empty($seenMap)) return;
+        $cols = $this->tableColumns($table);
+        $hasSource = in_array('source_system', $cols, true);
+
+        foreach ($seenMap as $personId => $ids) {
+            $ids = array_values(array_unique(array_filter($ids)));
+            $q = DB::table($table)->where('person_id', $personId);
+            if ($hasSource) {
+                $q->where(fn($qq) => $qq->where('source_system', 'sitms')->orWhereNull('source_system'));
+            }
+            if (!empty($ids)) {
+                $q->whereNotIn('id', $ids);
+            }
             $q->delete();
         }
     }
 
-    protected static function mirrorEducationsHard():void
+    protected function upsertEmployeeRawFromSitmsRow(array $row): bool
     {
-        if(!Schema::hasTable('educations'))return;
-        $cols=self::tableColumns('educations');$hasSource=in_array('source_system',$cols,true);
-        foreach(self::$seenEducationIds as $personId=>$ids){
-            $ids=array_values(array_unique(array_filter($ids,fn($v)=>$v)));
-            $q=DB::table('educations')->where('person_id',$personId);
-            if($hasSource){$q->where(fn($qq)=>$qq->where('source_system','sitms')->orWhereNull('source_system'));}
-            if(!empty($ids)){$q->whereNotIn('id',$ids);}
-            $q->delete();
-        }
-    }
+        $sitmsId = $this->nullIfEmpty($row['id_sitms'] ?? null);
+        $employeeId = $this->nullIfEmpty($row['employee_id'] ?? null);
+        $genericId = $this->nullIfEmpty($row['id'] ?? null);
+        $externalId = $sitmsId ?? $employeeId ?? $genericId;
 
-    protected static function mirrorTrainingsHard():void
-    {
-        if(!Schema::hasTable('trainings'))return;
-        $cols=self::tableColumns('trainings');$hasSource=in_array('source_system',$cols,true);
-        foreach(self::$seenTrainingIds as $personId=>$ids){
-            $ids=array_values(array_unique(array_filter($ids,fn($v)=>$v)));
-            $q=DB::table('trainings')->where('person_id',$personId);
-            if($hasSource){$q->where(fn($qq)=>$qq->where('source_system','sitms')->orWhereNull('source_system'));}
-            if(!empty($ids)){$q->whereNotIn('id',$ids);}
-            $q->delete();
-        }
-    }
+        if ($externalId) $this->seenExternalIds[] = (string) $externalId;
 
-    protected static function mirrorCertificationsHard():void
-    {
-        if(!Schema::hasTable('certifications'))return;
-        $cols=self::tableColumns('certifications');$hasSource=in_array('source_system',$cols,true);
-        foreach(self::$seenCertificationIds as $personId=>$ids){
-            $ids=array_values(array_unique(array_filter($ids,fn($v)=>$v)));
-            $q=DB::table('certifications')->where('person_id',$personId);
-            if($hasSource){$q->where(fn($qq)=>$qq->where('source_system','sitms')->orWhereNull('source_system'));}
-            if(!empty($ids)){$q->whereNotIn('id',$ids);}
-            $q->delete();
-        }
-    }
+        $existingPersonId = $this->findExistingPersonIdByEmployeeKeys($employeeId, $sitmsId);
+        $personId = $this->ensurePersonIdForRow($row, $existingPersonId);
 
-    protected static function mirrorDocumentsHard():void
-    {
-        if(!Schema::hasTable('documents'))return;
-        $cols=self::tableColumns('documents');$hasSource=in_array('source_system',$cols,true);
-        if(!$hasSource)return;
-        foreach(self::$seenDocumentIds as $personId=>$ids){
-            $ids=array_values(array_unique(array_filter($ids,fn($v)=>$v)));
-            $q=DB::table('documents')->where('person_id',$personId)->where(fn($qq)=>$qq->where('source_system','sitms')->orWhereNull('source_system'));
-            if(!empty($ids)){$q->whereNotIn('id',$ids);}
-            $q->delete();
-        }
-    }
+        [$hbProv, $hbCity] = $this->sitmsParseHomeBase($this->nullIfEmpty($row['home_base'] ?? null));
 
-    protected static function mirrorPortfolioHard():void
-    {
-        if(!Schema::hasTable('portfolio_histories'))return;
-        $cols=self::tableColumns('portfolio_histories');$hasSource=in_array('source_system',$cols,true);
-        foreach(self::$seenPortfolioIds as $personId=>$ids){
-            $ids=array_values(array_unique(array_filter($ids,fn($v)=>$v)));
-            $q=DB::table('portfolio_histories')->where('person_id',$personId);
-            if($hasSource){$q->where(fn($qq)=>$qq->where('source_system','sitms')->orWhereNull('source_system'));}
-            if(!empty($ids)){$q->whereNotIn('id',$ids);}
-            $q->delete();
-        }
-    }
+        $directorateId = $this->sitmsEnsureLookupId('directorates', $row['directorat_name'] ?? null);
+        $unitId = $this->sitmsEnsureLookupId('units', $row['working_unit_name'] ?? null, ['directorate_id' => $directorateId, 'normalize_unit_code' => true]);
+        $positionId = $this->sitmsEnsureLookupId('positions', $row['position_name'] ?? null);
+        $positionLevelId = $this->sitmsEnsureLookupId('position_levels', $row['position_level_name'] ?? null);
+        $locationId = $this->sitmsEnsureLocationId($row['location_name'] ?? null, $hbCity ?: ($row['city'] ?? null), $hbProv);
 
-    protected static function upsertEmployeeRawFromSitmsRow(array $row):bool
-    {
-        $sitmsId=self::nullIfEmpty($row['id_sitms']??null);
-        $employeeId=self::nullIfEmpty($row['employee_id']??null);
-        $genericId=self::nullIfEmpty($row['id']??null);
-        $externalId=$sitmsId??$employeeId??$genericId;
-        if($externalId){self::$seenExternalIds[]=(string)$externalId;}
+        $now = now();
+        $colsEmp = $this->tableColumns('employees');
+        $payload = [];
+        $employeeIdFinal = $employeeId ?? $sitmsId ?? $genericId ?? (string) Str::ulid();
 
-        $existingPersonId=self::findExistingPersonIdByEmployeeKeys($employeeId,$sitmsId);
-        $personId=self::ensurePersonIdForRow($row,$existingPersonId);
-
-        [$hbProv,$hbCity]=self::sitmsParseHomeBase(self::nullIfEmpty($row['home_base']??null));
-
-        $directorateName=self::nullIfEmpty($row['directorat_name']??null);
-        $unitName=self::nullIfEmpty($row['working_unit_name']??null);
-        $positionName=self::nullIfEmpty($row['position_name']??null);
-        $posLevelName=self::nullIfEmpty($row['position_level_name']??null);
-        $locationName=self::nullIfEmpty($row['location_name']??null);
-
-        $directorateId=self::sitmsEnsureLookupId('directorates',$directorateName);
-        $unitId=self::sitmsEnsureLookupId('units',$unitName,['directorate_id'=>$directorateId,'normalize_unit_code'=>true]);
-        $positionId=self::sitmsEnsureLookupId('positions',$positionName);
-        $positionLevelId=self::sitmsEnsureLookupId('position_levels',$posLevelName);
-        $locationId=self::sitmsEnsureLocationId($locationName,$hbCity?:self::nullIfEmpty($row['city']??null),$hbProv);
-
-        $now=now();$colsEmp=self::tableColumns('employees');$metaEmp=self::columnMeta('employees');$payload=[];
-        $employeeIdFinal=$employeeId??$sitmsId??$genericId??(string)Str::ulid();
-        if(isset($metaEmp['employee_id'])){self::$seenEmployeeIds[]=(string)$employeeIdFinal;}
-
-        $payload['person_id']=$personId;
-        if(in_array('employee_id',$colsEmp,true)){$payload['employee_id']=self::cut($employeeIdFinal);}
-        if(in_array('id_sitms',$colsEmp,true)&&$sitmsId!==null){$payload['id_sitms']=self::cut($sitmsId);}
-        if(in_array('is_active',$colsEmp,true)){$payload['is_active']=isset($row['is_active'])?((int)$row['is_active']?1:0):1;}
-        if(in_array('directorate_id',$colsEmp,true)){$payload['directorate_id']=$directorateId;}
-        if(in_array('unit_id',$colsEmp,true)){$payload['unit_id']=$unitId;}
-        if(in_array('position_id',$colsEmp,true)){$payload['position_id']=$positionId;}
-        if(in_array('position_level_id',$colsEmp,true)){$payload['position_level_id']=$positionLevelId;}
-        if(in_array('location_id',$colsEmp,true)){$payload['location_id']=$locationId;}
-        if(in_array('home_base_raw',$colsEmp,true)){$payload['home_base_raw']=isset($row['home_base'])?self::cut(strip_tags((string)$row['home_base']),800):null;}
-        if(in_array('home_base_city',$colsEmp,true)){$payload['home_base_city']=self::cut($hbCity);}
-        if(in_array('home_base_province',$colsEmp,true)){$payload['home_base_province']=self::cut($hbProv);}
-
-        $apiFlat=self::flattenEmployeePayload($row);
-        foreach($apiFlat as $k=>$v){
-            if(in_array($k,['latest_jobs_start_date','date_of_birth'],true)){$apiFlat[$k]=DS::toDateOrNull($v)?:null;continue;}
-            if(is_string($v)){$apiFlat[$k]=self::cut($v);}
-        }
-        if(isset($row['email'])&&in_array('email',$colsEmp,true)){$apiFlat['email']=self::cut($row['email'],150);}
-        if(!empty($apiFlat['profile_picture_url'])&&in_array('profile_photo_url',$colsEmp,true)){$payload['profile_photo_url']=self::cut($apiFlat['profile_picture_url'],500);}
-
-        $apiFlat=self::filterColumns('employees',$apiFlat);
-        $payload=array_merge($apiFlat,$payload);
-        if(in_array('updated_at',$colsEmp,true)){$payload['updated_at']=$now;}
-        if(in_array('created_at',$colsEmp,true)){$exists=DB::table('employees')->where('person_id',$personId)->exists();if(!$exists){$payload['created_at']=$now;}}
-        $payload=self::filterColumns('employees',$payload);
-
-        try{
-            DB::table('employees')->updateOrInsert(['person_id'=>$personId],$payload);
-        }catch(\Throwable $e){
-            self::$errInserts++;Log::error('SITMS employees insert failed',['error'=>$e->getMessage(),'peek'=>Arr::only($row,['id','id_sitms','employee_id','full_name','working_unit_name','position_name','email'])]);return false;
+        if (isset($this->columnMeta('employees')['employee_id'])) {
+            $this->seenEmployeeIds[] = (string) $employeeIdFinal;
         }
 
-        if(Schema::hasTable('employees_snapshot')){
-            $colsSnap=self::tableColumns('employees_snapshot');
-            $snapshotKey=in_array('person_id',$colsSnap,true)?'person_id':(in_array('employee_id',$colsSnap,true)?'employee_id':null);
-            if($snapshotKey){
-                $snapshotKeyValue=$snapshotKey==='person_id'?$personId:($payload['employee_id']??($payload['id_sitms']??null));
-                if($snapshotKeyValue){
-                    $snap=[$snapshotKey=>$snapshotKeyValue,'payload'=>json_encode($row,JSON_UNESCAPED_UNICODE),'captured_at'=>$now,'updated_at'=>$now];
-                    if(in_array('created_at',$colsSnap,true)){$snap['created_at']=DB::raw('COALESCE(created_at, NOW())');}
-                    $snap=array_intersect_key($snap,array_flip($colsSnap));
-                    try{DB::table('employees_snapshot')->updateOrInsert([$snapshotKey=>$snapshotKeyValue],$snap);}catch(\Throwable $e){Log::warning('SITMS snapshot failed',['error'=>$e->getMessage(),$snapshotKey=>$snapshotKeyValue]);}
+        $payload['person_id'] = $personId;
+        if (in_array('employee_id', $colsEmp, true)) $payload['employee_id'] = $this->cut($employeeIdFinal);
+        if (in_array('id_sitms', $colsEmp, true) && $sitmsId !== null) $payload['id_sitms'] = $this->cut($sitmsId);
+        if (in_array('is_active', $colsEmp, true)) $payload['is_active'] = isset($row['is_active']) ? ((int) $row['is_active'] ? 1 : 0) : 1;
+        if (in_array('directorate_id', $colsEmp, true)) $payload['directorate_id'] = $directorateId;
+        if (in_array('unit_id', $colsEmp, true)) $payload['unit_id'] = $unitId;
+        if (in_array('position_id', $colsEmp, true)) $payload['position_id'] = $positionId;
+        if (in_array('position_level_id', $colsEmp, true)) $payload['position_level_id'] = $positionLevelId;
+        if (in_array('location_id', $colsEmp, true)) $payload['location_id'] = $locationId;
+        if (in_array('home_base_raw', $colsEmp, true)) $payload['home_base_raw'] = isset($row['home_base']) ? $this->cut(strip_tags((string) $row['home_base']), 800) : null;
+        if (in_array('home_base_city', $colsEmp, true)) $payload['home_base_city'] = $this->cut($hbCity);
+        if (in_array('home_base_province', $colsEmp, true)) $payload['home_base_province'] = $this->cut($hbProv);
+
+        $apiFlat = $this->flattenEmployeePayload($row);
+        foreach ($apiFlat as $k => $v) {
+            if (in_array($k, ['latest_jobs_start_date', 'date_of_birth'], true)) {
+                $apiFlat[$k] = $this->parseDate($v);
+                continue;
+            }
+            if (is_string($v)) $apiFlat[$k] = $this->cut($v);
+        }
+        if (isset($row['email']) && in_array('email', $colsEmp, true)) $apiFlat['email'] = $this->cut($row['email'], 150);
+        if (!empty($apiFlat['profile_picture_url']) && in_array('profile_photo_url', $colsEmp, true)) $payload['profile_photo_url'] = $this->cut($apiFlat['profile_picture_url'], 500);
+
+        $payload = array_merge($this->filterColumns('employees', $apiFlat), $payload);
+        if (in_array('updated_at', $colsEmp, true)) $payload['updated_at'] = $now;
+        if (in_array('created_at', $colsEmp, true)) {
+            $exists = DB::table('employees')->where('person_id', $personId)->exists();
+            if (!$exists) $payload['created_at'] = $now;
+        }
+
+        try {
+            DB::table('employees')->updateOrInsert(['person_id' => $personId], $payload);
+        } catch (\Throwable $e) {
+            $this->errInserts++;
+            Log::error('SITMS employees insert failed', ['error' => $e->getMessage()]);
+            return false;
+        }
+
+        if (Schema::hasTable('employees_snapshot')) {
+            $colsSnap = $this->tableColumns('employees_snapshot');
+            $snapshotKey = in_array('person_id', $colsSnap, true) ? 'person_id' : (in_array('employee_id', $colsSnap, true) ? 'employee_id' : null);
+            if ($snapshotKey) {
+                $snapshotKeyValue = $snapshotKey === 'person_id' ? $personId : ($payload['employee_id'] ?? ($payload['id_sitms'] ?? null));
+                if ($snapshotKeyValue) {
+                    $snap = [$snapshotKey => $snapshotKeyValue, 'payload' => json_encode($row, JSON_UNESCAPED_UNICODE), 'captured_at' => $now, 'updated_at' => $now];
+                    if (in_array('created_at', $colsSnap, true)) $snap['created_at'] = DB::raw('COALESCE(created_at, NOW())');
+                    try {
+                        DB::table('employees_snapshot')->updateOrInsert([$snapshotKey => $snapshotKeyValue], array_intersect_key($snap, array_flip($colsSnap)));
+                    } catch (\Throwable $e) {
+                    }
                 }
             }
         }
 
-        try{self::sitmsSyncPortfolio($personId,$row);}catch(\Throwable $e){Log::error('SITMS portfolio sync failed',['error'=>$e->getMessage(),'person_id'=>$personId]);}
-        try{self::sitmsSyncDocuments($personId,$row);}catch(\Throwable $e){Log::error('SITMS documents sync failed',['error'=>$e->getMessage(),'person_id'=>$personId]);self::$errInserts++;}
+        try { $this->sitmsSyncPortfolio($personId, $row); } catch (\Throwable $e) {}
+        try { $this->sitmsSyncDocuments($personId, $row); } catch (\Throwable $e) {}
 
-        foreach(Arr::get($row,'education_list.education_data',[]) as $e){self::upsertEducation($personId,(array)$e);}
-        foreach(Arr::get($row,'training_list.training_data',[]) as $t){self::upsertTraining($personId,(array)$t);}
-        foreach(Arr::get($row,'brevet_list.brevet_data',[]) as $c){self::upsertCertification($personId,(array)$c);}
-        foreach(Arr::get($row,'jobs_list.jobs_data',[]) as $j){self::upsertJobHistory($personId,(array)$j);}
+        foreach (Arr::get($row, 'education_list.education_data', []) as $e) $this->upsertEducation($personId, (array) $e);
+        foreach (Arr::get($row, 'training_list.training_data', []) as $t) $this->upsertTraining($personId, (array) $t);
+        foreach (Arr::get($row, 'brevet_list.brevet_data', []) as $c) $this->upsertCertification($personId, (array) $c);
+        foreach (Arr::get($row, 'jobs_list.jobs_data', []) as $j) $this->upsertJobHistory($personId, (array) $j);
 
         return true;
     }
 
-    protected static function findExistingPersonIdByEmployeeKeys(?string $employeeId,?string $sitmsId):?string
+    protected function findExistingPersonIdByEmployeeKeys(?string $employeeId, ?string $sitmsId): ?string
     {
-        if(!Schema::hasTable('employees'))return null;
-        if($employeeId){$pid=DB::table('employees')->where('employee_id',$employeeId)->value('person_id');if($pid)return (string)$pid;}
-        if($sitmsId){$pid=DB::table('employees')->where('id_sitms',$sitmsId)->value('person_id');if($pid)return (string)$pid;}
+        if (!Schema::hasTable('employees')) return null;
+        if ($employeeId) {
+            $pid = DB::table('employees')->where('employee_id', $employeeId)->value('person_id');
+            if ($pid) return (string) $pid;
+        }
+        if ($sitmsId) {
+            $pid = DB::table('employees')->where('id_sitms', $sitmsId)->value('person_id');
+            if ($pid) return (string) $pid;
+        }
         return null;
     }
 
-    protected static function ensurePersonIdForRow(array $row,?string $existingPersonId=null):string
+    protected function ensurePersonIdForRow(array $row, ?string $existingPersonId = null): string
     {
-        $tbl='persons';$now=now();
-        if(!Schema::hasTable($tbl))return (string)Str::ulid();
-        $cols=self::tableColumns($tbl);
-        $nik=self::nullIfEmpty($row['nik_number']??null);
-        
-        // --- MODIFIKASI: SIMPAN RAW NIK KE KOLOM HASH ---
-        // Kita bypass hashing dan masukkan NIK angka mentah ke kolom nik_hash
-        $rawNik=preg_replace('/\D+/','',(string)$nik);
-        $nikLast4=substr($rawNik,-4);
+        $tbl = 'persons';
+        $now = now();
+        if (!Schema::hasTable($tbl)) return (string) Str::ulid();
+        $cols = $this->tableColumns($tbl);
+        $nik = $this->nullIfEmpty($row['nik_number'] ?? null);
+        $rawNik = preg_replace('/\D+/', '', (string) $nik);
+        $nikLast4 = substr($rawNik, -4);
 
-        if($existingPersonId){
-            $upd=[];
-            if(in_array('full_name',$cols,true)&&!empty($row['full_name'])){$upd['full_name']=self::cut($row['full_name']);}
-            if(in_array('gender',$cols,true)&&isset($row['gender'])){$upd['gender']=self::cut($row['gender']);}
-            if(in_array('date_of_birth',$cols,true)){$upd['date_of_birth']=DS::toDateOrNull($row['date_of_birth']??null);}
-            if(in_array('place_of_birth',$cols,true)&&isset($row['place_of_birth'])){$upd['place_of_birth']=self::cut($row['place_of_birth']);}
-            if(in_array('phone',$cols,true)&&isset($row['contact_no'])){$upd['phone']=self::cut($row['contact_no'],50);}
-            if(in_array('email',$cols,true)&&isset($row['email'])){$upd['email']=self::cut($row['email'],150);}
-            if(in_array('address',$cols,true)&&isset($row['address'])){$upd['address']=self::cut($row['address']);}
-            if(in_array('city',$cols,true)&&isset($row['city'])){$upd['city']=self::cut($row['city'],120);}
-            // Save RAW NIK to nik_hash
-            if(in_array('nik_hash',$cols,true)&&!empty($rawNik)){$upd['nik_hash']=$rawNik;}
-            if(in_array('nik_last4',$cols,true)){$upd['nik_last4']=$nikLast4;}
-            if(in_array('updated_at',$cols,true)){$upd['updated_at']=$now;}
-            if(!empty($upd)){DB::table($tbl)->where('id',$existingPersonId)->update($upd);}
-            return (string)$existingPersonId;
+        if ($existingPersonId) {
+            $upd = [];
+            if (in_array('full_name', $cols, true) && !empty($row['full_name'])) $upd['full_name'] = $this->cut($row['full_name']);
+            if (in_array('gender', $cols, true) && isset($row['gender'])) $upd['gender'] = $this->cut($row['gender']);
+            if (in_array('date_of_birth', $cols, true)) $upd['date_of_birth'] = $this->parseDate($row['date_of_birth'] ?? null);
+            if (in_array('place_of_birth', $cols, true) && isset($row['place_of_birth'])) $upd['place_of_birth'] = $this->cut($row['place_of_birth']);
+            if (in_array('phone', $cols, true) && isset($row['contact_no'])) $upd['phone'] = $this->cut($row['contact_no'], 50);
+            if (in_array('email', $cols, true) && isset($row['email'])) $upd['email'] = $this->cut($row['email'], 150);
+            if (in_array('address', $cols, true) && isset($row['address'])) $upd['address'] = $this->cut($row['address']);
+            if (in_array('city', $cols, true) && isset($row['city'])) $upd['city'] = $this->cut($row['city'], 120);
+            if (in_array('nik_hash', $cols, true) && !empty($rawNik)) $upd['nik_hash'] = $rawNik;
+            if (in_array('nik_last4', $cols, true)) $upd['nik_last4'] = $nikLast4;
+            if (in_array('updated_at', $cols, true)) $upd['updated_at'] = $now;
+            if (!empty($upd)) DB::table($tbl)->where('id', $existingPersonId)->update($upd);
+            return (string) $existingPersonId;
         }
 
-        $newId=(string)Str::ulid();$person=['id'=>$newId];
-        if(in_array('full_name',$cols,true)){$person['full_name']=self::cut(self::nullIfEmpty($row['full_name']??null))??'-';}
-        if(in_array('gender',$cols,true)){$person['gender']=self::cut(self::nullIfEmpty($row['gender']??null));}
-        if(in_array('date_of_birth',$cols,true)){$person['date_of_birth']=DS::toDateOrNull($row['date_of_birth']??null);}
-        if(in_array('place_of_birth',$cols,true)){$person['place_of_birth']=self::cut(self::nullIfEmpty($row['place_of_birth']??null));}
-        if(in_array('phone',$cols,true)){$person['phone']=self::cut(self::nullIfEmpty($row['contact_no']??null),50);}
-        if(in_array('email',$cols,true)){$person['email']=self::cut(self::nullIfEmpty($row['email']??null),150);}
-        if(in_array('address',$cols,true)){$person['address']=self::cut(self::nullIfEmpty($row['address']??null));}
-        if(in_array('city',$cols,true)){$person['city']=self::cut(self::nullIfEmpty($row['city']??null),120);}
-        // Save RAW NIK to nik_hash
-        if(in_array('nik_hash',$cols,true)&&!empty($rawNik)){$person['nik_hash']=$rawNik;}
-        if(in_array('nik_last4',$cols,true)){$person['nik_last4']=$nikLast4;}
-        if(in_array('created_at',$cols,true)){$person['created_at']=$now;}
-        if(in_array('updated_at',$cols,true)){$person['updated_at']=$now;}
-        $person=array_intersect_key($person,array_flip($cols));
-        DB::table($tbl)->insert($person);
+        $newId = (string) Str::ulid();
+        $person = ['id' => $newId];
+        if (in_array('full_name', $cols, true)) $person['full_name'] = $this->cut($this->nullIfEmpty($row['full_name'] ?? null)) ?? '-';
+        if (in_array('gender', $cols, true)) $person['gender'] = $this->cut($this->nullIfEmpty($row['gender'] ?? null));
+        if (in_array('date_of_birth', $cols, true)) $person['date_of_birth'] = $this->parseDate($row['date_of_birth'] ?? null);
+        if (in_array('place_of_birth', $cols, true)) $person['place_of_birth'] = $this->cut($this->nullIfEmpty($row['place_of_birth'] ?? null));
+        if (in_array('phone', $cols, true)) $person['phone'] = $this->cut($this->nullIfEmpty($row['contact_no'] ?? null), 50);
+        if (in_array('email', $cols, true)) $person['email'] = $this->cut($this->nullIfEmpty($row['email'] ?? null), 150);
+        if (in_array('address', $cols, true)) $person['address'] = $this->cut($this->nullIfEmpty($row['address'] ?? null));
+        if (in_array('city', $cols, true)) $person['city'] = $this->cut($this->nullIfEmpty($row['city'] ?? null), 120);
+        if (in_array('nik_hash', $cols, true) && !empty($rawNik)) $person['nik_hash'] = $rawNik;
+        if (in_array('nik_last4', $cols, true)) $person['nik_last4'] = $nikLast4;
+        if (in_array('created_at', $cols, true)) $person['created_at'] = $now;
+        if (in_array('updated_at', $cols, true)) $person['updated_at'] = $now;
+        DB::table($tbl)->insert(array_intersect_key($person, array_flip($cols)));
         return $newId;
     }
 
-    protected static function flattenEmployeePayload(array $emp):array
+    protected function flattenEmployeePayload(array $emp): array
     {
-        $keys=['id_sitms','employee_id','full_name','nik_number','gender','place_of_birth','date_of_birth','address','city','employee_status','company_name','directorat_id','directorat_name','working_unit_id','working_unit_name','location_name','position_level_name','position_name','home_base','education_level_name','major_name','education_name','email','contact_no','talent_class_level','is_active','latest_jobs_start_date','latest_jobs_unit','latest_jobs','profile_picture_url'];
-        $out=[];
-        foreach($keys as $k){if(array_key_exists($k,$emp)){$out[$k]=self::nullIfEmpty($emp[$k]);}}
-        if(!empty($emp['home_base'])){
-            $raw=(string)$emp['home_base'];$out['home_base_raw']=$raw;$noTags=strip_tags($raw,'<i>');
-            if(preg_match('/<i>(.*?)<\/i>/',$noTags,$m)){$out['home_base_city']=trim($m[1]??'');}
-            $first=explode('<br',$raw)[0]??'';$out['home_base_province']=trim(strip_tags($first));
+        $keys = ['id_sitms', 'employee_id', 'full_name', 'nik_number', 'gender', 'place_of_birth', 'date_of_birth', 'address', 'city', 'employee_status', 'company_name', 'directorat_id', 'directorat_name', 'working_unit_id', 'working_unit_name', 'location_name', 'position_level_name', 'position_name', 'home_base', 'education_level_name', 'major_name', 'education_name', 'email', 'contact_no', 'talent_class_level', 'is_active', 'latest_jobs_start_date', 'latest_jobs_unit', 'latest_jobs', 'profile_picture_url'];
+        $out = [];
+        foreach ($keys as $k) {
+            if (array_key_exists($k, $emp)) $out[$k] = $this->nullIfEmpty($emp[$k]);
         }
-        if(isset($emp['latest_jobs'])){$out['latest_jobs_title']=$emp['latest_jobs'];}
+        if (!empty($emp['home_base'])) {
+            $raw = (string) $emp['home_base'];
+            $out['home_base_raw'] = $raw;
+            $noTags = strip_tags($raw, '<i>');
+            if (preg_match('/<i>(.*?)<\/i>/', $noTags, $m)) $out['home_base_city'] = trim($m[1] ?? '');
+            $first = explode('<br', $raw)[0] ?? '';
+            $out['home_base_province'] = trim(strip_tags($first));
+        }
+        if (isset($emp['latest_jobs'])) $out['latest_jobs_title'] = $emp['latest_jobs'];
         return $out;
     }
 
-    protected static function rowFingerprint(array $row):array
+    protected function rowFingerprint(array $row): array
     {
-        $genericId=self::nullIfEmpty($row['id']??null);
-        $employeeId=self::nullIfEmpty($row['employee_id']??null);
-        $sitmsId=self::nullIfEmpty($row['id_sitms']??null);
-        $externalId=$sitmsId??$employeeId??$genericId;
-        $fullName=trim((string)($row['full_name']??''));$unitName=trim((string)($row['working_unit_name']??$row['unit_name']??''));$posName=trim((string)($row['position_name']??$row['position']??''));$email=trim((string)($row['email']??''));
-        return [$externalId,$fullName,$unitName,$posName,$email];
+        $genericId = $this->nullIfEmpty($row['id'] ?? null);
+        $employeeId = $this->nullIfEmpty($row['employee_id'] ?? null);
+        $sitmsId = $this->nullIfEmpty($row['id_sitms'] ?? null);
+        $externalId = $sitmsId ?? $employeeId ?? $genericId;
+        return [$externalId, trim($row['full_name'] ?? ''), trim($row['working_unit_name'] ?? ''), trim($row['position_name'] ?? ''), trim($row['email'] ?? '')];
     }
 
-    protected static function nullIfEmpty($v){$s=trim((string)($v??''));return $s===''?null:$s;}
-    protected static function cut($v,int $len=255){if($v===null)return null;$s=(string)$v;return mb_substr($s,0,$len);}
-    protected static function currentSeenCount():int{return self::$uniqueCount?count(array_unique(self::$seenExternalIds)):count(self::$seenExternalIds);}
-    protected static function uniqueExternalIds():array{return array_values(array_unique(array_filter(self::$seenExternalIds,fn($v)=>(string)$v!=='')));}
-    protected static function uniqueEmployeeIds():array{return array_values(array_unique(array_filter(self::$seenEmployeeIds,fn($v)=>(string)$v!=='')));}
-
-    protected static function filterColumns(string $table,array $payload):array{$cols=self::tableColumns($table);return array_intersect_key($payload,array_flip($cols));}
-    protected static function tableColumns(string $table):array{if(!isset(self::$tableColumnsCache[$table])){self::$tableColumnsCache[$table]=Schema::hasTable($table)?Schema::getColumnListing($table):[];}return self::$tableColumnsCache[$table];}
-
-    protected static function columnMeta(string $table):array
+    protected function nullIfEmpty($v)
     {
-        if(isset(self::$tableColumnsMeta[$table]))return self::$tableColumnsMeta[$table];
-        $meta=[];if(!Schema::hasTable($table))return $meta;
-        try{$cols=DB::select("SHOW COLUMNS FROM `$table`");foreach($cols as $c){$meta[$c->Field]=['type'=>$c->Type,'null'=>strtoupper((string)$c->Null)==='YES','default'=>$c->Default,'key'=>$c->Key??''];}}catch(\Throwable $e){}
-        return self::$tableColumnsMeta[$table]=$meta;
+        $s = trim((string) ($v ?? ''));
+        return $s === '' ? null : $s;
+    }
+    protected function cut($v, int $len = 255)
+    {
+        if ($v === null) return null;
+        return mb_substr((string) $v, 0, $len);
+    }
+    protected function currentSeenCount(): int
+    {
+        return $this->uniqueCount ? count(array_unique($this->seenExternalIds)) : count($this->seenExternalIds);
+    }
+    protected function uniqueExternalIds(): array
+    {
+        return array_values(array_unique(array_filter($this->seenExternalIds, fn($v) => (string) $v !== '')));
+    }
+    protected function uniqueEmployeeIds(): array
+    {
+        return array_values(array_unique(array_filter($this->seenEmployeeIds, fn($v) => (string) $v !== '')));
+    }
+    protected function filterColumns(string $table, array $payload): array
+    {
+        return array_intersect_key($payload, array_flip($this->tableColumns($table)));
+    }
+    protected function tableColumns(string $table): array
+    {
+        if (!isset($this->tableColumnsCache[$table])) {
+            $this->tableColumnsCache[$table] = Schema::hasTable($table) ? Schema::getColumnListing($table) : [];
+        }
+        return $this->tableColumnsCache[$table];
+    }
+    protected function columnMeta(string $table): array
+    {
+        if (isset($this->tableColumnsMeta[$table])) return $this->tableColumnsMeta[$table];
+        $meta = [];
+        if (!Schema::hasTable($table)) return $meta;
+        try {
+            $cols = DB::select("SHOW COLUMNS FROM `$table`");
+            foreach ($cols as $c) $meta[$c->Field] = ['type' => $c->Type, 'null' => strtoupper((string) $c->Null) === 'YES', 'default' => $c->Default];
+        } catch (\Throwable $e) {
+        }
+        return $this->tableColumnsMeta[$table] = $meta;
     }
 
-    protected static function sitmsSyncPortfolio(string $personId,array $row):void
+    protected function parseDate($value): ?string
     {
-        if(!Schema::hasTable('portfolio_histories'))return;
-        foreach(Arr::get($row,'education_list.education_data',[]) as $e){self::sitmsInsertPortfolio($personId,'education',['title'=>self::nullIfEmpty($e['education_name']??null),'organization'=>self::nullIfEmpty($e['education_name']??null),'start_date'=>DS::toDateOrNull(($e['graduation_year']??null)?($e['graduation_year'].'-01-01'):null),'end_date'=>null,'description'=>null,'meta'=>['level'=>self::nullIfEmpty($e['education_level']??null),'major'=>self::nullIfEmpty($e['major_name']??null),'graduation_year'=>self::nullIfEmpty($e['graduation_year']??null)],]);}
-        foreach(Arr::get($row,'jobs_list.jobs_data',[]) as $j){self::sitmsInsertPortfolio($personId,'job',['title'=>self::nullIfEmpty($j['jobs']??null),'organization'=>self::nullIfEmpty($j['jobs_unit']??$j['jobs_company']??null),'start_date'=>DS::toDateOrNull($j['jobs_start_date']??null),'end_date'=>DS::toDateOrNull($j['jobs_end_date']??null),'description'=>self::nullIfEmpty($j['jobs_description']??null),'meta'=>['company'=>self::nullIfEmpty($j['jobs_company']??null),'masterpiece'=>self::nullIfEmpty($j['jobs_masterpiece']??null),'period'=>self::nullIfEmpty($j['jobs_period']??null)],]);}
-        foreach(Arr::get($row,'assignments_list.assignments_data',[]) as $a){self::sitmsInsertPortfolio($personId,'assignment',['title'=>self::nullIfEmpty($a['assignment_title']??null),'organization'=>self::nullIfEmpty($a['assignment_company']??null),'start_date'=>DS::toDateOrNull($a['assignment_start_date']??null),'end_date'=>DS::toDateOrNull($a['assignment_end_date']??null),'description'=>self::nullIfEmpty($a['assignment_description']??null),'meta'=>['period'=>self::nullIfEmpty($a['assignment_period']??null)],]);}
-        foreach(Arr::get($row,'taskforces_list.taskforces_data',[]) as $t){self::sitmsInsertPortfolio($personId,'taskforce',['title'=>self::nullIfEmpty($t['taskforce_name']??null),'organization'=>self::nullIfEmpty($t['taskforce_company']??null),'start_date'=>DS::toDateOrNull(($t['taskforce_year_start']??null)?($t['taskforce_year_start'].'-01-01'):null),'end_date'=>DS::toDateOrNull(($t['taskforce_year_end']??null)?($t['taskforce_year_end'].'-12-31'):null),'description'=>self::nullIfEmpty($t['taskforce_desc']??null),'meta'=>['type'=>self::nullIfEmpty($t['taskforce_type']??null),'position'=>self::nullIfEmpty($t['taskforce_position']??null)],]);}
-        foreach(Arr::get($row,'training_list.training_data',[]) as $tr){self::sitmsInsertPortfolio($personId,'training',['title'=>self::nullIfEmpty($tr['training_name']??null),'organization'=>self::nullIfEmpty($tr['training_organizer']??null),'start_date'=>DS::toDateOrNull(($tr['training_year']??null)?($tr['training_year'].'-01-01'):null),'end_date'=>null,'description'=>null,'meta'=>['level'=>self::nullIfEmpty($tr['training_level']??null),'type'=>self::nullIfEmpty($tr['training_type']??null),'year'=>self::nullIfEmpty($tr['training_year']??null)],]);}
-        foreach(Arr::get($row,'brevet_list.brevet_data',[]) as $b){self::sitmsInsertPortfolio($personId,'brevet',['title'=>self::nullIfEmpty($b['brevet_name']??null),'organization'=>self::nullIfEmpty($b['brevet_organizer']??null),'start_date'=>DS::toDateOrNull(($b['brevet_year']??null)?($b['brevet_year'].'-01-01'):null),'end_date'=>DS::toDateOrNull($b['certificate_due']??null),'description'=>null,'meta'=>['level'=>self::nullIfEmpty($b['brevet_level']??null),'certificate_no'=>self::nullIfEmpty($b['certificate_number']??null)],]);}
-    }
-
-    protected static function sitmsInsertPortfolio(string $personId,string $category,array $data):void
-    {
-        if(!Schema::hasTable('portfolio_histories'))return;
-        $cols=self::tableColumns('portfolio_histories');$maxTitleLength=150;
-        try{$tableInfo=DB::select("SHOW COLUMNS FROM portfolio_histories WHERE Field = 'title'");if(!empty($tableInfo)&&isset($tableInfo[0]->Type)&&preg_match('/varchar\((\d+)\)/',$tableInfo[0]->Type,$m)){$maxTitleLength=(int)$m[1];}}catch(\Throwable $e){}
-        $title=isset($data['title'])?self::cut($data['title'],$maxTitleLength):null;
-        $row=['person_id'=>$personId,'category'=>$category,'title'=>$title,'organization'=>self::cut($data['organization']??null,150),'start_date'=>$data['start_date']??null,'end_date'=>$data['end_date']??null,'description'=>self::cut($data['description']??null,300),'meta'=>$data['meta']??null,'created_at'=>now(),'updated_at'=>now()];
-        if(!in_array('category',$cols,true)){ $prefix=$category?('['.$category.'] '):''; if(in_array('notes',$cols,true)){$row['notes']=$prefix.($row['description']??'');} unset($row['category']);}
-        if(!in_array('organization',$cols,true)&&in_array('unit_name',$cols,true)){$row['unit_name']=$row['organization']??null;unset($row['organization']);}
-        if(!in_array('description',$cols,true)&&in_array('notes',$cols,true)){$row['notes']=trim(($row['notes']??'').' '.($row['description']??''));unset($row['description']);}
-        if(in_array('meta',$cols,true)){if(is_array($row['meta'])){$row['meta']=json_encode($row['meta'],JSON_UNESCAPED_UNICODE);}}else{unset($row['meta']);}
-        if(in_array('source_system',$cols,true)){$row['source_system']='sitms';}
-        $row=array_intersect_key($row,array_flip($cols));
-        $existing=DB::table('portfolio_histories')->where('person_id',$personId)->when(isset($row['category']),fn($q)=>$q->where('category',$row['category']))->when(isset($row['title']),fn($q)=>$q->where('title',$row['title']))->when(isset($row['organization']),fn($q)=>$q->where('organization',$row['organization']))->when(isset($row['unit_name']),fn($q)=>$q->where('unit_name',$row['unit_name']))->when(isset($row['start_date']),fn($q)=>$q->whereDate('start_date',$row['start_date']))->first();
-        $id=null;
-        if($existing){$id=$existing->id;try{DB::table('portfolio_histories')->where('id',$existing->id)->update($row);}catch(\Throwable $e){Log::warning('SITMS portfolio update failed',['error'=>$e->getMessage(),'person_id'=>$personId,'category'=>$category,'title_length'=>$title?strlen($title):0,'title_sample'=>$title?substr($title,0,50):null]);}}
-        else{try{$id=DB::table('portfolio_histories')->insertGetId($row);}catch(\Throwable $e){Log::warning('SITMS portfolio insert failed',['error'=>$e->getMessage(),'person_id'=>$personId,'category'=>$category,'title_length'=>$title?strlen($title):0,'title_sample'=>$title?substr($title,0,50):null]);}}
-        if($id){if(!isset(self::$seenPortfolioIds[$personId])){self::$seenPortfolioIds[$personId]=[];}self::$seenPortfolioIds[$personId][]=(int)$id;if($category==='job'){if(!isset(self::$seenPortfolioJobIds[$personId])){self::$seenPortfolioJobIds[$personId]=[];}self::$seenPortfolioJobIds[$personId][]=(int)$id;}}
-    }
-
-    protected static function sitmsSyncDocuments(string $personId,array $row):void
-    {
-        if(!Schema::hasTable('documents'))return;
-        $cols=self::tableColumns('documents');$maxDocTypeLen=50;$docTypeField=in_array('doc_type',$cols,true)?'doc_type':(in_array('document_type',$cols,true)?'document_type':null);
-        if($docTypeField){try{$tableInfo=DB::select("SHOW COLUMNS FROM documents WHERE Field = ?",[$docTypeField]);if(!empty($tableInfo)&&isset($tableInfo[0]->Type)&&preg_match('/varchar\((\d+)\)/',$tableInfo[0]->Type,$m)){$maxDocTypeLen=(int)$m[1];}}catch(\Throwable $e){}}
-        foreach(Arr::get($row,'documents_list.documents_data',[]) as $d){
-            $payload=['person_id'=>$personId,'type'=>self::nullIfEmpty($d['document_type']??null),'title'=>self::nullIfEmpty($d['document_title']??null),'file_path'=>self::nullIfEmpty($d['document_file']??null),'due_date'=>DS::toDateOrNull($d['document_duedate']??null),'created_at'=>now(),'updated_at'=>now()];
-            if($docTypeField){$payload[$docTypeField]=self::cut(self::nullIfEmpty($d['document_type']??null)??'unknown',$maxDocTypeLen);}
-            if(!in_array('file_path',$cols,true)&&in_array('path',$cols,true)){$payload['path']=$payload['file_path'];unset($payload['file_path']);}
-            if(in_array('source_system',$cols,true)){$payload['source_system']='sitms';}
-            $payload=array_intersect_key($payload,array_flip($cols));
-            $existing=DB::table('documents')->where('person_id',$personId)->when(isset($payload['title']),fn($q)=>$q->where('title',$payload['title']))->when(isset($payload['file_path']),fn($q)=>$q->where('file_path',$payload['file_path']))->when(isset($payload['path']),fn($q)=>$q->where('path',$payload['path']))->first();
-            $id=null;
-            if($existing){$id=$existing->id;try{DB::table('documents')->where('id',$existing->id)->update($payload);}catch(\Throwable $e){Log::warning('SITMS document update failed',['error'=>$e->getMessage(),'person_id'=>$personId,'document_title'=>$payload['title']??'unknown',$docTypeField?$docTypeField:null=>$docTypeField?($payload[$docTypeField]??'unknown'):null]);}}
-            else{try{$id=DB::table('documents')->insertGetId($payload);}catch(\Throwable $e){Log::warning('SITMS document insert failed',['error'=>$e->getMessage(),'person_id'=>$personId,'document_title'=>$payload['title']??'unknown',$docTypeField?$docTypeField:null=>$docTypeField?($payload[$docTypeField]??'unknown'):null]);}}
-            if($id){if(!isset(self::$seenDocumentIds[$personId])){self::$seenDocumentIds[$personId]=[];}self::$seenDocumentIds[$personId][]=(int)$id;}
+        if (!$value) return null;
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 
-    protected static function upsertEducation(string $personId,array $e):void
+    protected function sitmsSyncPortfolio(string $personId, array $row): void
     {
-        if(!Schema::hasTable('educations'))return;
-        $cols=self::tableColumns('educations');
-        $row=['person_id'=>$personId,'level'=>self::nullIfEmpty($e['education_level']??null),'institution'=>self::nullIfEmpty($e['education_name']??null),'major'=>self::nullIfEmpty($e['major_name']??null),'graduation_year'=>(int)($e['graduation_year']??0)?:null,'updated_at'=>now()];
-        if(in_array('created_at',$cols,true)){$row['created_at']=now();}
-        if(in_array('source_system',$cols,true)){$row['source_system']='sitms';}
-        DB::table('educations')->updateOrInsert(['person_id'=>$personId,'institution'=>$row['institution'],'major'=>$row['major'],'graduation_year'=>$row['graduation_year']],$row);
-        $id=DB::table('educations')->where('person_id',$personId)->where('institution',$row['institution'])->where('major',$row['major'])->where('graduation_year',$row['graduation_year'])->value('id');
-        if($id){if(!isset(self::$seenEducationIds[$personId])){self::$seenEducationIds[$personId]=[];}self::$seenEducationIds[$personId][]=(int)$id;}
-    }
-
-    protected static function upsertTraining(string $personId,array $t):void
-    {
-        if(!Schema::hasTable('trainings'))return;
-        $cols=self::tableColumns('trainings');
-        $row=['person_id'=>$personId,'title'=>self::nullIfEmpty($t['training_name']??null),'provider'=>self::nullIfEmpty($t['training_organizer']??null),'start_date'=>DS::toDateOrNull(($t['training_year']??null)?($t['training_year'].'-01-01'):null),'meta'=>json_encode(['level'=>self::nullIfEmpty($t['training_level']??null),'type'=>self::nullIfEmpty($t['training_type']??null),'year'=>self::nullIfEmpty($t['training_year']??null)],JSON_UNESCAPED_UNICODE),'updated_at'=>now()];
-        if(in_array('created_at',$cols,true)){$row['created_at']=now();}
-        if(in_array('source_system',$cols,true)){$row['source_system']='sitms';}
-        DB::table('trainings')->updateOrInsert(['person_id'=>$personId,'title'=>$row['title'],'provider'=>$row['provider'],'start_date'=>$row['start_date']],$row);
-        $id=DB::table('trainings')->where('person_id',$personId)->where('title',$row['title'])->where('provider',$row['provider'])->whereDate('start_date',$row['start_date'])->value('id');
-        if($id){if(!isset(self::$seenTrainingIds[$personId])){self::$seenTrainingIds[$personId]=[];}self::$seenTrainingIds[$personId][]=(int)$id;}
-    }
-
-    protected static function upsertCertification(string $personId,array $c):void
-    {
-        if(!Schema::hasTable('certifications'))return;
-        $cols=self::tableColumns('certifications');
-        $row=['person_id'=>$personId,'name'=>self::nullIfEmpty($c['brevet_name']??null),'issuer'=>self::nullIfEmpty($c['brevet_organizer']??null),'issued_at'=>DS::toDateOrNull(($c['brevet_year']??null)?($c['brevet_year'].'-01-01'):null),'expires_at'=>DS::toDateOrNull($c['certificate_due']??null),'number'=>self::nullIfEmpty($c['certificate_number']??null),'level'=>self::nullIfEmpty($c['brevet_level']??null),'updated_at'=>now()];
-        if(in_array('created_at',$cols,true)){$row['created_at']=now();}
-        if(in_array('source_system',$cols,true)){$row['source_system']='sitms';}
-        DB::table('certifications')->updateOrInsert(['person_id'=>$personId,'name'=>$row['name'],'issuer'=>$row['issuer'],'number'=>$row['number']],$row);
-        $id=DB::table('certifications')->where('person_id',$personId)->where('name',$row['name'])->where('issuer',$row['issuer'])->where('number',$row['number'])->value('id');
-        if($id){if(!isset(self::$seenCertificationIds[$personId])){self::$seenCertificationIds[$personId]=[];}self::$seenCertificationIds[$personId][]=(int)$id;}
-    }
-
-    protected static function upsertJobHistory(string $personId,array $j):void
-    {
-        if(!Schema::hasTable('job_histories'))return;
-        $cols=self::tableColumns('job_histories');
-        $row=['person_id'=>$personId,'title'=>self::nullIfEmpty($j['jobs']??null),'unit_name'=>self::nullIfEmpty($j['jobs_unit']??null),'start_date'=>DS::toDateOrNull($j['jobs_start_date']??null),'end_date'=>DS::toDateOrNull($j['jobs_end_date']??null),'description'=>self::nullIfEmpty($j['jobs_description']??null),'updated_at'=>now()];
-        if(in_array('created_at',$cols,true)){$row['created_at']=now();}
-        if(in_array('source_system',$cols,true)){$row['source_system']='sitms';}
-        $key=['person_id'=>$personId,'title'=>$row['title'],'unit_name'=>$row['unit_name'],'start_date'=>$row['start_date']];
-        DB::table('job_histories')->updateOrInsert($key,$row);
-        if(!isset(self::$seenJobHistoryIds[$personId])){self::$seenJobHistoryIds[$personId]=[];}
-        $id=DB::table('job_histories')->where($key)->value('id');
-        if($id){self::$seenJobHistoryIds[$personId][]=(int)$id;}
-    }
-
-    protected static function sitmsEnsureLookupId(string $table,?string $name,array $extras=[]):?int
-    {
-        $name=self::nullIfEmpty($name);
-        if(!$name||!Schema::hasTable($table))return null;
-        $cols=self::tableColumns($table);$existing=null;
-        if(in_array('name',$cols,true)){$existing=DB::table($table)->whereRaw('LOWER(`name`)=?',[mb_strtolower($name)])->first();}
-        if($table==='units'){
-            $codeMap=self::unitCodeMap();$wantCode=$codeMap[$name]??null;$dirId=$extras['directorate_id']??null;$now=now();
-            if($existing){
-                $upd=[];
-                if($dirId&&in_array('directorate_id',$cols,true)){if(empty($existing->directorate_id)||(int)$existing->directorate_id!==(int)$dirId){$upd['directorate_id']=$dirId;}}
-                if(!empty($extras['normalize_unit_code'])&&in_array('code',$cols,true)){
-                    $currentCode=(string)($existing->code??'');
-                    $needNormalize=($wantCode&&$currentCode!==$wantCode)||($currentCode===''||str_starts_with($currentCode,'__TMP__')||str_starts_with($currentCode,'__DUP__'));
-                    if($needNormalize){$finalCode=$wantCode?:self::autoCodeFromName($name);$finalCode=self::ensureUniqueCode($table,$finalCode,(int)$existing->id);if($finalCode!==$currentCode){$upd['code']=$finalCode;}}
-                }
-                if(!empty($upd)){if(in_array('updated_at',$cols,true)){$upd['updated_at']=$now;}DB::table($table)->where('id',$existing->id)->update($upd);}
-                return (int)$existing->id;
-            }
-            $row=[];
-            if(in_array('name',$cols,true)){$row['name']=self::cut($name);}
-            if(in_array('code',$cols,true)){$code=$wantCode?:self::autoCodeFromName($name);$code=self::ensureUniqueCode($table,$code,null);$row['code']=$code;}
-            if($dirId&&in_array('directorate_id',$cols,true)){$row['directorate_id']=$dirId;}
-            if(in_array('created_at',$cols,true)){$row['created_at']=$now;}
-            if(in_array('updated_at',$cols,true)){$row['updated_at']=$now;}
-            if(empty($row))return null;
-            return DB::table($table)->insertGetId($row);
+        if (!Schema::hasTable('portfolio_histories')) return;
+        foreach (Arr::get($row, 'education_list.education_data', []) as $e) {
+            $this->sitmsInsertPortfolio($personId, 'education', ['title' => $this->nullIfEmpty($e['education_name'] ?? null), 'organization' => $this->nullIfEmpty($e['education_name'] ?? null), 'start_date' => $this->parseDate(($e['graduation_year'] ?? null) ? ($e['graduation_year'] . '-01-01') : null), 'meta' => ['level' => $this->nullIfEmpty($e['education_level'] ?? null), 'major' => $this->nullIfEmpty($e['major_name'] ?? null)]]);
         }
-        if($existing){return (int)$existing->id;}
-        $baseCode=Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]/','',$name),0,10));$code=$baseCode;$now=now();
-        if(in_array('code',$cols,true)){$code=self::ensureUniqueCode($table,$baseCode,null);}
-        $row=[];
-        if(in_array('name',$cols,true)){$row['name']=self::cut($name);}
-        if(in_array('code',$cols,true)){$row['code']=$code;}
-        if(in_array('created_at',$cols,true)){$row['created_at']=$now;}
-        if(in_array('updated_at',$cols,true)){$row['updated_at']=$now;}
-        if(empty($row))return null;
-        return DB::table($table)->insertGetId($row);
+        foreach (Arr::get($row, 'jobs_list.jobs_data', []) as $j) {
+            $this->sitmsInsertPortfolio($personId, 'job', ['title' => $this->nullIfEmpty($j['jobs'] ?? null), 'organization' => $this->nullIfEmpty($j['jobs_unit'] ?? $j['jobs_company'] ?? null), 'start_date' => $this->parseDate($j['jobs_start_date'] ?? null), 'end_date' => $this->parseDate($j['jobs_end_date'] ?? null), 'description' => $this->nullIfEmpty($j['jobs_description'] ?? null)]);
+        }
+        foreach (Arr::get($row, 'assignments_list.assignments_data', []) as $a) {
+            $this->sitmsInsertPortfolio($personId, 'assignment', ['title' => $this->nullIfEmpty($a['assignment_title'] ?? null), 'organization' => $this->nullIfEmpty($a['assignment_company'] ?? null), 'start_date' => $this->parseDate($a['assignment_start_date'] ?? null), 'end_date' => $this->parseDate($a['assignment_end_date'] ?? null)]);
+        }
+        foreach (Arr::get($row, 'training_list.training_data', []) as $tr) {
+            $this->sitmsInsertPortfolio($personId, 'training', ['title' => $this->nullIfEmpty($tr['training_name'] ?? null), 'organization' => $this->nullIfEmpty($tr['training_organizer'] ?? null), 'start_date' => $this->parseDate(($tr['training_year'] ?? null) ? ($tr['training_year'] . '-01-01') : null)]);
+        }
     }
 
-    protected static function ensureUniqueCode(string $table,string $base,?int $ignoreId=null):string
+    protected function sitmsInsertPortfolio(string $personId, string $category, array $data): void
     {
-        $candidate=$base;$i=1;
-        while(DB::table($table)->when($ignoreId,fn($q)=>$q->where('id','<>',$ignoreId))->where('code',$candidate)->exists()){ $candidate=$base.$i;$i++; if($i>100){$candidate=$base.'_'.Str::upper(Str::random(4));break;}}
-        return $candidate;
-    }
-
-    protected static function autoCodeFromName(string $name):string{ return Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]/','',$name),0,10));}
-
-    protected static function unitCodeMap():array
-    {
-        return [
-            'SI Head Office'=>'SIHO',
-            'Divisi Bisnis Strategis Oil, Gas and Renewable Energy'=>'DBSOGRE',
-            'Divisi Bisnis Strategis Coal and Mineral'=>'DBSCNM',
-            'Divisi Bisnis Strategis Government and Institution'=>'DBSGNI',
-            'Divisi Bisnis Strategis Industrial Services'=>'DBSINS',
-            'Divisi Bisnis Strategis Infrastructure and Transportation'=>'DBSINT',
-            'Divisi Bisnis Strategis Sustainability and Environment'=>'DBSSNE',
-            'Cabang Jakarta'=>'SIJAK',
-            'Cabang Surabaya'=>'SISUB',
-            'Cabang Makassar'=>'SIMAK',
-            'Cabang Batam'=>'SIBAT',
-            'Cabang Balikpapan'=>'SIBPP',
-            'Cabang Medan'=>'SIMED',
-            'Cabang Palembang'=>'SIPAL',
-            'Cabang Pekanbaru'=>'SIPKU',
-            'Cabang Semarang'=>'SISMA',
-            'Cabang Singapura'=>'SISG',
-            'Cabang Banjarbaru'=>'SIBJB',
-            'Cabang Samarinda'=>'SISMD',
-            'Cabang Tanjung Redeb'=>'SITJR',
-            'Cabang Berau'=>'SIBER',
-            'Cabang Gresik'=>'SIGRS',
-            'Cabang Sangatta'=>'SISGT',
-            'Cabang Banjarmasin'=>'SIBJM',
-            'Cabang Tanjung'=>'SITJG',
-            'Sekretariat Perusahaan'=>'SP',
-            'Satuan Pengawasan Intern'=>'SPI',
-            'Divisi Riset, Pemasaran dan Pengembangan Bisnis'=>'DRP2B',
-            'Divisi Operasi'=>'DOP',
-            'Divisi Keuangan dan Akuntansi'=>'DKA',
-            'Divisi Perencanaan Korporat dan Manajemen Risiko'=>'DPKMR',
-            'Divisi Manajemen Aset'=>'DMA',
-            'Divisi Human Capital'=>'DHC',
-            'Divisi Teknologi Informasi'=>'DTI',
-            'Strategic Transformation Office'=>'STO',
-            'Unit Tanggung Jawab Sosial dan Lingkungan'=>'UTJSL',
-            'PT BKI (Persero) - Penugasan'=>'PENUGASKAR',
-            'PT Surveyor Indonesia Sertifikasi'=>'PTINPSEKSI',
-            'KSO SCI-SI'=>'KSOSCSI',
-            'SCCI'=>'SCCI',
+        if (!Schema::hasTable('portfolio_histories')) return;
+        $cols = $this->tableColumns('portfolio_histories');
+        $row = [
+            'person_id' => $personId, 'category' => $category, 'title' => $this->cut($data['title'] ?? null, 150),
+            'organization' => $this->cut($data['organization'] ?? null, 150), 'start_date' => $data['start_date'] ?? null, 'end_date' => $data['end_date'] ?? null,
+            'description' => $this->cut($data['description'] ?? null, 300), 'meta' => isset($data['meta']) ? json_encode($data['meta']) : null,
+            'created_at' => now(), 'updated_at' => now()
         ];
+        if (in_array('source_system', $cols, true)) $row['source_system'] = 'sitms';
+        $row = array_intersect_key($row, array_flip($cols));
+        
+        $q = DB::table('portfolio_histories')->where('person_id', $personId)->where('category', $category)->where('title', $row['title']);
+        $existing = $q->first();
+        if ($existing) {
+            $id = $existing->id;
+            DB::table('portfolio_histories')->where('id', $id)->update($row);
+        } else {
+            $id = DB::table('portfolio_histories')->insertGetId($row);
+        }
+        if ($id) {
+            if (!isset($this->seenPortfolioIds[$personId])) $this->seenPortfolioIds[$personId] = [];
+            $this->seenPortfolioIds[$personId][] = (int) $id;
+        }
     }
 
-    protected static function sitmsEnsureLocationId(?string $locationName,?string $city,?string $province):?int
+    protected function sitmsSyncDocuments(string $personId, array $row): void
     {
-        if(!Schema::hasTable('locations'))return null;
-        $cols=self::tableColumns('locations');
-        $name=self::nullIfEmpty($locationName)??($city?:$province);$name=self::nullIfEmpty($name);
-        if(!$name)return null;
-        $q=DB::table('locations')->whereRaw('LOWER(`name`)=?',[mb_strtolower($name)]);
-        if($city&&in_array('city',$cols,true)){$q->whereRaw('LOWER(`city`)=?',[mb_strtolower($city)]);}
-        if($province&&in_array('province',$cols,true)){$q->whereRaw('LOWER(`province`)=?',[mb_strtolower($province)]);}
-        $id=$q->value('id');if($id)return (int)$id;
-        $row=[];if(in_array('name',$cols,true)){$row['name']=self::cut($name);}if(in_array('city',$cols,true)){$row['city']=self::cut($city);}if(in_array('province',$cols,true)){$row['province']=self::cut($province);}if(in_array('created_at',$cols,true)){$row['created_at']=now();}if(in_array('updated_at',$cols,true)){$row['updated_at']=now();}
-        return DB::table('locations')->insertGetId($row);
+        if (!Schema::hasTable('documents')) return;
+        $cols = $this->tableColumns('documents');
+        foreach (Arr::get($row, 'documents_list.documents_data', []) as $d) {
+            $payload = ['person_id' => $personId, 'title' => $this->nullIfEmpty($d['document_title'] ?? null), 'file_path' => $this->nullIfEmpty($d['document_file'] ?? null), 'updated_at' => now()];
+            if (in_array('doc_type', $cols, true)) $payload['doc_type'] = $this->cut($this->nullIfEmpty($d['document_type'] ?? null) ?? 'unknown', 50);
+            if (in_array('path', $cols, true)) $payload['path'] = $payload['file_path'];
+            if (in_array('source_system', $cols, true)) $payload['source_system'] = 'sitms';
+            
+            $existing = DB::table('documents')->where('person_id', $personId)->where('title', $payload['title'])->first();
+            if ($existing) {
+                $id = $existing->id;
+                DB::table('documents')->where('id', $id)->update(array_intersect_key($payload, array_flip($cols)));
+            } else {
+                $payload['created_at'] = now();
+                $id = DB::table('documents')->insertGetId(array_intersect_key($payload, array_flip($cols)));
+            }
+            if ($id) {
+                if (!isset($this->seenDocumentIds[$personId])) $this->seenDocumentIds[$personId] = [];
+                $this->seenDocumentIds[$personId][] = (int) $id;
+            }
+        }
     }
 
-    protected static function sitmsParseHomeBase(?string $homeBase):array
+    protected function upsertEducation(string $personId, array $e): void
     {
-        if(!$homeBase)return [null,null];
-        $txt=trim(strip_tags($homeBase,'<i>'));$city=null;$prov=null;
-        if(preg_match('~<i>(.*?)</i>~u',$homeBase,$m)){$city=self::nullIfEmpty($m[1]??null);}
-        $first=explode('<br',(string)$homeBase)[0]??'';$prov=self::nullIfEmpty(strip_tags($first))??null;
-        if(!$city&&preg_match('~(Kota|Kab\.)\s+[A-Za-z].*$~u',$txt,$m)){$city=self::nullIfEmpty($m[0]);$prov=self::nullIfEmpty(trim(Str::replaceLast($m[0],'',$txt)));}
-        return [$prov,$city];
+        if (!Schema::hasTable('educations')) return;
+        $row = ['person_id' => $personId, 'level' => $this->nullIfEmpty($e['education_level'] ?? null), 'institution' => $this->nullIfEmpty($e['education_name'] ?? null), 'major' => $this->nullIfEmpty($e['major_name'] ?? null), 'graduation_year' => (int) ($e['graduation_year'] ?? 0) ?: null, 'updated_at' => now()];
+        if (in_array('source_system', $this->tableColumns('educations'), true)) $row['source_system'] = 'sitms';
+        DB::table('educations')->updateOrInsert(['person_id' => $personId, 'institution' => $row['institution'], 'major' => $row['major']], $row);
+        $id = DB::table('educations')->where('person_id', $personId)->where('institution', $row['institution'])->value('id');
+        if ($id) {
+            if (!isset($this->seenEducationIds[$personId])) $this->seenEducationIds[$personId] = [];
+            $this->seenEducationIds[$personId][] = (int) $id;
+        }
     }
 
-    protected static function nikParts(?string $nik):array
+    protected function upsertTraining(string $personId, array $t): void
     {
-        $nik=preg_replace('/\D+/','',(string)$nik);if($nik==='')return [null,null];$last4=substr($nik,-4);$salt=(string)config('app.key','ptsi');$hash=hash('sha256',$nik.'|'.$salt);return [$hash,$last4];
+        if (!Schema::hasTable('trainings')) return;
+        $row = ['person_id' => $personId, 'title' => $this->nullIfEmpty($t['training_name'] ?? null), 'provider' => $this->nullIfEmpty($t['training_organizer'] ?? null), 'start_date' => $this->parseDate(($t['training_year'] ?? null) ? ($t['training_year'] . '-01-01') : null), 'updated_at' => now()];
+        if (in_array('source_system', $this->tableColumns('trainings'), true)) $row['source_system'] = 'sitms';
+        DB::table('trainings')->updateOrInsert(['person_id' => $personId, 'title' => $row['title'], 'start_date' => $row['start_date']], $row);
+        $id = DB::table('trainings')->where('person_id', $personId)->where('title', $row['title'])->value('id');
+        if ($id) {
+            if (!isset($this->seenTrainingIds[$personId])) $this->seenTrainingIds[$personId] = [];
+            $this->seenTrainingIds[$personId][] = (int) $id;
+        }
+    }
+
+    protected function upsertCertification(string $personId, array $c): void
+    {
+        if (!Schema::hasTable('certifications')) return;
+        $row = ['person_id' => $personId, 'name' => $this->nullIfEmpty($c['brevet_name'] ?? null), 'issuer' => $this->nullIfEmpty($c['brevet_organizer'] ?? null), 'number' => $this->nullIfEmpty($c['certificate_number'] ?? null), 'updated_at' => now()];
+        if (in_array('source_system', $this->tableColumns('certifications'), true)) $row['source_system'] = 'sitms';
+        DB::table('certifications')->updateOrInsert(['person_id' => $personId, 'name' => $row['name'], 'number' => $row['number']], $row);
+        $id = DB::table('certifications')->where('person_id', $personId)->where('name', $row['name'])->value('id');
+        if ($id) {
+            if (!isset($this->seenCertificationIds[$personId])) $this->seenCertificationIds[$personId] = [];
+            $this->seenCertificationIds[$personId][] = (int) $id;
+        }
+    }
+
+    protected function upsertJobHistory(string $personId, array $j): void
+    {
+        if (!Schema::hasTable('job_histories')) return;
+        $row = ['person_id' => $personId, 'title' => $this->nullIfEmpty($j['jobs'] ?? null), 'unit_name' => $this->nullIfEmpty($j['jobs_unit'] ?? null), 'start_date' => $this->parseDate($j['jobs_start_date'] ?? null), 'updated_at' => now()];
+        if (in_array('source_system', $this->tableColumns('job_histories'), true)) $row['source_system'] = 'sitms';
+        DB::table('job_histories')->updateOrInsert(['person_id' => $personId, 'title' => $row['title'], 'start_date' => $row['start_date']], $row);
+        $id = DB::table('job_histories')->where('person_id', $personId)->where('title', $row['title'])->value('id');
+        if ($id) {
+            if (!isset($this->seenJobHistoryIds[$personId])) $this->seenJobHistoryIds[$personId] = [];
+            $this->seenJobHistoryIds[$personId][] = (int) $id;
+        }
+    }
+
+    protected function sitmsEnsureLookupId(string $table, ?string $name, array $extras = []): ?int
+    {
+        $name = $this->nullIfEmpty($name);
+        if (!$name || !Schema::hasTable($table)) return null;
+
+        $cacheKey = $table . '|' . strtolower($name);
+        if (isset($this->lookupCache[$cacheKey])) return $this->lookupCache[$cacheKey];
+
+        $cols = $this->tableColumns($table);
+        $existing = in_array('name', $cols, true) ? DB::table($table)->whereRaw('LOWER(`name`)=?', [mb_strtolower($name)])->first() : null;
+
+        if ($table === 'units') {
+            $codeMap = [
+                'SI Head Office' => 'SIHO',
+                'Cabang Jakarta' => 'SIJAK',
+            ];
+            $wantCode = $codeMap[$name] ?? null;
+            $dirId = $extras['directorate_id'] ?? null;
+            if ($existing) {
+                $upd = [];
+                if ($dirId && in_array('directorate_id', $cols, true)) $upd['directorate_id'] = $dirId;
+                if (!empty($upd)) DB::table($table)->where('id', $existing->id)->update($upd);
+                $this->lookupCache[$cacheKey] = (int) $existing->id;
+                return (int) $existing->id;
+            }
+            $row = [];
+            if (in_array('name', $cols, true)) $row['name'] = $this->cut($name);
+            if (in_array('code', $cols, true)) $row['code'] = $wantCode ?: $this->ensureUniqueCode($table, Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]/', '', $name), 0, 10)));
+            if ($dirId && in_array('directorate_id', $cols, true)) $row['directorate_id'] = $dirId;
+            $id = DB::table($table)->insertGetId($row);
+            $this->lookupCache[$cacheKey] = (int) $id;
+            return (int) $id;
+        }
+
+        if ($existing) {
+            $this->lookupCache[$cacheKey] = (int) $existing->id;
+            return (int) $existing->id;
+        }
+
+        $row = [];
+        if (in_array('name', $cols, true)) $row['name'] = $this->cut($name);
+        if (in_array('code', $cols, true)) $row['code'] = $this->ensureUniqueCode($table, Str::upper(Str::substr(preg_replace('/[^a-zA-Z0-9]/', '', $name), 0, 10)));
+        $id = DB::table($table)->insertGetId($row);
+        $this->lookupCache[$cacheKey] = (int) $id;
+        return (int) $id;
+    }
+
+    protected function sitmsEnsureLocationId(?string $locationName, ?string $city, ?string $province): ?int
+    {
+        if (!Schema::hasTable('locations')) return null;
+        $name = $this->nullIfEmpty($locationName) ?? ($city ?: $province);
+        if (!$name) return null;
+        $id = DB::table('locations')->whereRaw('LOWER(`name`)=?', [mb_strtolower($name)])->value('id');
+        if ($id) return (int) $id;
+        $id = DB::table('locations')->insertGetId(['name' => $this->cut($name), 'city' => $this->cut($city), 'province' => $this->cut($province), 'created_at' => now(), 'updated_at' => now()]);
+        return (int) $id;
+    }
+
+    protected function sitmsParseHomeBase(?string $homeBase): array
+    {
+        if (!$homeBase) return [null, null];
+        $txt = trim(strip_tags($homeBase, '<i>'));
+        $city = null;
+        $prov = null;
+        if (preg_match('~<i>(.*?)</i>~u', $homeBase, $m)) $city = $this->nullIfEmpty($m[1] ?? null);
+        $first = explode('<br', (string) $homeBase)[0] ?? '';
+        $prov = $this->nullIfEmpty(strip_tags($first)) ?? null;
+        if (!$city && preg_match('~(Kota|Kab\.)\s+[A-Za-z].*$~u', $txt, $m)) {
+            $city = $this->nullIfEmpty($m[0]);
+            $prov = $this->nullIfEmpty(trim(Str::replaceLast($m[0], '', $txt)));
+        }
+        return [$prov, $city];
+    }
+
+    protected function ensureUniqueCode(string $table, string $base, ?int $ignoreId = null): string
+    {
+        $candidate = $base;
+        $i = 1;
+        while (DB::table($table)->when($ignoreId, fn($q) => $q->where('id', '<>', $ignoreId))->where('code', $candidate)->exists()) {
+            $candidate = $base . $i;
+            $i++;
+            if ($i > 100) {
+                $candidate = $base . '_' . Str::upper(Str::random(4));
+                break;
+            }
+        }
+        return $candidate;
     }
 }

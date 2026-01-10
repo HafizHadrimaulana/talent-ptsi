@@ -12,43 +12,43 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1) Pastikan unit Head Office (SIHO) ADA
-        //    - Coba cari berdasarkan CODE dulu
-        //    - Kalau belum ada, coba cari berdasarkan NAME
-        //    - Kalau tetap nggak ada, buat baru
-        $unit = Unit::where('code', 'SIHO')->first();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $password = Hash::make('password');
 
-        if (! $unit) {
-            $unit = Unit::where('name', 'SI Head Office')->first();
+        $siho = Unit::where('code', 'SIHO')->first();
+        if ($siho) {
+            $superAdmin = User::updateOrCreate(
+                ['email' => 'admin@ptsi.co.id'],
+                [
+                    'name' => 'Super Admin',
+                    'password' => $password,
+                    'unit_id' => $siho->id,
+                ]
+            );
+            app(PermissionRegistrar::class)->setPermissionsTeamId($siho->id);
+            $superAdmin->assignRole('Superadmin');
         }
 
-        if (! $unit) {
-            // units: id, code, name, directorate_id, timestamps
-            $unit = Unit::create([
-                'code'           => 'SIHO',
-                'name'           => 'SI Head Office',
-                'directorate_id' => null,
-            ]);
+        $units = Unit::all();
+        foreach ($units as $unit) {
+            if ($unit->code === 'SIHO') continue;
+            if (str_contains(strtolower($unit->name), 'pelamar')) continue;
+
+            $cleanCode = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $unit->code ?? 'unit' . $unit->id));
+            $email = "admin.{$cleanCode}@ptsi.co.id";
+
+            $adminUnit = User::updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => 'Admin ' . ($unit->code ?? $unit->name),
+                    'password' => $password,
+                    'employee_id' => 'ADM-' . $unit->id,
+                    'unit_id' => $unit->id,
+                ]
+            );
+
+            app(PermissionRegistrar::class)->setPermissionsTeamId($unit->id);
+            $adminUnit->assignRole('SDM Unit');
         }
-
-        // 2) Buat / update user admin
-        //    - Kalau sudah ada, pastikan unit_id diisi (bukan NULL)
-        $admin = User::updateOrCreate(
-            ['email' => 'admin@ptsi.co.id'],
-            [
-                'name'     => 'Super Admin',
-                'password' => Hash::make('password'),
-                'unit_id'  => $unit->id,
-            ]
-        );
-
-        // 3) Set context team ke unit admin (SIHO) sebelum assignRole
-        /** @var \Spatie\Permission\PermissionRegistrar $registrar */
-        $registrar = app(PermissionRegistrar::class);
-        $registrar->setPermissionsTeamId($unit->id);
-
-        // 4) Assign role Superadmin di team SIHO
-        //    Kalau role "Superadmin" belum ada, pastikan RolesPermissionsSeeder sudah jalan duluan.
-        $admin->assignRole('Superadmin');
     }
 }
