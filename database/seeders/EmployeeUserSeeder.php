@@ -20,11 +20,14 @@ class EmployeeUserSeeder extends Seeder
             ->orWhere('code', 'DHC')
             ->value('id');
 
+        // Cache Valid Unit IDs untuk performa (biar gak query DB tiap row)
+        $validUnitIds = Unit::pluck('id')->flip()->all();
+
         $query = Employee::whereNotNull('unit_id')
             ->where('employee_status', '!=', 'Pelamar')
             ->where('employee_id', 'NOT LIKE', 'PL-%');
 
-        $query->chunk(200, function ($employees) use ($password, $dhcUnitId) {
+        $query->chunk(200, function ($employees) use ($password, $dhcUnitId, $validUnitIds) {
             foreach ($employees as $emp) {
                 $rawEmail = trim($emp->email);
                 $empId = $emp->employee_id;
@@ -40,13 +43,17 @@ class EmployeeUserSeeder extends Seeder
                     $finalEmail = $isDuplicate ? $empId . '.' . $rawEmail : $rawEmail;
                 }
 
+                // FAIL-SAFE: Cek apakah unit_id benar-benar ada di tabel units
+                // Jika tidak ada (misal terhapus), set null agar tidak error Foreign Key
+                $safeUnitId = isset($validUnitIds[$emp->unit_id]) ? $emp->unit_id : null;
+
                 $user = User::updateOrCreate(
                     ['employee_id' => $empId],
                     [
                         'name' => $emp->full_name ?? $empId,
                         'email' => $finalEmail,
                         'person_id' => $emp->person_id,
-                        'unit_id' => $emp->unit_id,
+                        'unit_id' => $safeUnitId, // Pakai ID yang sudah divalidasi
                         'password' => $password,
                     ]
                 );
@@ -62,17 +69,18 @@ class EmployeeUserSeeder extends Seeder
                     $isKepala = true;
                 }
 
-                if ($isKepala && $dhcUnitId && $emp->unit_id == $dhcUnitId) {
+                // Logic DHC hanya jika unit valid dan cocok
+                if ($safeUnitId && $isKepala && $dhcUnitId && $safeUnitId == $dhcUnitId) {
                     app(PermissionRegistrar::class)->setPermissionsTeamId(0);
                     if (!$user->hasRole('DHC')) {
                         $user->assignRole('DHC');
                     }
                 }
 
-                $teamId = $user->unit_id ?? 0;
+                $teamId = $safeUnitId ?? 0;
                 app(PermissionRegistrar::class)->setPermissionsTeamId($teamId);
 
-                // Hapus role lama yang tidak valid (biar role 'Kepala Unit' hilang dari AVP)
+                // Sync roles (timpa role lama biar bersih)
                 $user->syncRoles($roles);
             }
         });
