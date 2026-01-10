@@ -80,6 +80,43 @@
       <ul class="u-list">@foreach($errors->all() as $e)<li class="u-item">{{ $e }}</li>@endforeach</ul>
     </div>
   @endif
+
+  <div class="u-flex u-justify-between u-items-center u-mb-md u-flex-wrap u-gap-md" style="margin-top: 20px;">
+    
+    {{-- BUTTONS TAB --}}
+    <div class="u-flex u-gap-sm p-1 bg-gray-100 rounded-full">
+        <a href="{{ request()->fullUrlWithQuery(['tab' => 'disetujui', 'page' => null]) }}" 
+           class="u-btn {{ $currentTab === 'disetujui' ? 'u-btn--brand' : 'u-btn--ghost' }}"
+           style="border-radius: 999px; min-width: 120px; justify-content: center; {{ $currentTab !== 'disetujui' ? 'color: #6b7280;' : '' }}">
+           <i class="fas fa-check-circle u-mr-xs"></i> Disetujui
+        </a>
+        
+        <a href="{{ request()->fullUrlWithQuery(['tab' => 'berjalan', 'page' => null]) }}" 
+           class="u-btn {{ $currentTab === 'berjalan' ? 'u-btn--brand' : 'u-btn--ghost' }}"
+           style="border-radius: 999px; min-width: 120px; justify-content: center; {{ $currentTab !== 'berjalan' ? 'color: #6b7280;' : '' }}">
+           <i class="fas fa-spinner u-mr-xs"></i> Berjalan
+        </a>
+    </div>
+
+    {{-- SEARCH BAR --}}
+    <div class="u-flex u-gap-sm">
+        <form method="GET" action="{{ route('recruitment.principal-approval.index') }}" class="u-relative">
+            {{-- Pertahankan Input Lain (Unit ID, Tab) saat search --}}
+            @foreach(request()->except(['q', 'page']) as $key => $val)
+                <input type="hidden" name="{{ $key }}" value="{{ $val }}">
+            @endforeach
+            
+            <div style="position: relative;">
+                <input type="text" name="q" value="{{ request('q') }}" 
+                       class="u-input" 
+                       placeholder="Cari Tiket / Judul..." 
+                       style="border-radius: 999px; min-width: 250px; padding-left: 35px;">
+                <i class="fas fa-search u-text-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"></i>
+            </div>
+        </form>
+    </div>
+
+  </div>
   <div class="dt-wrapper">
     <div class="u-flex u-items-center u-justify-between u-mb-sm">
       <div class="u-font-semibold">Daftar Izin Prinsip</div>

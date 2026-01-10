@@ -115,34 +115,68 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         $canSeeAll = $this->canSeeAll($me);
+        
+        // 1. Tentukan Unit ID Filter
         $selectedUnitId = $canSeeAll
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
             : (int) ($me?->unit_id);
-        $units = $canSeeAll
-            ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
-            : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
+
+        // 2. Ambil Query Dasar (Permission & Scoping)
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
 
+        // 3. Logika Filter Tab (Disetujui vs Berjalan)
+        $currentTab = $r->input('tab', 'berjalan'); // Default ke 'berjalan'
+
+        if ($currentTab === 'disetujui') {
+            // Hanya ambil yang statusnya 'approved'
+            $query->where('status', 'approved');
+        } else {
+            // Tab Berjalan: Semua status KECUALI 'approved'
+            // Kita bungkus dalam closure function($q) agar logika OR tidak merusak filter unit_id
+            $query->where(function($q) {
+                $q->where('status', '!=', 'approved')
+                  ->orWhereNull('status');
+            });
+        }
+
+        // 4. Filter Pencarian Global (Search Bar)
+        if ($r->filled('q')) {
+            $search = $r->input('q');
+            $query->where(function($q) use ($search) {
+                $q->where('ticket_number', 'like', "%{$search}%")
+                  ->orWhere('title', 'like', "%{$search}%")
+                  ->orWhere('position', 'like', "%{$search}%");
+            });
+        }
+
+        // 5. Filter Open Ticket dari Notifikasi/Email
         if ($r->filled('open_ticket_id')) {
             $ticketId = $r->input('open_ticket_id');
             $query->where('id', $ticketId);
         }
 
+        // 6. Eksekusi Query dengan Sorting & Pagination
         $list = $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc')])
                       ->latest()
                       ->paginate(50)
-                      ->withQueryString();
+                      ->withQueryString(); // Agar parameter tab & search tetap ada saat pindah halaman
 
-        $projects = [];
+        // 7. Data Pendukung View
+        $units = $canSeeAll
+            ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
+            : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
+            
         $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
+        $projects  = []; // Jika dibutuhkan nanti
 
         return view('recruitment.principal-approval.index', [
             'list'           => $list,
             'units'          => $units,
             'canSeeAll'      => $canSeeAll,
             'selectedUnitId' => $selectedUnitId,
-            'projects'       => $projects,  
-            'locations'      => $locations, 
+            'projects'       => $projects,
+            'locations'      => $locations,
+            'currentTab'     => $currentTab, // PENTING: Kirim variable ini ke View
         ]);
     }
 
