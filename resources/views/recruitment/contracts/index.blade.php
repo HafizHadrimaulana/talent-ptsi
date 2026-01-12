@@ -166,7 +166,6 @@
     @endif
 </div>
 
-{{-- CREATE MODAL --}}
 @can('contract.create')
 <div id="createContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
@@ -375,7 +374,6 @@
 </div>
 @endcan
 
-{{-- EDIT MODAL --}}
 <div id="editContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -491,7 +489,6 @@
     </div>
 </div>
 
-{{-- DETAIL MODAL --}}
 <div id="detailContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -504,13 +501,11 @@
         </div>
         <div class="u-modal__body u-space-y-xl">
             
-            {{-- 1. REJECT BOX --}}
             <div id="detRejectBox" class="u-bg-section u-p-lg is-hidden" style="border-left: 4px solid #ef4444; background-color: #fef2f2;">
                 <div class="section-divider u-text-danger"><i class="fas fa-ban u-mr-xs"></i> Dokumen Ditolak</div>
                 <div class="u-text-sm u-font-medium u-text-danger" id="detRejectNote"></div>
             </div>
 
-            {{-- 2. INFO DOKUMEN & PERSONIL --}}
             <div class="u-grid-2 u-stack-mobile">
                 <div class="u-bg-section u-p-lg">
                     <div class="section-divider">Info Dokumen</div>
@@ -538,7 +533,6 @@
                 </div>
             </div>
 
-            {{-- 3. REMUNERASI --}}
             <div class="u-card u-card--glass u-p-md" id="detNewUnitBox" hidden>
                   <div class="u-text-sm u-flex u-items-center"><i class="fas fa-exchange-alt u-mr-sm u-text-brand"></i> Pindah ke: <strong id="detNewUnit" class="u-ml-xs u-text-md">-</strong></div>
             </div>
@@ -564,7 +558,6 @@
                   </div>
             </div>
 
-            {{-- 4. VERIFIKASI WAJAH & LOKASI --}}
             <div id="detMapSection" class="u-bg-section u-p-lg is-hidden">
                 <div class="section-divider"><i class="fas fa-map-marked-alt u-text-brand"></i> Verifikasi Lokasi & Wajah</div>
                 <div class="u-grid-2 u-stack-mobile u-gap-lg">
@@ -597,7 +590,6 @@
                 </div>
             </div>
 
-            {{-- 5. APPROVAL & LOG --}}
             <div class="u-grid-2 u-stack-mobile u-gap-lg">
                 <div class="u-bg-section u-p-lg" style="height: 100%;">
                       <div class="section-divider">APPROVAL PROGRESS</div>
@@ -653,7 +645,6 @@
     </div>
 </div>
 
-{{-- REJECT MODAL --}}
 <div id="rejectModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--md">
@@ -681,7 +672,6 @@
     </div>
 </div>
 
-{{-- SIGN MODAL --}}
 <div id="signModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--md">
@@ -1458,21 +1448,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const logSection = select('#detLogSection');
                 const logList = select('#detLogList');
-                if (d.can_see_logs && d.approval_logs && d.approval_logs.length > 0) {
+                if (d.can_see_logs && d.approval_logs) {
                     showBlock(logSection);
-                    logList.innerHTML = d.approval_logs.map(log => {
+                    const logs = d.approval_logs.map(log => {
                         let icon = '<i class="fas fa-check"></i>', bgClass = 'u-bg-success-light', textClass = 'u-text-success';
                         if(log.status === 'rejected') { icon = '<i class="fas fa-times"></i>'; bgClass = 'u-bg-danger-light'; textClass = 'u-text-danger'; }
                         else if(log.status === 'pending') { icon = '<i class="fas fa-clock"></i>'; bgClass = 'u-bg-light'; textClass = 'u-text-muted'; }
                         return `<div class="u-flex u-gap-md u-mb-md u-items-start">
                             <div class="u-avatar u-avatar--sm ${textClass}" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">${icon}</div>
-                            <div class="u-flex-1">
-                                <div class="u-flex u-justify-between u-items-start">
-                                    <div>
-                                        <div class="u-text-sm u-font-bold">${log.name}</div>
+                            <div class="u-flex-1" style="min-width: 0;">
+                                <div class="u-flex u-justify-between u-items-start u-w-full" style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div class="u-pr-sm">
+                                        <div class="u-font-bold u-text-sm">${log.name}</div>
                                         <div class="u-text-xs u-muted">${log.role}</div>
                                     </div>
-                                    <div class="u-text-xs u-muted u-flex-shrink-0 u-ml-sm" style="white-space: nowrap;">${log.time_ago}</div>
+                                    <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${log.time_ago}</div>
                                 </div>
                                 <div class="u-text-sm u-p-sm u-rounded ${bgClass} ${textClass} u-mt-xs">
                                     <strong>${log.status.toUpperCase()}</strong>${log.note ? ': ' + log.note : ''}
@@ -1481,6 +1471,27 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         </div>`;
                     }).join('');
+
+                    const createdLog = `<div class="u-flex u-gap-md u-mb-md u-items-start">
+                        <div class="u-avatar u-avatar--sm u-text-brand" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="u-flex-1" style="min-width: 0;">
+                            <div class="u-flex u-justify-between u-items-start u-w-full" style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div class="u-pr-sm">
+                                    <div class="u-font-bold u-text-sm">${d.creator_name || 'System'}</div>
+                                    <div class="u-text-xs u-muted">Document Created</div>
+                                </div>
+                                <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${d.created_at_human || ''}</div>
+                            </div>
+                            <div class="u-text-sm u-p-sm u-rounded u-bg-light u-text-muted u-mt-xs">
+                                <strong>CREATED</strong>
+                                <div class="u-text-xs u-mt-xxs u-muted">${d.created_at_formatted || ''}</div>
+                            </div>
+                        </div>
+                    </div>`;
+
+                    logList.innerHTML = logs + createdLog;
                 } else { hide(logSection); }
 
                 openModal('detailContractModal');

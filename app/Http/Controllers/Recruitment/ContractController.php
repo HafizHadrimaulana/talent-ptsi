@@ -169,8 +169,10 @@ class ContractController extends Controller
             }
 
             if ($isNew) {
-                $c->created_by_user_id = $request->user()->id;
-                $c->created_by_person_id = $request->user()->person_id;
+                // Pastikan kolom created_by_user_id ada di tabel contracts
+                // Jika tidak ada, gunakan user_id atau sesuaikan dengan struktur DB Anda
+                $c->created_by_user_id = $request->user()->id; 
+                // $c->created_by_person_id = $request->user()->person_id; // Opsional jika ada kolom ini
             }
             $c->save();
             $this->ensureDocumentRecord($c);
@@ -368,6 +370,23 @@ class ContractController extends Controller
     public function show(Contract $contract)
     {
         $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
+        
+        // --- LOGIKA MENDAPATKAN CREATOR NAME ---
+        $creatorName = 'System';
+        if ($contract->created_by_user_id) {
+            $creator = User::find($contract->created_by_user_id);
+            if ($creator) {
+                // Cek role untuk label yang lebih deskriptif (Opsional)
+                $roles = $creator->getRoleNames()->join(', '); // butuh spatie/laravel-permission
+                $realName = $creator->person ? $creator->person->full_name : $creator->name;
+                
+                // Format: Nama (Role) atau Nama saja
+                $creatorName = $realName;
+                if(!empty($roles)) $creatorName .= " ($roles)";
+            }
+        }
+        // ----------------------------------------
+
         $meta = $contract->remuneration_json ?? [];
         $cand = $this->resolveCandidate($contract);
         $docUrl = ($contract->document_id || in_array($contract->status, ['approved', 'signed'])) ? route('recruitment.contracts.document', $contract) : null;
@@ -516,7 +535,10 @@ class ContractController extends Controller
             'ticket_number' => $contract->ticket_number,
             'rejection_note' => $latestRejection ? $latestRejection->note : null,
             'can_see_logs' => $isInternal,
-            'approval_logs' => $approvalLogs
+            'approval_logs' => $approvalLogs,
+            'creator_name' => $creatorName, // <-- Data ini yang diambil JS nanti
+            'created_at_human' => $contract->created_at->diffForHumans(),
+            'created_at_formatted' => $contract->created_at->translatedFormat('d M Y, H:i') . ' WIB'
         ])]);
     }
 
