@@ -921,25 +921,71 @@
         </form>
     </div>
 </div>
-<div id="publishDescriptionModal" class="u-modal" hidden> <div class="u-modal__card" style="width: 800px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+<div id="publishDescriptionModal" class="u-modal" hidden style="z-index: 2200;">
+  <div class="u-modal__card" style="width: 900px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
     <div class="u-modal__head">
       <div class="u-title"><i class="fas fa-bullhorn u-mr-xs"></i> Publikasi Lowongan</div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button>
     </div>
-    <div class="u-modal__body u-p-md" style="overflow-y: auto;"> <div class="u-alert u-alert--info u-mb-md" style="background-color: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 6px; font-size: 0.9rem;">
-        <i class="fas fa-info-circle u-mr-xs"></i> Masukkan deskripsi lowongan yang akan dilihat oleh pelamar.
+    
+    <div class="u-modal__body u-p-md" style="overflow-y: auto;">
+      
+      <div class="u-alert u-alert--info u-mb-md">
+        <i class="fas fa-info-circle u-mr-xs"></i> Masukkan detail lowongan yang akan tampil di portal pelamar.
       </div>
+
       <form id="publishForm">
           <input type="hidden" id="publish_req_id">
-          <div style="color: #000;"> <textarea id="publishEditorContent"></textarea>
+          
+          <div class="u-grid-2-custom u-mb-md">
+              <div>
+                  <label class="u-label u-font-bold u-mb-xs">Tanggal Dibuka <span class="text-red-500">*</span></label>
+                  <input type="date" id="publish_start_date" class="u-input" required>
+              </div>
+              <div>
+                  <label class="u-label u-font-bold u-mb-xs">Tanggal Ditutup <span class="text-red-500">*</span></label>
+                  <input type="date" id="publish_end_date" class="u-input" required>
+              </div>
           </div>
+          <div class="u-mb-md">
+            <label class="u-label u-font-bold u-mb-xs">Lokasi Penempatan Kerja</label>
+            <div class="u-text-xs u-muted u-mb-xs">Lokasi ini yang akan tampil di halaman pelamar.</div>
+            <input type="text" id="publish_location" class="u-input" placeholder="Contoh: Jakarta Selatan, Site Balikpapan, dll...">
+        </div>
+
+          <div class="u-mb-md">
+              <label class="u-label u-font-bold u-mb-xs">Deskripsi & Kualifikasi</label>
+              <div style="color: #000;">
+                 <textarea id="publishEditorContent"></textarea>
+              </div>
+          </div>
+
+          <div id="previewArea" style="display: none; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 8px; background: #f8fafc; margin-top: 20px;">
+              <div class="u-text-center u-mb-md">
+                  <span class="u-badge u-badge--warning">PREVIEW TAMPILAN</span>
+              </div>
+              <h3 class="u-font-bold u-text-xl u-mb-xs" id="previewTitle">Posisi</h3>
+              <div class="u-text-sm u-muted u-mb-md">
+                  <span id="previewDates"></span> • <span id="previewTicket"></span>
+              </div>
+              <div id="previewContent" class="ck-content"></div>
+          </div>
+
       </form>
     </div>
-    <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+
+    <div class="u-modal__foot u-flex u-justify-between u-gap-sm">
       <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-      <button type="button" class="u-btn u-btn--brand" id="btnConfirmPublish">
-        <i class="fas fa-paper-plane u-mr-xs"></i> Simpan & Publikasikan
-      </button>
+      
+      <div class="u-flex u-gap-sm">
+          <button type="button" class="u-btn u-btn--outline" id="btnPreviewPublish">
+            <i class="fas fa-eye u-mr-xs"></i> Preview
+          </button>
+          
+          <button type="button" class="u-btn u-btn--brand" id="btnConfirmPublish">
+            <i class="fas fa-paper-plane u-mr-xs"></i> Simpan & Publikasikan
+          </button>
+      </div>
     </div>
   </div>
 </div>
@@ -1031,27 +1077,78 @@
                 .then(editor => { publishEditor = editor; })
                 .catch(error => { console.error(error); });
         }
+        const btnPreviewPublish = document.getElementById('btnPreviewPublish');
+        const previewArea = document.getElementById('previewArea');
+
+        if(btnPreviewPublish) {
+            btnPreviewPublish.addEventListener('click', function() {
+                // Ambil Data
+                const content = publishEditor ? publishEditor.getData() : '';
+                const startDate = document.getElementById('publish_start_date').value;
+                const endDate = document.getElementById('publish_end_date').value;
+                
+                // Validasi Sederhana
+                if(!content.trim() || !startDate || !endDate) {
+                    alert('Mohon lengkapi Tanggal dan Deskripsi untuk melihat preview.');
+                    return;
+                }
+                
+                const reqId = document.getElementById('publish_req_id').value;
+                const row = document.querySelector(`tr[data-recruitment-id="${reqId}"]`);
+                const detailBtn = row ? row.querySelector('.js-open-detail') : null;
+                const positionName = detailBtn ? detailBtn.getAttribute('data-position') : 'Posisi';
+                
+
+                document.getElementById('previewTitle').textContent = positionName;
+                
+                
+                // Format Tanggal untuk Preview
+                const d1 = new Date(startDate).toLocaleDateString('id-ID');
+                const d2 = new Date(endDate).toLocaleDateString('id-ID');
+                document.getElementById('previewDates').textContent = `Periode: ${d1} s/d ${d2}`;
+                
+                document.getElementById('previewContent').innerHTML = content;
+
+                // Show Area
+                previewArea.style.display = 'block';
+                
+                // Scroll ke bawah agar preview terlihat
+                previewArea.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
         const btnConfirmPublish = document.getElementById('btnConfirmPublish');
         if(btnConfirmPublish) {
             btnConfirmPublish.addEventListener('click', function() {
                 const reqId = document.getElementById('publish_req_id').value;
                 const description = publishEditor ? publishEditor.getData() : '';
-                if(!description.trim()) {
-                    alert('Mohon isi deskripsi lowongan terlebih dahulu.');
-                    return;
-                }
+                const startDate = document.getElementById('publish_start_date').value;
+                const endDate = document.getElementById('publish_end_date').value;
+                const locationVal = document.getElementById('publish_location').value;
+
+                if(!description.trim()) { alert('Deskripsi wajib diisi.'); return; }
+                if(!startDate) { alert('Tanggal Dibuka wajib diisi.'); return; }
+                if(!endDate) { alert('Tanggal Ditutup wajib diisi.'); return; }
+                if(!locationVal.trim()) { alert('Lokasi Penempatan wajib diisi.'); return; }
+
                 if(!confirm('Apakah Anda yakin ingin mempublikasikan lowongan ini?')) return;
+
                 const btn = this;
                 const originalContent = btn.innerHTML;
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
+
                 fetch(`/recruitment/principal-approval/${reqId}/publish`, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ description: description }) 
+                    body: JSON.stringify({ 
+                        description: description,
+                        publish_start_date: startDate,
+                        publish_end_date: endDate,
+                        publish_location: locationVal
+                    }) 
                 })
                 .then(res => res.json())
                 .then(data => {
@@ -2163,7 +2260,10 @@
                                 } else {
                                     btnPublish.style.display = 'inline-flex';
                                     btnPublish.onclick = function() {
-                                        document.getElementById('publish_req_id').value = reqId; 
+                                        document.getElementById('publish_req_id').value = reqId;
+                                        const locInput = document.getElementById('publish_location');
+                                        const savedLoc = this.getAttribute('data-default-location');
+                                        locInput.value = savedLoc || ''; 
                                         if(publishEditor) publishEditor.setData(''); 
                                         const pubModal = document.getElementById('publishDescriptionModal');
                                         pubModal.hidden = false;
@@ -2172,6 +2272,13 @@
                                     };
                                 }
                             }
+                            let defaultLocation = '';
+                            if (detailsArray && detailsArray.length > 0 && detailsArray[0].location) {
+                                defaultLocation = detailsArray[0].location;
+                            }
+                            
+                            // Simpan ke atribut data di tombol
+                            btnPublish.setAttribute('data-default-location', defaultLocation);
                         }
                     }
                 });

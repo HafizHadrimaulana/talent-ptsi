@@ -603,12 +603,18 @@ class PrincipalApprovalController extends Controller
             return response()->json(['success' => false, 'message' => 'Hanya Izin Prinsip yang sudah Approved dan memiliki No Ticket yang dapat dipublikasikan.'], 422);
         }
         $request->validate([
-            'description' => 'required|string'
+            'description' => 'required|string',
+            'publish_start_date' => 'required|date',
+            'publish_end_date' => 'required|date|after_or_equal:publish_start_date',
+            'publish_location' => 'required|string|max:255',
         ]);
         $req->update([
             'is_published' => true,
             'published_at' => now(),
-            'description'  => $request->description 
+            'description'  => $request->description,
+            'publish_start_date' => $request->publish_start_date,
+            'publish_end_date'   => $request->publish_end_date,
+            'publish_location'   => $request->publish_location
         ]);
         return response()->json(['success' => true, 'message' => 'Lowongan berhasil dipublikasikan dengan deskripsi!']);
     }

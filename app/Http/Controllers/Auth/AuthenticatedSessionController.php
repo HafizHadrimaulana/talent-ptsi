@@ -13,12 +13,21 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use App\Models\RecruitmentRequest;
 
 class AuthenticatedSessionController extends Controller
 {
     public function create()
     {
-        return view('layouts.public');
+        $vacancies = RecruitmentRequest::with(['unit', 'positionObj'])
+            ->where('is_published', 1)
+            ->where('status', 'approved') 
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Kirim variabel $vacancies ke view layouts.public
+        // Pastikan nama view sesuai dengan lokasi file blade Anda
+        return view('layouts.public', compact('vacancies'));
     }
 
     public function store(Request $request)
