@@ -3,30 +3,37 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Approval extends Model
 {
-    protected $table = 'approvals';
-
-    protected $fillable = [
-        'approvable_id',
-        'approvable_type',
-        'requester_person_id',
-        'requester_user_id',
-        'approver_person_id',
-        'approver_user_id',
-        'status',
-        'note',
-        'decided_at',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'decided_at' => 'datetime',
     ];
 
-    public function approvable(): MorphTo
+    public function approvable()
     {
         return $this->morphTo();
+    }
+
+    public function requesterUser()
+    {
+        return $this->belongsTo(User::class, 'requester_user_id');
+    }
+
+    public function requesterPerson()
+    {
+        return $this->belongsTo(Person::class, 'requester_person_id');
+    }
+
+    public function approverUser()
+    {
+        return $this->belongsTo(User::class, 'approver_user_id');
+    }
+
+    public function approverPerson()
+    {
+        return $this->belongsTo(Person::class, 'approver_person_id');
     }
 }

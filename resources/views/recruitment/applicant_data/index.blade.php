@@ -55,8 +55,27 @@
                                 <label class="u-block u-text-sm u-font-medium u-mb-sm text-gray-700">Tanggal Lahir</label>
                                 <input type="date" name="date_of_birth" value="{{ $person->date_of_birth ? $person->date_of_birth->format('Y-m-d') : '' }}" class="u-input w-full">
                             </div>
-                            @include('components.input-soft', ['label' => 'Agama', 'name' => 'religion', 'val' => $person->religion])
-                            @include('components.input-soft', ['label' => 'Status Nikah', 'name' => 'marital_status', 'val' => $person->marital_status, 'ph' => 'Lajang / Menikah / Duda / Janda'])
+                            <div class="u-space-y-sm mb-4">
+                                <label class="u-block u-text-sm u-font-medium u-mb-sm text-gray-700">Agama</label>
+                                <select name="religion" class="u-input w-full">
+                                    <option value="">Pilih Agama</option>
+                                    <option value="Islam" {{ $person->religion == 'Islam' ? 'selected' : '' }}>Islam</option>
+                                    <option value="Kristen" {{ $person->religion == 'Kristen' ? 'selected' : '' }}>Kristen</option>
+                                    <option value="Katolik" {{ $person->religion == 'Katolik' ? 'selected' : '' }}>Katolik</option>
+                                    <option value="Hindu" {{ $person->religion == 'Hindu' ? 'selected' : '' }}>Hindu</option>
+                                    <option value="Buddha" {{ $person->religion == 'Buddha' ? 'selected' : '' }}>Buddha</option>
+                                </select>
+                            </div>
+                            <div class="u-space-y-sm mb-4">
+                                <label class="u-block u-text-sm u-font-medium u-mb-sm text-gray-700">Status</label>
+                                <select name="marital_status" class="u-input w-full">
+                                    <option value="">Pilih Status</option>
+                                    <option value="Lajang" {{ $person->marital_status == 'Lajang' ? 'selected' : '' }}>Lajang</option>
+                                    <option value="Menikah" {{ $person->marital_status == 'Menikah' ? 'selected' : '' }}>Menikah</option>
+                                    <option value="Duda" {{ $person->marital_status == 'Duda' ? 'selected' : '' }}>Duda</option>
+                                    <option value="Janda" {{ $person->marital_status == 'Janda' ? 'selected' : '' }}>Janda</option>
+                                </select>
+                            </div>
                             @include('components.input-soft', ['label' => 'Tinggi Badan (cm)', 'name' => 'height', 'val' => $person->height, 'type' => 'number'])
                             @include('components.input-soft', ['label' => 'Berat Badan (kg)', 'name' => 'weight', 'val' => $person->weight, 'type' => 'number'])                            
                             <div class="divider">Sosial Media</div>

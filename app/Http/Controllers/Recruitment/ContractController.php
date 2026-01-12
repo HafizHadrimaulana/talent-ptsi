@@ -43,10 +43,11 @@ class ContractController extends Controller
 
         $contracts = $query->paginate(25)->withQueryString();
 
-        $unitsQuery = Unit::query()->select('id', 'name');
+        $unitsQuery = Unit::query()->select('id', 'name', 'category');
         if ($isSuperadmin) $unitsQuery->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
         elseif ($isDhc) $unitsQuery->where('category', 'ENABLER');
-        $units = $canSeeAll ? $unitsQuery->orderBy('name')->get() : Unit::where('id', $selectedUnitId)->get(['id', 'name']);
+        
+        $units = $canSeeAll ? $unitsQuery->orderBy('name')->get() : Unit::where('id', $selectedUnitId)->get(['id', 'name', 'category']);
 
         $expiringContracts = collect();
         if (!$isEmployee) {
@@ -60,7 +61,6 @@ class ContractController extends Controller
             $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
         }
 
-        // Updated: Fetch RecruitmentRequest to get Ticket Number
         $applicants = RecruitmentApplicant::with(['user.person', 'recruitmentRequest.unit'])
             ->whereIn('status', config('recruitment.contract_applicant_statuses', ['APPROVED']))
             ->get()
@@ -73,17 +73,20 @@ class ContractController extends Controller
                     'position_applied' => $item->position_applied,
                     'unit_name' => $item->recruitmentRequest?->unit?->name,
                     'unit_id' => $item->recruitmentRequest?->unit_id,
-                    'ticket_number' => $item->recruitmentRequest?->ticket_number, // Added Ticket Number
+                    'ticket_number' => $item->recruitmentRequest?->ticket_number,
                     'request_title' => $item->recruitmentRequest?->title,
                 ];
             })
             ->sortBy('full_name')
             ->values();
 
+        $locations = DB::table('locations')->select('id', DB::raw("CONCAT(name, ', ', city) as location_label"), 'name', 'city')->orderBy('name')->get();
+
         return view('recruitment.contracts.index', [
             'contracts' => $contracts,
             'units' => $units,
             'positions' => DB::table('positions')->select('id', 'name')->orderBy('name')->get(),
+            'locations' => $locations, 
             'selectedUnitId' => $selectedUnitId,
             'statusFilter' => $request->input('status'),
             'statusOptions' => config('recruitment.contract_statuses'),
@@ -123,19 +126,17 @@ class ContractController extends Controller
                 $a = RecruitmentApplicant::with(['user', 'recruitmentRequest'])->find($v['applicant_id']);
                 $c->applicant_id = $a->id;
                 $c->person_id = $a->user?->person_id ?? null;
-                // Auto-fill Ticket Number from Izin Prinsip
                 if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number) {
                     $c->ticket_number = $a->recruitmentRequest->ticket_number;
                 }
                 if (empty($v['position_name'])) $c->position_name = $a->position_applied;
             } else {
                 $c->person_id = $v['person_id'] ?: Employee::where('employee_id', $v['employee_id'])->value('person_id');
-                // Inherit ticket number from source contract if available (for renewal)
                 if ($v['source_contract_id']) {
                     $parent = Contract::find($v['source_contract_id']);
                     if ($parent) {
                         $c->parent_contract_id = $parent->id;
-                        $c->ticket_number = $parent->ticket_number; // Inherit ticket
+                        $c->ticket_number = $parent->ticket_number;
                     }
                 }
             }
@@ -150,12 +151,20 @@ class ContractController extends Controller
             $meta['person_name'] = $cand['name'];
             $meta['new_unit_name'] = Unit::find($v['unit_id'])?->name;
             $meta['new_unit_id'] = (int)$v['unit_id'];
+            
+            if (!in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+                unset($meta['work_location']);
+            }
+            
             $c->remuneration_json = $meta;
 
             if ($v['submit_action'] === 'submit') {
                 $c->status = 'review';
                 if (!$c->contract_no) $c->contract_no = $this->generateContractNumber($c);
             } elseif ($isNew) {
+                $c->status = 'draft';
+            }
+            if ($v['submit_action'] === 'draft') {
                 $c->status = 'draft';
             }
 
@@ -182,9 +191,10 @@ class ContractController extends Controller
 
     private function validateContract(Request $request)
     {
-        return $request->validate([
+        $rules = [
             'contract_type' => 'required', 'unit_id' => 'required', 'applicant_id' => 'nullable', 'employee_id' => 'nullable', 'person_id' => 'nullable',
             'position_name' => 'nullable', 'employment_type' => 'nullable', 'start_date' => 'nullable|date', 'end_date' => 'nullable|date', 'remarks' => 'nullable',
+            'work_location' => 'nullable|string', 
             'salary_amount' => 'nullable', 'salary_amount_words' => 'nullable', 'lunch_allowance_daily' => 'nullable', 'lunch_allowance_words' => 'nullable',
             'allowance_special_amount' => 'nullable', 'allowance_special_words' => 'nullable', 'allowance_position_amount' => 'nullable', 'allowance_position_words' => 'nullable',
             'allowance_communication_amount' => 'nullable', 'allowance_communication_words' => 'nullable', 'allowance_other_amount' => 'nullable', 'allowance_other_words' => 'nullable',
@@ -192,7 +202,13 @@ class ContractController extends Controller
             'travel_allowance_stay' => 'nullable', 'travel_allowance_non_stay' => 'nullable',
             'pb_effective_end' => 'nullable', 'pb_compensation_amount' => 'nullable', 'pb_compensation_amount_words' => 'nullable',
             'submit_action' => 'required', 'source_contract_id' => 'nullable', 'requires_draw_signature' => 'nullable', 'requires_camera' => 'nullable', 'requires_geolocation' => 'nullable'
-        ]);
+        ];
+
+        if (!in_array($request->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+            unset($rules['work_location']);
+        }
+
+        return $request->validate($rules);
     }
 
     public function destroy(Contract $contract)
@@ -298,16 +314,38 @@ class ContractController extends Controller
 
     public function reject(Request $request, Contract $contract)
     {
-        $contract->update(['status' => 'draft']);
-        Approval::where('approvable_id', $contract->id)->where('approvable_type', 'contract')->where('status', 'pending')->update(['status' => 'rejected', 'note' => $request->note ?? $request->rejection_note, 'decided_at' => now()]);
+        $request->validate(['rejection_note' => 'required|string|min:5']);
+
+        DB::transaction(function () use ($contract, $request) {
+            Approval::where('approvable_id', $contract->id)
+                ->where('approvable_type', 'contract')
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'rejected',
+                    'note' => $request->rejection_note,
+                    'decided_at' => now(),
+                    'approver_user_id' => $request->user()->id,
+                    'approver_person_id' => $request->user()->person_id
+                ]);
+
+            $contract->update(['status' => 'draft']);
+        });
+
         return response()->json(['success' => true]);
     }
 
     public function submit(Request $request, Contract $contract)
     {
-        if ($contract->status !== 'draft') return response()->json(['success' => false], 422);
-        $contract->update(['status' => 'review', 'contract_no' => $contract->contract_no ?: $this->generateContractNumber($contract)]);
-        $this->createApproval($contract, $request->user());
+        if ($contract->status !== 'draft') return response()->json(['success' => false, 'message' => 'Hanya draft yang bisa disubmit.'], 422);
+        
+        DB::transaction(function () use ($contract, $request) {
+            $contract->update([
+                'status' => 'review', 
+                'contract_no' => $contract->contract_no ?: $this->generateContractNumber($contract)
+            ]);
+            $this->createApproval($contract, $request->user());
+        });
+
         return response()->json(['success' => true]);
     }
 
@@ -321,7 +359,11 @@ class ContractController extends Controller
             $contract->refresh()->loadMissing('document');
         }
         $filename = basename($contract->document->path);
-        return Storage::disk('local')->response($contract->document->path, $filename, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="' . $filename . '"']);
+        // Optimized Response to avoid redline
+        return response()->file(Storage::disk('local')->path($contract->document->path), [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"'
+        ]);
     }
 
     public function show(Contract $contract)
@@ -332,27 +374,139 @@ class ContractController extends Controller
         $docUrl = ($contract->document_id || in_array($contract->status, ['approved', 'signed'])) ? route('recruitment.contracts.document', $contract) : null;
         $typeCfg = collect(config('recruitment.contract_types', []))->firstWhere('code', $contract->contract_type) ?? [];
 
-        $kaUnitStatus = 'Waiting';
-        $candStatus = 'Waiting';
-        if ($contract->status === 'approved') {
-            $kaUnitStatus = 'Approved'; $candStatus = 'Pending';
-        } elseif ($contract->status === 'signed') {
-            $kaUnitStatus = 'Approved'; $candStatus = 'Signed';
-        } elseif ($contract->status === 'rejected') {
-            $kaUnitStatus = 'Rejected'; $candStatus = '-';
+        $me = auth()->user();
+        $isInternal = $me->hasRole(['Superadmin', 'DHC', 'SDM Unit', 'Kepala Unit']);
+        
+        $latestRejection = Approval::where('approvable_id', $contract->id)
+            ->where('approvable_type', 'contract')
+            ->where('status', 'rejected')
+            ->latest('decided_at')
+            ->first();
+
+        Carbon::setLocale('id');
+
+        // --- 1. LOG HISTORY (Merged Signatures & Rejections) ---
+        $logs = collect();
+
+        // Ambil Data Penandatanganan (Sukses)
+        if ($contract->document_id) {
+            $signatures = Signature::with(['signerPerson', 'signerUser.employee'])
+                ->where('document_id', $contract->document_id)
+                ->orderByDesc('signed_at')
+                ->get()
+                ->map(function($sig) {
+                    return [
+                        'type' => 'signature',
+                        'status' => 'signed',
+                        'name' => $sig->signerPerson->full_name ?? $sig->signerUser->name ?? '-',
+                        'role' => $sig->signer_role,
+                        'date' => Carbon::parse($sig->signed_at)->timezone('Asia/Jakarta'),
+                        'note' => 'Signed Digitally'
+                    ];
+                });
+            $logs = $logs->merge($signatures);
         }
 
-        $me = auth()->user();
+        // Ambil Data Rejection (Gagal) dari Approval History
+        $rejections = Approval::with(['approverUser.person', 'approverPerson', 'approverUser.employee'])
+            ->where('approvable_id', $contract->id)
+            ->where('approvable_type', 'contract')
+            ->where('status', 'rejected')
+            ->get()
+            ->map(function($app) {
+                $name = $app->approverPerson->full_name ?? $app->approverUser->person->full_name ?? $app->approverUser->name ?? 'System';
+                $role = $app->approverUser->employee->latest_jobs_title ?? 'Kepala Unit';
+                return [
+                    'type' => 'approval',
+                    'status' => 'rejected',
+                    'name' => $name,
+                    'role' => $role,
+                    'date' => Carbon::parse($app->decided_at)->timezone('Asia/Jakarta'),
+                    'note' => $app->note
+                ];
+            });
+        
+        $logs = $logs->merge($rejections)->sortByDesc('date')->values();
+        
+        $approvalLogsFormatted = $logs->map(function($log) {
+            return [
+                'status' => $log['status'],
+                'name' => $log['name'],
+                'role' => $log['role'],
+                'note' => $log['note'],
+                'date_formatted' => $log['date']->translatedFormat('d M Y, H:i') . ' WIB',
+                'time_ago' => $log['date']->diffForHumans()
+            ];
+        });
+
+        // --- 2. PROGRESS TRACKER (Nama Asli Kepala Unit) ---
+        $headSig = $contract->document_id ? Signature::where('document_id', $contract->document_id)->where('signer_role', 'Kepala Unit')->first() : null;
+        $headRealName = '-';
+
+        // Logika cari nama Kepala Unit
+        if ($headSig) {
+            $headRealName = $headSig->signerPerson->full_name ?? $headSig->signerUser->name ?? 'Kepala Unit';
+        } else {
+            // Ambil dari Struktur Unit jika belum tanda tangan
+            $unitHeadUser = $this->getUnitHeadUser($this->resolveHeadUnit($contract->unit));
+            if ($unitHeadUser) {
+                $headRealName = $unitHeadUser->person->full_name ?? $unitHeadUser->name ?? 'Kepala Unit';
+            }
+        }
+
+        $headProgress = [
+            'status' => 'Waiting', 
+            'name' => $headRealName, 
+            'date' => '-', 
+            'css' => 'u-badge--glass'
+        ];
+
+        if ($headSig) {
+            $headProgress = [
+                'status' => 'Signed',
+                'name' => $headRealName,
+                'date' => Carbon::parse($headSig->signed_at)->timezone('Asia/Jakarta')->format('d M Y H:i') . ' WIB',
+                'css' => 'u-badge--success'
+            ];
+        } elseif ($contract->status === 'review') {
+            $headProgress = ['status' => 'Pending', 'name' => $headRealName, 'date' => 'Menunggu Review', 'css' => 'u-badge--warn'];
+        } elseif ($contract->status === 'approved') {
+            $headProgress = ['status' => 'Approved', 'name' => $headRealName, 'date' => 'Menunggu TTD', 'css' => 'u-badge--info'];
+        } elseif ($contract->status === 'rejected') {
+            $headProgress = ['status' => 'Rejected', 'name' => $headRealName, 'date' => '-', 'css' => 'u-badge--danger'];
+        }
+
+        // Candidate Tracker
+        $candSig = $contract->document_id ? Signature::where('document_id', $contract->document_id)->whereIn('signer_role', ['Kandidat', 'Pegawai'])->first() : null;
+        $candProgress = ['status' => 'Waiting', 'name' => $cand['name'], 'date' => '-', 'css' => 'u-badge--glass'];
+        
+        if ($candSig) {
+            $candProgress = [
+                'status' => 'Signed',
+                'name' => $cand['name'],
+                'date' => Carbon::parse($candSig->signed_at)->timezone('Asia/Jakarta')->format('d M Y H:i') . ' WIB',
+                'css' => 'u-badge--success'
+            ];
+        } elseif ($contract->status === 'approved') {
+             $candProgress = ['status' => 'Pending', 'name' => $cand['name'], 'date' => 'Menunggu Tanda Tangan', 'css' => 'u-badge--warn'];
+        }
+
         $canSign = $me->can('contract.sign') && $contract->status === 'approved';
         if ($canSign && $me->hasRole('Karyawan') && $contract->employee_id !== $me->employee_id) $canSign = false;
 
         $targetRole = in_array($contract->contract_type, ['PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN']) ? 'Pegawai' : 'Kandidat';
         $geoData = $this->getGeoData($contract, $me);
 
+        // Define $approvalLogs variable to prevent redline
+        $approvalLogs = $isInternal ? $approvalLogsFormatted : [];
+
         return response()->json(['success' => true, 'data' => array_merge($contract->toArray(), [
-            'contract_type_label' => $typeCfg['label'] ?? $contract->contract_type, 'person_name' => $cand['name'],
-            'start_date' => $contract->start_date?->format('d M Y'), 'end_date' => $contract->end_date?->format('d M Y'),
-            'start_date_raw' => $contract->start_date?->format('Y-m-d'), 'end_date_raw' => $contract->end_date?->format('Y-m-d'),
+            'contract_type_label' => $typeCfg['label'] ?? $contract->contract_type, 
+            'person_name' => $cand['name'],
+            'start_date' => Carbon::parse($contract->start_date)->translatedFormat('d M Y'), 
+            'end_date' => Carbon::parse($contract->end_date)->translatedFormat('d M Y'),
+            'start_date_raw' => Carbon::parse($contract->start_date)->format('Y-m-d'),
+            'end_date_raw' => Carbon::parse($contract->end_date)->format('Y-m-d'),
             'remuneration_json' => $meta,
             'can_approve' => auth()->user()->can('contract.approve') && $contract->status === 'review',
             'can_sign' => $canSign,
@@ -361,8 +515,14 @@ class ContractController extends Controller
             'ui_nik_ktp' => $cand['nik_ktp'], 'ui_employee_id' => $cand['employee_id'],
             'target_role_label' => $targetRole,
             'geolocation' => $geoData,
-            'progress' => ['ka_unit' => $kaUnitStatus, 'candidate' => $candStatus],
-            'ticket_number' => $contract->ticket_number // Pass ticket number
+            'tracker' => [
+                'head' => $headProgress,
+                'candidate' => $candProgress
+            ],
+            'ticket_number' => $contract->ticket_number,
+            'rejection_note' => $latestRejection ? $latestRejection->note : null,
+            'can_see_logs' => $isInternal,
+            'approval_logs' => $approvalLogs
         ])]);
     }
 
@@ -518,7 +678,8 @@ class ContractController extends Controller
         $last = end($parts) ?: '';
         $a = mb_strtoupper(mb_substr($first, 0, 1));
         $b = mb_strtoupper(mb_substr($last, 0, 1));
-        return trim($a . $b) ?: null;
+        $return = trim($a . $b);
+        return $return ?: null;
     }
 
     protected function resolveHeadUnit(?Unit $unit)
@@ -660,9 +821,18 @@ class ContractController extends Controller
 
         $duration = '-';
         if ($c->start_date && $c->end_date) {
-            $diff = $c->start_date->diff($c->end_date->copy()->addDay());
-            $duration = ($diff->y ? $diff->y . " Tahun " : "") . ($diff->m ? $diff->m . " Bulan" : "");
-            if (!$diff->y && !$diff->m) $duration = $diff->days . " Hari";
+            $endDatePlusOne = $c->end_date->copy()->addDay();
+            $diff = $c->start_date->diff($endDatePlusOne);
+            $parts = [];
+            if ($diff->y) $parts[] = $diff->y . " Tahun";
+            if ($diff->m) $parts[] = $diff->m . " Bulan";
+            if ($diff->d && $diff->d > 0) $parts[] = $diff->d . " Hari";
+            
+            if (empty($parts)) {
+                $duration = '0 Hari';
+            } else {
+                $duration = implode(' ', $parts);
+            }
         }
 
         $workDays = $meta['work_days'] ?? 'Senin s/d hari Jumat';
@@ -674,7 +844,7 @@ class ContractController extends Controller
 
         return [
             'contract_no' => $c->contract_no ?? 'DRAFT',
-            'ticket_number' => $c->ticket_number ?? '-', // Added ticket number variable
+            'ticket_number' => $c->ticket_number ?? '-',
             'today_date' => now()->translatedFormat('d F Y'),
             'today_date_numeric' => now()->format('d/m/Y'),
             'day_name' => now()->translatedFormat('l'),
@@ -711,7 +881,8 @@ class ContractController extends Controller
             'travel_allowance_non_stay' => $travelNonStay,
             'pb_date' => isset($meta['pb_effective_end']) ? Carbon::parse($meta['pb_effective_end'])->translatedFormat('d F Y') : '-',
             'pb_amount' => $fmt($meta['pb_compensation_amount'] ?? 0),
-            'pb_words' => ucwords($meta['pb_compensation_amount_words'] ?? '')
+            'pb_words' => ucwords($meta['pb_compensation_amount_words'] ?? ''),
+            'work_location' => in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN']) ? ($meta['work_location'] ?? 'Jakarta') : ''
         ];
     }
 
