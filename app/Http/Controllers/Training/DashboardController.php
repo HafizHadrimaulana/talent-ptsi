@@ -19,7 +19,6 @@ use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
-    
     public function index()
     {
         $user     = auth()->user();
@@ -27,74 +26,106 @@ class DashboardController extends Controller
         $unitId   = $employee?->unit_id;
         $role     = $user->getRoleNames()->first();
 
+        // Logika Penentuan Hak Akses (DHC & Kepala Unit HC bisa lihat semua)
         $isHumanCapital  = $this->isHumanCapital($user);
         $isKepalaUnitHC  = $role === 'Kepala Unit' && $isHumanCapital;
         $canViewAllUnits = $role === 'DHC' || $isKepalaUnitHC;
 
-        Log::info('Dashboard Access', [
-            'role'              => $role,
-            'unit_id'           => $unitId,
-            'can_view_all_unit' => $canViewAllUnits
+        // 2. Filter Kategori Unit Sesuai Ketentuan
+        $allowedCategories = ['operasi', 'cabang', 'enabler'];
+
+        // Ambil SEMUA Master Unit yang valid untuk perhitungan limit global
+        $allValidUnits = DB::table('units')
+            ->whereIn('category', $allowedCategories)
+            ->get();
+        
+        $allValidUnitIds = $allValidUnits->pluck('id')->toArray();
+
+        // =============================================================
+        // KALKULASI LIMIT DINAMIS
+        // Rumus: (Total Seluruh Biaya LNA Active) / (Jumlah Unit Valid)
+        // =============================================================
+        $totalBiayaSeluruhUnit = DB::table('training_references')
+            ->whereIn('unit_id', $allValidUnitIds)
+            ->where('status_training_reference', 'active')
+            ->sum('biaya_pelatihan');
+
+        $jumlahUnit = $allValidUnits->count();
+        $dynamicLimit = $jumlahUnit > 0 ? ($totalBiayaSeluruhUnit / $jumlahUnit) : 0;
+
+        Log::info('Dashboard Calculation Log', [
+            'user'          => $user->username,
+            'total_biaya'   => $totalBiayaSeluruhUnit,
+            'jumlah_unit'   => $jumlahUnit,
+            'limit_result'  => $dynamicLimit,
+            'can_view_all'  => $canViewAllUnits
         ]);
 
-        // ===============================
-        // A. Statistik LNA & Request
-        // ===============================
-        $referenceCounts = TrainingReference::groupBy('status_training_reference')
-            ->select('status_training_reference', DB::raw('count(*) as total'))
-            ->pluck('total', 'status_training_reference');
-
-        $requestCounts = TrainingRequest::groupBy('status_approval_training')
-            ->select('status_approval_training', DB::raw('count(*) as total'))
-            ->pluck('total', 'status_approval_training');
-
-        // ===============================
-        // B. Anggaran Unit Kerja (PLANNED)
-        // ===============================
-        $limit = 5_000_000_000;
-
-        $unitBudgetsQuery = TrainingReference::query()
-            ->join('units', 'units.id', '=', 'training_references.unit_id')
-            ->select(
-                'units.id as unit_id',
-                'units.name as unit_name',
-                DB::raw('SUM(training_references.biaya_pelatihan) as used')
-            )
-            ->where('training_references.status_training_reference', 'active')
-            ->groupBy('units.id', 'units.name');
-
-        // 🔐 Batasi unit jika TIDAK boleh lihat semua
+        // =============================================================
+        // DATA ANGGARAN PER UNIT (Untuk Tabel)
+        // =============================================================
+        
+        // Tentukan unit mana yang akan ditampilkan di tabel user
+        $displayedUnits = $allValidUnits;
         if (!$canViewAllUnits && $unitId) {
-            $unitBudgetsQuery->where('training_references.unit_id', $unitId);
+            $displayedUnits = $allValidUnits->where('id', $unitId);
         }
 
-        $unitBudgets = $unitBudgetsQuery->get()->map(function ($row) use ($limit) {
+        // Ambil data 'Used' (biaya yang sudah terpakai/active)
+        $budgetData = DB::table('training_request') 
+            ->join('employees', 'training_request.employee_id', '=', 'employees.id')
+            ->select('employees.unit_id', DB::raw('SUM(training_request.realisasi_biaya_pelatihan) as total_used'))
+            ->where('training_request.status_approval_training', 'approved')
+            ->whereIn('employees.unit_id', $allValidUnitIds)
+            ->groupBy('employees.unit_id')
+            ->get()
+            ->keyBy('unit_id');
+
+        // Mapping data unit dengan limit dan realisasi
+        $unitBudgets = $displayedUnits->map(function ($unit) use ($budgetData, $dynamicLimit) {
+            $used = $budgetData->get($unit->id)->total_used ?? 0;
+
             return [
-                'unit_id'   => $row->unit_id,
-                'unit_name' => $row->unit_name,
-                'used'      => (float) $row->used,
-                'limit'     => $limit,
-                'remaining' => max($limit - $row->used, 0),
-                'percentage'=> $row->used > 0
-                    ? min(round(($row->used / $limit) * 100, 1), 100)
+                'unit_id'    => $unit->id,
+                'unit_name'  => $unit->name,
+                'category'   => $unit->category,
+                'used'       => (float) $used,
+                'limit'      => $dynamicLimit,
+                'remaining'  => max($dynamicLimit - $used, 0),
+                'percentage' => $used > 0 && $dynamicLimit > 0
+                    ? min(round(($used / $dynamicLimit) * 100, 1), 100)
                     : 0,
             ];
         });
 
-        // ===============================
-        // C. Data Request Terbaru
-        // ===============================
-        $recentRequests = TrainingRequest::with(['employee.person', 'trainingReference'])
-            ->when(!$canViewAllUnits && $unitId, function ($q) use ($unitId) {
-                $q->whereHas('employee', fn ($qq) => $qq->where('unit_id', $unitId));
-            })
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        // =============================================================
+        // 5. STATISTIK COUNTER & DATA TERBARU
+        // =============================================================
+        
+        // Statistik LNA (hanya untuk unit valid)
+        $referenceCounts = TrainingReference::whereIn('unit_id', $allValidUnitIds)
+            ->groupBy('status_training_reference')
+            ->select('status_training_reference', DB::raw('count(*) as total'))
+            ->pluck('total', 'status_training_reference');
 
-        // ===============================
-        // D. Dashboard Items
-        // ===============================
+        // Statistik Request (hanya untuk unit valid)
+        $requestCounts = TrainingRequest::whereHas('employee', fn($q) => $q->whereIn('unit_id', $allValidUnitIds))
+            ->groupBy('status_approval_training')
+            ->select('status_approval_training', DB::raw('count(*) as total'))
+            ->pluck('total', 'status_approval_training');
+
+        // Tabel Request Terbaru (5 Data Terakhir)
+        // $recentRequests = TrainingRequest::with(['employee.person', 'trainingReference'])
+        //     ->whereHas('employee', function ($q) use ($unitId, $canViewAllUnits, $allValidUnitIds) {
+        //         $q->whereIn('unit_id', $allValidUnitIds);
+        //         if (!$canViewAllUnits && $unitId) {
+        //             $q->where('unit_id', $unitId);
+        //         }
+        //     })
+        //     ->orderBy('created_at', 'desc')
+        //     ->limit(5)
+        //     ->get();
+
         $dashboardItems = collect([
             ['key' => 'pending', 'label' => 'Pending (LNA)', 'total' => $referenceCounts['pending'] ?? 0],
             ['key' => 'active', 'label' => 'Active (LNA)', 'total' => $referenceCounts['active'] ?? 0],
@@ -108,8 +139,9 @@ class DashboardController extends Controller
 
         return view('training.dashboard.index', compact(
             'dashboardItems',
-            'recentRequests',
-            'unitBudgets'
+            // 'recentRequests',
+            'unitBudgets',
+            'dynamicLimit'
         ));
     }
 

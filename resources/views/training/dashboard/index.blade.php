@@ -43,112 +43,76 @@
           </div>
       
           <div class="">
-                  <div class="u-card u-card--glass u-p-md">
-                      <h3 class="u-text-sm u-font-bold u-mb-md border-b u-pb-xs">Anggaran</h3>
-                      <div class="overflow-x-auto">
-                          <table class="u-table u-table--sm w-full">
-                              <thead>
-                                  <tr>
-                                      <th>Nama Unit</th>
-                                      <th>Anggaran Terpakai</th>
-                                      <th>Limit Anggaran</th>
-                                      <th>Sisa Anggaran</th>
-                                      <th>Aksi</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                    @forelse($unitBudgets as $budget)
-                                    <tr>
-                                        <td>
-                                            <div class="u-font-bold u-text-xs">
-                                                {{ $budget['unit_name'] }}
-                                            </div>
-                                        </td>
+            <div class="u-card u-card--glass u-p-md">
+                <h3 class="u-text-sm u-font-bold u-mb-md border-b u-pb-xs">Anggaran</h3>
 
-                                        <td class="u-text-xs">
-                                            Rp {{ number_format($budget['used'], 0, ',', '.') }}
-                                        </td>
+                <div class="overflow-x-auto">
+                    <table class="u-table u-table--sm w-full">
+                        <thead>
+                            <tr>
+                                <th>Nama Unit</th>
+                                <th>Anggaran Terpakai</th>
+                                <th>Limit Anggaran</th>
+                                <th>Sisa Anggaran</th>
+                                <th>Pesentase Penggunaan</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($unitBudgets as $budget)
+                            <tr>
+                                <td>
+                                    <div class="u-font-bold u-text-md">
+                                        {{ $budget['unit_name'] }}
+                                    </div>
+                                </td>
 
-                                        <td>
-                                            <span class="u-badge u-badge--sm u-badge--info">
-                                                Rp {{ number_format($budget['limit'], 0, ',', '.') }}
-                                            </span>
-                                        </td>
+                                <td class="u-text-md">
+                                    Rp {{ number_format($budget['used'], 0, ',', '.') }}
+                                </td>
 
-                                        <td class="u-text-xs u-muted">
-                                            Rp {{ number_format($budget['remaining'], 0, ',', '.') }}
-                                        </td>
+                                <td>
+                                    <span class="u-badge u-badge--sm u-badge--info u-text-md">
+                                        Rp {{ number_format($budget['limit'], 0, ',', '.') }}
+                                    </span>
+                                </td>
+                                
+                                <td class="u-text-md u-muted">
+                                    Rp {{ number_format($budget['remaining'], 0, ',', '.') }}
+                                </td>
+                                
+                                <td>
+                                    <span class="u-badge u-badge--sm u-badge--info u-text-md">
+                                        {{ $budget['percentage'] }}%
+                                    </span>
+                                </td>
 
-                                        <td>
-                                            <a href="{{ route('training.requests.index', ['unit' => $budget['unit_id']]) }}"
-                                            class="u-btn u-btn--xs u-btn--outline">
-                                                Detail
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center u-text-xs u-muted">
-                                            Tidak ada data anggaran
-                                        </td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                          </table>
-                      </div>
-                      <div class="u-mt-md u-text-center">
-                      </div>
-                  </div>
-              </div>
+                                <td>
+                                    <a href=""
+                                    class="u-btn u-btn--xs u-btn--outline">
+                                        Detail
+                                    </a>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="5" class="text-center u-text-md u-muted">
+                                    Tidak ada data anggaran
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <div class="u-mt-md u-text-center">
+                </div>
+            </div>
           </div>
     
         </div>
     
     </div>
-    
-    {{-- Header --}}
-    <div class="u-flex u-items-center u-justify-between u-mb-lg">
-        <div>
-            <h2 class="u-title">Dashboard Overview</h2>
-            <p class="u-muted u-text-sm">Ringkasan data pelatihan dan penggunaan anggaran.</p>
-        </div>
-    </div>
 
-    <div class="u-card u-card--glass u-p-md">
-        <div class="lg:col-span-2">
-            <div class="u-card u-card--glass u-p-md">
-                <h3 class="u-text-sm u-font-bold u-mb-md border-b u-pb-xs">Pengajuan Terbaru</h3>
-                <div class="overflow-x-auto">
-                    <table class="u-table u-table--sm w-full">
-                        <thead>
-                            <tr>
-                                <th>Karyawan</th>
-                                <th>Status Dokumen</th>
-                                <th>Tanggal Pelatihan</th>
-                                <th class="text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recentRequests as $req)
-                            <tr>
-                                <td>
-                                    <div class="u-font-bold u-text-xs">{{ $req->person->full_name }}</div>
-                                    <div class="u-text-xs">{{ $req->trainingReference->judul_sertifikasi ?? 'Custom Training' }}</div>
-                                </td>
-                                <td><span class="u-badge u-badge--sm">{{ $req->status_approval }}</span></td>
-                                <td class="u-text-xxs u-muted">{{ $req->created_at->format('d M Y') }}</td>
-                                <td class="text-center">
-                                    <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-training-karyawan" data-id="{{ $req->id }}">
-                                        <i class="fas fa-eye"></i> Detail
-                                    </button></td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 @include('training.dashboard.modals.input-evaluation')
