@@ -42,9 +42,9 @@
     <header id="navbar" class="fixed top-0 w-full h-20 z-30 bg-[#00A29A] backdrop-blur transition-all duration-300">
       <div class="container mx-auto px-6 py-3 h-20 flex items-center justify-between">
         <a href="{{ route('recruitment.external.index') }}" class="flex items-center gap-2">
-          <img src="/images/logo-white.png" alt="Test Company Logo" class="h-25 w-25 object-contain">
-          <img src="/images/logo.png" alt="Logo" class="w-35 h-auto object-contain">
-          <img src="/images/Danantara_Indonesia.svg.png" alt="Danantara" class="w-35 h-auto object-contain">
+            <img src="/images/Danantara_Indonesia.svg.png" alt="Danantara" class="w-35 h-auto object-contain">
+            <img src="/images/logo.png" alt="Logo" class="w-35 h-auto object-contain">
+            <img src="/images/logo-white.png" alt="Test Company Logo" class="h-25 w-25 object-contain">   
         </a>
         <div class="flex items-center gap-6 text-white font-medium">
           <nav class="hidden md:flex items-center gap-4 text-sm">
@@ -375,11 +375,8 @@
         <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative">
             <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-5">
             <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">
-                Login Akun
+                Login
             </h2>
-            <h3 class="text-l font-normal text-gray-800 mb-4 text-center">
-                Silahkan Login untuk mengakses informasi lowongan lebih lanjut
-            </h3>
             <form method="POST" action="{{ route('login.store') }}" class="space-y-5.5">
                 @csrf
                 <div class="flex flex-col gap-3">
@@ -470,7 +467,7 @@
                     </a>
                 @else
                     <button onclick="triggerLoginForApply()" class="px-6 py-2.5 rounded-xl bg-[#00A29A] text-white font-bold hover:bg-[#008f87] transition shadow-lg shadow-[#00A29A]/30 text-sm">
-                        Login untuk Melamar
+                        Register / Login untuk Melamar Lowongan
                     </button>
                 @endauth
             </div>
@@ -553,12 +550,29 @@
         }
         function openModal() {
             const m = document.getElementById('registerModal');
-            if(m) { m.classList.remove('opacity-0', 'pointer-events-none'); }
+            const card = document.getElementById('registerCard');
+            
+            if(m) { 
+                m.classList.remove('opacity-0', 'pointer-events-none'); 
+            }
+            if(card) {
+                card.classList.remove('opacity-0', 'scale-95');
+                card.classList.add('scale-100');
+            }
         }
         function closeModal() {
             const m = document.getElementById('registerModal');
-            if(m) { m.classList.add('opacity-0', 'pointer-events-none'); }
+            const card = document.getElementById('registerCard');
+
+            if(m) { 
+                m.classList.add('opacity-0', 'pointer-events-none'); 
+            }
+            if(card) {
+                card.classList.add('opacity-0', 'scale-95');
+                card.classList.remove('scale-100');
+            }
         }
+        
         function triggerLoginForApply() {
             closePublicJobModal();
             setTimeout(() => { openLoginModal(); }, 300);
@@ -601,7 +615,7 @@
             const nextBtn = document.getElementById("nextBtn");
             const slideTexts = [
                 {
-                    title: `<span class="font-montserrat text-5xl font-light leading-tight">Selamat Datang</span><br><span class="font-montserrat text-8xl font-semibold block">Rekrutmen</span><span class="font-montserrat text-5xl font-bold text-[#A4F5DD]">PT Surveyor Indonesia</span>`,
+                    title: `<span class="font-montserrat text-5xl font-light leading-tight">Selamat Datang di</span><br><span class="font-montserrat text-8xl font-semibold block">SAPA HC</span><span class="font-montserrat text-5xl font-bold text-[#A4F5DD]">PT Surveyor Indonesia</span>`,
                     desc: `<span class="font-montserrat text-base md:text-lg font-light">Your Trusted Partner for Assurance.</span>`,
                 },
                 {

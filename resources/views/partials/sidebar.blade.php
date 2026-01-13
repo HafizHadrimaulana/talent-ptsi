@@ -72,16 +72,12 @@
             </button>
             <div id="nav-recruitment" class="nav-children {{ $recOpen ? 'open' : '' }}" data-accordion-panel="nav-recruitment">
                 @php
-                    $hideMenuForNonHcAvp = false; // Default: jangan sembunyikan
-
-                    // Jalankan pengecekan hanya jika user BUKAN Superadmin dan Memiliki Role 'AVP'
+                    $hideMenuForNonHcAvp = false; 
                     if (!$isSuper && $user && $user->hasRole('AVP')) {
                         $jobTitle = \Illuminate\Support\Facades\DB::table('employees')
                             ->join('positions', 'employees.position_id', '=', 'positions.id')
                             ->where('employees.person_id', $user->person_id)
                             ->value('positions.name');
-                        
-                        // Jika jabatannya TIDAK SAMA dengan 'AVP Human Capital Operation', aktifkan flag sembunyi
                         if ($jobTitle !== 'AVP Human Capital Operation') {
                             $hideMenuForNonHcAvp = true;
                         }
