@@ -33,6 +33,7 @@ Route::middleware('web')->group(function () {
             Route::get('/applicant/{id}/download-pdf', [ExternalRecruitmentController::class, 'downloadBiodataPdf'])->name('download-pdf');
             Route::post('/{id}/update-description', [ExternalRecruitmentController::class, 'updateDescription'])->name('updateDescription');
             Route::post('/{id}/unpublish', [ExternalRecruitmentController::class, 'unpublish'])->name('unpublish');
+            Route::post('/{id}/publish', [ExternalRecruitmentController::class, 'publish'])->name('publish');
         });
         Route::post('/recruitment/uraian-jabatan/preview-pdf', [PrincipalApprovalController::class, 'previewUraianPdf'])
             ->name('recruitment.uraian-jabatan.preview-pdf');

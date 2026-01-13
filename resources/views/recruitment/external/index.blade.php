@@ -71,11 +71,12 @@
                     @endif
                     <th>Posisi</th>
                     <th>Unit Penempatan</th>
+                    <th>Status</th>
                     @if(!$isPelamar)
                         <th>Kuota</th>
                         <th>Pelamar Masuk</th>
                     @endif
-                    <th class="cell-actions" style="text-align: right;">Aksi</th>
+                    <th class="cell-actions" style="text-align: center;">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -129,6 +130,17 @@
                             </div>
                         </td>
                         <td>{{ $row->unit->name ?? '-' }}</td>
+                        <td>
+                            @if($row->is_published)
+                                <span class="u-badge u-badge--success">
+                                    <i class="fas fa-check-circle u-mr-xs"></i> Dibuka
+                                </span>
+                            @else
+                                <span class="u-badge u-badge--danger">
+                                    <i class="fas fa-ban u-mr-xs"></i> Ditutup
+                                </span>
+                            @endif
+                        </td>
                         @if(!$isPelamar)
                             <td>{{ $row->headcount }} Orang</td>
                             <td>
@@ -146,7 +158,7 @@
                                     </button>
                                     <button class="u-btn u-btn--sm u-btn--warning u-btn--outline" 
                                         onclick='openEditVacancyModal({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!})'>
-                                        <i class="fas fa-edit u-mr-xs"></i> Edit / Tutup
+                                        <i class="fas fa-edit u-mr-xs"></i> Edit/Buka/Tutup
                                     </button>
                                 @elseif($isPelamar)
                                     @if(count($availableJson) > 0)
@@ -389,15 +401,25 @@
                     <textarea id="editEditorContent"></textarea>
                 </div>
             </div>
-
-            <div class="u-bg-light u-p-sm u-rounded u-border u-flex u-items-center u-justify-between" style="border-left: 4px solid #ef4444;">
-                <div>
-                    <div class="u-font-bold text-red-600">Tutup Lowongan?</div>
-                    <div class="u-text-xs u-muted">Lowongan akan hilang dari halaman depan dan pelamar tidak bisa melamar lagi.</div>
+            <div id="actionStatusContainer" class="u-p-sm u-rounded u-border u-flex u-items-center u-justify-between" style="border-left: 4px solid #9ca3af;">
+                <div id="sectionToUnpublish" style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                    <div>
+                        <div class="u-font-bold text-red-600">Tutup Lowongan?</div>
+                        <div class="u-text-xs u-muted">Lowongan akan hilang dari halaman pelamar.</div>
+                    </div>
+                    <button type="button" id="btnUnpublish" class="u-btn u-btn--danger u-btn--sm">
+                        <i class="fas fa-ban u-mr-xs"></i> Tutup Lowongan (Unpublish)
+                    </button>
                 </div>
-                <button type="button" id="btnUnpublish" class="u-btn u-btn--danger u-btn--sm">
-                    <i class="fas fa-ban u-mr-xs"></i> Tutup Lowongan (Unpublish)
-                </button>
+                <div id="sectionToPublish" style="display: none; justify-content: space-between; width: 100%; align-items: center;">
+                    <div>
+                        <div class="u-font-bold text-green-600">Buka Lowongan Kembali?</div>
+                        <div class="u-text-xs u-muted">Lowongan akan tampil kembali di halaman pelamar.</div>
+                    </div>
+                    <button type="button" id="btnPublish" class="u-btn u-btn--success u-btn--sm">
+                        <i class="fas fa-globe u-mr-xs"></i> Buka Lowongan (Publish)
+                    </button>
+                </div>
             </div>
         </div>
         <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
@@ -426,16 +448,10 @@
                 });
         }
     });
-
-    // --- 2. Update Fungsi Buka Modal Edit ---
     function openEditVacancyModal(id, rowData) {
         document.getElementById('edit_req_id').value = id;
-        
-        // Isi Input Tanggal (Ambil dari rowData)
-        // Format tanggal dari Laravel biasanya "YYYY-MM-DD HH:mm:ss", kita ambil bagian depannya saja
         const startDate = rowData.publish_start_date ? rowData.publish_start_date.substring(0, 10) : '';
         const endDate = rowData.publish_end_date ? rowData.publish_end_date.substring(0, 10) : '';
-
         document.getElementById('edit_start_date').value = startDate;
         document.getElementById('edit_end_date').value = endDate;
 
@@ -451,11 +467,21 @@
         } else {
             document.getElementById('editEditorContent').value = rowData.description || '';
         }
-
+        const sectionUnpublish = document.getElementById('sectionToUnpublish');
+        const sectionPublish = document.getElementById('sectionToPublish');
+        const container = document.getElementById('actionStatusContainer');
+        if(rowData.is_published == 1) {
+            sectionUnpublish.style.display = 'flex';
+            sectionPublish.style.display = 'none';
+            container.style.borderLeftColor = '#ef4444';
+        } else {
+            sectionUnpublish.style.display = 'none';
+            sectionPublish.style.display = 'flex';
+            container.style.borderLeftColor = '#10b981';
+        }
         openModal('editVacancyModal');
     }
 
-    // --- 3. Update Handler Tombol Simpan ---
     const btnSaveDesc = document.getElementById('btnSaveDescription');
     if(btnSaveDesc) {
         btnSaveDesc.addEventListener('click', function() {
@@ -475,7 +501,6 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Menyimpan...';
 
-            // Kirim Data Lengkap
             fetch(`/recruitment/external/${reqId}/update-description`, {
                 method: 'POST',
                 headers: {
@@ -508,7 +533,46 @@
         });
     }
 
-    // --- 4. Handler Tombol Unpublish (Tutup Lowongan) ---
+    const btnPublish = document.getElementById('btnPublish');
+    if(btnPublish) {
+        btnPublish.addEventListener('click', function() {
+            const reqId = document.getElementById('edit_req_id').value;
+
+            if(!confirm('Anda yakin ingin MEMBUKA kembali lowongan ini ke publik?')) {
+                return;
+            }
+
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
+
+            fetch(`/recruitment/external/${reqId}/publish`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    alert(data.message);
+                    location.reload(); 
+                } else {
+                    alert('Gagal: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Terjadi kesalahan server.');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        });
+    }
     const btnUnpublish = document.getElementById('btnUnpublish');
     if(btnUnpublish) {
         btnUnpublish.addEventListener('click', function() {

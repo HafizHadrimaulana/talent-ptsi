@@ -1072,7 +1072,7 @@
             ClassicEditor
                 .create(document.querySelector('#publishEditorContent'), {
                     toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
-                    placeholder: 'Tulis deskripsi pekerjaan, kualifikasi, dll...'
+                    placeholder: 'Kualifikasi, persyaratan, dan deskripsi pekerjaan...',
                 })
                 .then(editor => { publishEditor = editor; })
                 .catch(error => { console.error(error); });
