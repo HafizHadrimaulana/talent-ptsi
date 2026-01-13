@@ -148,7 +148,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::get('training-request/training-references/{id}', [TrainingRequestController::class, 'getDataTrainingReferences'])->middleware('permission:training.view')->name('training-request.training-reference');
         Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])
             ->name('training-request.get-employee-by-unit');
-        Route::get('training-request/{id}/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])
+        Route::get('training-request/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])
             ->name('training-request.get-training-request-list');
         Route::post('training-request/input-training-request', [TrainingRequestController::class, 'inputTrainingRequest'])
             ->name('training-request.input-training-request');

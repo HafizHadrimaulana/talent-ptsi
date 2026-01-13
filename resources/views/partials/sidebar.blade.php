@@ -193,7 +193,7 @@
                     <span class="label">Training</span>
                 </a>
                 @endif
-                @if($isSuper || $user?->can('training.view'))
+                <!-- @if($isSuper || $user?->can('training.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('training.self-learning')?'active':'' }}"
                     href="{{ Route::has('training.self-learning') ? route('training.self-learning') : '#' }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -205,7 +205,7 @@
                     </svg>
                     <span class="label">Self Learning</span>
                 </a>
-                @endif
+                @endif -->
                 @if($isSuper || $user?->can('training.management.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('training.training-management')?'active':'' }}"
                     href="{{ Route::has('training.training-management') ? route('training.training-management') : '#' }}">

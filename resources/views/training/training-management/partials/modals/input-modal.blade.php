@@ -116,21 +116,6 @@
                   <label for="toggle-realisasi" class="font-medium">Biaya berbeda dengan rencana?</label>
               </div>
             </div>
-    
-            <div class="font-medium u-mb-sm">
-              <label class="w-48 font-medium">UHPD (Rp)</label>
-              <input type="text" name="uhpd" class="font-normal u-input">
-            </div>
-    
-            <div class="font-medium u-mb-sm">
-              <label class="w-48 font-medium">Biaya Akomodasi (Rp)</label>
-              <input type="text" name="biaya_akomodasi" class="font-normal u-input">
-            </div>
-    
-            <div class="font-medium u-mb-sm">
-              <label class="w-48 font-medium">Estimasi Total Biaya (Rp)</label>
-              <input type="text" name="estimasi_total_biaya" id="estimasi_total_biaya" class="font-normal u-input" readonly>
-            </div>
           </div>
     
           <div class="font-medium u-mb-sm">

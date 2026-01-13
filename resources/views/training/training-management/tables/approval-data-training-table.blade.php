@@ -9,9 +9,6 @@
             <th>Jumlah Jam</th>
             <th>Waktu Pelaksanaan</th>
             <th>Biaya Pelatihan</th>
-            <th>UHPD</th>
-            <th>Biaya Akomodasi</th>
-            <th>Estimasi Total Biaya</th>
             <th>Nama Proyek</th>
             <th>Jenis Portofolio</th>
             <th>Fungsi</th>

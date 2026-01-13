@@ -54,8 +54,8 @@
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
                                 <div class="u-p-sm u-rounded border border-gray-200 bg-white">
-                                    <label class="u-text-xs u-muted u-uppercase font-semibold">Estimasi Biaya</label>
-                                    <div class="u-text-md u-font-bold text-gray-700 detail-estimasi_total_biaya">Rp 0</div>
+                                    <label class="u-text-xs u-muted u-uppercase font-semibold">Biaya Pelatihan</label>
+                                    <div class="u-text-md u-font-bold text-gray-700 detail-biaya_pelatihan">Rp 0</div>
                                 </div>
                                 <div class="u-p-sm u-rounded border border-blue-200 bg-blue-50">
                                     <label class="u-text-xs text-blue-600 u-uppercase font-bold">Realisasi Biaya</label>
