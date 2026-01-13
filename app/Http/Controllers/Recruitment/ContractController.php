@@ -169,8 +169,10 @@ class ContractController extends Controller
             }
 
             if ($isNew) {
-                $c->created_by_user_id = $request->user()->id;
-                $c->created_by_person_id = $request->user()->person_id;
+                // Pastikan kolom created_by_user_id ada di tabel contracts
+                // Jika tidak ada, gunakan user_id atau sesuaikan dengan struktur DB Anda
+                $c->created_by_user_id = $request->user()->id; 
+                // $c->created_by_person_id = $request->user()->person_id; // Opsional jika ada kolom ini
             }
             $c->save();
             $this->ensureDocumentRecord($c);
@@ -359,7 +361,6 @@ class ContractController extends Controller
             $contract->refresh()->loadMissing('document');
         }
         $filename = basename($contract->document->path);
-        // Optimized Response to avoid redline
         return response()->file(Storage::disk('local')->path($contract->document->path), [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
@@ -369,6 +370,23 @@ class ContractController extends Controller
     public function show(Contract $contract)
     {
         $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
+        
+        // --- LOGIKA MENDAPATKAN CREATOR NAME ---
+        $creatorName = 'System';
+        if ($contract->created_by_user_id) {
+            $creator = User::find($contract->created_by_user_id);
+            if ($creator) {
+                // Cek role untuk label yang lebih deskriptif (Opsional)
+                $roles = $creator->getRoleNames()->join(', '); // butuh spatie/laravel-permission
+                $realName = $creator->person ? $creator->person->full_name : $creator->name;
+                
+                // Format: Nama (Role) atau Nama saja
+                $creatorName = $realName;
+                if(!empty($roles)) $creatorName .= " ($roles)";
+            }
+        }
+        // ----------------------------------------
+
         $meta = $contract->remuneration_json ?? [];
         $cand = $this->resolveCandidate($contract);
         $docUrl = ($contract->document_id || in_array($contract->status, ['approved', 'signed'])) ? route('recruitment.contracts.document', $contract) : null;
@@ -385,10 +403,8 @@ class ContractController extends Controller
 
         Carbon::setLocale('id');
 
-        // --- 1. LOG HISTORY (Merged Signatures & Rejections) ---
         $logs = collect();
 
-        // Ambil Data Penandatanganan (Sukses)
         if ($contract->document_id) {
             $signatures = Signature::with(['signerPerson', 'signerUser.employee'])
                 ->where('document_id', $contract->document_id)
@@ -407,7 +423,6 @@ class ContractController extends Controller
             $logs = $logs->merge($signatures);
         }
 
-        // Ambil Data Rejection (Gagal) dari Approval History
         $rejections = Approval::with(['approverUser.person', 'approverPerson', 'approverUser.employee'])
             ->where('approvable_id', $contract->id)
             ->where('approvable_type', 'contract')
@@ -439,44 +454,44 @@ class ContractController extends Controller
             ];
         });
 
-        // --- 2. PROGRESS TRACKER (Nama Asli Kepala Unit) ---
         $headSig = $contract->document_id ? Signature::where('document_id', $contract->document_id)->where('signer_role', 'Kepala Unit')->first() : null;
-        $headRealName = '-';
+        
+        $unitHeadUser = $this->getUnitHeadUser($this->resolveHeadUnit($contract->unit));
+        $headRealName = $unitHeadUser->person->full_name ?? $unitHeadUser->name ?? 'Kepala Unit';
+        $headPosition = 'Kepala Unit';
+        if ($unitHeadUser && $unitHeadUser->employee) {
+            $headPosition = $unitHeadUser->employee->latest_jobs_title ?? 'Kepala Unit';
+        }
+        
+        $headStatus = 'Waiting';
+        $headDate = '-';
+        $headCss = 'u-badge--glass';
 
-        // Logika cari nama Kepala Unit
         if ($headSig) {
-            $headRealName = $headSig->signerPerson->full_name ?? $headSig->signerUser->name ?? 'Kepala Unit';
-        } else {
-            // Ambil dari Struktur Unit jika belum tanda tangan
-            $unitHeadUser = $this->getUnitHeadUser($this->resolveHeadUnit($contract->unit));
-            if ($unitHeadUser) {
-                $headRealName = $unitHeadUser->person->full_name ?? $unitHeadUser->name ?? 'Kepala Unit';
-            }
+            $headStatus = 'Signed';
+            $headDate = Carbon::parse($headSig->signed_at)->timezone('Asia/Jakarta')->format('d M Y H:i') . ' WIB';
+            $headCss = 'u-badge--success';
+        } elseif ($contract->status === 'review') {
+            $headStatus = 'Pending';
+            $headDate = 'Menunggu Review';
+            $headCss = 'u-badge--warn';
+        } elseif ($contract->status === 'approved') {
+            $headStatus = 'Approved';
+            $headDate = 'Menunggu TTD';
+            $headCss = 'u-badge--info';
+        } elseif ($contract->status === 'rejected') {
+            $headStatus = 'Rejected';
+            $headCss = 'u-badge--danger';
         }
 
         $headProgress = [
-            'status' => 'Waiting', 
+            'status' => $headStatus, 
             'name' => $headRealName, 
-            'date' => '-', 
-            'css' => 'u-badge--glass'
+            'position' => $headPosition,
+            'date' => $headDate, 
+            'css' => $headCss
         ];
 
-        if ($headSig) {
-            $headProgress = [
-                'status' => 'Signed',
-                'name' => $headRealName,
-                'date' => Carbon::parse($headSig->signed_at)->timezone('Asia/Jakarta')->format('d M Y H:i') . ' WIB',
-                'css' => 'u-badge--success'
-            ];
-        } elseif ($contract->status === 'review') {
-            $headProgress = ['status' => 'Pending', 'name' => $headRealName, 'date' => 'Menunggu Review', 'css' => 'u-badge--warn'];
-        } elseif ($contract->status === 'approved') {
-            $headProgress = ['status' => 'Approved', 'name' => $headRealName, 'date' => 'Menunggu TTD', 'css' => 'u-badge--info'];
-        } elseif ($contract->status === 'rejected') {
-            $headProgress = ['status' => 'Rejected', 'name' => $headRealName, 'date' => '-', 'css' => 'u-badge--danger'];
-        }
-
-        // Candidate Tracker
         $candSig = $contract->document_id ? Signature::where('document_id', $contract->document_id)->whereIn('signer_role', ['Kandidat', 'Pegawai'])->first() : null;
         $candProgress = ['status' => 'Waiting', 'name' => $cand['name'], 'date' => '-', 'css' => 'u-badge--glass'];
         
@@ -496,8 +511,6 @@ class ContractController extends Controller
 
         $targetRole = in_array($contract->contract_type, ['PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN']) ? 'Pegawai' : 'Kandidat';
         $geoData = $this->getGeoData($contract, $me);
-
-        // Define $approvalLogs variable to prevent redline
         $approvalLogs = $isInternal ? $approvalLogsFormatted : [];
 
         return response()->json(['success' => true, 'data' => array_merge($contract->toArray(), [
@@ -522,7 +535,10 @@ class ContractController extends Controller
             'ticket_number' => $contract->ticket_number,
             'rejection_note' => $latestRejection ? $latestRejection->note : null,
             'can_see_logs' => $isInternal,
-            'approval_logs' => $approvalLogs
+            'approval_logs' => $approvalLogs,
+            'creator_name' => $creatorName, // <-- Data ini yang diambil JS nanti
+            'created_at_human' => $contract->created_at->diffForHumans(),
+            'created_at_formatted' => $contract->created_at->translatedFormat('d M Y, H:i') . ' WIB'
         ])]);
     }
 

@@ -500,6 +500,7 @@
             <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
         </div>
         <div class="u-modal__body u-space-y-xl">
+            
             <div id="detRejectBox" class="u-bg-section u-p-lg is-hidden" style="border-left: 4px solid #ef4444; background-color: #fef2f2;">
                 <div class="section-divider u-text-danger"><i class="fas fa-ban u-mr-xs"></i> Dokumen Ditolak</div>
                 <div class="u-text-sm u-font-medium u-text-danger" id="detRejectNote"></div>
@@ -519,7 +520,7 @@
                 <div class="u-bg-section u-p-lg">
                       <div class="section-divider">Personil</div>
                       <div class="u-space-y-md">
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-xl">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-xl text-ellipsis" style="max-width: 200px;">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK</span><span id="detNik" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK (KTP)</span><span id="detNikReal" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
@@ -557,76 +558,79 @@
                   </div>
             </div>
 
-            <div id="detMapSection" class="is-hidden">
-                <div class="u-bg-section u-p-lg">
-                    <div class="section-divider"><i class="fas fa-map-marked-alt u-text-brand"></i> Verifikasi Lokasi & Wajah</div>
-                    <div class="u-grid-2 u-stack-mobile">
-                        <div id="wrapperMapHead" class="is-hidden">
-                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Lokasi Kepala Unit (Saat Approval)</div>
-                            <div id="map-head" class="map-container u-mb-sm"></div>
-                            <div class="u-text-sm u-muted u-mb-sm text-right" id="ts-head"></div>
-                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
-                            <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 250px; width: 100%;">
-                                <img id="img-head" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
-                                <span id="no-img-head" class="u-text-sm u-text-muted" style="display:none;">Tidak ada foto</span>
+            <div id="detMapSection" class="u-bg-section u-p-lg is-hidden">
+                <div class="section-divider"><i class="fas fa-map-marked-alt u-text-brand"></i> Verifikasi Lokasi & Wajah</div>
+                <div class="u-grid-2 u-stack-mobile u-gap-lg">
+                    <div id="wrapperMapHead" class="is-hidden">
+                        <div class="u-text-sm u-font-bold u-muted u-uppercase u-mb-sm u-border-b u-pb-xs">Kepala Unit (Approval)</div>
+                        <div class="u-flex-col u-gap-md">
+                            <div>
+                                <div id="map-head" class="map-container u-mb-xs" style="height:280px; border-radius: var(--radius-sm); width:100%;"></div>
+                                <div class="u-text-xs u-muted text-center" id="ts-head">Timestamp</div>
+                            </div>
+                            <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 280px; width: 100%; border-radius: var(--radius-sm);">
+                                <img id="img-head" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                                <span id="no-img-head" class="u-text-xs u-text-muted" style="display:none;">No Photo</span>
                             </div>
                         </div>
-                        <div id="wrapperMapCand" class="is-hidden">
-                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Lokasi Kandidat/Pegawai (Saat Ttd)</div>
-                            <div id="map-cand" class="map-container u-mb-sm"></div>
-                            <div class="u-text-sm u-muted u-mb-sm text-right" id="ts-cand"></div>
-                            <div class="u-text-sm u-font-bold u-muted u-mb-xs">Snapshot Wajah</div>
-                            <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 250px; width: 100%;">
-                                <img id="img-cand" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
-                                <span id="no-img-cand" class="u-text-sm u-text-muted" style="display:none;">Tidak ada foto</span>
+                    </div>
+                    <div id="wrapperMapCand" class="is-hidden">
+                        <div class="u-text-sm u-font-bold u-muted u-uppercase u-mb-sm u-border-b u-pb-xs">Kandidat / Pegawai (Signature)</div>
+                        <div class="u-flex-col u-gap-md">
+                            <div>
+                                <div id="map-cand" class="map-container u-mb-xs" style="height:280px; border-radius: var(--radius-sm); width:100%;"></div>
+                                <div class="u-text-xs u-muted text-center" id="ts-cand">Timestamp</div>
+                            </div>
+                            <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 280px; width: 100%; border-radius: var(--radius-sm);">
+                                <img id="img-cand" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                                <span id="no-img-cand" class="u-text-xs u-text-muted" style="display:none;">No Photo</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="u-grid-2 u-stack-mobile u-gap-lg">
                 <div class="u-bg-section u-p-lg" style="height: 100%;">
-                     <div class="section-divider">Approval Progress</div>
-                     <div class="u-step-list u-space-y-lg">
-                         <div class="u-flex u-items-start u-gap-md">
-                             <div id="iconHead" class="u-avatar u-avatar--sm u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user-tie"></i></div>
-                             <div class="u-flex-1">
-                                 <div class="u-flex u-justify-between u-items-start">
-                                     <div>
-                                         <div class="u-text-sm u-font-bold">Kepala Unit</div>
-                                         <div class="u-text-xs u-muted">Approval & Signature</div>
-                                     </div>
-                                     <span id="badgeHead" class="u-badge u-badge--glass">Waiting</span>
-                                 </div>
-                                 <div class="u-card u-card--glass u-p-sm u-mt-sm">
-                                     <div id="nameHead" class="u-text-sm u-font-medium">-</div>
-                                     <div id="dateHead" class="u-text-xs u-muted u-mt-xxs">-</div>
-                                 </div>
-                             </div>
-                         </div>
-                         <div class="u-flex u-items-start u-gap-md">
-                             <div id="iconCand" class="u-avatar u-avatar--sm u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user"></i></div>
-                             <div class="u-flex-1">
-                                 <div class="u-flex u-justify-between u-items-start">
-                                     <div>
-                                         <div class="u-text-sm u-font-bold" id="labelCand">Kandidat</div>
-                                         <div class="u-text-xs u-muted">Signature</div>
-                                     </div>
-                                     <span id="badgeCand" class="u-badge u-badge--glass">Waiting</span>
-                                 </div>
-                                 <div class="u-card u-card--glass u-p-sm u-mt-sm">
-                                     <div id="nameCand" class="u-text-sm u-font-medium">-</div>
-                                     <div id="dateCand" class="u-text-xs u-muted u-mt-xxs">-</div>
-                                 </div>
-                             </div>
-                         </div>
-                     </div>
+                      <div class="section-divider">APPROVAL PROGRESS</div>
+                      <div class="u-flex-col u-gap-md">
+                          <div class="u-card u-card--glass u-p-md" style="margin-bottom: 1rem;">
+                                <div class="u-flex u-justify-between u-items-start u-w-full">
+                                    <div class="u-flex u-gap-md u-items-center">
+                                        <div id="iconHead" class="u-avatar u-avatar--md u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user-tie"></i></div>
+                                        <div>
+                                            <div id="nameHead" class="u-font-bold u-text-md text-ellipsis">-</div>
+                                            <div id="posHead" class="u-text-xs u-muted u-uppercase u-font-bold u-mt-xxs">-</div>
+                                            <div class="u-text-xs u-muted u-mt-xs flex items-center gap-1">
+                                                <i class="far fa-clock"></i> <span id="dateHead">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span id="badgeHead" class="u-badge u-badge--glass u-ml-sm u-flex-shrink-0" style="white-space: nowrap;">Waiting</span>
+                                </div>
+                          </div>
+
+                          <div class="u-card u-card--glass u-p-md">
+                                <div class="u-flex u-justify-between u-items-start u-w-full">
+                                    <div class="u-flex u-gap-md u-items-center">
+                                        <div id="iconCand" class="u-avatar u-avatar--md u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user"></i></div>
+                                        <div>
+                                            <div id="nameCand" class="u-font-bold u-text-md text-ellipsis">-</div>
+                                            <div id="labelCand" class="u-text-xs u-muted u-uppercase u-font-bold u-mt-xxs">Kandidat / Pegawai</div>
+                                            <div class="u-text-xs u-muted u-mt-xs flex items-center gap-1">
+                                                <i class="far fa-clock"></i> <span id="dateCand">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span id="badgeCand" class="u-badge u-badge--glass u-ml-sm u-flex-shrink-0" style="white-space: nowrap;">Waiting</span>
+                                </div>
+                          </div>
+                      </div>
                 </div>
 
                 <div id="detLogSection" class="u-bg-section u-p-lg is-hidden" style="height: 100%;">
                     <div class="section-divider"><i class="fas fa-history u-text-muted"></i> Log History</div>
-                    <div id="detLogList" class="u-flex-col u-gap-md u-overflow-y-auto" style="max-height: 300px;"></div>
+                    <div id="detLogList" class="u-flex-col u-gap-md u-overflow-y-auto" style="max-height: 400px;"></div>
                 </div>
             </div>
 
@@ -1268,7 +1272,6 @@ document.addEventListener('DOMContentLoaded', () => {
         m.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', cleanup));
     };
 
-    // REJECT FORM HANDLER
     const rejectForm = select('#rejectForm');
     if(rejectForm) {
         rejectForm.addEventListener('submit', async (e) => {
@@ -1302,7 +1305,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // DETAIL BUTTON HANDLER
     doc.body.addEventListener('click', async (e) => {
         const btnDet = e.target.closest('.js-btn-detail');
         if(btnDet) {
@@ -1327,69 +1329,86 @@ document.addEventListener('DOMContentLoaded', () => {
                 setText('#detEmpType', d.employment_type || '-');
                 setText('#detTicket', d.ticket_number || '-');
 
-                // REJECT ALERT LOGIC
                 const detRejectBox = select('#detRejectBox');
-                const detRejectNote = select('#detRejectNote');
                 const rejNote = (d.rejection_note || '').toString().trim();
-                
                 if ((d.status === 'draft' || d.status === 'rejected') && rejNote) {
-                    if(detRejectBox) {
-                        showBlock(detRejectBox);
-                        setText('#detRejectNote', rejNote);
-                    }
+                    if(detRejectBox) { showBlock(detRejectBox); setText('#detRejectNote', rejNote); }
                 } else {
                     hide(detRejectBox);
                 }
 
-                // LOCATION ROW
-                const isPKWT = d.contract_type?.includes('PKWT');
                 const detLocRow = select('#detLocationRow');
                 if (detLocRow) {
-                    if (isPKWT) {
-                        showBlock(detLocRow);
-                        setText('#detLocation', m.work_location || '-');
-                    } else {
-                        hide(detLocRow);
-                    }
+                    if (d.contract_type?.includes('PKWT')) { showBlock(detLocRow); setText('#detLocation', m.work_location || '-'); }
+                    else { hide(detLocRow); }
                 }
 
-                // APPROVAL PROGRESS TRACKER LOGIC
                 if(d.tracker) {
                     const h = d.tracker.head;
                     const c = d.tracker.candidate;
                     
-                    setText('#nameHead', h.name); setText('#dateHead', h.date);
-                    const bHead = select('#badgeHead'); if(bHead) { bHead.textContent = h.status; bHead.className = `u-badge ${h.css}`; }
+                    setText('#nameHead', h.name);
+                    setText('#posHead', h.position || 'Kepala Unit');
+                    setText('#dateHead', h.date);
+                    
+                    const bHead = select('#badgeHead'); 
+                    if(bHead) { bHead.textContent = h.status; bHead.className = `u-badge ${h.css}`; }
                     
                     const iHead = select('#iconHead');
                     if(iHead) {
-                        iHead.className = `u-avatar u-avatar--sm ${h.status==='Signed'||h.status==='Approved' ? 'u-bg-success-light u-text-success' : (h.status==='Rejected'?'u-bg-danger-light u-text-danger':'u-bg-light u-text-muted')}`;
+                        iHead.className = `u-avatar u-avatar--md ${h.status==='Signed'||h.status==='Approved' ? 'u-bg-success-light u-text-success' : (h.status==='Rejected'?'u-bg-danger-light u-text-danger':'u-bg-light u-text-muted')}`;
                         iHead.innerHTML = (h.status==='Signed'||h.status==='Approved') ? '<i class="fas fa-check"></i>' : (h.status==='Rejected'?'<i class="fas fa-times"></i>':'<i class="fas fa-user-tie"></i>');
                     }
 
-                    setText('#nameCand', c.name); setText('#dateCand', c.date);
-                    const bCand = select('#badgeCand'); if(bCand) { bCand.textContent = c.status; bCand.className = `u-badge ${c.css}`; }
+                    setText('#nameCand', c.name);
+                    setText('#dateCand', c.date);
+                    if(d.target_role_label) setText('#labelCand', d.target_role_label);
+
+                    const bCand = select('#badgeCand'); 
+                    if(bCand) { bCand.textContent = c.status; bCand.className = `u-badge ${c.css}`; }
                     
                     const iCand = select('#iconCand');
                     if(iCand) {
-                        iCand.className = `u-avatar u-avatar--sm ${c.status==='Signed' ? 'u-bg-success-light u-text-success' : 'u-bg-light u-text-muted'}`;
+                        iCand.className = `u-avatar u-avatar--md ${c.status==='Signed' ? 'u-bg-success-light u-text-success' : 'u-bg-light u-text-muted'}`;
                         iCand.innerHTML = c.status==='Signed' ? '<i class="fas fa-check"></i>' : '<i class="fas fa-user"></i>';
                     }
                 }
 
-                if(d.target_role_label) setText('#labelCand', `${d.target_role_label} (Sign)`);
+                const geo = d.geolocation || {};
+                const mapSec = select('#detMapSection');
+                const wHead = select('#wrapperMapHead');
+                const wCand = select('#wrapperMapCand');
+                
+                const iHead = select('#img-head'); if(iHead) iHead.style.display='none';
+                const niHead = select('#no-img-head'); if(niHead) niHead.style.display='none';
+                const iCand = select('#img-cand'); if(iCand) iCand.style.display='none';
+                const niCand = select('#no-img-cand'); if(niCand) niCand.style.display='none';
+
+                if (geo.head || geo.candidate) showBlock(mapSec); else hide(mapSec);
+
+                if (geo.head) {
+                    showBlock(wHead);
+                    setText('#ts-head', `Ditandatangani: ${geo.head.ts}`);
+                    initMap('map-head', geo.head.lat, geo.head.lng);
+                    if(geo.head.image_url) { if(iHead) { iHead.src = geo.head.image_url; showBlock(iHead); } }
+                    else showBlock(niHead);
+                } else hide(wHead);
+
+                if (geo.candidate) {
+                    showBlock(wCand);
+                    setText('#ts-cand', `Ditandatangani: ${geo.candidate.ts}`);
+                    initMap('map-cand', geo.candidate.lat, geo.candidate.lng);
+                    if(geo.candidate.image_url) { if(iCand) { iCand.src = geo.candidate.image_url; showBlock(iCand); } }
+                    else showBlock(niCand);
+                } else hide(wCand);
 
                 if (isPb) {
-                    hide(select('#detRemunBox'));
-                    hide(select('#detPeriodRow'));
-                    showBlock(select('#detPbBox'));
+                    hide(select('#detRemunBox')); hide(select('#detPeriodRow')); showBlock(select('#detPbBox'));
                     setText('#detPbEff', m.pb_effective_end || '-');
                     setText('#detPbVal', 'Rp ' + money(m.pb_compensation_amount));
                     setText('#detPbValW', (m.pb_compensation_amount_words || '').toString());
                 } else {
-                    showBlock(select('#detRemunBox'));
-                    showBlock(select('#detPeriodRow'));
-                    hide(select('#detPbBox'));
+                    showBlock(select('#detRemunBox')); showBlock(select('#detPeriodRow')); hide(select('#detPbBox'));
                     setText('#detPeriod', `${d.start_date || '-'} s/d ${d.end_date || '-'}`);
                     setText('#detSalary', 'Rp ' + money(m.salary_amount));
                     setText('#detLunch', 'Rp ' + money(m.lunch_allowance_daily));
@@ -1410,11 +1429,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const prevId = (m.prev_unit_id ?? '').toString();
                 const newId = (m.new_unit_id ?? '').toString();
                 if(d.contract_type === 'PKWT_PERPANJANGAN' && prevId && newId && prevId !== newId) {
-                    showBlock(boxNew);
-                    setText('#detNewUnit', m.new_unit_name || '-');
-                } else {
-                    hide(boxNew);
-                }
+                    showBlock(boxNew); setText('#detNewUnit', m.new_unit_name || '-');
+                } else { hide(boxNew); }
 
                 const bPrev = select('#btnPreviewDoc');
                 d.doc_url ? (show(bPrev), bPrev.style.display='inline-flex', bPrev.href=d.doc_url) : hide(bPrev);
@@ -1427,78 +1443,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const bRej = select('#btnReject');
                 if(d.can_approve && d.reject_url) {
-                    show(bRej);
-                    bRej.onclick = () => openReject(d.reject_url, `${d.contract_no || '-'} • ${d.person_name || '-'}`);
-                } else {
-                    hide(bRej);
-                }
+                    show(bRej); bRej.onclick = () => openReject(d.reject_url, `${d.contract_no || '-'} • ${d.person_name || '-'}`);
+                } else { hide(bRej); }
 
                 const logSection = select('#detLogSection');
                 const logList = select('#detLogList');
-                if (d.can_see_logs && d.approval_logs && d.approval_logs.length > 0) {
+                if (d.can_see_logs && d.approval_logs) {
                     showBlock(logSection);
-                    logList.innerHTML = d.approval_logs.map(log => {
-                        let icon = '<i class="fas fa-check"></i>';
-                        let bgClass = 'u-bg-success-light';
-                        let textClass = 'u-text-success';
-                        
-                        if(log.status === 'rejected') {
-                            icon = '<i class="fas fa-times"></i>';
-                            bgClass = 'u-bg-danger-light';
-                            textClass = 'u-text-danger';
-                        } else if(log.status === 'pending') {
-                            icon = '<i class="fas fa-clock"></i>';
-                            bgClass = 'u-bg-light';
-                            textClass = 'u-text-muted';
-                        }
-
-                        return `
-                        <div class="u-flex u-gap-md u-mb-md u-items-start">
+                    const logs = d.approval_logs.map(log => {
+                        let icon = '<i class="fas fa-check"></i>', bgClass = 'u-bg-success-light', textClass = 'u-text-success';
+                        if(log.status === 'rejected') { icon = '<i class="fas fa-times"></i>'; bgClass = 'u-bg-danger-light'; textClass = 'u-text-danger'; }
+                        else if(log.status === 'pending') { icon = '<i class="fas fa-clock"></i>'; bgClass = 'u-bg-light'; textClass = 'u-text-muted'; }
+                        return `<div class="u-flex u-gap-md u-mb-md u-items-start">
                             <div class="u-avatar u-avatar--sm ${textClass}" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">${icon}</div>
-                            <div class="u-flex-1">
-                                <div class="u-flex u-justify-between u-items-center">
-                                    <div class="u-text-sm u-font-bold">${log.name}</div>
-                                    <div class="u-text-xs u-muted">${log.time_ago}</div>
+                            <div class="u-flex-1" style="min-width: 0;">
+                                <div class="u-flex u-justify-between u-items-start u-w-full" style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div class="u-pr-sm">
+                                        <div class="u-font-bold u-text-sm">${log.name}</div>
+                                        <div class="u-text-xs u-muted">${log.role}</div>
+                                    </div>
+                                    <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${log.time_ago}</div>
                                 </div>
-                                <div class="u-text-xs u-muted u-mb-xs">${log.role}</div>
-                                <div class="u-text-sm u-p-sm u-rounded ${bgClass} ${textClass}">
+                                <div class="u-text-sm u-p-sm u-rounded ${bgClass} ${textClass} u-mt-xs">
                                     <strong>${log.status.toUpperCase()}</strong>${log.note ? ': ' + log.note : ''}
                                     <div class="u-text-xs u-mt-xxs u-muted">${log.date_formatted}</div>
                                 </div>
                             </div>
                         </div>`;
                     }).join('');
-                } else {
-                    hide(logSection);
-                }
 
-                const geo = d.geolocation || {};
-                const mapSec = select('#detMapSection');
-                const wHead = select('#wrapperMapHead');
-                const wCand = select('#wrapperMapCand');
+                    const createdLog = `<div class="u-flex u-gap-md u-mb-md u-items-start">
+                        <div class="u-avatar u-avatar--sm u-text-brand" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="u-flex-1" style="min-width: 0;">
+                            <div class="u-flex u-justify-between u-items-start u-w-full" style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div class="u-pr-sm">
+                                    <div class="u-font-bold u-text-sm">${d.creator_name || 'System'}</div>
+                                    <div class="u-text-xs u-muted">Document Created</div>
+                                </div>
+                                <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${d.created_at_human || ''}</div>
+                            </div>
+                            <div class="u-text-sm u-p-sm u-rounded u-bg-light u-text-muted u-mt-xs">
+                                <strong>CREATED</strong>
+                                <div class="u-text-xs u-mt-xxs u-muted">${d.created_at_formatted || ''}</div>
+                            </div>
+                        </div>
+                    </div>`;
 
-                if (geo.head || geo.candidate) showBlock(mapSec); else hide(mapSec);
-
-                const iHead = select('#img-head'); if(iHead) iHead.style.display='none';
-                const niHead = select('#no-img-head'); if(niHead) niHead.style.display='none';
-                const iCand = select('#img-cand'); if(iCand) iCand.style.display='none';
-                const niCand = select('#no-img-cand'); if(niCand) niCand.style.display='none';
-
-                if (geo.head) {
-                    showBlock(wHead);
-                    setText('#ts-head', `Ditandatangani: ${geo.head.ts}`);
-                    initMap('map-head', geo.head.lat, geo.head.lng);
-                    if(geo.head.image_url) { if(iHead) { iHead.src = geo.head.image_url; showBlock(iHead); } }
-                    else showBlock(niHead);
-                } else hide(wHead);
-
-                if (geo.candidate) {
-                    showBlock(wCand);
-                    setText('#ts-cand', `Ditandatangani: ${geo.candidate.ts}`);
-                    initMap('map-cand', geo.candidate.lat, geo.candidate.lng);
-                    if(geo.candidate.image_url) { if(iCand) { iCand.src = geo.candidate.image_url; showBlock(iCand); } }
-                    else showBlock(niCand);
-                } else hide(wCand);
+                    logList.innerHTML = logs + createdLog;
+                } else { hide(logSection); }
 
                 openModal('detailContractModal');
             } catch(err) { window.toastErr(err.message); }
@@ -1519,19 +1513,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     const form = doc.createElement('form');
                     form.method = 'POST';
                     form.action = btnDelete.dataset.url;
-
                     const csrfInput = doc.createElement('input');
                     csrfInput.type = 'hidden';
                     csrfInput.name = '_token';
                     csrfInput.value = csrf;
                     form.appendChild(csrfInput);
-
                     const methodInput = doc.createElement('input');
                     methodInput.type = 'hidden';
                     methodInput.name = '_method';
                     methodInput.value = 'DELETE';
                     form.appendChild(methodInput);
-
                     doc.body.appendChild(form);
                     form.submit();
                 }
