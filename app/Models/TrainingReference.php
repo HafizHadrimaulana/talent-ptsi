@@ -27,9 +27,6 @@ class TrainingReference extends Model
 
     protected $casts = [
         'biaya_pelatihan'       => 'decimal:2',
-        'uhpd'                  => 'decimal:2',
-        'biaya_akomodasi'       => 'decimal:2',
-        'estimasi_total_biaya'  => 'decimal:2',
     ];
 
     public function unit()

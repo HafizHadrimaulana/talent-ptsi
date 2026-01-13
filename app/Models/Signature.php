@@ -22,6 +22,8 @@ class Signature extends Model
         'geo_lng',
         'geo_accuracy_m',
         'signed_at',
+        'ip_address',
+        'verification_code'
     ];
 
     protected $casts = [
@@ -33,8 +35,19 @@ class Signature extends Model
         return $this->belongsTo(Document::class, 'document_id');
     }
 
-    public function signer(): BelongsTo
+    /**
+     * Relasi ke tabel Users (Signer)
+     */
+    public function signerUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'signer_user_id');
+    }
+
+    /**
+     * Relasi ke tabel Persons (Signer) - INI YANG MEMPERBAIKI ERROR UTAMA
+     */
+    public function signerPerson(): BelongsTo
+    {
+        return $this->belongsTo(Person::class, 'signer_person_id');
     }
 }

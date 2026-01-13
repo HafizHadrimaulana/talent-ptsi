@@ -4,99 +4,58 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class UnitsSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::transaction(function () {
-            // peta NAME → CODE (tanpa spasi)
-            $map = [
-                // Head Office
-                'SI Head Office' => 'SIHO',
+        Schema::disableForeignKeyConstraints();
 
-                // DBS
-                'Divisi Bisnis Strategis Oil, Gas and Renewable Energy' => 'DBSOGRE',
-                'Divisi Bisnis Strategis Coal and Mineral'              => 'DBSCNM',
-                'Divisi Bisnis Strategis Government and Institution'    => 'DBSGNI',
-                'Divisi Bisnis Strategis Industrial Services'           => 'DBSINS',
-                'Divisi Bisnis Strategis Infrastructure and Transportation' => 'DBSINT',
-                'Divisi Bisnis Strategis Sustainability and Environment'    => 'DBSSNE',
+        $data = [
+            1 => ['code' => 'SIHO', 'name' => 'SI Head Office', 'category' => null],
+            2 => ['code' => 'DBSOGRE', 'name' => 'Divisi Bisnis Strategis Oil, Gas and Renewable Energy', 'category' => 'operasi'],
+            3 => ['code' => 'DBSCNM', 'name' => 'Divisi Bisnis Strategis Coal and Mineral', 'category' => 'operasi'],
+            4 => ['code' => 'DBSGNI', 'name' => 'Divisi Bisnis Strategis Government and Institution', 'category' => 'operasi'],
+            5 => ['code' => 'DBSINS', 'name' => 'Divisi Bisnis Strategis Industrial Services', 'category' => 'operasi'],
+            6 => ['code' => 'DBSINT', 'name' => 'Divisi Bisnis Strategis Infrastructure and Transportation', 'category' => 'operasi'],
+            7 => ['code' => 'DBSSNE', 'name' => 'Divisi Bisnis Strategis Sustainability and Environment', 'category' => 'operasi'],
+            8 => ['code' => 'SIJAK', 'name' => 'Cabang Jakarta', 'category' => 'cabang'],
+            9 => ['code' => 'SISUB', 'name' => 'Cabang Surabaya', 'category' => 'cabang'],
+            10 => ['code' => 'SIMAK', 'name' => 'Cabang Makassar', 'category' => 'cabang'],
+            11 => ['code' => 'SIBAT', 'name' => 'Cabang Batam', 'category' => 'cabang'],
+            12 => ['code' => 'SIBPP', 'name' => 'Cabang Balikpapan', 'category' => 'cabang'],
+            13 => ['code' => 'SIMED', 'name' => 'Cabang Medan', 'category' => 'cabang'],
+            14 => ['code' => 'SIPAL', 'name' => 'Cabang Palembang', 'category' => 'cabang'],
+            15 => ['code' => 'SIPKU', 'name' => 'Cabang Pekanbaru', 'category' => 'cabang'],
+            16 => ['code' => 'SISMA', 'name' => 'Cabang Semarang', 'category' => 'cabang'],
+            17 => ['code' => 'SISG', 'name' => 'Cabang Singapura', 'category' => 'cabang'],
+            26 => ['code' => 'SP', 'name' => 'Sekretariat Perusahaan', 'category' => 'enabler'],
+            27 => ['code' => 'SPI', 'name' => 'Satuan Pengawasan Intern', 'category' => 'enabler'],
+            28 => ['code' => 'DRP2B', 'name' => 'Divisi Riset, Pemasaran dan Pengembangan Bisnis', 'category' => 'enabler'],
+            29 => ['code' => 'DOP', 'name' => 'Divisi Operasi', 'category' => 'enabler'],
+            30 => ['code' => 'DKA', 'name' => 'Divisi Keuangan dan Akuntansi', 'category' => 'enabler'],
+            31 => ['code' => 'DPKMR', 'name' => 'Divisi Perencanaan Korporat dan Manajemen Risiko', 'category' => 'enabler'],
+            32 => ['code' => 'DMA', 'name' => 'Divisi Manajemen Aset', 'category' => 'enabler'],
+            33 => ['code' => 'DHC', 'name' => 'Divisi Human Capital', 'category' => 'enabler'],
+            34 => ['code' => 'DTI', 'name' => 'Divisi Teknologi Informasi', 'category' => 'enabler'],
+            35 => ['code' => 'STO', 'name' => 'Strategic Transformation Office', 'category' => 'enabler'],
+            36 => ['code' => 'UTJSL', 'name' => 'Unit Tanggung Jawab Sosial dan Lingkungan', 'category' => 'enabler'],
+        ];
 
-                // Cabang
-                'Cabang Jakarta'     => 'SIJAK',
-                'Cabang Surabaya'    => 'SISUB',
-                'Cabang Makassar'    => 'SIMAK',
-                'Cabang Batam'       => 'SIBAT',
-                'Cabang Balikpapan'  => 'SIBPP',
-                'Cabang Medan'       => 'SIMED',
-                'Cabang Palembang'   => 'SIPAL',
-                'Cabang Pekanbaru'   => 'SIPKU',
-                'Cabang Semarang'    => 'SISMA',
-                'Cabang Singapura'   => 'SISG',
-                'Cabang Banjarbaru'  => 'SIBJB',
-                'Cabang Samarinda'   => 'SISMD',
-                'Cabang Tanjung Redeb' => 'SITJR',
-                'Cabang Berau'       => 'SIBER',
-                'Cabang Gresik'      => 'SIGRS',
-                'Cabang Sangatta'    => 'SISGT',
-                'Cabang Banjarmasin' => 'SIBJM',
-                'Cabang Tanjung'     => 'SITJG',
+        $now = now();
+        foreach ($data as $id => $val) {
+            DB::table('units')->updateOrInsert(
+                ['id' => $id],
+                [
+                    'code' => $val['code'],
+                    'name' => $val['name'],
+                    'category' => $val['category'],
+                    'updated_at' => $now,
+                ]
+            );
+        }
 
-                // Enabler / Pusat
-                'Sekretariat Perusahaan'                           => 'SP',
-                'Satuan Pengawasan Intern'                         => 'SPI',
-                'Divisi Riset, Pemasaran dan Pengembangan Bisnis'  => 'DRP2B',
-                'Divisi Operasi'                                   => 'DOP',
-                'Divisi Keuangan dan Akuntansi'                    => 'DKA',
-                'Divisi Perencanaan Korporat dan Manajemen Risiko' => 'DPKMR',
-                'Divisi Manajemen Aset'                            => 'DMA',
-                'Divisi Human Capital'                             => 'DHC',
-                'Divisi Teknologi Informasi'                       => 'DTI',
-                'Strategic Transformation Office'                  => 'STO',
-                'Unit Tanggung Jawab Sosial dan Lingkungan'        => 'UTJSL',
-
-                // Entitas terkait (jika ada pada units)
-                'PT BKI (Persero) - Penugasan'                     => 'PENUGASKAR',
-                'PT Surveyor Indonesia Sertifikasi'                => 'PTINPSEKSI',
-                'KSO SCI-SI'                                       => 'KSOSCSI',
-                'SCCI'                                             => 'SCCI',
-            ];
-
-            foreach ($map as $name => $code) {
-                // Semua baris yang punya NAME ini (mungkin lebih dari 1)
-                $rows = DB::table('units')->where('name', $name)->orderBy('id', 'asc')->get();
-                if ($rows->isEmpty()) {
-                    // name tidak ada di DB → skip (idempotent)
-                    continue;
-                }
-
-                // Tetapkan satu "keeper" (id terkecil)
-                $keeper = $rows->first();
-
-                // 1) Jika ada baris lain (name beda) yang sudah pakai CODE target, bebaskan dulu
-                $conflicts = DB::table('units')
-                    ->where('code', $code)
-                    ->where('id', '<>', $keeper->id)
-                    ->get();
-
-                foreach ($conflicts as $conf) {
-                    DB::table('units')
-                        ->where('id', $conf->id)
-                        ->update(['code' => '__TMP__' . $code . '_' . $conf->id]);
-                }
-
-                // 2) Set CODE final di keeper (idempotent)
-                DB::table('units')->where('id', $keeper->id)->update(['code' => $code]);
-
-                // 3) Untuk baris lain dengan NAME sama (duplikat), beri code unik agar tidak nabrak unique
-                foreach ($rows->slice(1) as $dup) {
-                    // kalau dia sudah punya code sama dengan $code, ubah jadi __DUP__...
-                    DB::table('units')
-                        ->where('id', $dup->id)
-                        ->update(['code' => '__DUP__' . $code . '_' . $dup->id]);
-                }
-            }
-        });
+        Schema::enableForeignKeyConstraints();
     }
 }
