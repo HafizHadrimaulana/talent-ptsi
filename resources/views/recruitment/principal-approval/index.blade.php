@@ -2097,6 +2097,7 @@
                                 let cleanVal = val.toString().replace(/\./g, '');
                                 let num = parseFloat(cleanVal);
                                 if (isNaN(num)) return '-';
+                                num = Math.floor(num);
                                 return 'Rp ' + num.toLocaleString('id-ID'); 
                             };
                             const parseVal = (v) => {
@@ -2104,14 +2105,17 @@
                                 if (typeof v === 'number') return v;
                                 return parseFloat(v.toString().replace(/\./g, '')) || 0;
                             };
+
+                            const thrPerBulan = Math.floor(parseVal(data.thr) / 12);
+                            const kompensasiPerBulan = Math.floor(parseVal(data.kompensasi) / 12);
                             const totalAnggaranPerBulan = 
                                 parseVal(data.salary) + 
                                 parseVal(data.allowanceJ) + 
                                 parseVal(data.allowanceP) + 
                                 parseVal(data.allowanceC) + 
                                 parseVal(data.allowanceK) + 
-                                parseVal(data.thr) + 
-                                parseVal(data.kompensasi) + 
+                                thrPerBulan +
+                                kompensasiPerBulan + 
                                 parseVal(data.bpjs_tk) + 
                                 parseVal(data.bpjs_kes) + 
                                 parseVal(data.pph21);
@@ -2199,8 +2203,8 @@
                                         ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
                                         ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
                                         ${makeRow('Tunjangan Lainnya', formatRp(data.allowanceL))}
-                                        ${makeRow('THR', formatRp(data.thr))}
-                                        ${makeRow('Kompensasi', formatRp(data.kompensasi))}
+                                        ${makeRow('THR (Per Bulan)', formatRp(thrPerBulan))}
+                                        ${makeRow('Kompensasi (Per Bulan)', formatRp(kompensasiPerBulan))}
                                         ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
                                         ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
                                         ${makeRow('PPh 21', formatRp(data.pph21))}
