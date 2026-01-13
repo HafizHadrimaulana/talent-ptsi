@@ -416,7 +416,7 @@ class PrincipalApprovalController extends Controller
         $note = $r->input('note'); 
         $extendedNote = $r->input('extended_note');
         if (!empty($extendedNote)) {
-            $cleanNote = strip_tags($extendedNote, '<b><i><u><ol><ul><li><br><p>'); 
+            $cleanNote = strip_tags($extendedNote, '<b><i><u><ol><ul><li><br><p><div><span><strong><em><table><thead><tbody><tr><th><td><hr>');
             $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
         }
         $this->closePending($req, 'approved', $note);

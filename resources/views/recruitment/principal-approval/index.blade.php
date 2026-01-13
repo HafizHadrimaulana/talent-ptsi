@@ -19,11 +19,15 @@
     .ck-editor__editable_inline { min-height: 200px; max-height: 400px; }
     .ck.ck-balloon-panel { z-index: 2060 !important; }
     #publishDescriptionModal { display: flex !important; align-items: center; justify-content: center; z-index: 2200 !important; }
-    .ck-content ul { list-style-type: disc !important; padding-left: 2rem !important; margin-bottom: 1rem;}
-    .ck-content ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-bottom: 1rem; }
+    .ck-content table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; border: 1px solid #d1d5db; }
+    .ck-content th, 
+    .ck-content td { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem;vertical-align: top; }
+    .ck-content th { background-color: #f3f4f6; font-weight: 600; text-align: left; }
+    .ck-content ul { list-style-type: disc !important; padding-left: 1.5rem !important; margin-bottom: 1rem;}
+    .ck-content ol { list-style-type: decimal !important; padding-left: 1.5rem !important; margin-bottom: 1rem; }
     .ck-content li { display: list-item !important; }
     .ck-content h1, .ck-content h2, .ck-content h3 { font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; }
-    .ck-content p { margin-bottom: 0.75rem; }
+    .ck-content p { overflow-x: auto; margin-bottom: 0.75rem; }
 </style>
 @php
   use Illuminate\Support\Facades\DB;
