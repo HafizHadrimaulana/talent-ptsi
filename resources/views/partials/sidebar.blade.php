@@ -70,8 +70,23 @@
                     <path d="m6 9 6 6 6-6" />
                 </svg>
             </button>
-            <div id="nav-recruitment" class="nav-children {{ $recOpen ? 'open' : '' }}"
-                data-accordion-panel="nav-recruitment">
+            <div id="nav-recruitment" class="nav-children {{ $recOpen ? 'open' : '' }}" data-accordion-panel="nav-recruitment">
+                @php
+                    $hideMenuForNonHcAvp = false; // Default: jangan sembunyikan
+
+                    // Jalankan pengecekan hanya jika user BUKAN Superadmin dan Memiliki Role 'AVP'
+                    if (!$isSuper && $user && $user->hasRole('AVP')) {
+                        $jobTitle = \Illuminate\Support\Facades\DB::table('employees')
+                            ->join('positions', 'employees.position_id', '=', 'positions.id')
+                            ->where('employees.person_id', $user->person_id)
+                            ->value('positions.name');
+                        
+                        // Jika jabatannya TIDAK SAMA dengan 'AVP Human Capital Operation', aktifkan flag sembunyi
+                        if ($jobTitle !== 'AVP Human Capital Operation') {
+                            $hideMenuForNonHcAvp = true;
+                        }
+                    }
+                @endphp
                 @if($isPelamar || $isSuper)
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.applicant-data.*') ? 'active' : '' }}"
                     href="{{ route('recruitment.applicant-data.index') }}">
@@ -92,7 +107,7 @@
                     <span class="label">Careers</span>
                 </a>
                 @endif
-                @if($isSuper || $user?->can('recruitment.view'))
+                @if( ($isSuper || $user?->can('recruitment.view')) && !$hideMenuForNonHcAvp )
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.monitoring')?'active':'' }}"
                     href="{{ \Illuminate\Support\Facades\Route::has('recruitment.monitoring') ? route('recruitment.monitoring') : '#' }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -105,7 +120,7 @@
                     <span class="label">Monitoring</span>
                 </a>
                 @endif
-                @if($isSuper || $user?->can('recruitment.view'))
+                @if( ($isSuper || $user?->can('recruitment.view')) && !$hideMenuForNonHcAvp )
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.principal-approval*')?'active':'' }}"
                     href="{{ \Illuminate\Support\Facades\Route::has('recruitment.principal-approval.index') ? route('recruitment.principal-approval.index') : '#' }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"

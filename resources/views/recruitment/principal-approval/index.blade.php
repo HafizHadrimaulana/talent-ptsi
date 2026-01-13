@@ -196,7 +196,7 @@
                 'SDM Unit'   => $me->hasRole('SDM Unit'),
                 'Kepala Unit'=> $me->hasRole('Kepala Unit'),
                 'DHC'        => $me->hasRole('DHC'),
-                'AVP HC Ops' => $me->hasRole('AVP Human Capital Operation') || $clnTitle == 'AVP HUMAN CAPITAL OPERATION',
+                'AVP HC Ops' => ($me->hasRole('AVP') && $clnTitle == 'AVP HUMAN CAPITAL OPERATION'),
                 'VP HC'      => $me->hasRole('VP Human Capital') || $clnTitle == 'VP HUMAN CAPITAL',
                 'Dir SDM'    => $me->hasRole('Dir SDM')
             ];
