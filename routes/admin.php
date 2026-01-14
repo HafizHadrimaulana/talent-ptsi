@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\Access\UserController;
 use App\Http\Controllers\Admin\Access\RoleController;
 use App\Http\Controllers\Admin\Access\PermissionController;
 
-use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\ContractTemplateController;
 use App\Http\Controllers\Self\ProfileController;
 
@@ -30,6 +29,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     Route::prefix('admin/settings/access')->name('admin.')->group(function () {
         Route::get('users',           [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
         Route::post('users',          [UserController::class, 'store'])->middleware('permission:users.create')->name('users.store');
+        Route::get('users/{id}',      [UserController::class, 'show'])->middleware('permission:users.view')->name('users.show');
         Route::put('users/{user}',    [UserController::class, 'update'])->middleware('permission:users.update')->name('users.update');
         Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('permission:users.delete')->name('users.destroy');
         Route::get('roles/options',   [UserController::class, 'roleOptions'])->middleware('permission:users.view')->name('roles.options');
@@ -39,15 +39,11 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::put('roles/{role}',    [RoleController::class, 'update'])->middleware('permission:rbac.assign')->name('roles.update');
         Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:rbac.assign')->name('roles.destroy');
 
-        Route::get('permissions',               [PermissionController::class, 'index'])->middleware('permission:rbac.view')->name('permissions.index');
-        Route::put('permissions/{permission}',  [PermissionController::class, 'update'])->middleware('permission:rbac.assign')->name('permissions.update');
+        Route::get('permissions',              [PermissionController::class, 'index'])->middleware('permission:rbac.view')->name('permissions.index');
+        Route::put('permissions/{permission}', [PermissionController::class, 'update'])->middleware('permission:rbac.assign')->name('permissions.update');
     });
 
     Route::prefix('admin')->name('admin.')->group(function () {
-        Route::get('employees',       [EmployeeController::class, 'index'])->middleware('permission:employees.view')->name('employees.index');
-        Route::get('employees/{id}', [EmployeeController::class, 'show'])->middleware('permission:employees.view')->name('employees.show');
-        Route::get('employees/positions/options', [EmployeeController::class, 'positionOptions'])->middleware('permission:employees.view')->name('employees.positions.options');
-
         Route::resource('contract-templates', ContractTemplateController::class);
     });
 
@@ -124,7 +120,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
             ->name('dashboard.update-realisasi-date');
 
-    /// Start Training ///
         Route::get('training-request', [TrainingRequestController::class, 'index'])
             ->name('training-request');
         Route::get('training-request/detail-training-request/{id}', [TrainingRequestController::class, 'getDetailTrainingRequest'])
@@ -157,9 +152,7 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.approve-training-request');
         Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class,'rejectTrainingRequest'])
             ->name('training-request.reject-training-request');
-    /// End Training ///
         
-    /// Start Training Management ///
         Route::get('training-management', [TrainingManagementController::class, 'index'])->middleware('permission:training.management.view')->name('training-management');
         Route::post('training-management/{id}/approve-training-submission', [TrainingManagementController::class,'approveTrainingSubmission']);
         Route::post('training-management/{id}/reject-training-submission', [TrainingManagementController::class,'rejectTrainingSubmission']);
@@ -176,7 +169,6 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.update-data-lna');
         Route::post('training-request/input-lna', [TrainingManagementController::class, 'inputLna'])
             ->name('training-request.input-lna');
-    /// End Training Management ///
 
         Route::get('self-learning', fn () => view('training.self-learning.index'))
             ->middleware('permission:training.view')->name('self-learning');

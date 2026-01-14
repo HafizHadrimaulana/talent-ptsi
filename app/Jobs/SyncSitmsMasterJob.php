@@ -542,9 +542,9 @@ class SyncSitmsMasterJob implements ShouldQueue
             ]);
         }
         
-        // FIX: Mapping Brevet to Certification Category
+        // FIX: SIMPAN SEBAGAI KATEGORI 'brevet' (BUKAN 'certification')
         foreach (Arr::get($row, 'brevet_list.brevet_data', []) as $b) {
-             $this->sitmsInsertPortfolio($pid, 'certification', [
+             $this->sitmsInsertPortfolio($pid, 'brevet', [
                 'title' => $b['brevet_name'] ?? null,
                 'organization' => $b['brevet_organizer'] ?? null,
                 'start_date' => $this->parseDate(($b['brevet_year'] ?? '') . '-01-01'),
@@ -561,10 +561,13 @@ class SyncSitmsMasterJob implements ShouldQueue
     {
         $cols = $this->tableColumns('portfolio_histories');
         $desc = $this->cut($data['description'] ?? null, 300);
+        $title = $this->cut($data['title'], 150);
+        if (!$title) return;
+
         $pl = [
             'person_id' => $pid, 'category' => $cat,
-            'title' => $this->cut($data['title'], 150),
-            'organization' => $this->cut($data['organization'], 150),
+            'title' => $title,
+            'organization' => $this->cut($data['organization'] ?? 'N/A', 150),
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'] ?? null,
             'description' => $desc,
@@ -579,7 +582,6 @@ class SyncSitmsMasterJob implements ShouldQueue
             'category' => $cat, 
             'title' => $pl['title'], 
             'start_date' => $pl['start_date'],
-            'organization' => $pl['organization'],
         ], $pl);
 
         $id = DB::table('portfolio_histories')
