@@ -64,14 +64,8 @@ class RolesPermissionsSeeder extends Seeder
             'Kepala Proyek (MP)' => [
                 'employees.view', 'recruitment.view', 'recruitment.approve', 'recruitment.reject', 'training.view',
             ],
-            'AVP Human Capital Operation' => [
-                'users.view', 'employees.view', 'org.view',
-                'recruitment.view', 'recruitment.approve', 'recruitment.reject',
-                'contract.view', 'contract.approve',
-                'training.view', 'training.dashboard.view', 'training.management.view', 'training.management.approve',
-            ],
             'AVP' => [
-                'training.view', 'training.management.view', 'training.management.approve',
+                'training.view', 'training.management.view', 'training.management.approve','recruitment.view', 'recruitment.approve', 'recruitment.reject',
             ],
             'DBS Unit' => [
                 'training.view', 'training.management.view',

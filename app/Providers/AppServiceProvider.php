@@ -35,15 +35,23 @@ class AppServiceProvider extends ServiceProvider
             if (Auth::check()) {
                 try {
                     $me = Auth::user();
+                    $myJobTitle = null;
+                    if ($me->person_id) {
+                        $myJobTitle = \Illuminate\Support\Facades\DB::table('employees')
+                            ->join('positions', 'employees.position_id', '=', 'positions.id')
+                            ->where('employees.person_id', $me->person_id)
+                            ->value('positions.name');
+                    }
                     
                     // --- NOTIFIKASI IZIN PRINSIP ---
-                    $approverRoles = ['Kepala Unit', 'DHC', 'AVP Human Capital Operation', 'VP Human Capital', 'Dir SDM', 'Superadmin'];
+                    $approverRoles = ['Kepala Proyek (MP)', 'SDM Unit','Kepala Unit', 'DHC', 'AVP', 'VP Human Capital', 'Dir SDM', 'Superadmin'];
                     
                     if ($me->hasAnyRole($approverRoles)) {
                         $query = RecruitmentRequest::with(['approvals', 'unit'])
                             ->whereIn('status', ['submitted', 'in_review']);
 
-                        if ($me->hasRole('Kepala Unit') && !$me->hasRole('Superadmin')) {
+                        if (!$me->hasRole('Superadmin') && 
+                           ($me->hasRole('Kepala Unit') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Proyek (MP)'))) {
                             $query->where('unit_id', $me->unit_id);
                         }
 
@@ -52,28 +60,27 @@ class AppServiceProvider extends ServiceProvider
                             $currentApproval = $req->approvals->sortBy('id')->where('status', 'pending')->first();
 
                             if ($currentApproval) {
-                                $allApprovals = $req->approvals->sortBy('id')->values();
-                                $stageIndex = $allApprovals->search(fn($item) => $item->id === $currentApproval->id);
+                                preg_match('/\[stage=([^\]]+)\]/', $currentApproval->note, $matches);
+                                $stageKey = $matches[1] ?? ''; 
                                 $shouldShow = false;
+                                $isSameUnit = (string)$me->unit_id === (string)$req->unit_id;
 
-                                if ($me->hasRole('Superadmin')) $shouldShow = true;
-                                else if ($stageIndex === 0 && $me->hasRole('Kepala Unit') && (string)$me->unit_id === (string)$req->unit_id) $shouldShow = true;
-                                else if ($stageIndex === 1 && $me->hasRole('DHC')) $shouldShow = true;
-                                else if ($stageIndex === 2 && ($me->hasRole('AVP Human Capital Operation') || $me->job_title == 'AVP Human Capital Operation')) $shouldShow = true;
-                                else if ($stageIndex === 3 && ($me->hasRole('VP Human Capital') || $me->job_title == 'VP Human Capital')) $shouldShow = true;
-                                else if ($stageIndex === 4 && $me->hasRole('Dir SDM')) $shouldShow = true;
-
+                                if ($me->hasRole('Superadmin')) {$shouldShow = true;}
+                                else if ($stageKey === 'kepala_mp' && $me->hasRole('Kepala Proyek (MP)') && $isSameUnit) {$shouldShow = true;}
+                                else if ($stageKey === 'sdm_unit' && $me->hasRole('SDM Unit') && $isSameUnit) {$shouldShow = true;}
+                                else if ($stageKey === 'kepala_unit' && $me->hasRole('Kepala Unit') && $isSameUnit) {$shouldShow = true;}
+                                else if ($stageKey === 'dhc_checker' && $me->hasRole('DHC')) {$shouldShow = true;}
+                                else if ($stageKey === 'avp_hc_ops' && ($me->hasRole('AVP') && $myJobTitle === 'AVP Human Capital Operation')) {$shouldShow = true;}
+                                else if ($stageKey === 'vp_hc' && ($me->hasRole('VP Human Capital') || $myJobTitle === 'VP Human Capital')) {$shouldShow = true;}
+                                else if ($stageKey === 'dir_sdm' && $me->hasRole('Dir SDM')) {$shouldShow = true;}
                                 if ($shouldShow) {
-
                                     $slaTime = $req->created_at;
-
-                                    $kaUnitApproval = $req->approvals->sortBy('id')->first();
-
-                                    // Jika Kepala Unit SUDAH approve
-                                    if ($kaUnitApproval && $kaUnitApproval->status === 'approved' && $kaUnitApproval->decided_at) {
-                                        $slaTime = \Illuminate\Support\Carbon::parse($kaUnitApproval->decided_at);
+                                    $kaUnitApp = $req->approvals->filter(function($a) {
+                                        return $a->status == 'approved' && strpos($a->note, 'stage=kepala_unit') !== false;
+                                    })->first();
+                                    if ($kaUnitApp && $kaUnitApp->decided_at) {
+                                        $slaTime = \Illuminate\Support\Carbon::parse($kaUnitApp->decided_at);
                                     }
-                                    // struktur data notifikasi
                                     $allNotifications->push((object)[
                                         'id' => $req->id,
                                         'type' => 'izin_prinsip',
@@ -116,11 +123,7 @@ class AppServiceProvider extends ServiceProvider
                 } catch (\Exception $e) {
                 }
             }
-
-            // Urutkan notifikasi berdasarkan waktu terbaru
             $sortedNotifications = $allNotifications->sortByDesc('time');
-
-            // Kirim variabel $globalNotifications ke view layout
             $view->with('globalNotifications', $sortedNotifications);
         });
     }

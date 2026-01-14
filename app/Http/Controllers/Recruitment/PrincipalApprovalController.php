@@ -36,7 +36,7 @@ class PrincipalApprovalController extends Controller
             ['key' => 'sdm_unit',     'roles' => ['SDM Unit']],
             ['key' => 'kepala_unit',  'roles' => ['Kepala Unit']],
             ['key' => 'dhc_checker',  'roles' => ['DHC']],
-            ['key' => 'avp_hc_ops',   'roles' => ['AVP Human Capital Operation']], 
+            ['key' => 'avp_hc_ops',   'roles' => ['AVP']], 
             ['key' => 'vp_hc',        'roles' => ['VP Human Capital']],
             ['key' => 'dir_sdm',      'roles' => ['Dir SDM']],
         ];
@@ -49,7 +49,6 @@ class PrincipalApprovalController extends Controller
         return $user->hasRole('Superadmin') 
             || $user->hasRole('DHC') 
             || $user->hasRole('Dir SDM')
-            || $user->hasRole('AVP Human Capital Operation')
             || $user->hasRole('VP Human Capital')
             || $jobTitle === 'AVP Human Capital Operation'
             || $jobTitle === 'VP Human Capital';
@@ -115,31 +114,20 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         $canSeeAll = $this->canSeeAll($me);
-        
-        // 1. Tentukan Unit ID Filter
         $selectedUnitId = $canSeeAll
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
             : (int) ($me?->unit_id);
-
-        // 2. Ambil Query Dasar (Permission & Scoping)
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
-
-        // 3. Logika Filter Tab (Disetujui vs Berjalan)
-        $currentTab = $r->input('tab', 'berjalan'); // Default ke 'berjalan'
+        $currentTab = $r->input('tab', 'berjalan');
 
         if ($currentTab === 'disetujui') {
-            // Hanya ambil yang statusnya 'approved'
             $query->where('status', 'approved');
         } else {
-            // Tab Berjalan: Semua status KECUALI 'approved'
-            // Kita bungkus dalam closure function($q) agar logika OR tidak merusak filter unit_id
             $query->where(function($q) {
                 $q->where('status', '!=', 'approved')
                   ->orWhereNull('status');
             });
         }
-
-        // 4. Filter Pencarian Global (Search Bar)
         if ($r->filled('q')) {
             $search = $r->input('q');
             $query->where(function($q) use ($search) {
@@ -148,26 +136,19 @@ class PrincipalApprovalController extends Controller
                   ->orWhere('position', 'like', "%{$search}%");
             });
         }
-
-        // 5. Filter Open Ticket dari Notifikasi/Email
         if ($r->filled('open_ticket_id')) {
             $ticketId = $r->input('open_ticket_id');
             $query->where('id', $ticketId);
         }
-
-        // 6. Eksekusi Query dengan Sorting & Pagination
         $list = $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc')])
                       ->latest()
                       ->paginate(50)
-                      ->withQueryString(); // Agar parameter tab & search tetap ada saat pindah halaman
-
-        // 7. Data Pendukung View
+                      ->withQueryString();
         $units = $canSeeAll
             ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
             : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
-            
         $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
-        $projects  = []; // Jika dibutuhkan nanti
+        $projects  = [];
 
         return view('recruitment.principal-approval.index', [
             'list'           => $list,
@@ -176,7 +157,7 @@ class PrincipalApprovalController extends Controller
             'selectedUnitId' => $selectedUnitId,
             'projects'       => $projects,
             'locations'      => $locations,
-            'currentTab'     => $currentTab, // PENTING: Kirim variable ini ke View
+            'currentTab'     => $currentTab,
         ]);
     }
 
@@ -188,26 +169,22 @@ class PrincipalApprovalController extends Controller
             'location_id'  => 'required|exists:locations,id',
             'document'     => 'required|file|mimes:pdf,doc,docx|max:5120',
         ]);
-
         try {
             $path = null;
             if ($request->hasFile('document')) {
                 $path = $request->file('document')->store('project_docs', 'public');
             }
-
             $project = Project::create([
                 'project_code'  => $request->project_code,
                 'project_name'  => $request->project_name,
                 'location_id'   => $request->location_id,
                 'document_path' => $path
             ]);
-
             return response()->json([
                 'status' => 'success',
                 'data'   => $project,
                 'message'=> 'Project berhasil dibuat!'
             ]);
-
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
@@ -223,7 +200,6 @@ class PrincipalApprovalController extends Controller
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
         $query->latest();     
         $positionsMap = DB::table('positions')->pluck('name', 'id')->toArray();
-
         return Excel::download(
             new RecruitmentRequestExport($query, $positionsMap), 
             'Daftar_Izin_Prinsip_' . date('Y-m-d_H-i') . '.xlsx'
@@ -281,7 +257,6 @@ class PrincipalApprovalController extends Controller
                 $insert[$col] = $data[$key];
             }
         }
-
         if (!empty($data['details_json'])) {
             try {
                 $detailsArray = json_decode($data['details_json'], true);
@@ -366,7 +341,6 @@ class PrincipalApprovalController extends Controller
         }
         return back()->with('ok', 'Draft Izin Prinsip berhasil diperbarui.');
     }
-
     public function submit(RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
@@ -386,18 +360,13 @@ class PrincipalApprovalController extends Controller
             $hasKepalaMP = $this->checkUnitHasPosition($req->unit_id, 'KEPALA PROYEK (MP)');
             
             if (!$hasKepalaMP) {
-                // Jika TIDAK ADA Kepala MP, baru lompat ke SDM Unit (Stage 1)
                 $startStage = 1;
             }
-            // Jika ADA Kepala MP, tetap $startStage = 0 (masuk ke Kepala MP)
         }
-        
         $this->createPendingApproval($req, $startStage);
-        
         if (Schema::hasColumn($req->getTable(), 'status')) {
             $req->update(['status' => 'in_review']);
         }
-        
         return back()->with('ok', 'Permintaan berhasil dikirim.');
     }
 
@@ -407,24 +376,18 @@ class PrincipalApprovalController extends Controller
         if ($stageIdx === null) {
             return back()->withErrors('Tidak ada approval yang pending.');
         }
-        
-        // Pastikan user punya hak akses
         if (!$this->canActOnStage(Auth::user(), $stageIdx, $req->unit_id)) {
             abort(403, 'Unauthorized.');
         }
-        
         $note = $r->input('note'); 
         $extendedNote = $r->input('extended_note');
         if (!empty($extendedNote)) {
-            $cleanNote = strip_tags($extendedNote, '<b><i><u><ol><ul><li><br><p>'); 
+            $cleanNote = strip_tags($extendedNote, '<b><i><u><ol><ul><li><br><p><div><span><strong><em><table><thead><tbody><tr><th><td><hr>');
             $note = $note ? $note . "\n<hr>\n" . $cleanNote : $cleanNote; 
         }
         $this->closePending($req, 'approved', $note);
-
         $totalStages = count($this->stages());
         $nextStage = $stageIdx + 1;
-
-        // Cek Final Stage
         if ($nextStage >= $totalStages) {
             if (Schema::hasColumn($req->getTable(), 'status')) {
                 $req->update(['status' => 'approved']);
@@ -432,8 +395,6 @@ class PrincipalApprovalController extends Controller
             $req->generateTicketNumber();
             return back()->with('ok', 'Izin Prinsip sepenuhnya disetujui. Nomor Ticket: ' . $req->ticket_number);
         }
-
-        // Buat approval untuk stage berikutnya
         $this->createPendingApproval($req, $nextStage);
         return back()->with('ok', 'Disetujui dan diteruskan ke approver berikutnya.');
     }
@@ -453,7 +414,6 @@ class PrincipalApprovalController extends Controller
         }
         return back()->with('ok', 'Permintaan ditolak.');
     }
-
     protected function currentStageIndex(RecruitmentRequest $req): ?int
     {
         foreach ($req->approvals()->orderBy('id', 'asc')->get() as $ap) {
@@ -465,7 +425,7 @@ class PrincipalApprovalController extends Controller
                         if ($s['key'] === $key) return $idx;
                     }
                 }
-                return 0; // Fallback logic
+                return 0;
             }
         }
         return null;
@@ -497,19 +457,14 @@ class PrincipalApprovalController extends Controller
         }
     }
 
-    // GANTI METHOD canActOnStage() SEPENUHNYA:
     protected function canActOnStage($user, int $stageIdx, $reqUnitId): bool
     {
         if (!$user) return false;
-        if ($user->hasRole('Superadmin')) return true;
-        
+        if ($user->hasRole('Superadmin')) return true;        
         $stage = $this->stages()[$stageIdx] ?? null;
         if (!$stage) return false;
-        
         $jobTitle = $this->getUserJobTitle($user->id);
         $cleanJobTitle = trim(strtoupper($jobTitle));
-
-        // Logic Default Role Spatie
         $allowed = false;
         foreach ($stage['roles'] as $r) {
             if ($user->hasRole($r)) {
@@ -518,39 +473,28 @@ class PrincipalApprovalController extends Controller
             }
         }
 
-        // Logic Spesifik per Stage Key
         if ($stage['key'] === 'kepala_mp') {
-             // Cek Role atau Jabatan "Kepala Proyek (MP)" + Wajib satu unit
              $isTitleMatch = str_contains($cleanJobTitle, 'KEPALA PROYEK (MP)');
              return ($allowed || $isTitleMatch) && ((string) $user->unit_id === (string) $reqUnitId);
         }
-
         if ($stage['key'] === 'sdm_unit') {
-             // Cek Role SDM Unit + Wajib satu unit
              return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
-
         if ($stage['key'] === 'kepala_unit') {
-            // Cek Role Kepala Unit + Wajib satu unit
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
 
         if ($stage['key'] === 'dhc_checker') {
-            // DHC (Pusat) atau Kepala Unit DHC (Cabang DHC)
             if ($allowed) return true;
             $isKepalaUnit = $user->hasRole('Kepala Unit');
             return $isKepalaUnit && $this->dhcUnitId() && ((string) $user->unit_id === (string) $this->dhcUnitId());
         }
-
         if ($stage['key'] === 'avp_hc_ops') {
-            return $allowed || ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
+            return $allowed && ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
         }
-
         if ($stage['key'] === 'vp_hc') {
             return $allowed || ($cleanJobTitle === 'VP HUMAN CAPITAL');
         }
-
-        // Dir SDM (Default allowed check sudah cukup)
         return $allowed;
     }
 
@@ -559,21 +503,19 @@ class PrincipalApprovalController extends Controller
         $me = Auth::user();
         if (!$me) abort(401);
         $jobTitle = $this->getUserJobTitle($me->id);
-        
-        // Daftar role pusat yang boleh lintas unit
         if ($me->hasRole('Superadmin') 
             || $me->hasRole('DHC') 
             || $me->hasRole('Dir SDM')
-            || $me->hasRole('AVP Human Capital Operation') 
             || $me->hasRole('VP Human Capital')
             || $jobTitle === 'AVP Human Capital Operation'
             || $jobTitle === 'VP Human Capital') {
             return;
         }
-
-        // Untuk unit user biasa, harus sama unit_id nya
         if ($me->unit_id && $unitId && (string) $me->unit_id !== (string) $unitId) {
             abort(403);
+        }
+        if ($me->hasRole('AVP') && $jobTitle !== 'AVP Human Capital Operation') {
+             abort(403, 'Akses ditolak. Khusus AVP Human Capital Operation.');
         }
     }
 
@@ -603,12 +545,18 @@ class PrincipalApprovalController extends Controller
             return response()->json(['success' => false, 'message' => 'Hanya Izin Prinsip yang sudah Approved dan memiliki No Ticket yang dapat dipublikasikan.'], 422);
         }
         $request->validate([
-            'description' => 'required|string'
+            'description' => 'required|string',
+            'publish_start_date' => 'required|date',
+            'publish_end_date' => 'required|date|after_or_equal:publish_start_date',
+            'publish_location' => 'required|string|max:255',
         ]);
         $req->update([
             'is_published' => true,
             'published_at' => now(),
-            'description'  => $request->description 
+            'description'  => $request->description,
+            'publish_start_date' => $request->publish_start_date,
+            'publish_end_date'   => $request->publish_end_date,
+            'publish_location'   => $request->publish_location
         ]);
         return response()->json(['success' => true, 'message' => 'Lowongan berhasil dipublikasikan dengan deskripsi!']);
     }

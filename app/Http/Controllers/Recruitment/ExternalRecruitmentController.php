@@ -4,12 +4,9 @@ namespace App\Http\Controllers\Recruitment;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use App\Models\RecruitmentRequest;    
 use App\Models\RecruitmentApplicant; 
 use App\Models\Position;
-use App\Models\Person;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ExternalRecruitmentController extends Controller
@@ -29,6 +26,10 @@ class ExternalRecruitmentController extends Controller
                 ->orWhere('status', 'like', '%Selesai%') 
                 ->orWhere('status', 'Final');
             });
+        if ($isPelamar) {
+            $query->where('is_published', 1);
+        }
+        
         if ($q) {
             $query->where(function($sub) use ($q) {
                 $sub->where('ticket_number', 'like', "%{$q}%")
@@ -178,5 +179,61 @@ class ExternalRecruitmentController extends Controller
             }
         }
         return null;
+    }
+    public function updateDescription(Request $request, $id)
+    {
+        $req = RecruitmentRequest::findOrFail($id);
+        
+        // Validasi hak akses
+        $me = Auth::user();
+        if (!$me->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit']) && $me->unit_id != $req->unit_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        // Validasi Input
+        $request->validate([
+            'description' => 'required|string',
+            'publish_start_date' => 'required|date',
+            'publish_end_date' => 'required|date|after_or_equal:publish_start_date',
+            'publish_location' => 'required|string|max:255',
+        ]);
+
+        // Simpan Perubahan
+        $req->update([
+            'description' => $request->description,
+            'publish_start_date' => $request->publish_start_date,
+            'publish_end_date' => $request->publish_end_date,
+            'publish_location' => $request->publish_location
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Data lowongan berhasil diperbarui!']);
+    }
+
+    public function unpublish($id)
+    {
+        $req = RecruitmentRequest::findOrFail($id);
+        $me = Auth::user();
+        if (!$me->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit']) && $me->unit_id != $req->unit_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        $req->update([
+            'is_published' => 0,
+            // 'published_at' => null // Opsional: jika ingin menghapus riwayat tanggal publish
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Lowongan berhasil ditutup (Unpublished).']);
+    }
+    public function publish($id)
+    {
+        $req = RecruitmentRequest::findOrFail($id);
+
+        $me = Auth::user();
+        if (!$me->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit']) && $me->unit_id != $req->unit_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        $req->update([
+            'is_published' => 1
+        ]);
+        return response()->json(['success' => true, 'message' => 'Lowongan berhasil dibuka kembali (Published).']);
     }
 }

@@ -19,11 +19,15 @@
     .ck-editor__editable_inline { min-height: 200px; max-height: 400px; }
     .ck.ck-balloon-panel { z-index: 2060 !important; }
     #publishDescriptionModal { display: flex !important; align-items: center; justify-content: center; z-index: 2200 !important; }
-    .ck-content ul { list-style-type: disc !important; padding-left: 2rem !important; margin-bottom: 1rem;}
-    .ck-content ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-bottom: 1rem; }
+    .ck-content table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; border: 1px solid #d1d5db; }
+    .ck-content th, 
+    .ck-content td { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem;vertical-align: top; }
+    .ck-content th { background-color: #f3f4f6; font-weight: 600; text-align: left; }
+    .ck-content ul { list-style-type: disc !important; padding-left: 1.5rem !important; margin-bottom: 1rem;}
+    .ck-content ol { list-style-type: decimal !important; padding-left: 1.5rem !important; margin-bottom: 1rem; }
     .ck-content li { display: list-item !important; }
     .ck-content h1, .ck-content h2, .ck-content h3 { font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; }
-    .ck-content p { margin-bottom: 0.75rem; }
+    .ck-content p { overflow-x: auto; margin-bottom: 0.75rem; }
 </style>
 @php
   use Illuminate\Support\Facades\DB;
@@ -192,7 +196,7 @@
                 'SDM Unit'   => $me->hasRole('SDM Unit'),
                 'Kepala Unit'=> $me->hasRole('Kepala Unit'),
                 'DHC'        => $me->hasRole('DHC'),
-                'AVP HC Ops' => $me->hasRole('AVP Human Capital Operation') || $clnTitle == 'AVP HUMAN CAPITAL OPERATION',
+                'AVP HC Ops' => ($me->hasRole('AVP') && $clnTitle == 'AVP HUMAN CAPITAL OPERATION'),
                 'VP HC'      => $me->hasRole('VP Human Capital') || $clnTitle == 'VP HUMAN CAPITAL',
                 'Dir SDM'    => $me->hasRole('Dir SDM')
             ];
@@ -921,25 +925,71 @@
         </form>
     </div>
 </div>
-<div id="publishDescriptionModal" class="u-modal" hidden> <div class="u-modal__card" style="width: 800px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+<div id="publishDescriptionModal" class="u-modal" hidden style="z-index: 2200;">
+  <div class="u-modal__card" style="width: 900px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
     <div class="u-modal__head">
       <div class="u-title"><i class="fas fa-bullhorn u-mr-xs"></i> Publikasi Lowongan</div>
       <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close><i class="fas fa-times"></i></button>
     </div>
-    <div class="u-modal__body u-p-md" style="overflow-y: auto;"> <div class="u-alert u-alert--info u-mb-md" style="background-color: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 6px; font-size: 0.9rem;">
-        <i class="fas fa-info-circle u-mr-xs"></i> Masukkan deskripsi lowongan yang akan dilihat oleh pelamar.
+    
+    <div class="u-modal__body u-p-md" style="overflow-y: auto;">
+      
+      <div class="u-alert u-alert--info u-mb-md">
+        <i class="fas fa-info-circle u-mr-xs"></i> Masukkan detail lowongan yang akan tampil di portal pelamar.
       </div>
+
       <form id="publishForm">
           <input type="hidden" id="publish_req_id">
-          <div style="color: #000;"> <textarea id="publishEditorContent"></textarea>
+          
+          <div class="u-grid-2-custom u-mb-md">
+              <div>
+                  <label class="u-label u-font-bold u-mb-xs">Tanggal Dibuka <span class="text-red-500">*</span></label>
+                  <input type="date" id="publish_start_date" class="u-input" required>
+              </div>
+              <div>
+                  <label class="u-label u-font-bold u-mb-xs">Tanggal Ditutup <span class="text-red-500">*</span></label>
+                  <input type="date" id="publish_end_date" class="u-input" required>
+              </div>
           </div>
+          <div class="u-mb-md">
+            <label class="u-label u-font-bold u-mb-xs">Lokasi Penempatan Kerja</label>
+            <div class="u-text-xs u-muted u-mb-xs">Lokasi ini yang akan tampil di halaman pelamar.</div>
+            <input type="text" id="publish_location" class="u-input" placeholder="Contoh: Jakarta Selatan, Site Balikpapan, dll...">
+        </div>
+
+          <div class="u-mb-md">
+              <label class="u-label u-font-bold u-mb-xs">Deskripsi & Kualifikasi</label>
+              <div style="color: #000;">
+                 <textarea id="publishEditorContent"></textarea>
+              </div>
+          </div>
+
+          <div id="previewArea" style="display: none; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 8px; background: #f8fafc; margin-top: 20px;">
+              <div class="u-text-center u-mb-md">
+                  <span class="u-badge u-badge--warning">PREVIEW TAMPILAN</span>
+              </div>
+              <h3 class="u-font-bold u-text-xl u-mb-xs" id="previewTitle">Posisi</h3>
+              <div class="u-text-sm u-muted u-mb-md">
+                  <span id="previewDates"></span> • <span id="previewTicket"></span>
+              </div>
+              <div id="previewContent" class="ck-content"></div>
+          </div>
+
       </form>
     </div>
-    <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
+
+    <div class="u-modal__foot u-flex u-justify-between u-gap-sm">
       <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-      <button type="button" class="u-btn u-btn--brand" id="btnConfirmPublish">
-        <i class="fas fa-paper-plane u-mr-xs"></i> Simpan & Publikasikan
-      </button>
+      
+      <div class="u-flex u-gap-sm">
+          <button type="button" class="u-btn u-btn--outline" id="btnPreviewPublish">
+            <i class="fas fa-eye u-mr-xs"></i> Preview
+          </button>
+          
+          <button type="button" class="u-btn u-btn--brand" id="btnConfirmPublish">
+            <i class="fas fa-paper-plane u-mr-xs"></i> Simpan & Publikasikan
+          </button>
+      </div>
     </div>
   </div>
 </div>
@@ -1026,32 +1076,83 @@
             ClassicEditor
                 .create(document.querySelector('#publishEditorContent'), {
                     toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
-                    placeholder: 'Tulis deskripsi pekerjaan, kualifikasi, dll...'
+                    placeholder: 'Kualifikasi, persyaratan, dan deskripsi pekerjaan...',
                 })
                 .then(editor => { publishEditor = editor; })
                 .catch(error => { console.error(error); });
+        }
+        const btnPreviewPublish = document.getElementById('btnPreviewPublish');
+        const previewArea = document.getElementById('previewArea');
+
+        if(btnPreviewPublish) {
+            btnPreviewPublish.addEventListener('click', function() {
+                // Ambil Data
+                const content = publishEditor ? publishEditor.getData() : '';
+                const startDate = document.getElementById('publish_start_date').value;
+                const endDate = document.getElementById('publish_end_date').value;
+                
+                // Validasi Sederhana
+                if(!content.trim() || !startDate || !endDate) {
+                    alert('Mohon lengkapi Tanggal dan Deskripsi untuk melihat preview.');
+                    return;
+                }
+                
+                const reqId = document.getElementById('publish_req_id').value;
+                const row = document.querySelector(`tr[data-recruitment-id="${reqId}"]`);
+                const detailBtn = row ? row.querySelector('.js-open-detail') : null;
+                const positionName = detailBtn ? detailBtn.getAttribute('data-position') : 'Posisi';
+                
+
+                document.getElementById('previewTitle').textContent = positionName;
+                
+                
+                // Format Tanggal untuk Preview
+                const d1 = new Date(startDate).toLocaleDateString('id-ID');
+                const d2 = new Date(endDate).toLocaleDateString('id-ID');
+                document.getElementById('previewDates').textContent = `Periode: ${d1} s/d ${d2}`;
+                
+                document.getElementById('previewContent').innerHTML = content;
+
+                // Show Area
+                previewArea.style.display = 'block';
+                
+                // Scroll ke bawah agar preview terlihat
+                previewArea.scrollIntoView({ behavior: 'smooth' });
+            });
         }
         const btnConfirmPublish = document.getElementById('btnConfirmPublish');
         if(btnConfirmPublish) {
             btnConfirmPublish.addEventListener('click', function() {
                 const reqId = document.getElementById('publish_req_id').value;
                 const description = publishEditor ? publishEditor.getData() : '';
-                if(!description.trim()) {
-                    alert('Mohon isi deskripsi lowongan terlebih dahulu.');
-                    return;
-                }
+                const startDate = document.getElementById('publish_start_date').value;
+                const endDate = document.getElementById('publish_end_date').value;
+                const locationVal = document.getElementById('publish_location').value;
+
+                if(!description.trim()) { alert('Deskripsi wajib diisi.'); return; }
+                if(!startDate) { alert('Tanggal Dibuka wajib diisi.'); return; }
+                if(!endDate) { alert('Tanggal Ditutup wajib diisi.'); return; }
+                if(!locationVal.trim()) { alert('Lokasi Penempatan wajib diisi.'); return; }
+
                 if(!confirm('Apakah Anda yakin ingin mempublikasikan lowongan ini?')) return;
+
                 const btn = this;
                 const originalContent = btn.innerHTML;
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
+
                 fetch(`/recruitment/principal-approval/${reqId}/publish`, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ description: description }) 
+                    body: JSON.stringify({ 
+                        description: description,
+                        publish_start_date: startDate,
+                        publish_end_date: endDate,
+                        publish_location: locationVal
+                    }) 
                 })
                 .then(res => res.json())
                 .then(data => {
@@ -2000,6 +2101,7 @@
                                 let cleanVal = val.toString().replace(/\./g, '');
                                 let num = parseFloat(cleanVal);
                                 if (isNaN(num)) return '-';
+                                num = Math.floor(num);
                                 return 'Rp ' + num.toLocaleString('id-ID'); 
                             };
                             const parseVal = (v) => {
@@ -2007,14 +2109,17 @@
                                 if (typeof v === 'number') return v;
                                 return parseFloat(v.toString().replace(/\./g, '')) || 0;
                             };
+
+                            const thrPerBulan = Math.floor(parseVal(data.thr) / 12);
+                            const kompensasiPerBulan = Math.floor(parseVal(data.kompensasi) / 12);
                             const totalAnggaranPerBulan = 
                                 parseVal(data.salary) + 
                                 parseVal(data.allowanceJ) + 
                                 parseVal(data.allowanceP) + 
                                 parseVal(data.allowanceC) + 
                                 parseVal(data.allowanceK) + 
-                                parseVal(data.thr) + 
-                                parseVal(data.kompensasi) + 
+                                thrPerBulan +
+                                kompensasiPerBulan + 
                                 parseVal(data.bpjs_tk) + 
                                 parseVal(data.bpjs_kes) + 
                                 parseVal(data.pph21);
@@ -2102,8 +2207,8 @@
                                         ${makeRow('Tunjangan Project', formatRp(data.allowanceP))}
                                         ${makeRow('Tunjangan Kinerja', formatRp(data.allowanceK))}
                                         ${makeRow('Tunjangan Lainnya', formatRp(data.allowanceL))}
-                                        ${makeRow('THR', formatRp(data.thr))}
-                                        ${makeRow('Kompensasi', formatRp(data.kompensasi))}
+                                        ${makeRow('THR (Per Bulan)', formatRp(thrPerBulan))}
+                                        ${makeRow('Kompensasi (Per Bulan)', formatRp(kompensasiPerBulan))}
                                         ${makeRow('BPJS Ketenagakerjaan', formatRp(data.bpjs_tk))}
                                         ${makeRow('BPJS Kesehatan', formatRp(data.bpjs_kes))}
                                         ${makeRow('PPh 21', formatRp(data.pph21))}
@@ -2163,7 +2268,10 @@
                                 } else {
                                     btnPublish.style.display = 'inline-flex';
                                     btnPublish.onclick = function() {
-                                        document.getElementById('publish_req_id').value = reqId; 
+                                        document.getElementById('publish_req_id').value = reqId;
+                                        const locInput = document.getElementById('publish_location');
+                                        const savedLoc = this.getAttribute('data-default-location');
+                                        locInput.value = savedLoc || ''; 
                                         if(publishEditor) publishEditor.setData(''); 
                                         const pubModal = document.getElementById('publishDescriptionModal');
                                         pubModal.hidden = false;
@@ -2172,6 +2280,13 @@
                                     };
                                 }
                             }
+                            let defaultLocation = '';
+                            if (detailsArray && detailsArray.length > 0 && detailsArray[0].location) {
+                                defaultLocation = detailsArray[0].location;
+                            }
+                            
+                            // Simpan ke atribut data di tombol
+                            btnPublish.setAttribute('data-default-location', defaultLocation);
                         }
                     }
                 });
