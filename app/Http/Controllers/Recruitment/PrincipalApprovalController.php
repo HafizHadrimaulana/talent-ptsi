@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Models\Project; 
+use App\Models\ContractTemplate;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Models\RecruitmentRequest;
@@ -10,8 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
-
 use App\Exports\RecruitmentRequestExport;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -46,13 +47,7 @@ class PrincipalApprovalController extends Controller
     {
         if (!$user) return false;
         $jobTitle = $this->getUserJobTitle($user->id);
-        return $user->hasRole('Superadmin') 
-            || $user->hasRole('DHC') 
-            || $user->hasRole('Dir SDM')
-            || $user->hasRole('VP Human Capital')
-            || $jobTitle === 'AVP Human Capital Operation'
-            || $jobTitle === 'VP Human Capital';
-    }
+        return $user->hasRole('Superadmin') || $user->hasRole('DHC') || $user->hasRole('Dir SDM') || $user->hasRole('VP Human Capital') || $jobTitle === 'AVP Human Capital Operation' || $jobTitle === 'VP Human Capital';}
 
     protected function dhcUnitId(): ?int
     {
@@ -103,7 +98,6 @@ class PrincipalApprovalController extends Controller
                 });
             });
         }
-
         if ($selectedUnitId && $this->has($tbl, 'unit_id')) {
             $query->where('unit_id', $selectedUnitId);
         }
@@ -119,7 +113,6 @@ class PrincipalApprovalController extends Controller
             : (int) ($me?->unit_id);
         $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
         $currentTab = $r->input('tab', 'berjalan');
-
         if ($currentTab === 'disetujui') {
             $query->where('status', 'approved');
         } else {
@@ -483,7 +476,6 @@ class PrincipalApprovalController extends Controller
         if ($stage['key'] === 'kepala_unit') {
             return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
-
         if ($stage['key'] === 'dhc_checker') {
             if ($allowed) return true;
             $isKepalaUnit = $user->hasRole('Kepala Unit');
@@ -503,12 +495,7 @@ class PrincipalApprovalController extends Controller
         $me = Auth::user();
         if (!$me) abort(401);
         $jobTitle = $this->getUserJobTitle($me->id);
-        if ($me->hasRole('Superadmin') 
-            || $me->hasRole('DHC') 
-            || $me->hasRole('Dir SDM')
-            || $me->hasRole('VP Human Capital')
-            || $jobTitle === 'AVP Human Capital Operation'
-            || $jobTitle === 'VP Human Capital') {
+        if ($me->hasRole('Superadmin') || $me->hasRole('DHC') || $me->hasRole('Dir SDM') || $me->hasRole('VP Human Capital') || $jobTitle === 'AVP Human Capital Operation' || $jobTitle === 'VP Human Capital') {
             return;
         }
         if ($me->unit_id && $unitId && (string) $me->unit_id !== (string) $unitId) {
@@ -523,14 +510,176 @@ class PrincipalApprovalController extends Controller
     {
         $json = $request->input('data');
         $d = json_decode($json, true);
-        if (!$d) {
-            return "Data uraian jabatan tidak valid atau kosong.";
+
+        if (!$d) return "Data error: JSON tidak valid.";
+
+        // 1. Ambil Template
+        $template = ContractTemplate::where('code', 'UJ')->first();
+        if (!$template) return "Template 'UJ' belum ada.";
+
+        // 2. SETUP FONT TAHOMA (FIX UTAMA UNTUK TAMPILAN)
+        // Kita load font dari storage/path aplikasi dan convert ke Base64 CSS
+        // Pastikan file font ada di storage_path('app/fonts/') atau sesuaikan path-nya
+        $fontCss = "";
+        try {
+            // Cek path sesuai config/recruitment.php Anda
+            // Biasanya ada di storage/app/fonts atau public/fonts
+            $fontRegular = storage_path('app/fonts/tahoma.ttf');
+            $fontBold    = storage_path('app/fonts/tahomabd.ttf');
+            
+            // Fallback ke public path jika di storage tidak ada
+            if (!file_exists($fontRegular)) $fontRegular = public_path('fonts/tahoma.ttf');
+            if (!file_exists($fontBold)) $fontBold = public_path('fonts/tahomabd.ttf');
+
+            if (file_exists($fontRegular)) {
+                $fReg = base64_encode(file_get_contents($fontRegular));
+                $fBld = file_exists($fontBold) ? base64_encode(file_get_contents($fontBold)) : $fReg;
+                
+                $fontCss = "
+                    @font-face {
+                        font-family: 'Tahoma';
+                        font-style: normal;
+                        font-weight: normal;
+                        src: url(data:font/truetype;charset=utf-8;base64,{$fReg}) format('truetype');
+                    }
+                    @font-face {
+                        font-family: 'Tahoma';
+                        font-style: normal;
+                        font-weight: bold;
+                        src: url(data:font/truetype;charset=utf-8;base64,{$fBld}) format('truetype');
+                    }
+                ";
+            } else {
+                // Jika file font benar-benar tidak ada, fallback ke Helvetica agar tetap rapi
+                $fontCss = "body { font-family: Helvetica, Arial, sans-serif !important; }"; 
+            }
+        } catch (\Exception $e) { }
+
+
+        // 3. SETUP HEADER IMAGE (KOP SURAT)
+        $disk = config('recruitment.pdf.letterhead_disk', 'public');
+        $bgImage = '';
+        
+        // Prioritas: Gambar dari Template DB -> Config -> Kosong
+        $headerPath = $template->header_image_path; 
+        if (!$headerPath && config('recruitment.pdf.letterhead_path')) {
+             $headerPath = config('recruitment.pdf.letterhead_path');
         }
-        $pdf = Pdf::loadView('pdf.uraian_jabatan', compact('d'));
-        $pdf->setPaper('a4', 'portrait');
-        $safeName = preg_replace('/[^A-Za-z0-9\-]/', '_', $d['nama'] ?? 'Draft');
-        $filename = 'Uraian_Jabatan_' . $safeName . '.pdf';
-        return $pdf->stream($filename);
+
+        if ($headerPath && Storage::disk($disk)->exists($headerPath)) {
+            $path = Storage::disk($disk)->path($headerPath);
+            $type = pathinfo($path, PATHINFO_EXTENSION);
+            $dataImg = file_get_contents($path);
+            $base64 = 'data:image/' . $type . ';base64,' . base64_encode($dataImg);
+            
+            // CSS Background Fixed A4 Full
+            $bgImage = "<img class='letterhead-img' src='{$base64}'>";
+        }
+
+        // 4. SETUP MARGIN
+        // Gunakan number_format agar CSS valid (titik bukan koma)
+        $mt = number_format($template->margin_top ?? 3.5, 2, '.', '');
+        $mr = number_format($template->margin_right ?? 2.54, 2, '.', '');
+        $mb = number_format($template->margin_bottom ?? 2.54, 2, '.', '');
+        $ml = number_format($template->margin_left ?? 2.54, 2, '.', '');
+
+        // 5. CSS DINAMIS GABUNGAN
+        // Note: Kita set margin body, bukan @page, agar background image (yg ada di body) bisa full page.
+        $dynamicCss = "
+            {$fontCss}
+            
+            @page { margin: 0cm; }
+            
+            body {
+                font-family: 'Tahoma', sans-serif;
+                margin-top: {$mt}cm;
+                margin-right: {$mr}cm;
+                margin-bottom: {$mb}cm;
+                margin-left: {$ml}cm;
+            }
+
+            .letterhead-img {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 21cm;
+                height: 29.7cm;
+                z-index: -1000;
+            }
+        ";
+
+        // 6. MAPPING VARIABEL
+        $fmt = fn($t) => !empty($t) ? nl2br(e($t)) : '-';
+        
+        // Handle Org Chart
+        $orgChart = '-';
+        if (!empty($d['struktur_organisasi'])) {
+            $src = $d['struktur_organisasi'];
+            if (!Str::startsWith($src, 'data:image')) {
+                $src = 'data:image/jpeg;base64,' . $src;
+            }
+            $orgChart = "<img src='{$src}' style='max-width:100%; max-height:400px; object-fit:contain;'>";
+        }
+
+        $vars = [
+            'job_title' => $d['nama'] ?? '-',
+            'unit_name' => $d['unit'] ?? '-',
+            'incumbent' => $d['pemangku'] ?? '-',
+            'reports_to'=> $d['melapor'] ?? '-',
+            'job_purpose'=> $fmt($d['tujuan'] ?? ''),
+            'accountabilities'=> $fmt($d['akuntabilitas'] ?? ''),
+            'dim_financial'   => $d['dimensi_keuangan'] ?? '-',
+            'budget'          => $d['anggaran'] ?? '-',
+            'dim_non_financial'=> $d['dimensi_non_keuangan'] ?? '-',
+            'direct_subordinates'=> $d['bawahan_langsung'] ?? '-',
+            'total_staff'     => $d['total_staff'] ?? '-',
+            'total_employees' => $d['total_pegawai'] ?? '-',
+            'authority'       => $fmt($d['wewenang'] ?? ''),
+            'rel_internal'    => $fmt($d['hub_internal'] ?? ''),
+            'rel_external'    => $fmt($d['hub_eksternal'] ?? ''),
+            'spec_education'  => $fmt($d['spek_pendidikan'] ?? ''),
+            'spec_skills'     => $fmt($d['spek_pengetahuan'] ?? ''),
+            'spec_behavior'   => $fmt($d['spek_kompetensi'] ?? ''),
+            'spec_mandatory'  => $fmt($d['spek_kompetensi_wajib'] ?? ''),
+            'spec_generic'    => $fmt($d['spek_kompetensi_generik'] ?? ''),
+            'org_chart'       => $orgChart,
+            'today_date'      => now()->translatedFormat('d F Y'),
+            'reports_to_name_sig' => !empty($d['melapor']) ? $d['melapor'] : '................................',
+            'incumbent_name_sig' => !empty($d['pemangku']) ? $d['pemangku'] : '................................'
+        ];
+
+        // 7. RENDER FINAL HTML
+        $html = $this->renderPdfTemplate($template, $vars, $dynamicCss, $bgImage);
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
+
+        return $pdf->stream('Uraian_Jabatan.pdf');
+    }
+
+    private function renderPdfTemplate($template, $vars, $dynamicCss, $bgImage)
+    {
+        $body = $template->body ?? '';
+        // Gabungkan CSS
+        $css  = $dynamicCss . "\n" . ($template->css ?? '');
+
+        foreach ($vars as $key => $val) {
+            $body = str_replace("{{" . $key . "}}", (string)$val, $body);
+        }
+
+        return "
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+                <style>{$css}</style>
+            </head>
+            <body>
+                {$bgImage}
+                {$body}
+            </body>
+        </html>";
     }
 
     public function publish(RecruitmentRequest $req, Request $request) 

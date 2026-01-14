@@ -306,9 +306,7 @@
       <div>
         <h4 class="font-semibold text-lg mb-3 text-white">Legal</h4>
         <ul class="space-y-2">
-          <li><a href="#" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
-          <li><a href="#" class="hover:text-[#49D4A9] transition">Syarat & Ketentuan</a></li>
-          <li><a href="#" class="hover:text-[#49D4A9] transition">Hak Cipta</a></li>
+          <li><a href="https://sapahc.ptsi.co.id/privacy-policy" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
         </ul>
       </div>
       <div class="relative mt-10 border-t border-gray-700 pt-6 text-center text-xs text-gray-400">
@@ -355,11 +353,16 @@
                         <input type="checkbox" id="termsCheckbox" class="mt-0.5" required>
                         <span>
                             Saya menyetujui
-                            <a href="#" class="font-semibold text-[#00A29A] hover:underline">syarat & ketentuan</a> yang berlaku.
+                            <a href="https://sapahc.ptsi.co.id/privacy-policy" class="font-semibold text-[#00A29A] hover:underline">syarat & ketentuan</a> yang berlaku.
                         </span>
                     </label>
                 </div>
-
+                <div class="text-sm text-[#667085] mt-4" style="text-align: right;">
+                    Sudah punya akun? 
+                    <a href="#" onclick="event.preventDefault(); openLoginModal(); closeModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
+                        Masuk
+                    </a>
+                </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium transition cursor-pointer">
                         Batal
@@ -398,11 +401,17 @@
                         <input type="checkbox" id="loginTermsCheckbox" class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
                         <span>
                             Saya memahami ketentuan yang berlaku,
-                            <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+                            <a href="https://sapahc.ptsi.co.id/privacy-policy" class="font-semibold text-brand underline-offset-2 hover:underline">
                                 Baca Ketentuan Privasi Pegawai
                             </a>
                         </span>
                     </label>
+                </div>
+                <div class="text-sm text-[#667085]" style="text-align: right;">
+                    Belum punya akun? 
+                    <a href="#" onclick="event.preventDefault(); closeLoginModal(); openModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
+                        Daftar disini
+                    </a>
                 </div>
                 <div class="flex flex-col gap-2.5 mt-2">
                     <button id="loginSubmitBtn" type="submit" class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition-all duration-300 hover:brightness-110 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" disabled>

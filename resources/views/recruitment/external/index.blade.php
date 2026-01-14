@@ -3,24 +3,6 @@
 
 @section('content')
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
-<style>
-    #ext-table thead tr { background: linear-gradient(90deg, #1e3a8a 0%, #10b981 100%) !important; color: white; }
-    #ext-table thead th { color: white !important; border: none; padding: 12px; font-weight:700; text-transform:uppercase; font-size:0.8rem; }
-    #ext-table thead th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
-    #ext-table thead th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-    #vacancyDetailModal, #editVacancyModal { display: flex !important; align-items: center; justify-content: center; }
-    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; display:inline-block;}
-    .st-screening { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
-    .st-interview { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
-    .st-passed    { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
-    .st-rejected  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-    .ck-content ul { list-style-type: disc !important; padding-left: 2rem !important; margin-left: 1rem !important; margin-bottom: 1rem; }
-    .ck-content ol { list-style-type: decimal !important; padding-left: 2rem !important; margin-left: 1rem !important; margin-bottom: 1rem;}
-    .ck-content li { display: list-item !important; margin-bottom: 0.25rem; }
-    .ck-content p { margin-bottom: 0.75rem; line-height: 1.6; }
-    .ck-content h2, .ck-content h3, .ck-content h4 { font-weight: 700; margin-top: 1.2rem; margin-bottom: 0.5rem; color: #1f2937; }
-    .ck-editor__editable_inline { min-height: 200px; max-height: 300px; overflow-y: auto; }
-</style>
 
 <div class="u-card u-card--glass u-hover-lift">
     <div class="u-flex u-items-center u-justify-between u-mb-md">
@@ -40,30 +22,8 @@
             <i class="fas fa-check-circle u-mr-xs"></i> {{ session('ok') }}
         </div> 
     @endif
-    <form method="GET" action="{{ route('recruitment.external.index') }}" class="u-flex u-justify-between u-items-center u-mb-md u-flex-wrap u-gap-sm">
-        <div class="u-flex u-items-center u-gap-xs">
-            <span class="u-text-sm u-muted">Show</span>
-            <select name="per_page" class="u-input u-input--sm u-w-auto" onchange="this.form.submit()">
-                <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
-                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
-                <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
-                <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
-            </select>
-            <span class="u-text-sm u-muted">entries</span>
-        </div>
-
-        <div class="u-relative u-w-full md:u-w-64" style="position: relative; display: flex; align-items: center;">
-            <i class="fas fa-search u-text-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 10;"></i>
-            <input type="text" name="q" value="{{ request('q') }}" class="u-input u-input--sm" style="width: 100%; padding-left: 38px; padding-right: 38px;" placeholder="Cari..." onkeydown="if(event.key === 'Enter') this.form.submit()">
-            @if(request('q'))
-                <a href="{{ route('recruitment.external.index') }}" class="u-text-danger hover:u-text-dark" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; cursor: pointer; text-decoration: none;" title="Hapus pencarian">
-                    <i class="fas fa-times"></i>
-                </a>
-            @endif
-        </div>
-    </form>
     <div class="u-overflow-auto">
-        <table class="u-table" id="ext-table">
+        <table class="u-table" id="ext-table" data-dt>
             <thead>
                 <tr>
                     @if(!$isPelamar)
