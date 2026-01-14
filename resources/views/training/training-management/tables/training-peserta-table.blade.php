@@ -8,7 +8,7 @@
             <th>Tanggal Mulai</th>
             <th>Tanggal Berakhir</th>
             <th>Realisasi Biaya Pelatihan</th>
-            <th>Estimasi Total Biaya</th>
+            <!-- <th>Estimasi Total Biaya</th> -->
             <th>Status Lampiran Penawaran</th>
             <th>Status Approval</th>
             <th class="cell-actions">Aksi</th>

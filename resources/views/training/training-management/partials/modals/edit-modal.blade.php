@@ -72,27 +72,6 @@
                             class="u-input text-gray-600" />
                     </div>
 
-                    <!-- UHPD -->
-                    <div class="u-space-y-sm u-mb-sm">
-                        <label for="edit-uhpd" class="font-medium">UHPD</label>
-                        <input id="edit-uhpd" name="uhpd" type="text"
-                            class="u-input text-gray-600" />
-                    </div>
-
-                    <!-- Biaya Akomodasi -->
-                    <div class="u-space-y-sm u-mb-sm">
-                        <label for="edit-biaya_akomodasi" class="font-medium">Biaya Akomodasi</label>
-                        <input id="edit-biaya_akomodasi" name="biaya_akomodasi" type="text"
-                            class="u-input text-gray-600" />
-                    </div>
-
-                    <!-- Estimasi Total Biaya -->
-                    <div class="u-space-y-sm u-mb-sm">
-                        <label for="edit-estimasi_total_biaya" class="font-medium">Estimasi Total Biaya</label>
-                        <input id="edit-estimasi_total_biaya" name="estimasi_total_biaya" type="text"
-                            class="u-input text-gray-600" readonly/>
-                    </div>
-
                     <!-- Jenis Portofolio -->
                     <div class="u-space-y-sm u-mb-sm" class="col-span-2">
                         <label for="edit-jenis_portofolio" class="font-medium">Jenis Portofolio</label>

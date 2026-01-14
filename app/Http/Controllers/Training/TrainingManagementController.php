@@ -460,9 +460,6 @@ class TrainingManagementController extends Controller
 
         $request->merge([
             'biaya_pelatihan'      => $this->cleanRupiah($request->biaya_pelatihan),
-            'uhpd'                 => $this->cleanRupiah($request->uhpd),
-            'biaya_akomodasi'      => $this->cleanRupiah($request->biaya_akomodasi),
-            'estimasi_total_biaya' => $this->cleanRupiah($request->estimasi_total_biaya),
         ]);
 
         try {
@@ -474,9 +471,6 @@ class TrainingManagementController extends Controller
                 'jumlah_jam'            => 'nullable|string|max:255',
                 'waktu_pelaksanaan'     => 'nullable|string|max:255',
                 'biaya_pelatihan'       => 'nullable|numeric',
-                'uhpd'                  => 'nullable|numeric',
-                'biaya_akomodasi'       => 'nullable|numeric',
-                'estimasi_total_biaya'  => 'nullable|numeric',
                 'nama_proyek'           => 'nullable|string|max:255',
                 'jenis_portofolio'      => 'nullable|string|max:255',
                 'fungsi'                => 'nullable|string|max:255',
@@ -493,9 +487,6 @@ class TrainingManagementController extends Controller
                 'jenis_portofolio'       => $request->jenis_portofolio,
                 'fungsi'                 => $request->fungsi,
                 'biaya_pelatihan'        => $request->biaya_pelatihan,
-                'uhpd'                   => $request->uhpd,
-                'biaya_akomodasi'        => $request->biaya_akomodasi,
-                'estimasi_total_biaya'   => $request->estimasi_total_biaya,
 
                 // pending jika sdm unit
                 'status_training_reference' => $statusTrainingReference,
@@ -630,5 +621,11 @@ class TrainingManagementController extends Controller
         ]);
 
         return $exists;
+    }
+
+    private function cleanRupiah($value)
+    {
+        if (!$value) return 0;
+        return (int) preg_replace('/[^\d]/', '', $value);
     }
 }

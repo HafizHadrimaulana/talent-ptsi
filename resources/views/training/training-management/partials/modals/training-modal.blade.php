@@ -94,21 +94,6 @@
               <label class="u-text-xs u-muted u-uppercase font-semibold">Biaya Pelatihan</label>
               <div class="u-font-bold detail-biaya-pelatihan">Rp 0</div>
             </div>
-
-            <div class="u-p-sm">
-              <label class="u-text-xs u-muted u-uppercase font-semibold">UHPD</label>
-              <div class="u-font-bold detail-uhpd">Rp 0</div>
-            </div>
-
-            <div class="u-p-sm">
-              <label class="u-text-xs u-muted u-uppercase font-semibold">Biaya Akomodasi</label>
-              <div class="u-font-bold detail-biaya-akomodasi">Rp 0</div>
-            </div>
-
-            <div class="u-p-sm bg-blue-50 u-rounded-sm">
-              <label class="u-text-xs text-blue-600 u-uppercase font-bold">Total Estimasi</label>
-              <div class="u-text-xl u-font-bold text-blue-700 detail-total-biaya">Rp 0</div>
-            </div>
           </div>
         </div>
 

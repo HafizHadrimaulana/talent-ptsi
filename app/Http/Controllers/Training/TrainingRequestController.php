@@ -186,9 +186,6 @@ class TrainingRequestController extends Controller
                         "jumlah_jam"        => $item->jumlah_jam ?? 0,
                         "waktu_pelaksanaan" => $item->waktu_pelaksanaan,
                         "biaya_pelatihan"   => $item->biaya_pelatihan ?? 0,
-                        "uhpd"              => $item->uhpd ?? 0,
-                        "biaya_akomodasi"   => $item->biaya_akomodasi ?? 0,
-                        "estimasi_total_biaya" => $item->estimasi_total_biaya ?? 0,
                         "nama_proyek"       => $item->nama_proyek ?? "-",
                         "jenis_portofolio"  => $item->jenis_portofolio ?? "-",
                         "fungsi"            => $item->fungsi ?? "-",
@@ -331,9 +328,6 @@ class TrainingRequestController extends Controller
                     'waktu_pelaksanaan',
                     'nama_proyek',
                     'biaya_pelatihan',
-                    'uhpd',
-                    'biaya_akomodasi',
-                    'estimasi_total_biaya'
                 )
                 ->orderBy('judul_sertifikasi')
                 ->get();
@@ -449,16 +443,21 @@ class TrainingRequestController extends Controller
                 $lampiran = $request->file('lampiran_penawaran')
                     ->store('lampiran_penawaran', 'public');
             }
+
             $insertedRequests = [];
 
             foreach ($employeeIds as $employeeId) {
+
+                $realisasi = (empty($payload['realisasi_biaya_pelatihan']) || $payload['realisasi_biaya_pelatihan'] == 0) 
+                    ? $payload['biaya_pelatihan'] 
+                    : $payload['realisasi_biaya_pelatihan'];
+
                 $created[] = TrainingRequest::create([
                     'training_reference_id'      => $payload['judul_sertifikasi'],
                     'employee_id'                => $employeeId,
                     'start_date'                 => $payload['start_date'],
                     'end_date'                   => $payload['end_date'],
-                    'realisasi_biaya_pelatihan'  => $payload['realisasi_biaya_pelatihan'] ?? null,
-                    'estimasi_total_biaya'       => $payload['estimasi_total_biaya'],
+                    'realisasi_biaya_pelatihan'  => $realisasi,
                     'status_approval_training'   => 'in_review_gmvp',
                     'lampiran_penawaran'         => $lampiran,
                 ]);
@@ -486,68 +485,79 @@ class TrainingRequestController extends Controller
     public function getTrainingRequestList(Request $request, $unitId = null)
     {
         try {
-            $user  = auth()->user();
-            $roles = $user->getRoleNames()->toArray();
+            $user     = auth()->user();
+            $employee = $user->employee;
+            $roles    = $user->getRoleNames()->toArray();
 
-            // 1. Setup Query Dasar dengan Eager Loading
-            // Memastikan semua relasi termasuk riwayat approval ditarik sekaligus
-            $query = TrainingRequest::with([
-                'trainingReference',
-                'employee.person',
-                'employee.unit',
-                'approvals' => function($q) {
-                    $q->orderBy('created_at', 'desc'); 
-                }
-            ]);
+            if (!$employee) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User tidak memiliki data employee'
+                ], 403);
+            }
 
-            Log::info('training.getTrainingRequestList.user', [
-                'user_id' => $user->id,
-                'roles'   => $roles,
-                'unit_id' => $user->unit_id,
-            ]);
+            $userUnitId = $employee->unit_id;
 
-            $perPage = $request->input('per_page', 12);
-            $page    = $request->input('page', 1);
+            $query = TrainingRequest::query()
+                ->select([
+                    'id',
+                    'training_reference_id',
+                    'employee_id',
+                    'status_approval_training',
+                    'start_date',
+                    'end_date',
+                    'realisasi_biaya_pelatihan',
+                    // 'estimasi_total_biaya',
+                    'lampiran_penawaran',
+                ])
+                ->with([
+                    'trainingReference:id,judul_sertifikasi,biaya_pelatihan',
+                    'employee:id,person_id,employee_id',
+                    'employee.person:id,full_name',
+                ]);
 
             /**
              * ==================================================
              * RULE AKSES UNIT
              * ==================================================
              */
-            $isDHC            = $user->hasRole('DHC');
-            $isAvpOrKepalaUnit  = $user->hasAnyRole(['AVP', 'Kepala Unit']);
-            $isHumanCapital     = $this->isHumanCapital($user);
+            $isDHC         = $user->hasRole('DHC');
+            $isAVP         = $user->hasRole('AVP');
+            $isKepalaUnit  = $user->hasRole('Kepala Unit');
+            $isHumanCapital = $this->isHumanCapital($user);
 
-            $canSeeAllUnit =
-                $isDHC ||
-                ($isAvpOrKepalaUnit && $isHumanCapital);
+            $canSeeAllUnit = $isDHC || (($isAVP || $isKepalaUnit) && $isHumanCapital);
 
             if (!$canSeeAllUnit) {
-                $query->whereHas('employee', function ($q) use ($user) {
-                    $q->where('unit_id', $user->unit_id);
+                // 🔐 SDM / Kepala Unit non-HC → unit sendiri
+                $query->whereHas('employee', function ($q) use ($userUnitId) {
+                    $q->where('unit_id', $userUnitId);
+                });
+            } elseif ($unitId) {
+                // 🔎 Filter unit dari parameter (optional)
+                $query->whereHas('employee', function ($q) use ($unitId) {
+                    $q->where('unit_id', $unitId);
                 });
             }
 
             /**
              * ==================================================
-             * RULE AKSES STATUS
+             * RULE AKSES STATUS (FLOW APPROVAL)
              * ==================================================
              */
             $allowedStatuses = [];
 
-            if (!in_array('SDM Unit', $roles)) {
-                if (in_array('Kepala Unit', $roles) && !$isHumanCapital) {
-                    $allowedStatuses = ['in_review_gmvp'];
-                }
-                elseif (in_array('DHC', $roles)) {
-                    $allowedStatuses = ['in_review_dhc'];
-                }
-                elseif (in_array('AVP', $roles) && $isHumanCapital) {
-                    $allowedStatuses = ['in_review_avpdhc'];
-                }
-                elseif (in_array('Kepala Unit', $roles) && $isHumanCapital) {
-                    $allowedStatuses = ['in_review_vpdhc'];
-                }
+            if ($user->hasRole('Kepala Unit') && !$isHumanCapital) {
+                $allowedStatuses = ['in_review_gmvp'];
+            }
+            elseif ($user->hasRole('DHC')) {
+                $allowedStatuses = ['in_review_dhc'];
+            }
+            elseif ($user->hasRole('AVP') && $isHumanCapital) {
+                $allowedStatuses = ['in_review_avpdhc'];
+            }
+            elseif ($user->hasRole('Kepala Unit') && $isHumanCapital) {
+                $allowedStatuses = ['in_review_vpdhc'];
             }
 
             if (!empty($allowedStatuses)) {
@@ -556,49 +566,63 @@ class TrainingRequestController extends Controller
 
             /**
              * ==================================================
-             * FETCH DATA (Eksekusi Query)
+             * FETCH DATA
              * ==================================================
              */
-            // Cukup panggil paginate satu kali di akhir rangkaian builder
+            $perPage = $request->input('per_page', 12);
+
             $trainingRequest = $query
-                ->orderBy('id', 'asc')
-                ->paginate($perPage, ['*'], 'page', $page);
+                ->orderByDesc('id')
+                ->paginate($perPage);
 
-            // Debugging Log: Cek apakah item pertama punya approval
-            $sampleApprovalCount = 0;
-            if ($trainingRequest->count() > 0) {
-                $sampleApprovalCount = $trainingRequest->items()[0]->approvals->count();
-            }
+            $data = collect($trainingRequest->items())->map(function ($item) {
+                return [
+                    'id'                => $item->id,
+                    'judul_sertifikasi' => $item->trainingReference?->judul_sertifikasi ?? '-',
+                    'peserta'           => $item->employee?->person?->full_name ?? '-',
+                    'nik'               => $item->employee?->employee_id ?? '-',
+                    'tanggal_mulai'     => $item->start_date,
+                    'tanggal_berakhir'  => $item->end_date,
+                    'biaya_pelatihan'   => $item->trainingReference?->biaya_pelatihan ?? 0,
+                    'realisasi_biaya_pelatihan'   => $item->realisasi_biaya_pelatihan,
+                    'lampiran_penawaran' => $item->lampiran_penawaran,
+                    'status_approval_training' => $item->status_approval_training,
+                ];
+            });
 
-            Log::info("Fetch data training request berhasil.", [
-                "total_data" => $trainingRequest->total(),
-                "sample_id" => $trainingRequest->count() > 0 ? $trainingRequest->items()[0]->id : null,
-                "sample_approval_count" => $sampleApprovalCount
+            Log::info('Training Request Fetch OK', [
+                'role'              => $roles,
+                'user_unit_id'      => $userUnitId,
+                'can_see_all_unit'  => $canSeeAllUnit,
+                'filtered_unit_id' => $unitId,
+                'allowed_statuses' => $allowedStatuses,
+                'total'            => $trainingRequest->total(),
             ]);
 
             return response()->json([
-                "status" => "success",
-                "data" => $trainingRequest->items(),
-                "pagination" => [
-                    "current_page" => $trainingRequest->currentPage(),
-                    "last_page"    => $trainingRequest->lastPage(),
-                    "per_page"     => $trainingRequest->perPage(),
-                    "total"        => $trainingRequest->total()
+                'status' => 'success',
+                'data'   => $data,
+                'pagination' => [
+                    'current_page' => $trainingRequest->currentPage(),
+                    'last_page'    => $trainingRequest->lastPage(),
+                    'per_page'     => $trainingRequest->perPage(),
+                    'total'        => $trainingRequest->total(),
                 ]
             ]);
 
         } catch (\Throwable $e) {
             Log::error('getTrainingRequestList error', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace'   => $e->getTraceAsString()
             ]);
 
             return response()->json([
-                "status" => "error",
-                "message" => "Terjadi kesalahan saat mengambil data."
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan saat mengambil data.'
             ], 500);
         }
     }
+
 
     // pengajuan LNA DHC dan SDM
 

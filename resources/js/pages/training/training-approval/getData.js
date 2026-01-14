@@ -41,9 +41,6 @@ const TABLE_CONFIGS = {
             "jumlah_jam",
             "waktu_pelaksanaan",
             "biaya_pelatihan",
-            "uhpd",
-            "biaya_akomodasi",
-            "estimasi_total_biaya",
             "nama_proyek",
             "jenis_portofolio",
             "fungsi",
@@ -56,8 +53,8 @@ const TABLE_CONFIGS = {
     "training-request-table": {
         tableId: "training-request-table",
         modalId: "#training-peserta-modal",
-        apiEndpoint: (unitId) =>
-            `/training/training-request/${unitId}/get-training-request-list`,
+        apiEndpoint: () =>
+            `/training/training-request/get-training-request-list`,
         columns: [
             "no",
             "judul_sertifikasi",
@@ -65,28 +62,11 @@ const TABLE_CONFIGS = {
             "tanggal_mulai",
             "tanggal_berakhir",
             "realisasi_biaya_pelatihan",
-            "estimasi_total_biaya",
             "lampiran_penawaran",
             "status_approval_training",
             "actions",
         ],
-        dataMapper: (res) =>
-            (res.data || []).map((item) => ({
-                id: item.id,
-                judul_sertifikasi:
-                    item.training_reference?.judul_sertifikasi || "-",
-                nama_peserta: item.employee?.person?.full_name || "-",
-                nik: item.employee?.employee_id || "-",
-                tanggal_mulai: item.start_date,
-                tanggal_berakhir: item.end_date,
-                realisasi_biaya_pelatihan: item.realisasi_biaya_pelatihan,
-                estimasi_total_biaya:
-                    item.estimasi_total_biaya ||
-                    item.training_reference?.estimasi_total_biaya ||
-                    "0",
-                lampiran_penawaran: item.lampiran_penawaran,
-                status_approval_training: item.status_approval_training,
-            })),
+        dataMapper: (res) => res.data || [],
     },
 };
 
@@ -102,13 +82,14 @@ const COLUMN_RENDERERS = {
 
     peserta: (d, t, r) => `
         <div class="flex flex-col">
-            <span class="font-semibold">${r.nama_peserta}</span>
+            <span class="font-semibold">${r.peserta}</span>
             <small class="text-gray-500">${r.nik}</small>
         </div>`,
 
     tanggal_mulai: (d) => `<div>${formatDate(d)}</div>`,
     tanggal_berakhir: (d) => `<div>${formatDate(d)}</div>`,
     biaya_pelatihan: (d) => `<div>${formatRupiah(d)}</div>`,
+    realisasi_biaya_pelatihan: (d) => `<div>${formatRupiah(d)}</div>`,
     estimasi_total_biaya: (d) =>
         `<div class="font-bold u-text-sm">${formatRupiah(d)}</div>`,
 
@@ -266,15 +247,8 @@ const populateModalData = ($modal, data) => {
 
     // Informasi Biaya
     $modal
-        .find(".detail-biaya-pelatihan, .detail-biaya_pelatihan")
+        .find(".detail-biaya_pelatihan, .detail-biaya_pelatihan")
         .text(formatRupiah(data.biaya_pelatihan || 0));
-    $modal.find(".detail-uhpd").text(formatRupiah(data.uhpd || 0));
-    $modal
-        .find(".detail-biaya-akomodasi, .detail-biaya_akomodasi")
-        .text(formatRupiah(data.biaya_akomodasi || 0));
-    $modal
-        .find(".detail-total-biaya, .detail-estimasi_total_biaya")
-        .text(formatRupiah(data.estimasi_total_biaya || 0));
     $modal
         .find(".detail-realisasi_biaya_pelatihan")
         .text(formatRupiah(data.realisasi_biaya_pelatihan || 0));

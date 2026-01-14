@@ -22,14 +22,24 @@ class DashboardController extends Controller
     
     public function index()
     {
-        $user = auth()->user();
-        // Asumsi: User memiliki relasi ke Employee, dan Employee memiliki unit_id
-        $employee = $user->employee; 
-        $unitId = auth()->user()?->employee?->unit_id;
+        $user     = auth()->user();
+        $employee = $user->employee;
+        $unitId   = $employee?->unit_id;
+        $role     = $user->getRoleNames()->first();
 
-        Log::info('Unit ID:', ['unit_id' => $unitId]);
-        
-        // A. Statistik LNA & Request (Seperti code Anda)
+        $isHumanCapital  = $this->isHumanCapital($user);
+        $isKepalaUnitHC  = $role === 'Kepala Unit' && $isHumanCapital;
+        $canViewAllUnits = $role === 'DHC' || $isKepalaUnitHC;
+
+        Log::info('Dashboard Access', [
+            'role'              => $role,
+            'unit_id'           => $unitId,
+            'can_view_all_unit' => $canViewAllUnits
+        ]);
+
+        // ===============================
+        // A. Statistik LNA & Request
+        // ===============================
         $referenceCounts = TrainingReference::groupBy('status_training_reference')
             ->select('status_training_reference', DB::raw('count(*) as total'))
             ->pluck('total', 'status_training_reference');
@@ -38,35 +48,53 @@ class DashboardController extends Controller
             ->select('status_approval_training', DB::raw('count(*) as total'))
             ->pluck('total', 'status_approval_training');
 
-        $myUnitBudget = null;
-        if ($unitId) {
-            $used = TrainingRequest::whereHas('employee', function($q) use ($unitId) {
-                $q->where('unit_id', $unitId);
-            })
-                ->where('status_approval_training', 'approved')
-                ->sum('estimasi_total_biaya');
+        // ===============================
+        // B. Anggaran Unit Kerja (PLANNED)
+        // ===============================
+        $limit = 5_000_000_000;
 
-            $limit = 5_000_000_000;
+        $unitBudgetsQuery = TrainingReference::query()
+            ->join('units', 'units.id', '=', 'training_references.unit_id')
+            ->select(
+                'units.id as unit_id',
+                'units.name as unit_name',
+                DB::raw('SUM(training_references.biaya_pelatihan) as used')
+            )
+            ->where('training_references.status_training_reference', 'active')
+            ->groupBy('units.id', 'units.name');
 
-            $myUnitBudget = [
-                'name'       => auth()->user()->employee?->unit?->name, // opsional
-                'used'       => $used,
-                'limit'      => $limit,
-                'percentage' => $used > 0
-                    ? min(round(($used / $limit) * 100, 1), 100)
-                    : 0,
-            ];
+        // 🔐 Batasi unit jika TIDAK boleh lihat semua
+        if (!$canViewAllUnits && $unitId) {
+            $unitBudgetsQuery->where('training_references.unit_id', $unitId);
         }
 
-        // C. DATA TABEL TERBARU
+        $unitBudgets = $unitBudgetsQuery->get()->map(function ($row) use ($limit) {
+            return [
+                'unit_id'   => $row->unit_id,
+                'unit_name' => $row->unit_name,
+                'used'      => (float) $row->used,
+                'limit'     => $limit,
+                'remaining' => max($limit - $row->used, 0),
+                'percentage'=> $row->used > 0
+                    ? min(round(($row->used / $limit) * 100, 1), 100)
+                    : 0,
+            ];
+        });
+
+        // ===============================
+        // C. Data Request Terbaru
+        // ===============================
         $recentRequests = TrainingRequest::with(['employee.person', 'trainingReference'])
-            ->whereHas('employee', function($q) use ($unitId) {
-                $q->where('unit_id', $unitId);
+            ->when(!$canViewAllUnits && $unitId, function ($q) use ($unitId) {
+                $q->whereHas('employee', fn ($qq) => $qq->where('unit_id', $unitId));
             })
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
+        // ===============================
+        // D. Dashboard Items
+        // ===============================
         $dashboardItems = collect([
             ['key' => 'pending', 'label' => 'Pending (LNA)', 'total' => $referenceCounts['pending'] ?? 0],
             ['key' => 'active', 'label' => 'Active (LNA)', 'total' => $referenceCounts['active'] ?? 0],
@@ -78,9 +106,11 @@ class DashboardController extends Controller
             ['key' => 'rejected', 'label' => 'Rejected', 'total' => $requestCounts['rejected'] ?? 0],
         ]);
 
-        return view('training.dashboard.index', compact('dashboardItems', 
-        'myUnitBudget', 
-        'recentRequests'));
+        return view('training.dashboard.index', compact(
+            'dashboardItems',
+            'recentRequests',
+            'unitBudgets'
+        ));
     }
 
     public function getDataEvaluation()
@@ -329,5 +359,29 @@ class DashboardController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         }
+    }
+
+    protected function isHumanCapital($user): bool
+    {
+        if (!$user->unit_id) {
+            Log::warning('isHumanCapital: unit_id null');
+            return false;
+        }
+
+        $exists = DB::table('units')
+            ->where('id', $user->unit_id)
+            ->where(function ($q) {
+                $q->where('code', 'HC')
+                ->orWhere('name', 'LIKE', '%Human Capital%')
+                ->orWhere('name', 'LIKE', '%Human Capital Division%');
+            })
+            ->exists();
+
+        Log::info('isHumanCapital check result', [
+            'unit_id' => $user->unit_id,
+            'exists'  => $exists
+        ]);
+
+        return $exists;
     }
 }

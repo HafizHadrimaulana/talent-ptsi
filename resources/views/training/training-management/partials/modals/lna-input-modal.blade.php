@@ -96,21 +96,6 @@
             <input type="text" name="biaya_pelatihan" class="u-input u-font-semibold" placeholder="Masukkan angka" required>
           </div>
 
-          <div>
-            <label class="font-medium after:content-['*'] after:text-red-500">UHPD (Rp)</label>
-            <input type="text" name="uhpd" class="u-input u-font-semibold" placeholder="Masukkan angka" required>
-          </div>
-
-          <div>
-            <label class="font-medium after:content-['*'] after:text-red-500">Biaya Akomodasi (Rp)</label>
-            <input type="text" name="biaya_akomodasi" class="u-input u-font-semibold" placeholder="Masukkan angka" required>
-          </div>
-
-          <div>
-            <label class="font-medium">Estimasi Total Biaya (Rp)</label>
-            <input type="text" name="estimasi_total_biaya" class="u-input u-font-semibold bg-gray-700" disabled>
-          </div>
-
         </div>
 
       </form>
