@@ -220,8 +220,8 @@
                         </select>
                       </div>
                       <div class="u-grid-col-span-2">
-                         <label class="u-text-sm u-font-semibold">Password <span class="u-muted u-font-normal">(Optional)</span></label>
-                         <input type="password" class="u-input" name="password" id="f_password">
+                          <label class="u-text-sm u-font-semibold">Password <span class="u-muted u-font-normal">(Optional)</span></label>
+                          <input type="password" class="u-input" name="password" id="f_password">
                       </div>
                   </div>
               </div>
@@ -343,49 +343,52 @@ document.addEventListener('DOMContentLoaded', function () {
             init.textContent = (d.full_name||'?')[0];
         }
 
-        // Overview Clean Layout
+        const rowStyle = 'display:flex; justify-content:space-between; align-items:flex-start; gap:1.5rem; margin-bottom:0.75rem;';
+        const lblStyle = 'flex-shrink:0; width:130px; font-size:0.875rem; color:var(--text-muted);';
+        const valStyle = 'flex:1; text-align:right; font-weight:500; word-break:break-word;';
+
         document.getElementById('ov-left').innerHTML = `
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Job Title</span>
-                <span class="u-font-medium u-text-right pl-4" style="flex:1; word-wrap:break-word">${d.job_title||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Job Title</span>
+                <span style="${valStyle}">${d.job_title||'—'}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Unit</span>
-                <span class="u-font-medium u-text-right pl-4" style="flex:1; word-wrap:break-word">${d.unit_name||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Unit</span>
+                <span style="${valStyle}">${d.unit_name||'—'}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Directorate</span>
-                <span class="u-font-medium u-text-right pl-4" style="flex:1; word-wrap:break-word">${d.directorate||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Directorate</span>
+                <span style="${valStyle}">${d.directorate||'—'}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Start Date</span>
-                <span class="u-font-medium u-text-right pl-4">${_fmtDate(d.start_date)}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Start Date</span>
+                <span style="${valStyle}">${_fmtDate(d.start_date)}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Status</span>
-                <span class="u-badge u-badge--glass">${d.status||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Status</span>
+                <span style="flex:1; text-align:right"><span class="u-badge u-badge--glass">${d.status||'—'}</span></span>
             </div>
         `;
         document.getElementById('ov-right').innerHTML = `
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Email</span>
-                <span class="u-font-medium u-text-right pl-4" style="flex:1; word-break:break-all">${d.email||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Email</span>
+                <span style="${valStyle}">${d.email||'—'}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Phone</span>
-                <span class="u-font-medium u-text-right pl-4">${d.phone||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Phone</span>
+                <span style="${valStyle}">${d.phone||'—'}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Location</span>
-                <span class="u-font-medium u-text-right pl-4">${d.city||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Location</span>
+                <span style="${valStyle}">${d.city||'—'}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Talent</span>
-                <span class="u-font-medium u-text-right pl-4">${d.talent||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Talent</span>
+                <span style="${valStyle}">${d.talent||'—'}</span>
             </div>
-            <div class="u-flex u-justify-between u-mb-sm">
-                <span class="u-muted u-text-sm u-w-32 u-shrink-0">Company</span>
-                <span class="u-font-medium u-text-right pl-4">${d.company||'—'}</span>
+            <div style="${rowStyle}">
+                <span style="${lblStyle}">Company</span>
+                <span style="${valStyle}">${d.company||'—'}</span>
             </div>
         `;
 
@@ -399,7 +402,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.classList.add('modal-open');
 
         if(d.id) {
-            // CALL USER SHOW (AJAX)
             fetch(`${UPDATE_BASE}/${d.id}`, {headers: {'Accept': 'application/json'}})
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
@@ -466,7 +468,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                     
                     _renderList('train-list', data.trainings, (t)=> {
-                        // Logic Date: 01 Jan -> Year Only
                         let dDisplay = _fmtDate(t.start_date);
                         if(t.start_date && t.start_date.endsWith('-01-01')) dDisplay = _year(t.start_date);
 

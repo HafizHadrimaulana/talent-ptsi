@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\PermissionRegistrar;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -344,7 +345,12 @@ class UserController extends Controller
     {
         if (!$path) return '';
         $pathTrim = ltrim((string) $path, '/');
+        
         if (preg_match('~^https?://~i', $pathTrim)) return $pathTrim;
+
+        if (strpos($pathTrim, 'uploads/') === 0) {
+            return 'https://sitms.ptsi.co.id/' . $pathTrim;
+        }
 
         $disk = $disk ?: config('filesystems.default');
         try {
