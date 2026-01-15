@@ -825,15 +825,15 @@
     </div>
   </div>
 </div>
-<div id="createProjectModal" class="u-modal" style="z-index: 3050; display: none; align-items: center; justify-content: center; position: fixed; inset: 0; background-color: rgba(0,0,0,0.6);">
-    <div class="u-modal__card" style="width: 100%; max-width: 600px; background: white; border-radius: 8px; overflow: hidden; animation: u-slide-up 0.2s ease-out;">
-        <div class="u-modal__head u-flex u-justify-between u-items-center u-p-md u-border-b">
+<div id="createProjectModal" class="u-modal" style="z-index: 3050; display: none; align-items: center; justify-content: center; position: fixed; inset: 0;">
+    <div class="u-modal__card" style="width: 100%; max-width: 600px; border-radius: 8px; overflow: hidden; animation: u-slide-up 0.2s ease-out;">
+        <div class="u-modal__head">
             <div class="u-font-bold u-text-lg">Tambah Project Baru</div>
             <button type="button" class="u-btn u-btn--ghost u-btn--sm js-close-project-modal"><i class="fas fa-times"></i></button>
         </div>  
         <form id="formCreateProject" enctype="multipart/form-data">
             @csrf
-            <div class="u-modal__body u-p-md u-space-y-md">
+            <div class="u-modal__body">
                 <div class="u-space-y-sm">
                     <label class="u-label u-font-medium u-text-sm">Kode Project <span class="u-text-danger">*</span></label>
                     <input type="text" name="project_code" class="u-input" placeholder="Contoh: PRJ-2025-001" required>
