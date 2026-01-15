@@ -59,18 +59,19 @@
     </div>
   @endif
   <div class="u-flex u-justify-between u-items-center u-mb-md u-flex-wrap u-gap-md" style="margin-top: 20px;">
-    <div class="u-flex u-gap-sm p-1 bg-gray-100 rounded-full">
+    <div class="u-flex u-gap-xs" style="background-color: var(--surface-1); padding: 4px; border-radius: 999px; border: 1px solid var(--border);">
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'disetujui', 'page' => null]) }}" 
            class="u-btn {{ $currentTab === 'disetujui' ? 'u-btn--brand' : 'u-btn--ghost' }}"
-           style="border-radius: 999px; min-width: 120px; justify-content: center; {{ $currentTab !== 'disetujui' ? 'color: #6b7280;' : '' }}">
+           style="border-radius: 999px; min-width: 120px; justify-content: center; {{ $currentTab !== 'disetujui' ? 'color: var(--muted);' : '' }}">
            <i class="fas fa-check-circle u-mr-xs"></i> Disetujui
         </a>
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'berjalan', 'page' => null]) }}" 
            class="u-btn {{ $currentTab === 'berjalan' ? 'u-btn--brand' : 'u-btn--ghost' }}"
-           style="border-radius: 999px; min-width: 120px; justify-content: center; {{ $currentTab !== 'berjalan' ? 'color: #6b7280;' : '' }}">
+           style="border-radius: 999px; min-width: 120px; justify-content: center; {{ $currentTab !== 'berjalan' ? 'color: var(--muted);' : '' }}">
            <i class="fas fa-spinner u-mr-xs"></i> Berjalan
         </a>
     </div>
+
     <div class="u-flex u-gap-sm">
         <form method="GET" action="{{ route('recruitment.principal-approval.index') }}" class="u-relative">
             @foreach(request()->except(['q', 'page']) as $key => $val)
@@ -81,7 +82,7 @@
                        class="u-input" 
                        placeholder="Cari Tiket / Judul..." 
                        style="border-radius: 999px; min-width: 250px; padding-left: 35px;">
-                <i class="fas fa-search u-text-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"></i>
+                <i class="fas fa-search u-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"></i>
             </div>
         </form>
     </div>

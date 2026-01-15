@@ -197,24 +197,6 @@
                         </div>
                     </div>
                 </div>
-                <div id="tab-alamat" class="tab-content hidden u-space-y-lg">
-                    <div>
-                        <h3 class="uj-section-title">Alamat Sesuai KTP</h3>
-                        <div class="u-space-y-md">
-                            @include('components.textarea-soft', ['label' => 'Alamat Lengkap', 'name' => 'address_ktp', 'val' => $person->address])
-                            @include('components.input-soft', ['label' => 'Kota / Kabupaten', 'name' => 'city_ktp', 'val' => $person->city])
-                            @include('components.input-soft', ['label' => 'Provinsi', 'name' => 'province_ktp', 'val' => $person->province_ktp])
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="uj-section-title">Alamat Domisili</h3>
-                        <div class="u-space-y-md">
-                            @include('components.textarea-soft', ['label' => 'Alamat Lengkap', 'name' => 'address_domicile', 'val' => $person->address_domicile])
-                            @include('components.input-soft', ['label' => 'Kota / Kabupaten', 'name' => 'city_domicile', 'val' => $person->city_domicile])
-                            @include('components.input-soft', ['label' => 'Provinsi', 'name' => 'province_domicile', 'val' => $person->province_domicile])
-                        </div>
-                    </div>
-                </div>
                 <div id="tab-pendidikan" class="tab-content hidden">
                     <h3 class="uj-section-title">Riwayat Pendidikan</h3>
                     <h5 class="u-block u-text-sm u-font-bold u-mb-sm text-yellow-500 mb-4 border-b pb-2" style="border-color: var(--border);">
@@ -311,7 +293,7 @@
                 <div id="tab-dokumen" class="tab-content hidden">
                     <h3 class="uj-section-title">Dokumen Pendukung</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        @include('components.file-upload-soft', ['label' => 'CV / Resume (Master)', 'name' => 'cv_file', 'path' => $person->cv_path])
+                        @include('components.file-upload-soft', ['label' => 'CV / Resume', 'name' => 'cv_file', 'path' => $person->cv_path])
                         @include('components.file-upload-soft', ['label' => 'KTP', 'name' => 'id_card_file', 'path' => $person->id_card_path])
                         @include('components.file-upload-soft', ['label' => 'Ijazah Terakhir', 'name' => 'ijazah_file', 'path' => $person->ijazah_path])
                         @include('components.file-upload-soft', ['label' => 'Transkrip Nilai', 'name' => 'transcripts_file', 'path' => $person->transcripts_path])
@@ -412,7 +394,7 @@
                         </table>
                     </div>
                 </div>
-                <div class="mt-8 pt-6 border-t flex justify-end items-center bg-white sticky bottom-0 z-10" style="border-color: var(--border);">
+                <div id="save-button-container" class="mt-8 pt-6 flex justify-end items-center sticky bottom-0 z-10">
                     <button type="submit" class="u-btn u-btn--brand px-8 rounded-full shadow-lg gap-2 h-12 text-sm font-bold u-hover-lift">
                         <i class="fas fa-save"></i> Simpan Perubahan
                     </button>
@@ -447,7 +429,18 @@
             btn.classList.remove('is-active');
         });
         const activeBtn = document.getElementById('tab-btn-' + tabId);
-        activeBtn.classList.add('is-active');
+        if(activeBtn) activeBtn.classList.add('is-active');
+        const btnContainer = document.getElementById('save-button-container');
+        
+        if (btnContainer) {
+            if (tabId === 'lamaran') {
+                btnContainer.classList.add('hidden');
+                btnContainer.classList.remove('flex');
+            } else {
+                btnContainer.classList.remove('hidden');
+                btnContainer.classList.add('flex');
+            }
+        }
     }
     function addRepeater(type) {
         const container = document.getElementById(type + '-container');
