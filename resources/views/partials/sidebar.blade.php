@@ -1,4 +1,6 @@
-<aside class="sidebar glass" id="sidebar" aria-label="Primary navigation" data-scroll-area> @php $user = auth()->user();
+<aside class="sidebar glass" id="sidebar" aria-label="Primary navigation" data-scroll-area> 
+    @php 
+    $user = auth()->user();
 
     $roleNames = $user ? $user->getRoleNames() : collect([]);
     $isPelamar = $user && $user->hasRole('Pelamar');
@@ -22,11 +24,17 @@
     request()->routeIs('admin.permissions.*') || request()->routeIs('admin.employees.*');
 
     $mdOpen = request()->routeIs('admin.org.*') || request()->routeIs('admin.contract-templates.*');
+
+    $isMainActive = request()->routeIs('dashboard');
+    $isRecActive = request()->routeIs('recruitment.*') || request()->routeIs('careers.*');
+    $isTrActive = request()->routeIs('training.*');
+    $isSetActive = request()->routeIs('admin.users.*') || request()->routeIs('admin.roles.*') || request()->routeIs('admin.permissions.*');
+    $isMasterActive = request()->routeIs('admin.org.*') || request()->routeIs('admin.contract-templates.*');
     @endphp
 
     <div class="brand">
         <a href="{{ route('dashboard') }}" class="brand-link" aria-label="Dashboard">
-            <img src="{{ asset('images/sapahc.png') }}" alt="Logo" class="logo hover-lift">
+            <img src="{{ asset('images/sapahc-logo.png') }}" alt="SAPA HC Logo" class="logo">
         </a>
     </div>
 
@@ -55,7 +63,7 @@
     <nav class="nav-section">
         <div class="nav-title">Recruitment</div>
         <div class="nav">
-            <button type="button" class="nav-item js-accordion {{ $recOpen ? 'open' : '' }}"
+            <button type="button" class="nav-item js-accordion {{ $recOpen ? 'open' : '' }} {{ $isRecActive ? 'active' : '' }}"
                 data-accordion="nav-recruitment" aria-expanded="{{ $recOpen ? 'true' : 'false' }}">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -168,7 +176,7 @@
     <nav class="nav-section">
         <div class="nav-title">Training</div>
         <div class="nav">
-            <button type="button" class="nav-item js-accordion {{ $trOpen ? 'open' : '' }}"
+            <button type="button" class="nav-item js-accordion {{ $trOpen ? 'open' : '' }} {{ $isTrActive ? 'active' : '' }}"
                 data-accordion="nav-training" aria-expanded="{{ $trOpen ? 'true' : 'false' }}">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -244,7 +252,7 @@
         <div class="nav-title">Settings</div>
         <div class="nav">
             @canany(['users.view','rbac.view','employees.view'])
-            <button type="button" class="nav-item js-accordion {{ $acOpen ? 'open' : '' }}" data-accordion="nav-access"
+            <button type="button" class="nav-item js-accordion {{ $acOpen ? 'open' : '' }} {{ $isSetActive ? 'active' : '' }}" data-accordion="nav-access"
                 aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -308,7 +316,7 @@
     <nav class="nav-section">
         <div class="nav-title">Master Data</div>
         <div class="nav">
-            <button type="button" class="nav-item js-accordion {{ $mdOpen ? 'open' : '' }}"
+            <button type="button" class="nav-item js-accordion {{ $mdOpen ? 'open' : '' }} {{ $isMasterActive ? 'active' : '' }}"
                 data-accordion="nav-masterdata" aria-expanded="{{ $mdOpen ? 'true' : 'false' }}">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                     stroke-linecap="round" stroke-linejoin="round">

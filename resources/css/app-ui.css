@@ -18,7 +18,7 @@ html[data-theme="dark"]{
 
 *,*::before,*::after{box-sizing:border-box}
 html,body{height:100%}
-body{color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 a{color:inherit;text-decoration:none}
 img,svg,video,canvas{max-width:100%;height:auto;display:block}
 button,input,select,textarea{font:inherit;color:inherit}
