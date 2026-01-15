@@ -1,20 +1,13 @@
-@extends('layouts.public') {{-- pakai layout publik ringan; kalau mau pakai app.blade silakan ganti --}}
-
+@extends('layouts.public')
 @section('title','Careers')
-
 @section('content')
-  {{-- Success Toast --}}
   @if(session('success'))
     <div class="alert alert-success mb-4">{{ session('success') }}</div>
   @endif
-
-  {{-- Search --}}
   <form method="get" class="mb-6 flex gap-2">
     <input type="search" name="q" value="{{ request('q') }}" class="input input-bordered" placeholder="Search position / location..." />
     <button class="btn btn-primary">Search</button>
   </form>
-
-  {{-- Grid jobs --}}
   @if($jobs->count() === 0)
     <div class="card p-6">No active vacancies.</div>
   @else
@@ -36,8 +29,6 @@
 
     <div class="mt-6">{{ $jobs->links() }}</div>
   @endif
-
-  {{-- Modal (pure CSS + vanilla JS) --}}
   @if($activeJob)
     <div id="jobModal" class="modal-backdrop">
       <div class="modal">

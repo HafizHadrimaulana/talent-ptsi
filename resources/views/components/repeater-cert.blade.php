@@ -1,27 +1,27 @@
-<div class="repeater-item bg-gray-50 p-6 rounded-2xl mb-6 border border-gray-100 relative hover:shadow-md transition-all">
-    <button type="button" onclick="removeRow(this)" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors"><i class="fas fa-times-circle text-xl"></i></button>
-    <h4 class="u-block u-text-sm u-font-bold u-mb-sm text-gray-800 mb-6 border-b border-gray-200 pb-2 flex items-center gap-2"><i class="fas fa-certificate text-yellow-500"></i> Sertifikasi</h4>
+<div class="repeater-item u-p-md u-rounded-lg u-mb-md relative transition-all hover:shadow-sm" 
+     style="background-color: var(--surface-1); border: 1px solid var(--border);">
+    
+    <button type="button" onclick="removeRow(this)" class="absolute top-4 right-4 u-text-muted hover:text-red-500 transition-colors">
+        <i class="fas fa-times-circle"></i>
+    </button>
+    
+    <h4 class="uj-section-title" style="margin-top: 0; margin-bottom: 1rem;">
+        <i class="fas fa-certificate u-mr-xs text-yellow-500"></i> Sertifikasi & Pelatihan
+    </h4>
+    
     <div class="space-y-4">
         <div class="u-space-y-sm">
-            <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Judul Sertifikasi</label>
-            <input type="text" name="cert_list[{{$idx}}][name]" value="{{ $cert['name'] ?? '' }}" class="u-input w-full" placeholder="Contoh: BNSP HR Manager, TOEFL ITP">
-        </div>
-        <div class="u-space-y-sm">
-            <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Penyelenggara</label>
-            <input type="text" name="cert_list[{{$idx}}][organizer]" value="{{ $cert['organizer'] ?? '' }}" class="u-input w-full" placeholder="Lembaga penerbit sertifikat">
+            <label class="u-label uj-label">Nama Sertifikasi / Pelatihan</label>
+            <input type="text" name="cert_list[{{$idx}}][name]" value="{{ $cert['name'] ?? '' }}" class="u-input w-full" placeholder="Contoh: AWS Certified, Pelatihan K3">
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="u-space-y-sm">
-                <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Tanggal Mulai</label>
-                <input type="date" name="cert_list[{{$idx}}][start_date]" value="{{ $cert['start_date'] ?? '' }}" class="u-input w-full">
+                <label class="u-label uj-label">Penerbit / Institusi</label>
+                <input type="text" name="cert_list[{{$idx}}][issuer]" value="{{ $cert['issuer'] ?? '' }}" class="u-input w-full" placeholder="Badan Sertifikasi">
             </div>
             <div class="u-space-y-sm">
-                <label class="u-block u-text-xs u-font-medium u-mb-sm text-gray-500 uppercase">Berlaku Hingga</label>
-                <input type="date" name="cert_list[{{$idx}}][end_date]" value="{{ $cert['end_date'] ?? '' }}" class="u-input w-full">
-                <label class="flex items-center gap-2 mt-2 cursor-pointer">
-                    <input type="checkbox" class="checkbox checkbox-xs checkbox-primary" onclick="this.parentElement.previousElementSibling.disabled = this.checked"> 
-                    <span class="text-xs text-gray-500">Berlaku Seumur Hidup</span>
-                </label>
+                <label class="u-label uj-label">Tahun</label>
+                <input type="number" name="cert_list[{{$idx}}][year]" value="{{ $cert['year'] ?? '' }}" class="u-input w-full" placeholder="YYYY">
             </div>
         </div>
     </div>

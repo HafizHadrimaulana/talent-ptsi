@@ -103,45 +103,34 @@
       <section id="about" class="py-20 fade-section relative">
         <div class="container mx-auto px-6 text-center">
           <h2 class="text-3xl font-bold mb-4 text-[#00A29A]">
-            Mengapa Bergabung dengan Kami?
+            VISI & MISI
           </h2>
           <p class="text-gray-700 max-w-2xl mx-auto mb-12">
-            Kami percaya bahwa keberhasilan perusahaan berawal dari orang-orang yang hebat.
+            Kami hadir untuk memberikan sumbangsih terbaik bagi negeri dengan mengutamakan profesionalisme, integritas serta bersinergi dalam mewujudkan Indonesia yang lebih baik di masa depan.
           </p>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
-        <div class="text-5xl mb-4 text-[#1D4388] transition-all duration-500 group-hover:scale-110 group-hover:text-[#00A29A]">
-          🚀
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
+                    <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
+                    VISI
+                    </h3>
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                    Menjadi perusahaan pemberi jaminan kepastian yang tidak memihak (Independent Assurance) yang terpercaya dan berkontribusi strategis bagi kepentingan nasional
+                    </p>
+                </div>
+                <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
+                    <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
+                    MISI
+                    </h3>
+                    <p>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Meningkatkan pangsa pasar sebagai penyedia layanan TIC (Testing, Inspection, Certification) terdepan di Indonesia</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Mengembangkan inovasi produk dan layanan yang terintegrasi dan canggih</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Membangun keunggulan sebagai penyedia layanan TIC kelas dunia</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Menjadi mitra strategis Pemerintah dan Swasta untuk mengoptimalkan sumber daya nasional</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Meningkatkan kompetensi SDM dan kemampuan teknologi sesuai standar nasional & internasional</li>
+                    </p>
+                </div>
+            </div>
         </div>
-        <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
-          Kesempatan Bertumbuh
-        </h3>
-        <p class="text-sm text-gray-600 leading-relaxed">
-          Kami memberikan pelatihan dan mentoring untuk membantu Anda mencapai potensi terbaik.
-        </p>
-      </div>
-      <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
-        <div class="text-5xl mb-4 text-[#1D4388] transition-all duration-500 group-hover:scale-110 group-hover:text-[#00A29A]">
-          🤝
-        </div>
-        <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
-          Budaya Kolaboratif
-        </h3>
-        <p class="text-sm text-gray-600 leading-relaxed">
-          Kami bekerja sebagai satu tim dalam suasana kerja yang positif.
-        </p>
-      </div>
-      <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
-        <div class="text-5xl mb-4 text-[#1D4388] transition-all duration-500 group-hover:scale-110 group-hover:text-[#00A29A]">    
-        </div>
-        <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
-          Inovasi Berkelanjutan
-        </h3>
-        <p class="text-sm text-gray-600 leading-relaxed">
-          Kami mendukung ide-ide baru dan keberanian untuk berinovasi.
-        </p>
-      </div>
-    </div>
       </section>
       <section class="py-20 text-center fade-section relative">
         <h2 class="text-3xl font-bold mb-8">
@@ -306,9 +295,7 @@
       <div>
         <h4 class="font-semibold text-lg mb-3 text-white">Legal</h4>
         <ul class="space-y-2">
-          <li><a href="#" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
-          <li><a href="#" class="hover:text-[#49D4A9] transition">Syarat & Ketentuan</a></li>
-          <li><a href="#" class="hover:text-[#49D4A9] transition">Hak Cipta</a></li>
+          <li><a href="https://sapahc.ptsi.co.id/privacy-policy" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
         </ul>
       </div>
       <div class="relative mt-10 border-t border-gray-700 pt-6 text-center text-xs text-gray-400">
@@ -355,11 +342,16 @@
                         <input type="checkbox" id="termsCheckbox" class="mt-0.5" required>
                         <span>
                             Saya menyetujui
-                            <a href="#" class="font-semibold text-[#00A29A] hover:underline">syarat & ketentuan</a> yang berlaku.
+                            <a href="https://sapahc.ptsi.co.id/privacy-policy" class="font-semibold text-[#00A29A] hover:underline">syarat & ketentuan</a> yang berlaku.
                         </span>
                     </label>
                 </div>
-
+                <div class="text-sm text-[#667085] mt-4" style="text-align: right;">
+                    Sudah punya akun? 
+                    <a href="#" onclick="event.preventDefault(); openLoginModal(); closeModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
+                        Masuk
+                    </a>
+                </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium transition cursor-pointer">
                         Batal
@@ -398,11 +390,17 @@
                         <input type="checkbox" id="loginTermsCheckbox" class="mt-0.5 rounded border-[#cdd6e3] text-brand focus:ring-brand">
                         <span>
                             Saya memahami ketentuan yang berlaku,
-                            <a href="#" class="font-semibold text-brand underline-offset-2 hover:underline">
+                            <a href="https://sapahc.ptsi.co.id/privacy-policy" class="font-semibold text-brand underline-offset-2 hover:underline">
                                 Baca Ketentuan Privasi Pegawai
                             </a>
                         </span>
                     </label>
+                </div>
+                <div class="text-sm text-[#667085]" style="text-align: right;">
+                    Belum punya akun? 
+                    <a href="#" onclick="event.preventDefault(); closeLoginModal(); openModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
+                        Daftar disini
+                    </a>
                 </div>
                 <div class="flex flex-col gap-2.5 mt-2">
                     <button id="loginSubmitBtn" type="submit" class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition-all duration-300 hover:brightness-110 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" disabled>

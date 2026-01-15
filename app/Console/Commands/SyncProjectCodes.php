@@ -94,7 +94,7 @@ class SyncProjectCodes extends Command
                         [
                             'client_id'   => $attrs['client_id'],
                             'nama_proyek' => $attrs['nama_proyek'],
-                            'tahun'       => $year
+                            
                         ],
                         $attrs
                     );

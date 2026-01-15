@@ -45,6 +45,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (document.querySelector('#ext-table')) {
+      initDataTables('#ext-table', {
+        columnDefs: [
+          { 
+            targets: -1, 
+            orderable: false, 
+            searchable: false, 
+            className: 'cell-actions', 
+            width: 120,
+            responsivePriority: 1 
+          },
+          { targets: 0, responsivePriority: 2 },
+          { targets: 1, responsivePriority: 3 },
+        ],
+        // Opsi tambahan jika perlu (misal mematikan pageLength default)
+        pageLength: 10,
+      });
+  }
+
   if (document.querySelector('#perms-table')) {
     initDataTables('#perms-table', {
       columnDefs: [
