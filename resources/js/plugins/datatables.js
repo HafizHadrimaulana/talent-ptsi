@@ -3,453 +3,323 @@ window.$ = window.jQuery = $;
 
 import DataTable from 'datatables.net';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
-
 import 'datatables.net-responsive';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
 
-/**
- * DataTables Helpers — iOS LiquidGlass chrome
- * - Custom DOM (header/footer, gradient header, glass scroll)
- * - Custom search form (Search/Clear)
- * - Responsive details grid
- * - Mobile-friendly spacing
- * - Safe to call multiple times
- */
 const helpers = window.__DT_HELPERS__ || (() => {
-  // ---------- utils ----------
   const debounce = (fn, delay = 300) => {
-    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), delay); };
+    let t;
+    return (...a) => {
+      clearTimeout(t);
+      t = setTimeout(() => fn(...a), delay);
+    };
   };
 
-  // ---------- DOM template ----------
   const DOM_CHROME =
     "<'u-dt-header u-flex u-flex-wrap u-items-center u-justify-between u-gap-lg u-mb-lg'\
-       <'u-dt-toolbar u-flex u-items-center u-gap-md'l>\
-       <'u-dt-search-wrapper'f>\
+        <'u-dt-toolbar u-flex u-items-center u-gap-md'l>\
+        <'u-dt-search-wrapper'f>\
      >\
-     t\
+     <'u-dt-table-container'tr>\
      <'u-dt-footer u-flex u-justify-between u-items-center u-mt-lg u-pt-lg u-border-t u-border-gray-200'\
-       <'u-dt-info dataTables_info'i>\
-       <'u-dt-pagination-wrapper dataTables_paginate'p>\
+        <'u-dt-info dataTables_info'i>\
+        <'u-dt-pagination-wrapper dataTables_paginate'p>\
      >";
 
-  // ---------- breakpoints ----------
-  const BREAKPOINTS = { desktop: Infinity, lg: 1280, md: 1024, sm: 768, xs: 520 };
+  const SPINNER_HTML = `
+    <div class="u-dt-spinner-card custom-spinner-visible">
+      <div class="u-dt-loader-ring"></div>
+      <div class="u-dt-loading-text">Loading Data...</div>
+    </div>
+  `;
 
-  // ---------- defaults ----------
   const DEFAULTS = {
     dom: DOM_CHROME,
     pageLength: 10,
     lengthMenu: [10, 25, 50, 100],
-    order: [],
-    orderMulti: false,
-    autoWidth: false,
-    stateSave: true,
-    deferRender: true,
     processing: true,
+    serverSide: false,
+    autoWidth: false,
     responsive: {
-      breakpoints: [
-        { name: 'desktop', width: BREAKPOINTS.desktop },
-        { name: 'lg', width: BREAKPOINTS.lg },
-        { name: 'md', width: BREAKPOINTS.md },
-        { name: 'sm', width: BREAKPOINTS.sm },
-        { name: 'xs', width: BREAKPOINTS.xs },
-      ],
       details: {
         type: 'column',
-        // PENTING: jangan pakai kolom terakhir (actions) buat responsive toggle
-        // Supaya tombol Details/Edit/Sign tidak hilang
         target: 'td:not(:last-child)',
         renderer: function (api, rowIdx, columns) {
           const hidden = columns.filter(c => c.hidden);
           if (!hidden.length) return false;
 
-          const items = hidden.map(col => `
-            <div class="u-dt-detail-item">
-              <div class="u-dt-detail-label">${col.title}</div>
-              <div class="u-dt-detail-value">${col.data ?? '—'}</div>
-            </div>
-          `).join('');
+          const items = hidden.map(col => {
+            let val = col.data;
+            if (typeof val === 'object' || val === null || val === undefined) {
+              val = api.cell(rowIdx, col.columnIndex).render('display');
+            }
+            return `
+              <div class="u-dt-detail-item">
+                <div class="u-dt-detail-label">${col.title}</div>
+                <div class="u-dt-detail-value">${val}</div>
+              </div>
+            `;
+          }).join('');
 
           return `<div class="u-dt-details"><div class="u-dt-details-content">${items}</div></div>`;
         }
       }
     },
     language: {
-      search: "", // hide default label
-      searchPlaceholder: "Search Everything...",
-      lengthMenu: "Show _MENU_ entries",
-      info: "Showing _START_ to _END_ of _TOTAL_ entries",
-      infoEmpty: "No entries available",
-      emptyTable: "No data available in table",
-      zeroRecords: "No matching records found",
-      paginate: { first: "«", last: "»", next: "›", previous: "‹" },
-      processing: '<div class="u-dt-processing"><div class="u-dt-spinner"></div>Loading data…</div>',
+      search: "",
+      searchPlaceholder: "Search...",
+      processing: SPINNER_HTML,
+      loadingRecords: "",
+      emptyTable: "Tidak ada data tersedia",
+      zeroRecords: "Pencarian tidak ditemukan",
+      paginate: { first: "«", last: "»", next: "›", previous: "‹" }
     }
   };
 
-  // ---------- custom search (liquid-glass) ----------
   const createCustomSearch = () => `
-    <form class="u-search u-dt-search" role="search" aria-label="Table search" style="max-width:520px;">
-      <svg class="u-search__icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-      </svg>
-      <input type="search" class="u-search__input" placeholder="Search everything..." aria-label="Search table records" />
-      <button class="u-btn u-btn--brand u-btn--sm" type="submit">Search</button>
-      <button class="u-btn u-btn--outline u-btn--sm" type="button" title="Clear">Clear</button>
-    </form>
+    <div class="u-search u-dt-search">
+      <i class='bx bx-search u-search__icon'></i>
+      <input type="search" class="u-search__input" placeholder="Cari data..." aria-label="Search records" />
+    </div>
   `;
 
-  // ---------- styles injection (scoped to DT chrome only) ----------
   function addCustomStyles() {
-    const id = 'u-dt-custom-styles';
-    if (document.getElementById(id)) return;
+    if (document.getElementById('u-dt-styles')) return;
 
     const css = `
-      /* wrapper & chrome */
-      .u-dt-wrapper{position:relative}
-      .u-dt-container{border-radius:var(--radius-xl);overflow:hidden}
-      .u-dt-header{padding:var(--space-lg);background:var(--surface-0);border-bottom:1px solid var(--border)}
-      .u-dt-footer{padding:0 var(--space-lg) var(--space-lg);background:var(--surface-0)}
+      .u-dt-wrapper{position:relative;container-type:inline-size;width:100%}
+      .dataTables_wrapper{width:100%!important;max-width:100%!important}
+      .dataTables_wrapper .dataTables_length,.dataTables_wrapper .dataTables_filter,.dataTables_wrapper .dataTables_info,.dataTables_wrapper .dataTables_paginate{float:none!important}
+      .dataTables_wrapper .dataTables_filter{text-align:left!important;margin:0!important}
+      .dataTables_wrapper .dataTables_length{text-align:left!important;margin:0!important}
 
-      /* glass scroll area */
-      .u-dt-scroll{border-radius:var(--radius-lg);overflow:hidden;margin:0 var(--space-lg)}
+      .u-dt-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%}
+      .u-dt-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+      .u-dt-toolbar{display:flex;align-items:center;gap:10px}
+      .u-dt-search-wrapper{display:flex;justify-content:flex-end;flex:1;min-width:220px}
+      .u-dt-search{width:100%;max-width:360px}
 
-      /* table look (uses your tokens) */
-      .u-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface-0);font-size:.875rem;border-radius:var(--radius-lg);overflow:hidden}
-      .u-table thead tr {
-        background: linear-gradient(135deg, #1F337E 0%, #49D4A9 100%) !important;
-        border-radius: 1rem;
-        overflow: hidden;
+      .u-dt-table-container{position:relative;min-height:300px;border-radius:var(--radius-lg,16px);background:var(--surface-0,#fff);width:100%;overflow:hidden}
+      .u-dt-scroll{display:block;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+      .u-dt-scroll::-webkit-scrollbar{height:10px}
+      .u-dt-scroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--muted,#64748b) 22%,transparent);border-radius:999px}
+      .u-dt-scroll::-webkit-scrollbar-track{background:transparent}
+
+      table.dataTable{width:100%!important;max-width:100%!important;margin:0!important;border-collapse:separate!important;border-spacing:0!important;table-layout:auto!important}
+      table.dataTable thead th,table.dataTable tfoot th{white-space:nowrap}
+      table.dataTable tbody td{vertical-align:middle}
+      table.dataTable.no-footer{border-bottom:0!important}
+
+      .dataTables_wrapper .dataTables_processing,
+      .dataTables_wrapper .dt-processing{
+        position:absolute!important;
+        inset:0!important;
+        width:100%!important;height:100%!important;
+        margin:0!important;padding:0!important;
+        transform:none!important;
+        background:var(--glass-bg,rgba(255,255,255,.75))!important;
+        backdrop-filter:blur(6px) saturate(160%)!important;
+        -webkit-backdrop-filter:blur(6px) saturate(160%)!important;
+        display:flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        z-index:1000!important;
+        border:none!important;
+        box-shadow:none!important;
+        opacity:1!important;
+        visibility:visible!important;
+      }
+      .dataTables_wrapper .dataTables_processing::after,
+      .dataTables_wrapper .dataTables_processing::before,
+      .dataTables_wrapper .dt-processing::after,
+      .dataTables_wrapper .dt-processing::before{display:none!important;content:none!important}
+      .dataTables_wrapper .dataTables_processing > div:not(.u-dt-spinner-card),
+      .dataTables_wrapper .dt-processing > div:not(.u-dt-spinner-card){display:none!important}
+
+      .u-dt-spinner-card{
+        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+        padding:22px 28px;border-radius:20px;
+        background:var(--card,#fff);
+        border:1px solid var(--border,rgba(0,0,0,.06));
+        box-shadow:0 24px 48px -14px rgba(0,0,0,.18);
+        animation:u-dt-pop .28s cubic-bezier(.22,1,.36,1);
+        z-index:1001;
+      }
+      .u-dt-loader-ring{
+        width:32px;height:32px;border-radius:50%;
+        border:3.5px solid color-mix(in srgb,var(--accent,#4f46e5) 16%,transparent);
+        border-top-color:var(--accent,#4f46e5);
+        animation:u-dt-spin .78s linear infinite;
+      }
+      .u-dt-loading-text{
+        font-size:.75rem;font-weight:800;letter-spacing:.08em;
+        color:var(--muted,#64748b);text-transform:uppercase;
+      }
+      @keyframes u-dt-spin{to{transform:rotate(360deg)}}
+      @keyframes u-dt-pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+
+      .u-dt-wrapper.is-loading table.dataTable>tbody{opacity:0!important;pointer-events:none}
+      .u-dt-wrapper.is-loading table.dataTable>tbody>tr>td.dataTables_empty,
+      .u-dt-wrapper.is-loading table.dataTable>tbody>tr>td.dt-empty{display:none!important}
+
+      .dataTables_length label{display:flex;align-items:center;gap:10px;white-space:nowrap}
+      .dataTables_length select{
+        appearance:none;-webkit-appearance:none;
+        padding:10px 34px 10px 12px;
+        border-radius:14px;
+        border:1px solid color-mix(in srgb,var(--text,#0f172a) 10%,transparent);
+        background:color-mix(in srgb,var(--surface-0,#fff) 78%,transparent);
+        color:var(--text,#0f172a);
+        outline:none;
+        line-height:1.1;
+      }
+      .dataTables_length select:focus{
+        border-color:color-mix(in srgb,var(--accent,#4f46e5) 55%,transparent);
+        box-shadow:0 0 0 4px color-mix(in srgb,var(--accent,#4f46e5) 16%,transparent);
+      }
+      .dataTables_length label{position:relative}
+      .dataTables_length label:after{
+        content:'';
+        position:absolute;
+        right:10px;
+        width:16px;height:16px;
+        pointer-events:none;
+        background:currentColor;
+        opacity:.55;
+        -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5l4.5 4.8 4.5-4.8' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+        mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 7.5l4.5 4.8 4.5-4.8' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+        top:50%;
+        transform:translateY(-50%);
       }
 
-      .u-table thead th {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-        padding: 1rem .8rem;
-        font-weight: 700;
-        letter-spacing: .05em;
-        color: #fff;
-        background: transparent !important;
-        border: none;
-        text-transform: uppercase;
-        font-size: .8rem;
+      .u-dt-details{background:color-mix(in srgb,var(--surface-1,#f8fafc) 60%,transparent);border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:16px;margin:12px 0}
+      .u-dt-detail-item{display:flex;justify-content:space-between;align-items:start;border-bottom:1px dashed var(--border,#e2e8f0);padding:8px 0;gap:16px}
+      .u-dt-detail-item:last-child{border-bottom:none}
+      .u-dt-detail-label{font-weight:700;color:var(--muted,#64748b);font-size:.82rem;flex-shrink:0;width:40%}
+      .u-dt-detail-value{text-align:right;font-size:.9rem;color:var(--text,#0f172a);word-break:break-word;font-weight:600}
+
+      .dataTables_paginate{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+      .dataTables_paginate .u-btn.current{background:var(--accent,#4f46e5);color:#fff;border-color:var(--accent,#4f46e5);box-shadow:0 4px 12px var(--accent-ghost,rgba(79,70,229,.2))}
+
+      table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before{
+        content:'+';
+        background-color:var(--accent,#4f46e5);
+        border:none;
+        box-shadow:0 2px 4px rgba(0,0,0,.12);
+        top:50%;
+        transform:translateY(-50%);
+        line-height:16px;width:18px;height:18px;border-radius:7px;
+        display:inline-flex;align-items:center;justify-content:center;
       }
-
-      .u-table thead th:first-child { border-top-left-radius: 1rem; }
-      .u-table thead th:last-child  { border-top-right-radius: 1rem; }
-
-      .u-table tbody td{padding:.875rem .8rem;border-bottom:1px solid color-mix(in srgb,var(--border) 30%, transparent);background:var(--surface-0);transition:all .2s ease}
-      .u-table tbody tr:hover td{background:var(--surface-1)}
-      .u-dt-actions{text-align:right;white-space:nowrap}
-
-      /* length/info/pagination */
-      .u-dt-length {
-        display: flex !important;
-        align-items: center !important;
-        gap: var(--space-sm) !important;
-      }
-      .u-dt-length-label {
-        margin: 0 !important;
-        font-size: 0.875rem !important;
-        color: var(--muted) !important;
-        font-weight: 600 !important;
-      }
-
-      .u-dt-pagination {
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.4rem !important;
-        justify-content: center !important;
-        padding: 0.5rem 0 !important;
-      }
-
-      .u-dt-pagination .u-btn {
-        min-height: 36px !important;
-        min-width: 36px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 0.875rem !important;
-        font-weight: 600 !important;
-        background: #fff !important;
-        border: none !important;
-        border-radius: 12px !important;
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1) !important;
-        color: #333 !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
-      }
-
-      .u-dt-pagination .u-btn:hover:not(.current):not(.disabled) {
-        background-color: #f5f5f5 !important;
-        transform: translateY(-1px) !important;
-      }
-
-      .u-dt-pagination .current {
-        background: #009688 !important;
-        color: #fff !important;
-        border: none !important;
-        box-shadow: 0 4px 8px rgba(0, 150, 136, 0.4) !important;
-        transform: translateY(-1px) !important;
-      }
-
-      .u-dt-pagination .u-btn.disabled {
-        opacity: 0.5 !important;
-        cursor: not-allowed !important;
-        box-shadow: none !important;
-        transform: none !important;
-      }
-
-      .u-dt-pagination .u-btn:not(.current):not(.disabled):hover svg {
-        opacity: 0.8 !important;
-      }
-
-      /* processing */
-      .dataTables_processing{
-        background:var(--surface-0)!important;color:var(--accent)!important;border-radius:var(--radius-xl)!important;
-        backdrop-filter:blur(20px)!important;box-shadow:var(--shadow-lg)!important;padding:2rem!important;font-size:1rem!important;font-weight:600!important
-      }
-      .u-dt-processing{display:flex;align-items:center;gap:var(--space-md);justify-content:center}
-      .u-dt-spinner{width:24px;height:24px;border:3px solid color-mix(in srgb,var(--accent) 20%, transparent);border-top:3px solid var(--accent);border-radius:50%;animation:u-dt-spin 1s linear infinite}
-      @keyframes u-dt-spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-
-      /* responsive details */
-      .u-dt-details{background:var(--surface-1);border-radius:var(--radius-md);margin:var(--space-sm) 0;padding:var(--space-md)}
-      .u-dt-detail-item{display:grid;grid-template-columns:120px 1fr;gap:var(--space-sm);align-items:start}
-      .u-dt-detail-label{font-weight:600;font-size:.875rem;color:var(--muted)}
-      .u-dt-detail-value{font-size:.875rem;overflow-wrap:anywhere}
+      table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:before{content:'-';background-color:var(--danger,#ef4444)}
 
       @media (max-width:768px){
-        .u-dt-header{flex-direction:column;align-items:stretch;gap:var(--space-md);padding:var(--space-md)}
-        .u-dt-scroll{margin:0 var(--space-md)}
-        .u-dt-footer{flex-direction:column;gap:var(--space-md);text-align:center;padding:0 var(--space-md) var(--space-md)}
-        .u-dt-detail-item{grid-template-columns:1fr;gap:var(--space-xs)}
-        .u-table thead th,.u-table tbody td{padding:.75rem .5rem}
+        .u-dt-header{flex-direction:column;align-items:stretch}
+        .u-dt-search-wrapper{justify-content:stretch;min-width:unset;width:100%}
+        .u-dt-search{max-width:100%!important}
+        .u-dt-toolbar{width:100%;justify-content:space-between}
+        .dataTables_length{width:100%}
+        .dataTables_length label{width:100%;justify-content:space-between}
+        .dataTables_length select{min-width:120px}
+        .u-dt-footer{flex-direction:column;align-items:stretch;text-align:center}
+        .dataTables_paginate{justify-content:center;width:100%}
+        .u-dt-wrapper table.dataTable{width:100%!important}
       }
-      [data-theme="dark"] .u-dt-details{background:var(--surface-2)}
     `;
-    const style = document.createElement('style');
-    style.id = id; style.textContent = css;
-    document.head.appendChild(style);
+
+    const s = document.createElement('style');
+    s.id = 'u-dt-styles';
+    s.textContent = css;
+    document.head.appendChild(s);
   }
 
-  // ---------- apply chrome ----------
-  function applyCustomChrome(dtApi) {
-    const $table = $(dtApi.table().node());
-    const $wrap  = $(dtApi.table().container());
-
+  function applyCustomChrome(api) {
+    const $wrap = $(api.table().container());
     $wrap.addClass('u-dt-wrapper');
-    $wrap.closest('.dt-wrapper, .u-card, .card-glass').addClass('u-dt-container');
 
-    const $filterWrap = $wrap.find('.dataTables_filter');
-    if ($filterWrap.length) {
-      $filterWrap.hide();
-      if (!$wrap.find('.u-dt-search').length) $filterWrap.before(createCustomSearch());
-    }
+    const $filter = $wrap.find('.dataTables_filter');
+    if (!$wrap.find('.u-dt-search').length) $filter.html(createCustomSearch());
 
-    const $customSearch = $wrap.find('.u-dt-search');
-    const $searchInput  = $customSearch.find('input[type="search"]');
-    const $searchBtn    = $customSearch.find('.u-btn--brand');
-    const $clearBtn     = $customSearch.find('.u-btn--outline');
-
-    const performSearch = () => dtApi.search($searchInput.val()).draw();
-
-    $customSearch.on('submit', (e) => { e.preventDefault(); performSearch(); });
-    $searchInput.on('input', debounce(performSearch, 400));
-    $clearBtn.on('click', (e) => { e.preventDefault(); $searchInput.val('').focus(); performSearch(); });
-
-    const $length = $wrap.find('.dataTables_length');
-    $length.addClass('u-dt-length');
-    $length.find('select').addClass('u-input u-input--sm').attr({ 'aria-label': 'Rows per page' });
-    $length.find('label').addClass('u-dt-length-label');
+    const $input = $wrap.find('.u-dt-search input');
+    $filter.find('input').off();
+    $input.on('input', debounce(() => api.search($input.val()).draw(), 400));
 
     const $paginate = $wrap.find('.dataTables_paginate');
-    $paginate.addClass('u-dt-pagination');
-    $paginate.find('a').each(function () {
-      const $btn = $(this);
-      $btn.addClass('u-btn u-btn--sm');
-      if (!$btn.hasClass('current')) $btn.addClass('u-btn--outline');
-    });
+    $paginate.find('a').addClass('u-btn u-btn--sm u-btn--outline u-mx-xs');
 
-    $wrap.find('.dataTables_info').addClass('u-dt-info u-text-sm u-muted');
-
-    $table.addClass('u-table u-table-mobile');
-    $table.find('th.cell-actions, td.cell-actions').addClass('u-dt-actions');
-
-    if (!$table.parent().hasClass('u-dt-scroll')) {
-      $table.wrap('<div class="u-dt-scroll u-scroll-x"></div>');
-    }
-    
     addCustomStyles();
   }
 
-  // ---------- helpers ----------
-  function getDTFromElOrJq(tableSelector) {
-    if ($.fn?.dataTable && $(tableSelector).length) {
-      try { return $(tableSelector).DataTable(); } catch (_) {}
-    }
-    const el = typeof tableSelector === 'string' ? document.querySelector(tableSelector) : tableSelector;
-    if (el?._dtInstance) return el._dtInstance;
-    return null;
-  }
-
-  // ---------- init ----------
-  function initDataTables(selector = '[data-dt]', opts = {}) {
-    const finalOpts = {
-      ...DEFAULTS,
-      ...opts,
-      columnDefs: [
-        {
-          targets: '_all',
-          defaultContent: '—',
-          createdCell: function (td, cellData, rowData, row, col) {
-            const api = new DataTable.Api(this);
-            const header = api.column(col).header();
-            if (header) {
-              const label = header.textContent.trim();
-              if (label) td.setAttribute('data-label', label);
-            }
-          }
-        },
-        ...(opts.columnDefs || [])
-      ]
-    };
-
+  function initDataTables(selector, opts = {}) {
     $(selector).each(function () {
       const $table = $(this);
-      if ($.fn?.dataTable?.isDataTable?.(this)) return;
+      if ($.fn.dataTable.isDataTable(this)) $table.DataTable().destroy();
+      if (!$table.parent().hasClass('u-scroll-x')) $table.wrap('<div class="u-scroll-x u-dt-scroll"></div>');
 
-      try {
-        const dt = new DataTable(this, {
-          ...finalOpts,
-          drawCallback: function () {
-            const api = this.api();
-            applyCustomChrome(api);
+      const config = { ...DEFAULTS, ...opts };
+      if (config.serverSide) config.deferRender = false;
 
-            $table.closest('.dataTables_wrapper')
-              .find('.dataTables_paginate a')
-              .each(function () {
-                const $btn = $(this);
-                $btn.addClass('u-btn u-btn--sm');
-                if ($btn.hasClass('current')) {
-                  $btn.removeClass('u-btn--outline').addClass('u-btn--brand');
-                } else {
-                  $btn.addClass('u-btn--outline').removeClass('u-btn--brand');
-                }
-              });
-          },
-          initComplete: function () {
-            const api = this.api();
-            applyCustomChrome(api);
-            this._dtInstance = api;
-          }
-        });
+      $table.off('preInit.dt u-dt-preinit');
+      $table.on('preInit.dt u-dt-preinit', function () {
+        const $wrap = $(this).closest('.dataTables_wrapper');
+        if ($wrap.length) $wrap.addClass('is-loading');
+      });
 
-        this._dtInstance = dt;
-      } catch (e) {
-        console.error('DataTables init error:', e, this);
-      }
+      const dt = new DataTable(this, {
+        ...config,
+        initComplete: function () {
+          const api = this.api();
+          applyCustomChrome(api);
+          if (opts.initComplete) opts.initComplete.call(this);
+          $(api.table().container()).removeClass('is-loading');
+          setTimeout(() => {
+            try { api.columns.adjust(); } catch (e) {}
+            try { api.responsive && api.responsive.recalc && api.responsive.recalc(); } catch (e) {}
+          }, 0);
+        },
+        drawCallback: function () {
+          const api = this.api();
+          applyCustomChrome(api);
+          const $p = $(api.table().container()).find('.dataTables_paginate a');
+          $p.addClass('u-btn u-btn--sm u-btn--outline').filter('.current').removeClass('u-btn--outline').addClass('u-btn--brand');
+        }
+      });
+
+      dt.on('processing.dt', function (e, settings, processing) {
+        const $wrap = $(dt.table().container());
+        if (processing) $wrap.addClass('is-loading');
+        else $wrap.removeClass('is-loading');
+      });
+
+      dt.on('preXhr.dt', () => $(dt.table().container()).addClass('is-loading'));
+      dt.on('xhr.dt error.dt', () => $(dt.table().container()).removeClass('is-loading'));
     });
   }
 
-  // ---------- external search binder ----------
   function bindExternalSearch({ searchSelector, buttonSelector = null, tableSelector = '[data-dt]', delay = 400 }) {
     const input = document.querySelector(searchSelector);
-    if (!input) {
-      return; // silent kalau input search tidak ada
-    }
+    if (!input) return;
 
-    const dt = getDTFromElOrJq(tableSelector);
-    if (!dt) {
-      // silent kalau tabel memang tidak ada di halaman ini
-      return;
-    }
+    let api;
+    try {
+      if ($.fn.dataTable.isDataTable(tableSelector)) api = $(tableSelector).DataTable();
+    } catch (e) {}
 
-    const performSearch = () => {
-      const term = input.value.trim();
-      try {
-        if (typeof dt.search === 'function') dt.search(term).draw();
-        else if (dt.api) dt.api().search(term).draw();
-        else { dt.search(term); dt.draw(); }
-      } catch (e) { console.error('Search error:', e); }
-    };
+    if (!api) return;
+
+    const performSearch = () => api.search(input.value.trim()).draw();
 
     input.addEventListener('input', debounce(performSearch, delay));
-
     if (buttonSelector) {
-      const button = document.querySelector(buttonSelector);
-      if (button) button.addEventListener('click', (e) => { e.preventDefault(); performSearch(); });
+      const btn = document.querySelector(buttonSelector);
+      if (btn) btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        performSearch();
+      });
     }
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { input.value = ''; performSearch(); input.blur(); }
-    });
   }
 
-  // ---------- destroy ----------
-  function destroyDataTables(selector = '[data-dt]') {
-    $(selector).each(function () {
-      try {
-        if ($.fn?.dataTable?.isDataTable?.(this)) {
-          $(this).DataTable().destroy();
-          return;
-        }
-        if (this._dtInstance) {
-          if (typeof this._dtInstance.destroy === 'function') this._dtInstance.destroy();
-          this._dtInstance = null;
-        }
-      } catch (e) { console.error('Destroy DT error:', e, this); }
-    });
-  }
-
-  // ---------- minimal modal helpers (optional) ----------
-  function initModalHandling() {
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        const openModals = document.querySelectorAll('.u-modal:not([hidden])');
-        if (openModals.length) {
-          const top = openModals[openModals.length - 1];
-          top.hidden = true; document.body.classList.remove('modal-open');
-        }
-      }
-    });
-
-    document.addEventListener('click', (e) => {
-      if (e.target.classList.contains('u-modal')) {
-        e.target.hidden = true; document.body.classList.remove('modal-open');
-      }
-      const closeBtn = e.target.closest('[data-modal-close]');
-      if (closeBtn) {
-        const modal = closeBtn.closest('.u-modal');
-        if (modal) { modal.hidden = true; document.body.classList.remove('modal-open'); }
-      }
-    });
-
-    document.addEventListener('click', (e) => {
-      const openBtn = e.target.closest('[data-modal-open]');
-      if (openBtn) {
-        const id = openBtn.getAttribute('data-modal-open');
-        const modal = document.getElementById(id);
-        if (modal) {
-          modal.hidden = false; document.body.classList.add('modal-open');
-          const firstInput = modal.querySelector('input, select, textarea');
-          if (firstInput) setTimeout(() => firstInput.focus(), 100);
-        }
-      }
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initModalHandling);
-  } else {
-    initModalHandling();
-  }
-
-  return { initDataTables, bindExternalSearch, destroyDataTables, getDTFromElOrJq, initModalHandling };
+  return { initDataTables, bindExternalSearch };
 })();
 
-window.__DT_HELPERS__ = helpers;
-export const { initDataTables, bindExternalSearch, destroyDataTables, getDTFromElOrJq, initModalHandling } = helpers;
-export default helpers;
+export const { initDataTables, bindExternalSearch } = helpers;

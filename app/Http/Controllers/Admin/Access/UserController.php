@@ -16,144 +16,143 @@ class UserController extends Controller
 {
     public function index(Request $req)
     {
-        $unitId = auth()->user()?->unit_id;
-        $q = trim((string) $req->get('q', ''));
+        if ($req->ajax()) {
+            return $this->getDataTable($req);
+        }
 
+        $unitId = auth()->user()?->unit_id;
         $units = DB::table('units')->select('id', 'name')->orderBy('name', 'asc')->get();
         $roles = Role::query()->where('guard_name', 'web')
             ->where(function ($w) use ($unitId) {
                 $w->whereNull('unit_id')->orWhere('unit_id', $unitId);
             })->orderBy('name', 'asc')->get(['id', 'name']);
 
-        $empQ = DB::table('employees as e')
+        return view('admin.users.index', compact('roles', 'units'));
+    }
+
+    protected function getDataTable(Request $req)
+    {
+        $start = $req->get('start', 0);
+        $length = $req->get('length', 10);
+        $search = $req->get('search')['value'] ?? '';
+        $order = $req->get('order')[0] ?? [];
+        $colIdx = $order['column'] ?? 0;
+        $dir = $order['dir'] ?? 'asc';
+        
+        $colMap = [
+            0 => 'full_name',
+            1 => 'job_title',
+            2 => 'employee_status'
+        ];
+        $orderBy = $colMap[$colIdx] ?? 'full_name';
+
+        $empQuery = DB::table('employees as e')
             ->leftJoin('persons as p', 'p.id', '=', 'e.person_id')
             ->leftJoin('units as u', 'u.id', '=', 'e.unit_id')
             ->leftJoin('positions as pos', 'pos.id', '=', 'e.position_id')
             ->leftJoin('directorates as dir', 'dir.id', '=', 'e.directorate_id')
-            ->leftJoin('users as us', 'us.employee_id', '=', 'e.employee_id');
-
-        $this->applyStrictFilters($empQ);
-
-        if ($q !== '') {
-            $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
-            $empQ->where(function ($w) use ($like) {
-                $w->where('e.employee_id', 'like', $like)
-                    ->orWhere('e.id_sitms', 'like', $like)
-                    ->orWhere('p.full_name', 'like', $like)
-                    ->orWhere('u.name', 'like', $like)
-                    ->orWhere('us.email', 'like', $like);
-            });
-        }
-
-        $empRows = $empQ->selectRaw("
+            ->leftJoin('users as us', 'us.employee_id', '=', 'e.employee_id')
+            ->selectRaw("
                 e.id as employee_pk,
                 e.employee_id,
-                COALESCE(p.full_name, e.employee_id, CAST(e.id AS CHAR))     as full_name,
-                COALESCE(pos.name, e.latest_jobs_title)                      as job_title,
-                COALESCE(u.name,  e.latest_jobs_unit)                        as unit_name,
-                u.id                                                         as employee_unit_id,
-                COALESCE(e.email, p.email)                                   as employee_email,
-                p.phone                                                      as phone,
+                us.id as user_id,
+                COALESCE(p.full_name, e.employee_id) as full_name,
+                COALESCE(pos.name, e.latest_jobs_title) as job_title,
+                COALESCE(u.name, e.latest_jobs_unit) as unit_name,
+                COALESCE(e.email, p.email) as employee_email,
+                us.email as user_email,
+                us.name as user_name,
+                us.unit_id as user_unit_id,
                 e.employee_status,
+                e.profile_photo_url as person_photo,
+                p.phone,
+                dir.name as directorate_name,
+                e.home_base_city as location_city,
                 e.talent_class_level,
-                dir.name                                                     as directorate_name,
-                e.home_base_city                                             as location_city,
-                e.home_base_province                                         as location_province,
-                e.profile_photo_url                                          as person_photo,
-                COALESCE(e.company_name, 'PT Surveyor Indonesia')            as company_name,
+                COALESCE(e.company_name, 'PT Surveyor Indonesia') as company_name,
                 e.latest_jobs_start_date,
-                us.id                                                        as user_id,
-                us.email                                                     as user_email,
-                us.name                                                      as user_name,
-                us.unit_id                                                   as user_unit_id
-            ")
-            ->orderBy('full_name', 'asc')
-            ->get();
+                'EMP' as type
+            ");
 
-        $userQ = DB::table('users as us')
+        $this->applyStrictFilters($empQuery);
+
+        $userQuery = DB::table('users as us')
             ->leftJoin('employees as e', 'e.employee_id', '=', 'us.employee_id')
-            ->leftJoin('persons as p', 'p.id', '=', 'e.person_id')
             ->leftJoin('units as u', 'u.id', '=', 'us.unit_id')
-            ->leftJoin('directorates as dir', 'dir.id', '=', 'e.directorate_id');
+            ->whereNull('us.employee_id')
+            ->selectRaw("
+                NULL as employee_pk,
+                NULL as employee_id,
+                us.id as user_id,
+                us.name as full_name,
+                NULL as job_title,
+                COALESCE(u.name, '-') as unit_name,
+                NULL as employee_email,
+                us.email as user_email,
+                us.name as user_name,
+                us.unit_id as user_unit_id,
+                NULL as employee_status,
+                NULL as person_photo,
+                NULL as phone,
+                NULL as directorate_name,
+                NULL as location_city,
+                NULL as talent_class_level,
+                'PT Surveyor Indonesia' as company_name,
+                NULL as latest_jobs_start_date,
+                'USR' as type
+            ");
 
-        $this->applyStrictFilters($userQ);
+        $query = $empQuery->union($userQuery);
+        
+        $sql = $query->toSql();
+        $wrapper = DB::table(DB::raw("({$sql}) as master_table"))
+            ->mergeBindings($empQuery)
+            ->mergeBindings($userQuery);
 
-        if ($q !== '') {
-            $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $q) . '%';
-            $userQ->where(function ($w) use ($like) {
-                $w->where('us.name', 'like', $like)
-                    ->orWhere('us.email', 'like', $like);
+        if (!empty($search)) {
+            $like = '%' . $search . '%';
+            $wrapper->where(function($w) use ($like) {
+                $w->where('full_name', 'like', $like)
+                  ->orWhere('employee_id', 'like', $like)
+                  ->orWhere('user_email', 'like', $like)
+                  ->orWhere('unit_name', 'like', $like);
             });
         }
 
-        $userRows = $userQ->selectRaw("
-                us.id          as user_id,
-                us.name        as user_name,
-                us.email       as user_email,
-                us.unit_id     as user_unit_id,
-                us.employee_id,
-                COALESCE(p.full_name, us.name, us.email) as full_name,
-                COALESCE(u.name, '-')           as unit_name,
-                NULL                            as job_title,
-                NULL                            as employee_pk,
-                NULL                            as employee_email,
-                NULL                            as phone,
-                NULL                            as employee_status,
-                NULL                            as employee_unit_id,
-                e.talent_class_level,
-                dir.name                        as directorate_name,
-                e.home_base_city                as location_city,
-                e.home_base_province            as location_province,
-                e.profile_photo_url             as person_photo,
-                'PT Surveyor Indonesia'         as company_name,
-                e.latest_jobs_start_date
-            ")
+        $recordsFiltered = $wrapper->count();
+        $recordsTotal = DB::table('employees')->count() + DB::table('users')->whereNull('employee_id')->count();
+
+        $data = $wrapper->orderBy($orderBy, $dir)
+            ->skip($start)
+            ->take($length)
             ->get();
 
-        $byKey = [];
-        $merge = function($item) use (&$byKey) {
-            $key = $item->employee_id ? ('E:' . $item->employee_id) : ('U:' . $item->user_id);
-            if (!isset($byKey[$key])) {
-                $byKey[$key] = (object) $item;
-            } else {
-                $exist = $byKey[$key];
-                foreach ($item as $k => $v) {
-                    if (property_exists($exist, $k) && empty($exist->$k) && !empty($v)) {
-                        $exist->$k = $v;
-                    }
-                }
-                $byKey[$key] = $exist;
-            }
-        };
-
-        foreach ($empRows as $r) $merge($r);
-        foreach ($userRows as $r) $merge($r);
-
-        $rows = collect(array_values($byKey))
-            ->sortBy(fn($r) => mb_strtolower($r->full_name ?? ''), SORT_NATURAL)
-            ->values();
-
-        $userIds = $rows->pluck('user_id')->filter()->unique()->values();
+        $userIds = $data->pluck('user_id')->filter()->unique();
         $userRolesMap = [];
-        if ($userIds->isNotEmpty()) {
-            $pivot = DB::table('model_has_roles as mhr')
+        if($userIds->isNotEmpty()){
+            $userRolesMap = DB::table('model_has_roles as mhr')
                 ->join('roles as r', 'r.id', '=', 'mhr.role_id')
                 ->where('mhr.model_type', User::class)
                 ->whereIn('mhr.model_id', $userIds)
-                ->where('r.guard_name', 'web')
-                ->where(function ($w) use ($unitId) {
-                    $w->whereNull('r.unit_id')->orWhere('r.unit_id', $unitId);
-                })
-                ->select('mhr.model_id', 'r.id')
                 ->get()
-                ->groupBy('model_id');
-
-            foreach ($pivot as $uid => $list) {
-                $userRolesMap[$uid] = $list->pluck('id')->values()->all();
-            }
+                ->groupBy('model_id')
+                ->map(fn($list) => $list->pluck('id')->all())
+                ->all();
         }
 
-        return view('admin.users.index', compact('rows', 'roles', 'units', 'userRolesMap', 'q'));
+        $data->transform(function($row) use ($userRolesMap) {
+            $row->role_ids = isset($row->user_id) && isset($userRolesMap[$row->user_id]) 
+                             ? $userRolesMap[$row->user_id] 
+                             : [];
+            return $row;
+        });
+
+        return response()->json([
+            'draw' => intval($req->get('draw')),
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data
+        ]);
     }
 
     public function show($id)

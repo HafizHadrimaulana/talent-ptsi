@@ -17,10 +17,6 @@
         <p class="u-text-sm u-muted">Directory & Access Control</p>
     </div>
     <div class="u-flex u-items-center u-gap-sm u-stack-mobile">
-        <form class="u-search" onsubmit="return false;" style="max-width:300px">
-            <i class='bx bx-search u-search__icon'></i>
-            <input type="text" name="q" value="{{ $q }}" class="u-search__input" placeholder="Search users...">
-        </form>
         @can('users.create')
             <button type="button" class="u-btn u-btn--brand" onclick="window.openCreateModal()">
                 <i class="fas fa-plus u-mr-xs"></i> Add User
@@ -42,7 +38,7 @@
     </div>
   @endif
 
-  <div class="u-scroll-x">
+  <div class="u-scroll-x" data-table-url="{{ route('admin.users.index') }}">
     <table id="users-table" class="u-table u-table-mobile" style="width:100%">
       <thead>
         <tr>
@@ -52,70 +48,7 @@
           <th class="cell-actions">Actions</th>
         </tr>
       </thead>
-      <tbody>
-      @foreach($rows as $r)
-        @php
-          $employee_pk = $r->employee_pk ?? null;
-          $full_name   = $r->full_name ?? 'Unknown';
-          $unit_name   = $r->unit_name ?? '—';
-          $job_title   = $r->job_title ?? '—';
-          $assigned    = ($r->user_id && isset($userRolesMap[$r->user_id])) ? $userRolesMap[$r->user_id] : [];
-
-          $basicData = [
-            'id'          => $employee_pk,
-            'employee_id' => $r->employee_id,
-            'full_name'   => $full_name,
-            'unit_name'   => $unit_name,
-            'job_title'   => $job_title,
-            'email'       => $r->user_email ?? $r->employee_email,
-            'phone'       => $r->phone,
-            'photo_url'   => $r->person_photo ?? null, 
-            'status'      => $r->employee_status,
-            'directorate' => $r->directorate_name,
-            'city'        => $r->location_city,
-            'company'     => $r->company_name,
-            'start_date'  => $r->latest_jobs_start_date,
-            'talent'      => $r->talent_class_level,
-            'user' => [
-              'id'        => $r->user_id,
-              'name'      => $r->user_name ?? $full_name,
-              'email'     => $r->user_email,
-              'unit_id'   => $r->user_unit_id,
-              'roles_ids' => $assigned,
-            ],
-          ];
-        @endphp
-        <tr>
-          <td>
-            <div class="u-font-semibold u-text-sm">{{ $full_name }}</div>
-            <div class="u-text-xs u-muted">{{ $r->employee_id ?? $r->user_email ?? 'Ext' }}</div>
-          </td>
-          <td class="u-hide-mobile">
-            <div class="u-font-medium u-text-sm text-ellipsis" style="max-width:220px">{{ $job_title }}</div>
-            <div class="u-text-xs u-muted text-ellipsis" style="max-width:220px">{{ $unit_name }}</div>
-          </td>
-          <td>
-             @if($r->employee_status)
-                 <span class="u-badge u-badge--primary">{{ $r->employee_status }}</span>
-             @elseif($r->user_id)
-                 <span class="u-badge u-badge--success">Active User</span>
-             @else
-                 <span class="u-badge u-badge--glass" style="opacity:0.6">No Status</span>
-             @endif
-          </td>
-          <td class="cell-actions">
-             <div class="cell-actions__group">
-                <button class="u-btn u-btn--sm u-btn--outline" onclick='window.openEditModal(@json($basicData))'>
-                  <i class="fa-solid fa-user-gear"></i>
-                </button>
-                <button class="u-btn u-btn--sm u-btn--ghost" onclick='window.openDetailModal(@json($basicData))'>
-                  <i class="fas fa-eye"></i>
-                </button>
-             </div>
-          </td>
-        </tr>
-      @endforeach
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 </div>
@@ -348,48 +281,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const valStyle = 'flex:1; text-align:right; font-weight:500; word-break:break-word;';
 
         document.getElementById('ov-left').innerHTML = `
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Job Title</span>
-                <span style="${valStyle}">${d.job_title||'—'}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Unit</span>
-                <span style="${valStyle}">${d.unit_name||'—'}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Directorate</span>
-                <span style="${valStyle}">${d.directorate||'—'}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Start Date</span>
-                <span style="${valStyle}">${_fmtDate(d.start_date)}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Status</span>
-                <span style="flex:1; text-align:right"><span class="u-badge u-badge--glass">${d.status||'—'}</span></span>
-            </div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Job Title</span><span style="${valStyle}">${d.job_title||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Unit</span><span style="${valStyle}">${d.unit_name||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Directorate</span><span style="${valStyle}">${d.directorate||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Start Date</span><span style="${valStyle}">${_fmtDate(d.start_date)}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Status</span><span style="flex:1; text-align:right"><span class="u-badge u-badge--glass">${d.status||'—'}</span></span></div>
         `;
         document.getElementById('ov-right').innerHTML = `
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Email</span>
-                <span style="${valStyle}">${d.email||'—'}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Phone</span>
-                <span style="${valStyle}">${d.phone||'—'}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Location</span>
-                <span style="${valStyle}">${d.city||'—'}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Talent</span>
-                <span style="${valStyle}">${d.talent||'—'}</span>
-            </div>
-            <div style="${rowStyle}">
-                <span style="${lblStyle}">Company</span>
-                <span style="${valStyle}">${d.company||'—'}</span>
-            </div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Email</span><span style="${valStyle}">${d.email||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Phone</span><span style="${valStyle}">${d.phone||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Location</span><span style="${valStyle}">${d.city||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Talent</span><span style="${valStyle}">${d.talent||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Company</span><span style="${valStyle}">${d.company||'—'}</span></div>
         `;
 
         const lists = ['brevet-list', 'job-list', 'task-list', 'asg-list', 'edu-list', 'train-list', 'doc-list'];
@@ -406,97 +309,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(res => res.ok ? res.json() : null)
                 .then(data => {
                     if(!data) throw new Error('No Data');
-
                     _renderList('brevet-list', data.brevet_list, (v)=>`
-                        <div class="u-item">
-                            <div class="u-flex u-justify-between u-items-start u-gap-md">
-                                <div class="u-flex-1 u-min-w-0">
-                                    <h4 class="u-font-semibold u-text-sm">${v.title || 'Brevet'}</h4>
-                                    <p class="u-text-xs u-muted">${v.organization || 'Organization'}</p>
-                                </div>
-                                <span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(v.start_date, v.end_date)}</span>
-                            </div>
-                        </div>`);
-
+                        <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${v.title || 'Brevet'}</h4><p class="u-text-xs u-muted">${v.organization || 'Organization'}</p></div><span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(v.start_date, v.end_date)}</span></div></div>`);
                     _renderList('job-list', data.job_histories, (j)=>`
-                        <div class="u-item">
-                            <div class="u-flex u-justify-between u-items-start u-gap-md">
-                                <div class="u-flex-1 u-min-w-0">
-                                    <h4 class="u-font-semibold u-text-sm">${j.title || 'Position'}</h4>
-                                    <p class="u-text-xs u-muted">${j.unit_name || j.organization || ''}</p>
-                                </div>
-                                <span class="u-badge u-badge--primary u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(j.start_date, j.end_date)}</span>
-                            </div>
-                        </div>`);
-                        
+                        <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${j.title || 'Position'}</h4><p class="u-text-xs u-muted">${j.unit_name || j.organization || ''}</p></div><span class="u-badge u-badge--primary u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(j.start_date, j.end_date)}</span></div></div>`);
                     _renderList('task-list', data.taskforces, (t)=>`
-                        <div class="u-item">
-                            <div class="u-flex u-justify-between u-items-start u-gap-md">
-                                <div class="u-flex-1 u-min-w-0">
-                                    <h4 class="u-font-semibold u-text-sm">${t.title}</h4>
-                                    <p class="u-text-xs u-muted">${t.organization}</p>
-                                </div>
-                                <span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(t.start_date, t.end_date)}</span>
-                            </div>
-                        </div>`);
-                        
+                        <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${t.title}</h4><p class="u-text-xs u-muted">${t.organization}</p></div><span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(t.start_date, t.end_date)}</span></div></div>`);
                     _renderList('asg-list', data.assignments, (a)=>`
-                        <div class="u-item">
-                             <div class="u-flex u-justify-between u-items-start">
-                                <div>
-                                    <h4 class="u-font-semibold u-text-sm">${a.title}</h4>
-                                    <p class="u-text-xs u-muted">${a.description}</p>
-                                </div>
-                             </div>
-                        </div>`);
-                        
+                        <div class="u-item"><div class="u-flex u-justify-between u-items-start"><div><h4 class="u-font-semibold u-text-sm">${a.title}</h4><p class="u-text-xs u-muted">${a.description}</p></div></div></div>`);
                     _renderList('edu-list', data.educations, (e)=> {
-                        let meta = {};
-                        try { meta = typeof e.meta === 'string' ? JSON.parse(e.meta) : (e.meta || {}); } catch(_){}
-                        const lvl = meta.level || e.level || e.title || 'Education';
-                        const mjr = meta.major || '';
-                        
-                        return `<div class="u-item">
-                            <div class="u-flex u-justify-between u-items-start u-gap-md">
-                                <div class="u-flex-1 u-min-w-0">
-                                    <h4 class="u-font-semibold u-text-sm">${lvl} ${mjr ? '— ' + mjr : ''}</h4>
-                                    <p class="u-text-xs u-muted">${e.organization || 'Institution'}</p>
-                                </div>
-                                <span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">Graduate : ${_year(e.start_date)}</span>
-                            </div>
-                        </div>`;
+                        let meta = {}; try { meta = typeof e.meta === 'string' ? JSON.parse(e.meta) : (e.meta || {}); } catch(_){}
+                        return `<div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${meta.level||e.level||'Education'} ${meta.major?'— '+meta.major:''}</h4><p class="u-text-xs u-muted">${e.organization || 'Institution'}</p></div><span class="u-badge u-badge--glass u-shrink-0">Grad: ${_year(e.start_date)}</span></div></div>`;
                     });
-                    
-                    _renderList('train-list', data.trainings, (t)=> {
-                        let dDisplay = _fmtDate(t.start_date);
-                        if(t.start_date && t.start_date.endsWith('-01-01')) dDisplay = _year(t.start_date);
-
-                        return `<div class="u-item">
-                            <div class="u-flex u-justify-between u-items-start u-gap-md">
-                                <div class="u-flex-1 u-min-w-0">
-                                    <h4 class="u-font-semibold u-text-sm">${t.title}</h4>
-                                    <p class="u-text-xs u-muted">${t.organization || 'Provider'}</p>
-                                </div>
-                                <span class="u-badge u-badge--primary u-shrink-0" style="white-space:nowrap; width:fit-content">${dDisplay}</span>
-                            </div>
-                        </div>`;
-                    });
-                        
-                    _renderList('doc-list', data.documents, (d)=>`
-                        <div class="u-item u-flex u-justify-between u-items-center">
-                            <div class="u-flex-1 u-mr-md u-min-w-0">
-                                <h4 class="u-font-semibold u-text-sm">${d.final_title || 'Untitled'}</h4>
-                                <p class="u-text-xs u-muted">${d.doc_type}</p>
-                            </div>
-                            <div class="u-flex u-flex-col u-items-end u-gap-xs u-shrink-0">
-                                ${d.meta_due_date ? `<div class="u-text-xs u-muted u-text-right">Due: ${_fmtDate(d.meta_due_date)}</div>` : ''}
-                                ${d.url?`<a href="${d.url}" target="_blank" class="u-btn u-btn--xs u-btn--outline">View</a>`:''}
-                            </div>
-                        </div>`);
+                    _renderList('train-list', data.trainings, (t)=>`<div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${t.title}</h4><p class="u-text-xs u-muted">${t.organization||'Provider'}</p></div><span class="u-badge u-badge--primary u-shrink-0">${_fmtDate(t.start_date)}</span></div></div>`);
+                    _renderList('doc-list', data.documents, (d)=>`<div class="u-item u-flex u-justify-between u-items-center"><div class="u-flex-1 u-mr-md u-min-w-0"><h4 class="u-font-semibold u-text-sm">${d.final_title || 'Untitled'}</h4><p class="u-text-xs u-muted">${d.doc_type}</p></div><div class="u-flex u-flex-col u-items-end u-gap-xs u-shrink-0">${d.meta_due_date ? `<div class="u-text-xs u-muted">Due: ${_fmtDate(d.meta_due_date)}</div>` : ''}${d.url?`<a href="${d.url}" target="_blank" class="u-btn u-btn--xs u-btn--outline">View</a>`:''}</div></div>`);
                 })
-                .catch(() => {
-                    lists.forEach(id => document.getElementById(id).innerHTML = '<div class="u-empty u-text-xs">No data available</div>');
-                });
+                .catch(() => lists.forEach(id => document.getElementById(id).innerHTML = '<div class="u-empty u-text-xs">No data available</div>'));
         }
     };
 
@@ -515,18 +343,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }catch(_){return s} 
     }
     
-    function _year(s){ 
-        if(!s) return '—'; 
-        return String(s).substring(0,4); 
-    }
-
+    function _year(s){ return s ? String(s).substring(0,4) : '—'; }
     function _yearRange(s, e) {
         let start = _fmtDate(s);
         let end = e ? _fmtDate(e) : '';
         if(s && s.endsWith('-01-01')) start = _year(s);
         if(e && e.endsWith('-12-31')) end = _year(e);
-        if(!end) return start;
-        return `${start} - ${end}`;
+        return !end ? start : `${start} - ${end}`;
     }
 });
 </script>
