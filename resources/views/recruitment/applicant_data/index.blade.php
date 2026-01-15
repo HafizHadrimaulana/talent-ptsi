@@ -412,8 +412,8 @@
                         </table>
                     </div>
                 </div>
-                <div class="fixed bottom-8 right-8 z-50">
-                    <button type="submit" class="u-btn u-btn--brand px-8 rounded-full shadow-xl gap-2 h-14 text-base font-bold u-hover-lift">
+                <div class="mt-8 pt-6 border-t flex justify-end items-center bg-white sticky bottom-0 z-10" style="border-color: var(--border);">
+                    <button type="submit" class="u-btn u-btn--brand px-8 rounded-full shadow-lg gap-2 h-12 text-sm font-bold u-hover-lift">
                         <i class="fas fa-save"></i> Simpan Perubahan
                     </button>
                 </div>

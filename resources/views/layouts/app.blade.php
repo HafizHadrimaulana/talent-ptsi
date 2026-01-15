@@ -38,6 +38,7 @@
   $unitName     = $emp?->latest_jobs_unit ?: ($emp?->unit_name ?? optional($user?->unit)->name ?? '-');
   $roleNames   = collect($user?->getRoleNames() ?? [])->values();
   $roleBadge   = $roleNames->isEmpty() ? '-' : e($roleNames->implode(', '));
+  $isPelamar    = $roleNames->contains('Pelamar');
 
   $initials = function(string $name) {
       $name = trim($name);
@@ -254,9 +255,11 @@
                 <span class="muted text-sm"><strong>Employee ID:</strong> {{ $employeeCode }}</span>
               @endif
               <div class="muted text-sm" style="margin-top:.25rem">
-                <div><strong>Role:</strong> {{ $roleBadge }}</div>
-                <div><strong>Jabatan:</strong> {{ $jobTitle }}</div>
-                <div><strong>Unit Kerja:</strong> {{ $unitName }}</div>
+                @if(!$isPelamar)
+                  <div><strong>Role:</strong> {{ $roleBadge }}</div>
+                  <div><strong>Jabatan:</strong> {{ $jobTitle }}</div>
+                  <div><strong>Unit Kerja:</strong> {{ $unitName }}</div>
+                @endif
                 @if($displayEmail && $displayEmail !== '-')
                   <div><strong>Email:</strong> {{ $displayEmail }}</div>
                 @endif

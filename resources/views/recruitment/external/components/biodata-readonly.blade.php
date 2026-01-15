@@ -1,194 +1,220 @@
-<style>
-    .bio-scroll::-webkit-scrollbar { width: 6px; }
-    .bio-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
-    .bio-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    .bio-tab-btn {padding: 12px 16px; font-size: 14px; font-weight: 600; color: #64748b; border-bottom: 2px solid transparent; background: none; cursor: pointer; white-space: nowrap; }
-    .bio-tab-btn:hover { background-color: #f8fafc; color: #334155; }
-    .bio-tab-btn.active {color: #268bffff; border-bottom-color: #268bffff; background-color: #e9f5faff; }
-    .bio-label { font-size: 11px; color: #64748b; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
-    .bio-val { font-size: 14px; font-weight: 500; color: #1e293b; min-height: 20px; }
-    .bio-section-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
-</style>
-
-<div class="u-card u-card--glass u-hover-lift" style="height: 75vh;"> 
-    <div class="flex items-start gap-6 p-6 bg-white border-b shrink-0">
-        <div class="w-24 h-32 shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+<div class="u-card u-card--glass u-hover-lift u-flex u-flex-col" style="height: 80vh; max-height: 800px; overflow: hidden;"> 
+    {{-- Header Section --}}
+    <div class="u-flex u-items-start u-gap-md u-p-lg u-border-b shrink-0" style="background-color: var(--surface-0);">
+        <div class="u-avatar u-avatar--lg u-avatar--brand shrink-0" style="width: 80px; height: 100px; border-radius: 8px;">
             @if($person->photo_path)
                 <img src="{{ Storage::url($person->photo_path) }}" class="w-full h-full object-cover">
             @else
-                <div class="w-full h-full flex flex-col items-center justify-center text-gray-400"><i class="fas fa-user fa-2x"></i></div>
+                <i class="fas fa-user fa-3x"></i>
             @endif
         </div>
-        <div class="flex-grow pt-1">
-            <h2 class="text-xl font-bold text-gray-900">{{ $person->full_name }}</h2>
-            <div class="text-sm text-gray-500 mb-3">{{ $applicant->user->email ?? $person->email }}</div>
-            <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="u-flex-grow u-pt-xs">
+            <h2 class="u-title u-text-lg">{{ $person->full_name }}</h2>
+            <div class="u-text-sm u-muted u-mb-sm">{{ $applicant->user->email ?? $person->email }}</div>
+            <div class="u-grid-2 u-gap-md u-text-sm">
                 <div>
-                    <div class="bio-label">No. HP / WA</div>
-                    <div class="bio-val">{{ $person->phone }}</div>
+                    <div class="u-text-xs u-font-bold u-muted u-uppercase">No. HP / WA</div>
+                    <div class="u-font-medium">{{ $person->phone }}</div>
                 </div>
                 <div>
-                    <div class="bio-label">Pendidikan Terakhir</div>
+                    <div class="u-text-xs u-font-bold u-muted u-uppercase">Pendidikan Terakhir</div>
                     @php $lastEdu = collect($person->education_history ?? [])->first(); @endphp
-                    <div class="bio-val">{{ $lastEdu['level'] ?? '-' }} - {{ $lastEdu['major'] ?? '' }}</div>
+                    <div class="u-font-medium">{{ $lastEdu['level'] ?? '-' }} - {{ $lastEdu['major'] ?? '' }}</div>
                 </div>
             </div>
         </div>
-        <div class="absolute top-6 right-6">
+        <div class="u-absolute u-top-lg u-right-lg">
             <a href="{{ route('recruitment.external.download-pdf', $applicant->id) }}" 
-               class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-blue-600 text-blue-600 text-sm rounded-lg hover:bg-blue-50 transition-colors decoration-0">
-                <i class="fas fa-download"></i>
-                Download Biodata
+               class="u-btn u-btn--sm u-btn--outline" target="_blank">
+                <i class="fas fa-download u-mr-xs"></i> Download PDF
             </a>
         </div>
     </div>
-    <div class="flex border-b overflow-x-auto bg-white px-4 shrink-0">
-        <button type="button" onclick="showBioTab('pribadi', this)" class="bio-tab-btn active">Data Pribadi</button>
-        <button type="button" onclick="showBioTab('alamat', this)" class="bio-tab-btn">Alamat</button>
-        <button type="button" onclick="showBioTab('pendidikan', this)" class="bio-tab-btn">Pendidikan</button>
-        <button type="button" onclick="showBioTab('keluarga', this)" class="bio-tab-btn">Keluarga</button>
-        <button type="button" onclick="showBioTab('pengalaman', this)" class="bio-tab-btn">Pengalaman</button>
-        <button type="button" onclick="showBioTab('skill', this)" class="bio-tab-btn">Skill & Org</button>
-        <button type="button" onclick="showBioTab('dokumen', this)" class="bio-tab-btn">Dokumen</button>
+
+    {{-- Tabs Navigation --}}
+    <div class="u-tabs-wrap u-px-md u-pt-sm u-pb-0" style="background-color: var(--surface-0);">
+        <div class="u-tabs no-scrollbar">
+            <button type="button" onclick="showBioTab('pribadi', this)" class="u-tab is-active bio-tab-btn">Data Pribadi</button>
+            <button type="button" onclick="showBioTab('alamat', this)" class="u-tab bio-tab-btn">Alamat</button>
+            <button type="button" onclick="showBioTab('pendidikan', this)" class="u-tab bio-tab-btn">Pendidikan</button>
+            <button type="button" onclick="showBioTab('keluarga', this)" class="u-tab bio-tab-btn">Keluarga</button>
+            <button type="button" onclick="showBioTab('pengalaman', this)" class="u-tab bio-tab-btn">Pengalaman</button>
+            <button type="button" onclick="showBioTab('skill', this)" class="u-tab bio-tab-btn">Skill & Org</button>
+            <button type="button" onclick="showBioTab('dokumen', this)" class="u-tab bio-tab-btn">Dokumen</button>
+        </div>
     </div>
-    <div class="flex-grow overflow-y-auto bg-gray-50 p-6 bio-scroll">
+
+    {{-- Content Area --}}
+    <div class="u-flex-grow u-overflow-y-auto u-p-lg" style="background-color: var(--surface-1);">
+        
+        {{-- TAB: DATA PRIBADI --}}
         <div id="tab-pribadi" class="bio-content block">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="bio-section-title">Informasi Dasar</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
-                    <div><div class="bio-label">NIK (KTP)</div><div class="bio-val">{{ $person->nik ?? '-' }}</div></div>
-                    <div><div class="bio-label">Tempat, Tgl Lahir</div><div class="bio-val">{{ $person->place_of_birth }}, {{ $person->date_of_birth ? \Carbon\Carbon::parse($person->date_of_birth)->format('d M Y') : '-' }}</div></div>
-                    <div><div class="bio-label">Gender</div><div class="bio-val">{{ $person->gender ?? '-' }}</div></div>
-                    <div><div class="bio-label">Agama</div><div class="bio-val">{{ $person->religion ?? '-' }}</div></div>
-                    <div><div class="bio-label">Status Nikah</div><div class="bio-val">{{ $person->marital_status ?? '-' }}</div></div>
-                    <div><div class="bio-label">Tinggi / Berat</div><div class="bio-val">{{ $person->height ?? '-' }} cm / {{ $person->weight ?? '-' }} kg</div></div>
-                    <div><div class="bio-label">LinkedIn</div><div class="bio-val"><a href="{{ $person->linkedin_url ?? '-' }}" target="_blank" class="text-blue-500 hover:underline">{{ $person->linkedin_url ?? '-' }}</a></div></div>
-                    <div><div class="bio-label">Instagram</div><div class="bio-val"><a href="{{ $person->instagram_url ?? '-' }}" target="_blank" class="text-blue-500 hover:underline">{{ $person->instagram_url ?? '-' }}</a></div></div>
+            <div class="u-card u-p-md">
+                <h3 class="uj-section-title" style="margin-top:0;">Informasi Dasar</h3>
+                <div class="u-grid-2 u-gap-y-md">
+                    <div><div class="u-label uj-label">NIK (KTP)</div><div class="u-font-medium">{{ $person->nik ?? '-' }}</div></div>
+                    <div><div class="u-label uj-label">Tempat, Tgl Lahir</div><div class="u-font-medium">{{ $person->place_of_birth }}, {{ $person->date_of_birth ? \Carbon\Carbon::parse($person->date_of_birth)->format('d M Y') : '-' }}</div></div>
+                    <div><div class="u-label uj-label">Gender</div><div class="u-font-medium">{{ $person->gender ?? '-' }}</div></div>
+                    <div><div class="u-label uj-label">Agama</div><div class="u-font-medium">{{ $person->religion ?? '-' }}</div></div>
+                    <div><div class="u-label uj-label">Status Nikah</div><div class="u-font-medium">{{ $person->marital_status ?? '-' }}</div></div>
+                    <div><div class="u-label uj-label">Tinggi / Berat</div><div class="u-font-medium">{{ $person->height ?? '-' }} cm / {{ $person->weight ?? '-' }} kg</div></div>
+                    <div><div class="u-label uj-label">LinkedIn</div><div><a href="{{ $person->linkedin_url ?? '#' }}" target="_blank" class="u-text-brand hover:u-underline">{{ $person->linkedin_url ?? '-' }}</a></div></div>
+                    <div><div class="u-label uj-label">Instagram</div><div><a href="{{ $person->instagram_url ?? '#' }}" target="_blank" class="u-text-brand hover:u-underline">{{ $person->instagram_url ?? '-' }}</a></div></div>
                 </div>
             </div>
         </div>
-        <div id="tab-alamat" class="bio-content hidden" style="display: none;">
-            <div class="space-y-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="bio-section-title">Alamat KTP</h3>
-                    <div><div class="bio-label">Alamat</div><div class="bio-val">{{ $person->address ?? '-' }}</div></div>
-                    <div class="mt-4 grid grid-cols-2 gap-4">
-                        <div><div class="bio-label">Kota</div><div class="bio-val">{{ $person->city ?? '-' }}</div></div>
-                        <div><div class="bio-label">Provinsi</div><div class="bio-val">{{ $person->province_ktp ?? '-' }}</div></div>
+
+        {{-- TAB: ALAMAT --}}
+        <div id="tab-alamat" class="bio-content hidden">
+            <div class="u-space-y-md">
+                <div class="u-card u-p-md">
+                    <h3 class="uj-section-title" style="margin-top:0;">Alamat KTP</h3>
+                    <div><div class="u-label uj-label">Alamat</div><div class="u-font-medium">{{ $person->address ?? '-' }}</div></div>
+                    <div class="u-mt-sm u-grid-2">
+                        <div><div class="u-label uj-label">Kota</div><div class="u-font-medium">{{ $person->city ?? '-' }}</div></div>
+                        <div><div class="u-label uj-label">Provinsi</div><div class="u-font-medium">{{ $person->province_ktp ?? '-' }}</div></div>
                     </div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="bio-section-title">Alamat Domisili</h3>
-                    <div><div class="bio-label">Alamat</div><div class="bio-val">{{ $person->address_domicile ?? '-' }}</div></div>
-                    <div class="mt-4 grid grid-cols-2 gap-4">
-                        <div><div class="bio-label">Kota</div><div class="bio-val">{{ $person->city_domicile ?? '-' }}</div></div>
-                        <div><div class="bio-label">Provinsi</div><div class="bio-val">{{ $person->province_domicile ?? '-' }}</div></div>
+                <div class="u-card u-p-md">
+                    <h3 class="uj-section-title" style="margin-top:0;">Alamat Domisili</h3>
+                    <div><div class="u-label uj-label">Alamat</div><div class="u-font-medium">{{ $person->address_domicile ?? '-' }}</div></div>
+                    <div class="u-mt-sm u-grid-2">
+                        <div><div class="u-label uj-label">Kota</div><div class="u-font-medium">{{ $person->city_domicile ?? '-' }}</div></div>
+                        <div><div class="u-label uj-label">Provinsi</div><div class="u-font-medium">{{ $person->province_domicile ?? '-' }}</div></div>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="tab-pendidikan" class="bio-content hidden" style="display: none;">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
-                        <tr><th class="px-6 py-3">Jenjang</th><th class="px-6 py-3">Institusi</th><th class="px-6 py-3">Jurusan</th><th class="px-6 py-3">Thn</th><th class="px-6 py-3">Nilai</th></tr>
+
+        {{-- TAB: PENDIDIKAN --}}
+        <div id="tab-pendidikan" class="bio-content hidden">
+            <div class="u-card u-p-0 u-overflow-hidden">
+                <table class="u-table w-full">
+                    <thead>
+                        <tr><th>Jenjang</th><th>Institusi</th><th>Jurusan</th><th>Thn</th><th>Nilai</th></tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody>
                         @forelse($person->education_history ?? [] as $edu)
-                            <tr><td class="px-6 py-4 font-bold">{{ $edu['level'] ?? '-' }}</td><td class="px-6 py-4">{{ $edu['name'] ?? '-' }}</td><td class="px-6 py-4">{{ $edu['major'] ?? '-' }}</td><td class="px-6 py-4 text-center whitespace-nowrap">{{ $edu['year_start'] ?? '?' }} - {{ $edu['year_end'] ?? $edu['year'] ?? 'Sekarang' }}</td><td class="px-6 py-4">{{ $edu['gpa'] ?? '-' }}</td>
+                            <tr>
+                                <td class="u-font-bold">{{ $edu['level'] ?? '-' }}</td>
+                                <td>{{ $edu['name'] ?? '-' }}</td>
+                                <td>{{ $edu['major'] ?? '-' }}</td>
+                                <td class="u-text-center whitespace-nowrap">{{ $edu['year_start'] ?? '?' }} - {{ $edu['year_end'] ?? $edu['year'] ?? 'Sekarang' }}</td>
+                                <td>{{ $edu['gpa'] ?? '-' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400">Tidak ada data.</td></tr>
+                            <tr><td colspan="5" class="u-text-center u-p-md u-muted">Tidak ada data.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
-        <div id="tab-keluarga" class="bio-content hidden" style="display: none;">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-100 text-gray-600 font-bold uppercase text-xs">
-                        <tr><th class="px-6 py-3">Hubungan</th><th class="px-6 py-3">Nama</th><th class="px-6 py-3">Pekerjaan</th></tr>
+
+        {{-- TAB: KELUARGA --}}
+        <div id="tab-keluarga" class="bio-content hidden">
+            <div class="u-card u-p-0 u-overflow-hidden">
+                <table class="u-table w-full">
+                    <thead>
+                        <tr><th>Hubungan</th><th>Nama</th><th>Pekerjaan</th></tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
+                    <tbody>
                         @forelse($person->family_data ?? [] as $fam)
-                            <tr><td class="px-6 py-4 font-bold">{{ $fam['relation'] ?? '-' }}</td><td class="px-6 py-4">{{ $fam['name'] ?? '-' }}</td><td class="px-6 py-4">{{ $fam['job'] ?? '-' }}</td></tr>
+                            <tr>
+                                <td class="u-font-bold">{{ $fam['relation'] ?? '-' }}</td>
+                                <td>{{ $fam['name'] ?? '-' }}</td>
+                                <td>{{ $fam['job'] ?? '-' }}</td>
+                            </tr>
                         @empty
-                            <tr><td colspan="3" class="px-6 py-8 text-center text-gray-400">Tidak ada data.</td></tr>
+                            <tr><td colspan="3" class="u-text-center u-p-md u-muted">Tidak ada data.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
-        <div id="tab-pengalaman" class="bio-content hidden" style="display: none;">
-            <div class="space-y-4">
+
+        {{-- TAB: PENGALAMAN --}}
+        <div id="tab-pengalaman" class="bio-content hidden">
+            <div class="u-space-y-sm">
                 @forelse($person->work_experience ?? [] as $work)
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                        <div class="flex justify-between items-start mb-2">
+                    <div class="u-card u-p-md">
+                        <div class="u-flex u-justify-between u-items-start u-mb-xs">
                             <div>
-                                <h4 class="font-bold text-gray-900">{{ $work['position'] ?? 'Posisi' }}</h4>
-                                <div class="text-sm font-semibold text-[#00A29A]">{{ $work['company'] ?? '-' }}</div>
+                                <h4 class="u-font-bold u-text-md">{{ $work['position'] ?? 'Posisi' }}</h4>
+                                <div class="u-text-sm u-font-semibold u-text-brand">{{ $work['company'] ?? '-' }}</div>
                             </div>
-                            <div class="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600">{{ $work['start_year'] ?? '' }} - {{ $work['end_year'] ?? 'Sekarang' }}</div>
+                            <div class="u-badge u-badge--glass">{{ $work['start_year'] ?? '' }} - {{ $work['end_year'] ?? 'Sekarang' }}</div>
                         </div>
-                        <div class="text-xs text-gray-500 mb-2">Gaji Terakhir: {{ $work['salary'] ?? '-' }}</div>
-                        <div class="text-xs text-gray-500 mb-2">Alasan Berhenti: {{ $work['reason'] ?? '-' }}</div>
-                        <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded italic">"{{ $work['desc'] ?? '-' }}"</p>
+                        <div class="u-text-xs u-muted u-mb-xs">Gaji Terakhir: {{ $work['salary'] ?? '-' }}</div>
+                        <div class="u-text-xs u-muted u-mb-sm">Alasan Berhenti: {{ $work['reason'] ?? '-' }}</div>
+                        <p class="u-text-sm u-p-sm u-rounded u-italic" style="background-color: var(--surface-2);">"{{ $work['desc'] ?? '-' }}"</p>
                     </div>
                 @empty
-                    <div class="bg-white p-8 rounded-xl text-center text-gray-400">Tidak ada pengalaman kerja.</div>
+                    <div class="u-card u-p-lg u-text-center u-muted">Tidak ada pengalaman kerja.</div>
                 @endforelse
             </div>
         </div>
-        <div id="tab-skill" class="bio-content hidden" style="display: none;">
-            <div class="grid grid-cols-1 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="bio-section-title">Keahlian (Skills)</h3>
-                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-700">
+
+        {{-- TAB: SKILL & ORG --}}
+        <div id="tab-skill" class="bio-content hidden">
+            <div class="u-grid-2 u-gap-md u-stack-mobile">
+                <div class="u-card u-p-md">
+                    <h3 class="uj-section-title" style="margin-top:0;">Keahlian (Skills)</h3>
+                    <ul class="u-list-disc u-pl-md u-text-sm u-space-y-sm">
                         @forelse($person->skills ?? [] as $skill)
-                        <li><b>{{ $skill['name'] ?? '-' }}</b><br>{{ $skill['desc'] ?? '' }}</li>
+                            <li><b>{{ $skill['name'] ?? '-' }}</b><br><span class="u-muted">{{ $skill['desc'] ?? '' }}</span></li>
                         @empty
-                            <span class="text-gray-400 text-sm">Tidak ada data.</span>
+                            <span class="u-muted u-text-sm">Tidak ada data.</span>
                         @endforelse
                     </ul>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="bio-section-title">Organisasi</h3>
-                    <ul class="list-disc pl-5 text-sm space-y-1 text-gray-700">
+                <div class="u-card u-p-md">
+                    <h3 class="uj-section-title" style="margin-top:0;">Organisasi</h3>
+                    <ul class="u-list-disc u-pl-md u-text-sm u-space-y-sm">
                         @forelse($person->organization_experience ?? [] as $org)
-                            <li><b>{{ $org['name'] ?? '-' }}</b> | {{ $org['position'] ?? '-' }} ({{ $org['start_year'] ?? '-' }} - {{ $org['end_year'] ?? 'Sekarang' }})
-                            <br>
-                            <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded italic">"{{ $org['desc'] ?? '-' }}"</p>
+                            <li>
+                                <b>{{ $org['name'] ?? '-' }}</b> | {{ $org['position'] ?? '-' }} 
+                                <span class="u-text-xs u-muted">({{ $org['start_year'] ?? '-' }} - {{ $org['end_year'] ?? 'Sekarang' }})</span>
+                                <p class="u-text-xs u-mt-xs u-italic u-muted">"{{ $org['desc'] ?? '-' }}"</p>
                             </li>
-                            
                         @empty
-                            <li class="text-gray-400 list-none">Tidak ada data.</li>
+                            <li class="u-muted u-list-none">Tidak ada data.</li>
                         @endforelse
                     </ul>
                 </div>
             </div>
         </div>
-        <div id="tab-dokumen" class="bio-content hidden" style="display: none;">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="bio-section-title">Berkas Lamaran</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        {{-- TAB: DOKUMEN --}}
+        <div id="tab-dokumen" class="bio-content hidden">
+            <div class="u-card u-p-md">
+                <h3 class="uj-section-title" style="margin-top:0;">Berkas Lamaran</h3>
+                <div class="u-grid-2 u-gap-sm">
                     @php
-                        $docs = ['CV / Resume' => $person->cv_path,'KTP' => $person->id_card_path,'Ijazah' => $person->ijazah_path,'Transkrip' => $person->transcripts_path,'SKCK' => $person->skck_path,'Sertifikat Bahasa' => $person->toefl_path,'Dokumen Pendukung Lainnya' => $person->other_doc_path];
+                        $docs = [
+                            'CV / Resume' => $person->cv_path,
+                            'KTP' => $person->id_card_path,
+                            'Ijazah' => $person->ijazah_path,
+                            'Transkrip' => $person->transcripts_path,
+                            'SKCK' => $person->skck_path,
+                            'Sertifikat Bahasa' => $person->toefl_path,
+                            'Dokumen Pendukung Lainnya' => $person->other_doc_path
+                        ];
                     @endphp
                     @foreach($docs as $label => $path)
-                        <div class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                            <span class="text-sm font-medium text-gray-700">{{ $label }}</span>
+                        <div class="u-flex u-items-center u-justify-between u-p-sm u-border u-rounded-lg hover:u-bg-surface-1">
+                            <span class="u-text-sm u-font-medium">{{ $label }}</span>
                             @if($path)
                                 <a href="{{ Storage::url($path) }}" target="_blank" class="u-btn u-btn--xs u-btn--info u-btn--outline">
-                                    <i class="fas fa-eye mr-1"></i> Lihat
+                                    <i class="fas fa-eye u-mr-xs"></i> Lihat
                                 </a>
                             @else
-                                <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Kosong</span>
+                                <span class="u-badge u-badge--glass u-text-2xs">Kosong</span>
                             @endif
                         </div>
                     @endforeach
                 </div>
             </div>
         </div>
+
     </div>
 </div>
