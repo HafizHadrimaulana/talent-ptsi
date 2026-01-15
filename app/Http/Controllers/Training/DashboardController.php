@@ -31,100 +31,58 @@ class DashboardController extends Controller
         $isKepalaUnitHC  = $role === 'Kepala Unit' && $isHumanCapital;
         $canViewAllUnits = $role === 'DHC' || $isKepalaUnitHC;
 
-        // 2. Filter Kategori Unit Sesuai Ketentuan
+        // BUDGET PER UNIT
+        // Filter Kategori Unit Sesuai Ketentuan
         $allowedCategories = ['operasi', 'cabang', 'enabler'];
-
-        // Ambil SEMUA Master Unit yang valid untuk perhitungan limit global
         $allValidUnits = DB::table('units')
             ->whereIn('category', $allowedCategories)
             ->get();
         
         $allValidUnitIds = $allValidUnits->pluck('id')->toArray();
-
-        // =============================================================
-        // KALKULASI LIMIT DINAMIS
-        // Rumus: (Total Seluruh Biaya LNA Active) / (Jumlah Unit Valid)
-        // =============================================================
-        $totalBiayaSeluruhUnit = DB::table('training_references')
+        $anggaranData = DB::table('training_anggaran')
             ->whereIn('unit_id', $allValidUnitIds)
-            ->where('status_training_reference', 'active')
-            ->sum('biaya_pelatihan');
+            ->pluck('limit_anggaran', 'unit_id');
 
-        $jumlahUnit = $allValidUnits->count();
-        $dynamicLimit = $jumlahUnit > 0 ? ($totalBiayaSeluruhUnit / $jumlahUnit) : 0;
-
-        Log::info('Dashboard Calculation Log', [
-            'user'          => $user->username,
-            'total_biaya'   => $totalBiayaSeluruhUnit,
-            'jumlah_unit'   => $jumlahUnit,
-            'limit_result'  => $dynamicLimit,
-            'can_view_all'  => $canViewAllUnits
-        ]);
-
-        // =============================================================
-        // DATA ANGGARAN PER UNIT (Untuk Tabel)
-        // =============================================================
-        
-        // Tentukan unit mana yang akan ditampilkan di tabel user
-        $displayedUnits = $allValidUnits;
-        if (!$canViewAllUnits && $unitId) {
-            $displayedUnits = $allValidUnits->where('id', $unitId);
-        }
-
-        // Ambil data 'Used' (biaya yang sudah terpakai/active)
-        $budgetData = DB::table('training_request') 
+        $budgetData = DB::table('training_request')
             ->join('employees', 'training_request.employee_id', '=', 'employees.id')
-            ->select('employees.unit_id', DB::raw('SUM(training_request.realisasi_biaya_pelatihan) as total_used'))
+            ->select(
+                'employees.unit_id',
+                DB::raw('SUM(training_request.realisasi_biaya_pelatihan) as total_used')
+            )
             ->where('training_request.status_approval_training', 'approved')
             ->whereIn('employees.unit_id', $allValidUnitIds)
             ->groupBy('employees.unit_id')
             ->get()
             ->keyBy('unit_id');
 
-        // Mapping data unit dengan limit dan realisasi
-        $unitBudgets = $displayedUnits->map(function ($unit) use ($budgetData, $dynamicLimit) {
-            $used = $budgetData->get($unit->id)->total_used ?? 0;
+        $unitBudgets = $allValidUnits->map(function ($unit) use ($budgetData, $anggaranData) {
+            $used  = $budgetData->get($unit->id)->total_used ?? 0;
+            $limit = $anggaranData[$unit->id] ?? null;
 
             return [
                 'unit_id'    => $unit->id,
                 'unit_name'  => $unit->name,
                 'category'   => $unit->category,
                 'used'       => (float) $used,
-                'limit'      => $dynamicLimit,
-                'remaining'  => max($dynamicLimit - $used, 0),
-                'percentage' => $used > 0 && $dynamicLimit > 0
-                    ? min(round(($used / $dynamicLimit) * 100, 1), 100)
+                'limit'      => $limit,
+                'remaining'  => $limit !== null ? max($limit - $used, 0) : null,
+                'percentage' => ($limit && $used > 0)
+                    ? min(round(($used / $limit) * 100, 1), 100)
                     : 0,
             ];
         });
-
-        // =============================================================
-        // 5. STATISTIK COUNTER & DATA TERBARU
-        // =============================================================
+        // END BUDGET PER UNIT
         
-        // Statistik LNA (hanya untuk unit valid)
+        // STATISTIK LNA
         $referenceCounts = TrainingReference::whereIn('unit_id', $allValidUnitIds)
             ->groupBy('status_training_reference')
             ->select('status_training_reference', DB::raw('count(*) as total'))
             ->pluck('total', 'status_training_reference');
 
-        // Statistik Request (hanya untuk unit valid)
         $requestCounts = TrainingRequest::whereHas('employee', fn($q) => $q->whereIn('unit_id', $allValidUnitIds))
             ->groupBy('status_approval_training')
             ->select('status_approval_training', DB::raw('count(*) as total'))
             ->pluck('total', 'status_approval_training');
-
-        // Tabel Request Terbaru (5 Data Terakhir)
-        // $recentRequests = TrainingRequest::with(['employee.person', 'trainingReference'])
-        //     ->whereHas('employee', function ($q) use ($unitId, $canViewAllUnits, $allValidUnitIds) {
-        //         $q->whereIn('unit_id', $allValidUnitIds);
-        //         if (!$canViewAllUnits && $unitId) {
-        //             $q->where('unit_id', $unitId);
-        //         }
-        //     })
-        //     ->orderBy('created_at', 'desc')
-        //     ->limit(5)
-        //     ->get();
 
         $dashboardItems = collect([
             ['key' => 'pending', 'label' => 'Pending (LNA)', 'total' => $referenceCounts['pending'] ?? 0],
@@ -136,13 +94,60 @@ class DashboardController extends Controller
             ['key' => 'approved', 'label' => 'Approved (Req)', 'total' => $requestCounts['approved'] ?? 0],
             ['key' => 'rejected', 'label' => 'Rejected', 'total' => $requestCounts['rejected'] ?? 0],
         ]);
+        // END STATISTIK LNA
 
         return view('training.dashboard.index', compact(
             'dashboardItems',
-            // 'recentRequests',
             'unitBudgets',
-            'dynamicLimit'
         ));
+    }
+
+    public function getDetailAnggaran($unitId)
+    {
+        // Pastikan Unit ada
+        $unit = Unit::findOrFail($unitId);
+
+        // Ambil Limit dari tabel anggaran
+        $limit = DB::table('training_anggaran')
+            ->where('unit_id', $unitId)
+            ->value('limit_anggaran') ?? 0;
+
+        // Ambil Data dari training_request (Query yang disinkronkan)
+        $details = DB::table('training_request')
+            ->join('employees', 'training_request.employee_id', '=', 'employees.id')
+            ->join('persons', 'employees.person_id', '=', 'persons.id')
+            ->join('training_references', 'training_request.training_reference_id', '=', 'training_references.id')
+            ->select(
+                'training_references.judul_sertifikasi as nama_training',
+                'persons.full_name as nama_peserta',
+                'training_request.realisasi_biaya_pelatihan as biaya',
+                'training_request.start_date as tanggal',
+            )
+            ->where('employees.unit_id', $unitId)
+            ->where('training_request.status_approval_training', 'approved')
+            ->orderBy('training_request.start_date', 'desc')
+            ->get();
+
+        // Hitung Total Terpakai
+        $used = $details->sum('biaya');
+
+        return response()->json([
+            'unit' => $unit->name,
+            'summary' => [
+                'limit' => $limit,
+                'used' => $used,
+                'remaining' => max($limit - $used, 0),
+                'percentage' => $limit > 0 ? round(($used / $limit) * 100, 1) : 0,
+            ],
+            'details' => $details->map(function($item) {
+                return [
+                    'training' => $item->nama_training,
+                    'peserta'  => $item->nama_peserta,
+                    'biaya'    => $item->biaya,
+                    'tanggal'  => $item->tanggal ? date('d M Y', strtotime($item->tanggal)) : '-'
+                ];
+            })
+        ]);
     }
 
     public function getDataEvaluation()
@@ -393,6 +398,7 @@ class DashboardController extends Controller
         }
     }
 
+    // HELPER FUNCTION
     protected function isHumanCapital($user): bool
     {
         if (!$user->unit_id) {

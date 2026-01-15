@@ -124,6 +124,9 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
         Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
             ->name('dashboard.update-realisasi-date');
 
+        Route::get('dashboard/{unit_id}/get-detail-anggaran', [TrainingDashboardController::class,'getDetailAnggaran'])
+            ->name('dashboard.get-detail-anggaran');
+
     /// Start Training ///
         Route::get('training-request', [TrainingRequestController::class, 'index'])
             ->name('training-request');

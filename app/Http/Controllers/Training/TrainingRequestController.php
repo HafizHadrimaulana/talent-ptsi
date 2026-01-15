@@ -705,6 +705,7 @@ class TrainingRequestController extends Controller
         ], 200);
     }
 
+    // HELPER FUNCTION
     private function cleanRupiah($value)
     {
         if (!$value) return 0;
