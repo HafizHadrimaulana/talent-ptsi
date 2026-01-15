@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\FileTraining;
 use App\Models\TrainingReference;
 use App\Models\TrainingTemp;
+use App\Models\TrainingAnggaran;
 use App\Models\Unit;
 use App\Imports\TrainingImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -34,11 +35,14 @@ class TrainingImportServices
 
             // Proses pemindahan data
             $processed = DB::transaction(function () use ($userId) {
+
+                /// REFERENCES TRAINNING ///
                 $uniqueTrainings = DB::table('training_temp')
                     ->select(
                         'judul_sertifikasi',
-                        'penyelenggara',
                         'unit_kerja',
+                        // 'penyelenggara',
+                        DB::raw('MAX(penyelenggara) as penyelenggara'),
                         DB::raw('MAX(jumlah_jam) as jumlah_jam'),
                         DB::raw('MAX(waktu_pelaksanaan) as waktu_pelaksanaan'),
                         DB::raw('MAX(biaya_pelatihan) as biaya_pelatihan'),
@@ -46,7 +50,10 @@ class TrainingImportServices
                         DB::raw('MAX(jenis_portofolio) as jenis_portofolio'),
                         DB::raw('MAX(fungsi) as fungsi'),
                     )
-                    ->groupBy('judul_sertifikasi', 'penyelenggara', 'unit_kerja')
+                    ->groupBy('judul_sertifikasi', 
+                        // 'penyelenggara', 
+                        'unit_kerja'
+                        )
                     ->get();
 
                 if ($uniqueTrainings->isEmpty()) return 0;
@@ -84,7 +91,37 @@ class TrainingImportServices
                     $this->upsertTrainingReferences($batch);
                 }
 
+                /// ANGGARAN TRAINNING ///
+
+                $unitBudgets = DB::table('training_temp')
+                    ->select(
+                        DB::raw('UPPER(TRIM(unit_kerja)) as unit_name'),
+                        DB::raw('SUM(biaya_pelatihan) as limit_anggaran')
+                    )
+                    ->groupBy(DB::raw('UPPER(TRIM(unit_kerja))'))
+                    ->pluck('limit_anggaran', 'unit_name');
+
+                $allowedCategories = ['enabler', 'operasi', 'cabang'];
+                $allowedUnits = Unit::whereIn('category', $allowedCategories)->get();
+
+                $anggaranBatch = [];
+
+                foreach ($allowedUnits as $unit) {
+                    $unitKey = strtoupper(trim($unit->name));
+                    $anggaranBatch[] = [
+                        'unit_id'        => $unit->id,
+                        'limit_anggaran' => $unitBudgets[$unitKey] ?? null,
+                        'created_at'     => now(),
+                        'updated_at'     => now(),
+                    ];
+                }
+
+                if (!empty($anggaranBatch)) {
+                    $this->upsertTrainingAnggaran($anggaranBatch);
+                }
+
                 return $innerProcessed;
+
             });
 
             return [
@@ -123,5 +160,14 @@ class TrainingImportServices
         ];
 
         TrainingReference::upsert($rows, $uniqueBy, $updateCols);
+    }
+
+    private function upsertTrainingAnggaran(array $rows)
+    {
+        TrainingAnggaran::upsert(
+            $rows, 
+            ['unit_id'],
+            ['limit_anggaran'], 
+            ['updated_at']);
     }
 }

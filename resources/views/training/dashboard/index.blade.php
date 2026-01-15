@@ -42,110 +42,98 @@
             </div>
           </div>
       
-          <div class="">
-                  <div class="u-card u-card--glass u-p-md">
-                      <h3 class="u-text-sm u-font-bold u-mb-md border-b u-pb-xs">Anggaran</h3>
-                      <div class="overflow-x-auto">
-                          <table class="u-table u-table--sm w-full">
-                              <thead>
-                                  <tr>
-                                      <th>Nama Unit</th>
-                                      <th>Anggaran Terpakai</th>
-                                      <th>Limit Anggaran</th>
-                                      <th>Sisa Anggaran</th>
-                                      <th>Aksi</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                    @forelse($unitBudgets as $budget)
-                                    <tr>
-                                        <td>
-                                            <div class="u-font-bold u-text-xs">
-                                                {{ $budget['unit_name'] }}
-                                            </div>
-                                        </td>
+          <div class="u-card u-card--glass u-p-md">
+              <h3 class="u-text-sm u-font-bold u-mb-md border-b u-pb-xs">Anggaran</h3>
 
-                                        <td class="u-text-xs">
-                                            Rp {{ number_format($budget['used'], 0, ',', '.') }}
-                                        </td>
-
-                                        <td>
-                                            <span class="u-badge u-badge--sm u-badge--info">
-                                                Rp {{ number_format($budget['limit'], 0, ',', '.') }}
-                                            </span>
-                                        </td>
-
-                                        <td class="u-text-xs u-muted">
-                                            Rp {{ number_format($budget['remaining'], 0, ',', '.') }}
-                                        </td>
-
-                                        <td>
-                                            <a href="{{ route('training.requests.index', ['unit' => $budget['unit_id']]) }}"
-                                            class="u-btn u-btn--xs u-btn--outline">
-                                                Detail
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center u-text-xs u-muted">
-                                            Tidak ada data anggaran
-                                        </td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                          </table>
-                      </div>
-                      <div class="u-mt-md u-text-center">
-                      </div>
-                  </div>
+              <div class="overflow-x-auto">
+                  <table class="u-table u-table--sm w-full">
+                      <thead>
+                          <tr>
+                              <th>Nama Unit</th>
+                              <th>Anggaran Terpakai</th>
+                              <th>Limit Anggaran</th>
+                              <th>Sisa Anggaran</th>
+                              <th>Pesentase Penggunaan</th>
+                              <th>Aksi</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          @forelse($unitBudgets as $budget)
+                          <tr>
+                              <td><div class="u-font-bold u-text-md">{{ $budget['unit_name'] }}</div></td>
+                              <td class="u-text-md">Rp {{ number_format($budget['used'], 0, ',', '.') }}</td>
+                              <td><span class="u-badge u-badge--sm u-badge--info u-text-md">Rp {{ number_format($budget['limit'], 0, ',', '.') }}</span></td>
+                              <td class="u-text-md u-muted">Rp {{ number_format($budget['remaining'], 0, ',', '.') }}</td>
+                              <td><span class="u-badge u-badge--sm u-badge--info u-text-md">{{ $budget['percentage'] }}%</span></td>
+                              <td>
+                                  {{-- PINDAHKAN TOMBOL KE SINI --}}
+                                  <button type="button" 
+                                      class="u-btn u-btn--xs u-btn--outline btn-detail-anggaran" 
+                                      data-unit-id="{{ $budget['unit_id'] }}">
+                                      Detail
+                                  </button>
+                              </td>
+                          </tr>
+                          @empty
+                          <tr>
+                              <td colspan="6" class="u-text-center">Tidak ada data anggaran.</td>
+                          </tr>
+                          @endforelse
+                      </tbody>
+                  </table>
+              </div>
+              <div class="u-mt-md u-text-center">
               </div>
           </div>
-    
-        </div>
-    
-    </div>
-    
-    {{-- Header --}}
-    <div class="u-flex u-items-center u-justify-between u-mb-lg">
-        <div>
-            <h2 class="u-title">Dashboard Overview</h2>
-            <p class="u-muted u-text-sm">Ringkasan data pelatihan dan penggunaan anggaran.</p>
         </div>
     </div>
+</div>
 
-    <div class="u-card u-card--glass u-p-md">
-        <div class="lg:col-span-2">
-            <div class="u-card u-card--glass u-p-md">
-                <h3 class="u-text-sm u-font-bold u-mb-md border-b u-pb-xs">Pengajuan Terbaru</h3>
-                <div class="overflow-x-auto">
-                    <table class="u-table u-table--sm w-full">
-                        <thead>
-                            <tr>
-                                <th>Karyawan</th>
-                                <th>Status Dokumen</th>
-                                <th>Tanggal Pelatihan</th>
-                                <th class="text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recentRequests as $req)
-                            <tr>
-                                <td>
-                                    <div class="u-font-bold u-text-xs">{{ $req->person->full_name }}</div>
-                                    <div class="u-text-xs">{{ $req->trainingReference->judul_sertifikasi ?? 'Custom Training' }}</div>
-                                </td>
-                                <td><span class="u-badge u-badge--sm">{{ $req->status_approval }}</span></td>
-                                <td class="u-text-xxs u-muted">{{ $req->created_at->format('d M Y') }}</td>
-                                <td class="text-center">
-                                    <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-training-karyawan" data-id="{{ $req->id }}">
-                                        <i class="fas fa-eye"></i> Detail
-                                    </button></td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+<div id="modal-anggaran" class="u-modal" style="display: none;">
+    <div class="u-modal__overlay"></div>
+    <div class="u-modal__card u-modal__card--xl">
+        <div class="u-modal__head u-mb-sm">
+            <div class="u-flex u-items-center u-gap-md">
+                <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
+                <div>
+                    <div class="u-title" id="ip-modal-title">Detail Anggaran: <span id="modal-unit-name"></span></div>
                 </div>
+            </div>
+            <button class="u-btn u-btn--ghost u-btn--sm" id="close-anggaran-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="u-modal__body u-p-md u-space-y-lg">
+            <div class="u-card u-p-md u-shadow-sm border-0">
+                <div class="grid grid-cols-4 gap-4 u-mb-lg">
+                    <div><strong>Limit</strong><br><span id="modal-limit">-</span></div>
+                    <div><strong>Terpakai</strong><br><span id="modal-used">-</span></div>
+                    <div><strong>Sisa</strong><br><span id="modal-remaining">-</span></div>
+                    <div><strong>Persentase</strong><br><span id="modal-percent">-</span></div>
+                </div>
+
+                <table class="u-table u-table--sm w-full">
+                    <thead>
+                        <tr>
+                            <th>Nama Training</th>
+                            <th>Peserta</th>
+                            <th>Biaya</th>
+                            <th>Tanggal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-detail-body">
+                        <tr>
+                            <td colspan="4" class="u-text-center u-muted">Memuat data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    
+        <div class="u-modal__foot">
+            <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
+            <div class="u-flex u-gap-sm">
+                <!-- <button type="button" class="u-btn u-btn--ghost" id="close-anggaran-modal">Batal</button> -->
             </div>
         </div>
     </div>
