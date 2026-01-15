@@ -127,7 +127,7 @@
                                     @foreach($userApps as $app)
                                         <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs" type="button" onclick="openMyStatusModal(this)" data-status="{{ $app->status }}" data-date="{{ $app->interview_schedule }}" data-note="{{ $app->hr_notes }}">
                                             <i class="fas fa-info-circle u-mr-xs"></i> 
-                                            Status: {{ $app->position_applied ?? 'General' }}
+                                            Status
                                         </button>
                                     @endforeach
                                 @endif
@@ -730,20 +730,27 @@
                 console.error(err);
             });
     }
-    function showBioTab(tabId, btn) {
+    window.showBioTab = function(tabId, btn) {
         const allContents = document.querySelectorAll('.bio-content');
         allContents.forEach(el => {
-            el.style.display = 'none';
+            el.style.display = ''; 
             el.classList.add('hidden');
+            el.classList.remove('block');
         });
+
         const target = document.getElementById('tab-' + tabId);
         if(target) {
-            target.style.display = 'block';
             target.classList.remove('hidden');
+            target.classList.add('block');
         }
         const allBtns = document.querySelectorAll('.bio-tab-btn');
-        allBtns.forEach(b => b.classList.remove('active'));
-        if(btn) btn.classList.add('active');
+        allBtns.forEach(b => {
+            b.classList.remove('is-active');
+        });
+
+        if(btn) {
+            btn.classList.add('is-active');
+        }
     }
 
     function openVacancyDetail(id, rowData, availablePositions) {

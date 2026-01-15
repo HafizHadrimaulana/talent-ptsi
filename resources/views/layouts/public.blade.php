@@ -259,7 +259,7 @@
       <div class="absolute inset-0 opacity-5 bg-[url('/images/pattern-lines.svg')] bg-center bg-cover"></div>
       <div class="relative container mx-auto px-6 grid md:grid-cols-3 gap-10 text-sm">
         <div>
-          <h3 class="text-xl font-semibold text-[#49D4A9] mb-3">ID Survey</h3>
+          <h3 class="text-xl font-semibold text-[#49D4A9] mb-3">PT Surveyor Indonesia</h3>
           <p class="leading-relaxed mb-4">
             Meningkatkan masa depan dengan solusi cerdas dan inovatif, memberdayakan bisnis serta individu untuk tumbuh bersama.
           </p>
@@ -373,13 +373,12 @@
                 @csrf
                 <div class="flex flex-col gap-3">
                     <input type="text" name="login" value="{{ old('login') }}" placeholder="email@domain.com / EMP12345" autocomplete="username" class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
-                    @error('login')
-                        <div class="text-red-600 text-xs">{{ $message }}</div>
-                    @enderror
                     <input type="password" name="password" placeholder="********" autocomplete="current-password" class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
-                    @error('password')
-                        <div class="text-red-600 text-xs">{{ $message }}</div>
-                    @enderror
+                    @if($errors->has('login') || $errors->has('password'))
+                        <div class="text-red-600 text-xs">
+                            {{ $errors->first('login') ?: $errors->first('password') }}
+                        </div>
+                    @endif
                 </div>
                 <div class="text-xs space-y-3 text-[#445167]">
                     <label class="flex items-center gap-2">

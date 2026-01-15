@@ -63,7 +63,7 @@ class AuthenticatedSessionController extends Controller
                         $user->unit_id     = $emp->unit_id;
                         $user->name        = $this->resolveDisplayNameFromEmployee($emp);
                         $user->email       = $emp->email;
-                        $user->password    = Hash::make('password');
+                        $user->password    = Hash::make('password'); // Password default jika auto-create
                         $user->save();
 
                         $newlyProvisioned = true;
@@ -72,42 +72,46 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        if (!$user) {
-            throw ValidationException::withMessages([
-                'login' => 'Akun tidak ditemukan.',
-            ]);
-        }
-
+        // --- PERUBAHAN DI SINI ---
+        // Kita HAPUS blok "if (!$user) throw..." yang lama agar tidak bocor informasinya.
+        
         // 2) Auth
         $loggedIn = false;
-        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
-            if (Auth::attempt(['email' => $login, 'password' => $password], $request->boolean('remember'))) {
-                $request->session()->regenerate();
-                $loggedIn = true;
-            }
-        } else {
-            if (Hash::check($password, (string) $user->password)) {
-                Auth::login($user, $request->boolean('remember'));
-                $request->session()->regenerate();
-                $loggedIn = true;
+
+        // Cek login hanya dilakukan jika $user berhasil ditemukan/dibuat di tahap sebelumnya
+        if ($user) {
+            if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+                if (Auth::attempt(['email' => $login, 'password' => $password], $request->boolean('remember'))) {
+                    $request->session()->regenerate();
+                    $loggedIn = true;
+                }
+            } else {
+                // Manual check hash untuk login non-email (NIP/ID)
+                if (Hash::check($password, (string) $user->password)) {
+                    Auth::login($user, $request->boolean('remember'));
+                    $request->session()->regenerate();
+                    $loggedIn = true;
+                }
             }
         }
 
+        // 3) Satu Pintu Error
+        // Jika user tidak ditemukan ($user null) ATAU password salah ($loggedIn false), masuk ke sini.
         if (!$loggedIn) {
             throw ValidationException::withMessages([
-                'password' => 'Kredensial salah.',
+                'login' => 'Kredensial Salah.', 
             ]);
         }
 
-        // 3) Set Spatie team scope ke unit user
+        // 4) Set Spatie team scope ke unit user
         /** @var PermissionRegistrar $registrar */
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId($user->unit_id);
 
-        // 4) Sinkronisasi display name
+        // 5) Sinkronisasi display name
         $this->syncDisplayNameFromHR($user);
 
-        // 5) Provision Initial Roles (Hanya saat auto-create user dari Employee)
+        // 6) Provision Initial Roles (Hanya saat auto-create user dari Employee)
         if ($newlyProvisioned) {
             $this->provisionInitialRoles($user);
         }

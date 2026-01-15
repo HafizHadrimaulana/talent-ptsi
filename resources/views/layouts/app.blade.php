@@ -41,6 +41,7 @@
   $unitName     = $emp?->latest_jobs_unit ?: ($emp?->unit_name ?? optional($user?->unit)->name ?? '-');
   $roleNames   = collect($user?->getRoleNames() ?? [])->values();
   $roleBadge   = $roleNames->isEmpty() ? '-' : e($roleNames->implode(', '));
+  $isPelamar    = $roleNames->contains('Pelamar');
 
   $initials = function(string $name) {
       $name = trim($name);
@@ -135,7 +136,7 @@
 
           <div id="globalNotifDropdown" class="dropdown" hidden style="width: 340px; right: 0; left: auto;">
             <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f3f4f6; padding: 12px 16px;">
-               <span style="font-weight: 600; color: #1f2937;">Notifikasi</span>
+               <span style="font-weight: 600;">Notifikasi</span>
                <button class="close-btn" type="button" style="background:none; border:none; cursor:pointer;" onclick="document.getElementById('globalNotifDropdown').hidden=true">✖</button>
             </div>
             
@@ -257,9 +258,11 @@
                 <span class="muted text-sm"><strong>Employee ID:</strong> {{ $employeeCode }}</span>
               @endif
               <div class="muted text-sm" style="margin-top:.25rem">
-                <div><strong>Role:</strong> {{ $roleBadge }}</div>
-                <div><strong>Jabatan:</strong> {{ $jobTitle }}</div>
-                <div><strong>Unit Kerja:</strong> {{ $unitName }}</div>
+                @if(!$isPelamar)
+                  <div><strong>Role:</strong> {{ $roleBadge }}</div>
+                  <div><strong>Jabatan:</strong> {{ $jobTitle }}</div>
+                  <div><strong>Unit Kerja:</strong> {{ $unitName }}</div>
+                @endif
                 @if($displayEmail && $displayEmail !== '-')
                   <div><strong>Email:</strong> {{ $displayEmail }}</div>
                 @endif
