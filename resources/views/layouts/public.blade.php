@@ -103,45 +103,34 @@
       <section id="about" class="py-20 fade-section relative">
         <div class="container mx-auto px-6 text-center">
           <h2 class="text-3xl font-bold mb-4 text-[#00A29A]">
-            Mengapa Bergabung dengan Kami?
+            VISI & MISI
           </h2>
           <p class="text-gray-700 max-w-2xl mx-auto mb-12">
-            Kami percaya bahwa keberhasilan perusahaan berawal dari orang-orang yang hebat.
+            Kami hadir untuk memberikan sumbangsih terbaik bagi negeri dengan mengutamakan profesionalisme, integritas serta bersinergi dalam mewujudkan Indonesia yang lebih baik di masa depan.
           </p>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
-        <div class="text-5xl mb-4 text-[#1D4388] transition-all duration-500 group-hover:scale-110 group-hover:text-[#00A29A]">
-          🚀
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
+                    <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
+                    VISI
+                    </h3>
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                    Menjadi perusahaan pemberi jaminan kepastian yang tidak memihak (Independent Assurance) yang terpercaya dan berkontribusi strategis bagi kepentingan nasional
+                    </p>
+                </div>
+                <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
+                    <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
+                    MISI
+                    </h3>
+                    <p>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Meningkatkan pangsa pasar sebagai penyedia layanan TIC (Testing, Inspection, Certification) terdepan di Indonesia</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Mengembangkan inovasi produk dan layanan yang terintegrasi dan canggih</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Membangun keunggulan sebagai penyedia layanan TIC kelas dunia</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Menjadi mitra strategis Pemerintah dan Swasta untuk mengoptimalkan sumber daya nasional</li>
+                        <li class="text-sm text-gray-600 leading-relaxed" style="text-align: left;">Meningkatkan kompetensi SDM dan kemampuan teknologi sesuai standar nasional & internasional</li>
+                    </p>
+                </div>
+            </div>
         </div>
-        <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
-          Kesempatan Bertumbuh
-        </h3>
-        <p class="text-sm text-gray-600 leading-relaxed">
-          Kami memberikan pelatihan dan mentoring untuk membantu Anda mencapai potensi terbaik.
-        </p>
-      </div>
-      <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
-        <div class="text-5xl mb-4 text-[#1D4388] transition-all duration-500 group-hover:scale-110 group-hover:text-[#00A29A]">
-          🤝
-        </div>
-        <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
-          Budaya Kolaboratif
-        </h3>
-        <p class="text-sm text-gray-600 leading-relaxed">
-          Kami bekerja sebagai satu tim dalam suasana kerja yang positif.
-        </p>
-      </div>
-      <div class="group p-8 rounded-2xl bg-white border border-[#1D4388]/10 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 hover:border-[#00A29A]/40 hover:bg-gradient-to-br hover:from-white hover:to-[#f0f8f8]">
-        <div class="text-5xl mb-4 text-[#1D4388] transition-all duration-500 group-hover:scale-110 group-hover:text-[#00A29A]">    
-        </div>
-        <h3 class="font-semibold text-xl mb-3 text-[#1D4388] transition-colors duration-500 group-hover:text-[#00A29A]">
-          Inovasi Berkelanjutan
-        </h3>
-        <p class="text-sm text-gray-600 leading-relaxed">
-          Kami mendukung ide-ide baru dan keberanian untuk berinovasi.
-        </p>
-      </div>
-    </div>
       </section>
       <section class="py-20 text-center fade-section relative">
         <h2 class="text-3xl font-bold mb-8">

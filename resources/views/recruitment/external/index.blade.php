@@ -1,9 +1,7 @@
 @extends('layouts.app')
 @section('title','External Recruitment')
-
 @section('content')
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
-
 <div class="u-card u-card--glass u-hover-lift">
     <div class="u-flex u-items-center u-justify-between u-mb-md">
         <div>
@@ -109,7 +107,6 @@
                                 </span>
                             </td>
                         @endif
-
                         <td class="cell-actions" style="text-align: right; vertical-align: top;">
                             <div class="flex flex-col gap-2 items-end">
                                 @if($isDHC)
@@ -122,22 +119,13 @@
                                     </button>
                                 @elseif($isPelamar)
                                     @if(count($availableJson) > 0)
-                                        <!-- <button class="u-btn u-btn--sm u-btn--brand" 
-                                                onclick='openApplyModal({{ $row->id }}, @json($availableJson), "{{ $row->ticket_number }}")'>
-                                            <i class="fas fa-paper-plane u-mr-xs"></i> Lamar
-                                        </button> -->
                                         <button class="u-btn u-btn--sm u-btn--info u-btn--outline" 
-                                            onclick='openVacancyDetail({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!}, [])'>
+                                            onclick='openVacancyDetail({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!}, {!! htmlspecialchars(json_encode($availableJson), ENT_QUOTES, 'UTF-8') !!})'>
                                             <i class="fas fa-file-alt u-mr-xs"></i> Lihat Deskripsi
                                         </button>
                                     @endif
                                     @foreach($userApps as $app)
-                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs" 
-                                                type="button" 
-                                                onclick="openMyStatusModal(this)" 
-                                                data-status="{{ $app->status }}" 
-                                                data-date="{{ $app->interview_schedule }}" 
-                                                data-note="{{ $app->hr_notes }}">
+                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs" type="button" onclick="openMyStatusModal(this)" data-status="{{ $app->status }}" data-date="{{ $app->interview_schedule }}" data-note="{{ $app->hr_notes }}">
                                             <i class="fas fa-info-circle u-mr-xs"></i> 
                                             Status: {{ $app->position_applied ?? 'General' }}
                                         </button>
@@ -316,15 +304,12 @@
             <div class="u-card u-p-md">
                 <div class="u-mb-md">
                     <div class="u-text-xs u-font-bold u-uppercase u-muted u-mb-sm">Deskripsi & Kualifikasi</div>
-                    
-                    <div id="detail_vacancy_description" class="ck-content u-text-dark" style="line-height: 1.6;">
-                        </div>
+                    <div id="detail_vacancy_description" class="ck-content u-text-dark" style="line-height: 1.6;"></div>
                 </div>
             </div>
         </div>
         <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
             <button class="u-btn u-btn--ghost" onclick="closeModal('vacancyDetailModal')">Tutup</button>
-            
             <button class="u-btn u-btn--brand" id="btnApplyFromDetail" style="text-white;">
                 <i class="fas fa-paper-plane u-mr-xs"></i> Apply Now
             </button>
@@ -339,7 +324,6 @@
         </div>
         <div class="u-modal__body u-p-md">
             <input type="hidden" id="edit_req_id">
-            
             <div class="u-grid-2-custom u-mb-md" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <div>
                     <label class="u-label u-font-bold u-mb-xs">Tanggal Dibuka</label>
@@ -391,7 +375,6 @@
     </div>
 </div>
 <script>
-    // --- 1. Inisialisasi CKEditor untuk Modal Edit ---
     let editVacancyEditor = null;
     document.addEventListener('DOMContentLoaded', function() {
         if (document.querySelector('#editEditorContent')) {
@@ -401,7 +384,7 @@
                     placeholder: 'Edit deskripsi pekerjaan, kualifikasi, dll...'
                 })
                 .then(editor => {
-                    editVacancyEditor = editor; // Simpan instance ke variabel global
+                    editVacancyEditor = editor;
                 })
                 .catch(error => {
                     console.error(error);
@@ -414,7 +397,6 @@
         const endDate = rowData.publish_end_date ? rowData.publish_end_date.substring(0, 10) : '';
         document.getElementById('edit_start_date').value = startDate;
         document.getElementById('edit_end_date').value = endDate;
-
         const locationInput = document.getElementById('edit_location');
         let finalLocation = rowData.publish_location;
         if (!finalLocation && rowData.meta && rowData.meta.recruitment_details && rowData.meta.recruitment_details.length > 0) {
@@ -441,7 +423,6 @@
         }
         openModal('editVacancyModal');
     }
-
     const btnSaveDesc = document.getElementById('btnSaveDescription');
     if(btnSaveDesc) {
         btnSaveDesc.addEventListener('click', function() {
@@ -449,18 +430,15 @@
             const content = editVacancyEditor ? editVacancyEditor.getData() : document.getElementById('editEditorContent').value;
             const startDate = document.getElementById('edit_start_date').value;
             const endDate = document.getElementById('edit_end_date').value;
-            const locationVal = document.getElementById('edit_location').value; // Ambil nilai lokasi
-
+            const locationVal = document.getElementById('edit_location').value;
             if(!content.trim()) { alert('Deskripsi tidak boleh kosong.'); return; }
             if(!startDate) { alert('Tanggal Dibuka wajib diisi.'); return; }
             if(!endDate) { alert('Tanggal Ditutup wajib diisi.'); return; }
             if(!locationVal.trim()) { alert('Lokasi Penempatan wajib diisi.'); return; }
-
             const btn = this;
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Menyimpan...';
-
             fetch(`/recruitment/external/${reqId}/update-description`, {
                 method: 'POST',
                 headers: {
@@ -492,21 +470,17 @@
             });
         });
     }
-
     const btnPublish = document.getElementById('btnPublish');
     if(btnPublish) {
         btnPublish.addEventListener('click', function() {
             const reqId = document.getElementById('edit_req_id').value;
-
             if(!confirm('Anda yakin ingin MEMBUKA kembali lowongan ini ke publik?')) {
                 return;
             }
-
             const btn = this;
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
-
             fetch(`/recruitment/external/${reqId}/publish`, {
                 method: 'POST',
                 headers: {
@@ -537,16 +511,13 @@
     if(btnUnpublish) {
         btnUnpublish.addEventListener('click', function() {
             const reqId = document.getElementById('edit_req_id').value;
-
             if(!confirm('YAKIN INGIN MENUTUP LOWONGAN INI?\n\nLowongan akan hilang dari halaman publik (website depan) dan dari tabel ini.')) {
                 return;
             }
-
             const btn = this;
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Memproses...';
-
             fetch(`/recruitment/external/${reqId}/unpublish`, {
                 method: 'POST',
                 headers: {
@@ -558,7 +529,6 @@
             .then(data => {
                 if(data.success) {
                     alert(data.message);
-                    // PENTING: Reload halaman agar data hilang dari tabel karena filter is_published=true di controller
                     location.reload(); 
                 } else {
                     alert('Gagal: ' + data.message);
@@ -578,7 +548,6 @@
         document.getElementById('apply_ticket_id').value = id;
         const select = document.getElementById('apply_position_select');
         select.innerHTML = '';
-
         if (Array.isArray(positions) && positions.length > 0) {
             if(positions.length > 1) {
                 const defaultOpt = document.createElement('option');
@@ -602,7 +571,6 @@
         }
         openModal('applyModal');
     }
-
     function openMyStatusModal(btn) {
         const status = btn.getAttribute('data-status');
         const date = btn.getAttribute('data-date');
@@ -696,7 +664,6 @@
                                     <button class="u-btn u-btn--xs u-btn--info u-btn--outline" onclick="openBiodataModal(${app.id})" title="Lihat Biodata Lengkap">
                                         <i class="fas fa-id-card"></i> Bio
                                     </button>
-
                                     <button class="u-btn u-btn--xs u-btn--outline" onclick="openUpdateStatus(${app.id}, '${app.status}')" title="Update Status">  
                                         <i class="fas fa-edit"></i> Proses
                                     </button>
@@ -711,7 +678,6 @@
                 tbody.innerHTML = '<tr><td colspan="6" class="u-text-danger u-text-center">Gagal memuat data.</td></tr>';
             });
     }
-
     function openUpdateStatus(applicantId, currentStatus) {
         const modal = document.getElementById('updateStatusModal');
         const form = document.getElementById('formUpdateStatus');
@@ -721,7 +687,6 @@
         toggleInterview();
         modal.hidden = false;
     }
-
     function toggleInterview() {
         const val = document.getElementById('statusSelect').value;
         const group = document.getElementById('interviewInputGroup');
@@ -785,13 +750,11 @@
         document.getElementById('detail_vacancy_title').textContent = rowData.title || 'Lowongan Kerja';
         document.getElementById('detail_vacancy_ticket').textContent = rowData.ticket_number || '-';
         const descContainer = document.getElementById('detail_vacancy_description');
-        
         if(rowData.description) {
             descContainer.innerHTML = rowData.description;
         } else {
             descContainer.innerHTML = '<div class="u-text-muted u-text-center u-p-sm" style="background:#f9fafb; border-radius:4px;">Tidak ada deskripsi tambahan.</div>';
         }
-
         const btnApply = document.getElementById('btnApplyFromDetail');
         const newBtn = btnApply.cloneNode(true);
         btnApply.parentNode.replaceChild(newBtn, btnApply);

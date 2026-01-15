@@ -1,6 +1,5 @@
 @extends('layouts.app')
 @section('title', 'Biodata Pelamar')
-
 @section('content')
     <div class="u-card u-card--glass u-hover-lift">
         <div class="u-flex u-justify-between u-items-center u-mb-lg u-gap-md u-stack-mobile">
@@ -17,15 +16,12 @@
                 <i class="fas fa-arrow-left u-mr-xs"></i> Kembali ke Lowongan
             </a>
         </div>
-
         @if(session('success'))
             <div class="u-alert u-alert--success u-mb-md u-flex u-items-center u-gap-sm p-4 rounded-xl bg-green-100 text-green-800 border border-green-200">
                 <i class="fas fa-check-circle text-lg"></i>
                 <span class="font-medium">{{ session('success') }}</span>
             </div>
         @endif
-
-        {{-- Tabs Navigation (Menggunakan Style u-tabs dari app-ui.css) --}}
         <div class="u-tabs-wrap u-mb-lg rounded-xl">
             <div class="u-tabs no-scrollbar">
                 @php
@@ -52,43 +48,29 @@
                 @endforeach
             </div>
         </div>
-
         <form action="{{ route('recruitment.applicant-data.update') }}" method="POST" enctype="multipart/form-data">
             @csrf
-            {{-- Content Container (Menggunakan u-card agar background dinamis di dark mode) --}}
             <div class="u-card u-p-lg min-h-[500px]" style="box-shadow: none; border: 1px solid var(--border);">
-                
-                {{-- TAB: DATA DIRI --}}
                 <div id="tab-data-diri" class="tab-content block">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
                         <div class="md:col-span-2 u-space-y-md">
                             <h3 class="uj-section-title">Informasi Dasar</h3>
-                            
-                            {{-- NIK --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">NIK (KTP)</label>
                                 <input type="text" name="nik" value="{{ $person->nik }}" class="u-input w-full" placeholder="16 digit NIK">
                             </div>
-
-                            {{-- Email (Readonly) --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Email</label>
                                 <input type="email" name="email" value="{{ $person->email }}" class="u-input w-full" readonly>
                             </div>
-
-                            {{-- Nama Lengkap --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Nama Lengkap</label>
                                 <input type="text" name="full_name" value="{{ $person->full_name }}" class="u-input w-full">
                             </div>
-
-                            {{-- No HP --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">No. HP / WA</label>
                                 <input type="text" name="phone" value="{{ $person->phone }}" class="u-input w-full" placeholder="08xxxxxxxxxx">
                             </div>
-                            
-                            {{-- Jenis Kelamin (Sudah Benar) --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Jenis Kelamin</label>
                                 <select name="gender" class="u-input w-full">
@@ -97,20 +79,14 @@
                                     <option value="Perempuan" {{ $person->gender == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
                                 </select>
                             </div>
-
-                            {{-- Tempat Lahir --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Tempat Lahir</label>
                                 <input type="text" name="place_of_birth" value="{{ $person->place_of_birth }}" class="u-input w-full">
                             </div>
-                            
-                            {{-- Tanggal Lahir (Sudah Benar) --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Tanggal Lahir</label>
                                 <input type="date" name="date_of_birth" value="{{ $person->date_of_birth ? $person->date_of_birth->format('Y-m-d') : '' }}" class="u-input w-full">
                             </div>
-
-                            {{-- Agama --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Agama</label>
                                 <select name="religion" class="u-input w-full">
@@ -123,8 +99,6 @@
                                     <option value="Konghucu" {{ $person->religion == 'Konghucu' ? 'selected' : '' }}>Konghucu</option>
                                 </select>
                             </div>
-
-                            {{-- Status --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Status</label>
                                 <select name="marital_status" class="u-input w-full">
@@ -135,8 +109,6 @@
                                     <option value="Janda" {{ $person->marital_status == 'Janda' ? 'selected' : '' }}>Janda</option>
                                 </select>
                             </div>
-
-                            {{-- Tinggi & Berat Badan --}}
                             <div class="u-grid-2-custom">
                                 <div class="u-space-y-sm mb-4">
                                     <label class="u-label uj-label">Tinggi Badan (cm)</label>
@@ -147,23 +119,16 @@
                                     <input type="number" name="weight" value="{{ $person->weight }}" class="u-input w-full">
                                 </div>
                             </div>
-                            
                             <h3 class="uj-section-title mt-6">Sosial Media</h3>
-                            
-                            {{-- LinkedIn --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">LinkedIn URL</label>
                                 <input type="text" name="linkedin_url" value="{{ $person->linkedin_url }}" class="u-input w-full" placeholder="https://linkedin.com/in/...">
                             </div>
-
-                            {{-- Instagram --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Instagram URL</label>
                                 <input type="text" name="instagram_url" value="{{ $person->instagram_url }}" class="u-input w-full" placeholder="https://instagram.com/...">
                             </div>
                         </div>
-
-                        {{-- Photo Upload Section (Tetap sama seperti sebelumnya) --}}
                         <div class="md:col-span-1 flex flex-col items-center pt-8">
                             <div class="relative group">
                                 <div class="w-48 h-64 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group-hover:border-blue-400 transition-all shadow-sm"
@@ -192,13 +157,10 @@
                         </div>
                     </div>
                 </div>
-
-                {{-- TAB: ALAMAT --}}
                 <div id="tab-alamat" class="tab-content hidden u-space-y-lg">
                     <div>
                         <h3 class="uj-section-title">Alamat Sesuai KTP</h3>
                         <div class="u-space-y-md">
-                            {{-- Alamat KTP --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Alamat Lengkap</label>
                                 <textarea name="address_ktp" class="u-input w-full" rows="3">{{ $person->address }}</textarea>
@@ -218,7 +180,6 @@
                     <div>
                         <h3 class="uj-section-title">Alamat Domisili</h3>
                         <div class="u-space-y-md">
-                            {{-- Alamat Domisili --}}
                             <div class="u-space-y-sm mb-4">
                                 <label class="u-label uj-label">Alamat Lengkap</label>
                                 <textarea name="address_domicile" class="u-input w-full" rows="3">{{ $person->address_domicile }}</textarea>
@@ -236,8 +197,6 @@
                         </div>
                     </div>
                 </div>
-
-                {{-- TAB: ALAMAT --}}
                 <div id="tab-alamat" class="tab-content hidden u-space-y-lg">
                     <div>
                         <h3 class="uj-section-title">Alamat Sesuai KTP</h3>
@@ -256,8 +215,6 @@
                         </div>
                     </div>
                 </div>
-
-                {{-- TAB: PENDIDIKAN --}}
                 <div id="tab-pendidikan" class="tab-content hidden">
                     <h3 class="uj-section-title">Riwayat Pendidikan</h3>
                     <h5 class="u-block u-text-sm u-font-bold u-mb-sm text-yellow-500 mb-4 border-b pb-2" style="border-color: var(--border);">
@@ -276,8 +233,6 @@
                         <i class="fas fa-plus"></i> Tambah Pendidikan
                     </button>
                 </div>
-
-                {{-- TAB: KELUARGA --}}
                 <div id="tab-keluarga" class="tab-content hidden">
                     <h3 class="uj-section-title">Data Keluarga</h3>
                     <div id="family-container">
@@ -293,8 +248,6 @@
                         <i class="fas fa-plus"></i> Tambah Anggota Keluarga
                     </button>
                 </div>
-
-                {{-- TAB: PENGALAMAN --}}
                 <div id="tab-pengalaman" class="tab-content hidden">
                     <h3 class="uj-section-title">Pengalaman Kerja</h3>
                     <div id="work-container">
@@ -310,8 +263,6 @@
                         <i class="fas fa-plus"></i> Tambah Pengalaman Kerja
                     </button>
                 </div>
-
-                {{-- TAB: ORGANISASI --}}
                 <div id="tab-organisasi" class="tab-content hidden">
                     <h3 class="uj-section-title">Pengalaman Organisasi</h3>
                     <div id="org-container">
@@ -327,8 +278,6 @@
                         <i class="fas fa-plus"></i> Tambah Organisasi
                     </button>
                 </div>
-
-                {{-- TAB: SKILL --}}
                 <div id="tab-skill" class="tab-content hidden">
                     <h3 class="uj-section-title">Skill / Kompetensi</h3>
                     <div id="skill-container">
@@ -344,8 +293,6 @@
                         <i class="fas fa-plus"></i> Tambah Skill
                     </button>
                 </div>
-
-                {{-- TAB: SERTIFIKASI --}}
                 <div id="tab-sertifikasi" class="tab-content hidden">
                     <h3 class="uj-section-title">Sertifikasi & Pelatihan</h3>
                     <div id="cert-container">
@@ -361,8 +308,6 @@
                         <i class="fas fa-plus"></i> Tambah Sertifikasi
                     </button>
                 </div>
-
-                {{-- TAB: DOKUMEN --}}
                 <div id="tab-dokumen" class="tab-content hidden">
                     <h3 class="uj-section-title">Dokumen Pendukung</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -375,8 +320,6 @@
                         @include('components.file-upload-soft', ['label' => 'Dokumen Pendukung Lainnya', 'name' => 'other_doc_file', 'path' => $person->other_doc_path])
                     </div>
                 </div>
-
-                {{-- TAB: LAMARAN --}}
                 <div id="tab-lamaran" class="tab-content hidden">
                     <div class="flex justify-between items-center mb-6 border-b pb-2" style="border-color: var(--border);">
                         <h3 class="uj-section-title" style="margin:0; border:none;">
@@ -469,8 +412,6 @@
                         </table>
                     </div>
                 </div>
-
-                {{-- Action Button --}}
                 <div class="fixed bottom-8 right-8 z-50">
                     <button type="submit" class="u-btn u-btn--brand px-8 rounded-full shadow-xl gap-2 h-14 text-base font-bold u-hover-lift">
                         <i class="fas fa-save"></i> Simpan Perubahan
@@ -479,7 +420,6 @@
             </div>
         </form>
     </div>
-
 <script>
     function handlePhotoUpload(input) {
         const preview = document.getElementById('photo_preview');
@@ -500,32 +440,24 @@
             reader.readAsDataURL(file);
         }
     }
-    
     function switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         document.getElementById('tab-' + tabId).classList.remove('hidden');
-        
-        // Reset all buttons style
         document.querySelectorAll('[id^="tab-btn-"]').forEach(btn => {
             btn.classList.remove('is-active');
         });
-        
-        // Set active button style
         const activeBtn = document.getElementById('tab-btn-' + tabId);
         activeBtn.classList.add('is-active');
     }
-
     function addRepeater(type) {
         const container = document.getElementById(type + '-container');
         const template = document.getElementById(type + '-template').innerHTML;
         const newHtml = template.replace(/INDEX/g, Date.now());
         container.insertAdjacentHTML('beforeend', newHtml);
     }
-    
     function removeRow(btn) {
         btn.closest('.repeater-item').remove();
     }
-    
     function updateFilePreview(inputName) {
         const input = document.getElementById('input_' + inputName);
         const placeholder = document.getElementById('placeholder_' + inputName);
