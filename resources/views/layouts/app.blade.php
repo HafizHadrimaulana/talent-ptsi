@@ -8,7 +8,10 @@
   @if(session('swal')) <meta name="swal" content='@json(session('swal'))'> @endif
   <script>(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);document.documentElement.classList.toggle('dark',t==='dark');}}catch(_){}})();</script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
   {{-- VITE ASSETS: Harus Match dengan vite.config.js --}}
   @vite([
     'resources/css/app.css', 
@@ -88,10 +91,10 @@
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </button>
 
-    <div class="search">
+    <!-- <div class="search">
       <span class="search-icon">🔎</span>
       <input type="search" name="q" id="globalSearch" placeholder="Search Everything…" aria-label="Search Everything">
-    </div>
+    </div> -->
 
     <div class="top-actions">
       <div class="dropdown-wrap">
@@ -268,7 +271,7 @@
             <button id="changePwBtn" type="button" class="menu-item"
                     data-open="pwModal"
                     onclick="window.__openModal && window.__openModal('pwModal')">
-              <span>Change Password</span>
+              <!-- <span>Change Password</span> -->
             </button>
           </div>
 

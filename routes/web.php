@@ -19,7 +19,7 @@ Route::middleware('web')->group(function () {
     });
     Route::middleware(['auth', 'team.scope'])->group(function () { 
         Route::get('/', fn() => redirect()->route('dashboard'));
-        Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
+        Route::get('/dashboard', fn() => view('dashboard.dashboard'))->name('dashboard');
         Route::group(['prefix' => 'recruitment/applicant-data', 'as' => 'recruitment.applicant-data.'], function () {
             Route::get('/', [ApplicantDataController::class, 'index'])->name('index');
             Route::post('/update', [ApplicantDataController::class, 'update'])->name('update');
