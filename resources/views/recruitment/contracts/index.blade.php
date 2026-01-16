@@ -2,16 +2,61 @@
 
 @section('title', 'Manajemen Dokumen Kontrak')
 
+@push('styles')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    /* CSS Khusus untuk Responsif Mobile pada Tabel */
+    @media (max-width: 768px) {
+        .u-table-mobile thead { display: none; }
+        .u-table-mobile tr { 
+            display: block; 
+            margin-bottom: 1rem; 
+            border: 1px solid var(--border-color, #e2e8f0); 
+            border-radius: 0.5rem; 
+            padding: 1rem; 
+            background: var(--bg-surface, #fff); 
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .u-table-mobile td { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 0.5rem 0; 
+            border: none; 
+            border-bottom: 1px dashed var(--border-color, #e2e8f0); 
+            text-align: right;
+        }
+        .u-table-mobile td:last-child { border-bottom: none; padding-top: 1rem; }
+        .u-table-mobile td::before { 
+            content: attr(data-label); 
+            font-weight: 600; 
+            color: var(--text-muted, #64748b); 
+            font-size: 0.85rem; 
+            text-transform: uppercase;
+            margin-right: 1rem;
+            text-align: left;
+        }
+        .u-table-mobile td .cell-actions__group { 
+            width: 100%; 
+            justify-content: flex-end; 
+            gap: 0.5rem;
+        }
+        /* Penyesuaian konten agar rapi di mobile */
+        .u-table-mobile td > div { text-align: right; width: 100%; }
+        .u-table-mobile td .u-flex { justify-content: flex-end; }
+    }
+</style>
+@endpush
+
 @section('content')
 @php
     $me = auth()->user();
     $meUnit = $me?->unit_id;
     $canSeeAll = isset($canSeeAll) ? $canSeeAll : ($me && ($me->hasRole('Superadmin') || $me->hasRole('DHC')));
     $statusOptions = config('recruitment.contract_statuses', []);
-    $currentUnitId = $selectedUnitId ?? $meUnit;
+    $currentUnitId = $canSeeAll ? $selectedUnitId : $meUnit;
 @endphp
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <div class="u-card u-card--glass u-mb-xl">
@@ -74,7 +119,8 @@
 
 <div class="dt-wrapper">
     <div class="u-scroll-x">
-        <table id="contracts-table" class="u-table u-table-mobile" style="width: 100%; min-width: 1000px;">
+        {{-- Hapus min-width agar responsif, tambah class u-table-mobile --}}
+        <table id="contracts-table" class="u-table u-table-mobile" style="width: 100%;">
             <thead>
                 <tr>
                     <th>Dokumen</th>
@@ -89,20 +135,20 @@
             <tbody>
                 @foreach ($contracts as $c)
                     <tr class="u-hover-bright">
-                        <td>
+                        <td data-label="Dokumen">
                             <div class="u-font-mono u-font-bold u-text-sm">{{ $c->contract_no ?: '(Draft)' }}</div>
                             <span class="u-badge u-badge--glass u-mt-xs u-text-sm">{{ $c->contract_type_label ?? $c->contract_type }}</span>
                         </td>
-                        <td>
+                        <td data-label="Ticket">
                             @if($c->ticket_number)
                                 <span class="u-badge u-badge--info u-text-2xs">{{ $c->ticket_number }}</span>
                             @else
                                 <span class="u-text-muted u-text-sm">-</span>
                             @endif
                         </td>
-                        <td>
-                            <div class="u-flex u-items-center u-gap-sm">
-                                <div>{{ substr($c->person_name, 0, 1) }}</div>
+                        <td data-label="Personil">
+                            <div class="u-flex u-items-center u-gap-sm" style="justify-content: flex-end;">
+                                <div class="u-avatar u-avatar--sm u-bg-light u-text-muted">{{ substr($c->person_name, 0, 1) }}</div>
                                 <div>
                                     <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
                                     <div class="u-text-sm u-muted u-mt-xxs">
@@ -113,11 +159,11 @@
                                 </div>
                             </div>
                         </td>
-                        <td>
+                        <td data-label="Posisi & Unit">
                             <div class="u-text-sm u-font-medium">{{ $c->position_name ?? '-' }}</div>
                             <div class="u-text-sm u-muted"><i class="fas fa-building u-mr-xxs"></i> {{ $c->unit?->name ?? '-' }}</div>
                         </td>
-                        <td>
+                        <td data-label="Periode">
                             @if($c->contract_type === 'PB_PENGAKHIRAN')
                                 <span class="u-text-danger u-font-bold u-text-sm">
                                     <i class="fas fa-stop-circle u-mr-xxs"></i> End: {{ isset($c->remuneration_json['pb_effective_end']) ? \Carbon\Carbon::parse($c->remuneration_json['pb_effective_end'])->format('d M Y') : '-' }}
@@ -127,7 +173,7 @@
                                 <div class="u-text-sm u-muted">s/d {{ $c->end_date?->format('d/m/Y') }}</div>
                             @endif
                         </td>
-                        <td>
+                        <td data-label="Status">
                             @php
                                 $bg = match($c->status) {
                                     'draft' => 'u-badge--warn', 'review' => 'u-badge--primary',
@@ -137,7 +183,7 @@
                             @endphp
                             <span class="u-badge {{ $bg }}">{{ $statusOptions[$c->status] ?? $c->status }}</span>
                         </td>
-                        <td class="cell-actions">
+                        <td class="cell-actions" data-label="Aksi">
                             <div class="cell-actions__group">
                                 <button type="button" class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-btn-detail"
                                     data-show-url="{{ route('recruitment.contracts.show', $c) }}" title="Lihat Detail">
@@ -500,7 +546,7 @@
             <button class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-close-modal"><i class="fas fa-times"></i></button>
         </div>
         <div class="u-modal__body u-space-y-xl">
-            
+             
             <div id="detRejectBox" class="u-bg-section u-p-lg is-hidden" style="border-left: 4px solid #ef4444; background-color: #fef2f2;">
                 <div class="section-divider u-text-danger"><i class="fas fa-ban u-mr-xs"></i> Dokumen Ditolak</div>
                 <div class="u-text-sm u-font-medium u-text-danger" id="detRejectNote"></div>
@@ -1346,14 +1392,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(d.tracker) {
                     const h = d.tracker.head;
                     const c = d.tracker.candidate;
-                    
+                     
                     setText('#nameHead', h.name);
                     setText('#posHead', h.position || 'Kepala Unit');
                     setText('#dateHead', h.date);
-                    
+                     
                     const bHead = select('#badgeHead'); 
                     if(bHead) { bHead.textContent = h.status; bHead.className = `u-badge ${h.css}`; }
-                    
+                     
                     const iHead = select('#iconHead');
                     if(iHead) {
                         iHead.className = `u-avatar u-avatar--md ${h.status==='Signed'||h.status==='Approved' ? 'u-bg-success-light u-text-success' : (h.status==='Rejected'?'u-bg-danger-light u-text-danger':'u-bg-light u-text-muted')}`;
@@ -1366,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const bCand = select('#badgeCand'); 
                     if(bCand) { bCand.textContent = c.status; bCand.className = `u-badge ${c.css}`; }
-                    
+                     
                     const iCand = select('#iconCand');
                     if(iCand) {
                         iCand.className = `u-avatar u-avatar--md ${c.status==='Signed' ? 'u-bg-success-light u-text-success' : 'u-bg-light u-text-muted'}`;
@@ -1378,7 +1424,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const mapSec = select('#detMapSection');
                 const wHead = select('#wrapperMapHead');
                 const wCand = select('#wrapperMapCand');
-                
+                 
                 const iHead = select('#img-head'); if(iHead) iHead.style.display='none';
                 const niHead = select('#no-img-head'); if(niHead) niHead.style.display='none';
                 const iCand = select('#img-cand'); if(iCand) iCand.style.display='none';

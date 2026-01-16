@@ -19,10 +19,10 @@ class ContractController extends Controller
         $isDhc = $user->hasRole('DHC');
         $isEmployee = $user->hasRole('Karyawan');
         $canSeeAll = $isSuperadmin || $isDhc;
-        $userUnitId = (int)($user->unit_id ?? 0);
+        $userUnitId = (int) ($user->unit_id ?? 0);
         $userEmployeeId = $user->employee_id;
         $isApproverOnly = $user->can('contract.approve') && !$user->can('contract.update');
-        $selectedUnitId = $canSeeAll ? ($request->filled('unit_id') ? (int)$request->integer('unit_id') : null) : $userUnitId;
+        $selectedUnitId = $canSeeAll ? ($request->filled('unit_id') ? (int) $request->integer('unit_id') : null) : $userUnitId;
 
         $query = Contract::with(['unit:id,name', 'employee:id,employee_id,person_id', 'document', 'person:id,full_name', 'applicant.user.person'])->orderByDesc('created_at');
 
@@ -36,28 +36,41 @@ class ContractController extends Controller
             } elseif ($isSuperadmin) {
                 $query->whereHas('unit', fn($q) => $q->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']));
             }
-            if ($isApproverOnly) $query->where('status', '!=', 'draft');
+            if ($isApproverOnly)
+                $query->where('status', '!=', 'draft');
         }
 
-        if ($request->filled('status')) $query->where('status', $request->input('status'));
+        if ($request->filled('status'))
+            $query->where('status', $request->input('status'));
 
         $contracts = $query->paginate(25)->withQueryString();
 
         $unitsQuery = Unit::query()->select('id', 'name', 'category');
-        if ($isSuperadmin) $unitsQuery->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
-        elseif ($isDhc) $unitsQuery->where('category', 'ENABLER');
-        
+        if ($isSuperadmin)
+            $unitsQuery->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
+        elseif ($isDhc)
+            $unitsQuery->where('category', 'ENABLER');
+
         $units = $canSeeAll ? $unitsQuery->orderBy('name')->get() : Unit::where('id', $selectedUnitId)->get(['id', 'name', 'category']);
 
         $expiringContracts = collect();
-        if (!$isEmployee) {
+
+        if ($canSeeAll || $user->can('contract.create')) {
             $expiringQuery = DB::table('portfolio_histories AS ph')
                 ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
                 ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
                 ->select('ph.id', 'ph.person_id', 'e.employee_id', 'ph.title AS position_name', 'ph.start_date', 'ph.end_date', 'e.employee_status AS employment_type', 'e.unit_id', 'u.name AS unit_name', DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name"))
-                ->where('ph.category', 'job')->whereNotNull('ph.end_date')->whereDate('ph.end_date', '>=', now())->whereDate('ph.end_date', '<=', now()->addDays(30));
-            
-            if (!$canSeeAll && $userUnitId) $expiringQuery->where('e.unit_id', $userUnitId);
+                ->where('ph.category', 'job')
+                ->whereNotNull('ph.end_date')
+                ->whereDate('ph.end_date', '>=', now())
+                ->whereDate('ph.end_date', '<=', now()->addDays(30));
+
+            if ($isDhc && !$isSuperadmin) {
+                $expiringQuery->where('u.category', 'ENABLER');
+            } elseif (!$canSeeAll && $userUnitId) {
+                $expiringQuery->where('e.unit_id', $userUnitId);
+            }
+
             $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
         }
 
@@ -86,7 +99,7 @@ class ContractController extends Controller
             'contracts' => $contracts,
             'units' => $units,
             'positions' => DB::table('positions')->select('id', 'name')->orderBy('name')->get(),
-            'locations' => $locations, 
+            'locations' => $locations,
             'selectedUnitId' => $selectedUnitId,
             'statusFilter' => $request->input('status'),
             'statusOptions' => config('recruitment.contract_statuses'),
@@ -102,24 +115,27 @@ class ContractController extends Controller
     public function store(Request $request)
     {
         $v = $this->validateContract($request);
-        if (!$request->user()->hasRole(['Superadmin', 'DHC']) && (int)$v['unit_id'] !== (int)$request->user()->unit_id) return back()->withErrors(['unit_id' => 'Unit tidak valid.'])->withInput();
+        if (!$request->user()->hasRole(['Superadmin', 'DHC']) && (int) $v['unit_id'] !== (int) $request->user()->unit_id)
+            return back()->withErrors(['unit_id' => 'Unit tidak valid.'])->withInput();
         return $this->saveContract($request, new Contract(), $v);
     }
 
     public function update(Request $request, Contract $contract)
     {
-        if ($contract->status !== 'draft') return back()->withErrors('Hanya dokumen status Draft yang bisa diedit.');
+        if ($contract->status !== 'draft')
+            return back()->withErrors('Hanya dokumen status Draft yang bisa diedit.');
         $v = $this->validateContract($request);
         return $this->saveContract($request, $contract, $v);
     }
 
-    private function saveContract($request, $c, $v) 
+    private function saveContract($request, $c, $v)
     {
         DB::beginTransaction();
         try {
             $isNew = !$c->exists;
             $c->fill($v);
-            if ($isNew) $c->contract_no = null;
+            if ($isNew)
+                $c->contract_no = null;
             $c->unit_id = $v['unit_id'];
 
             if (in_array($v['contract_type'], ['SPK', 'PKWT_BARU']) && $v['applicant_id']) {
@@ -129,7 +145,8 @@ class ContractController extends Controller
                 if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number) {
                     $c->ticket_number = $a->recruitmentRequest->ticket_number;
                 }
-                if (empty($v['position_name'])) $c->position_name = $a->position_applied;
+                if (empty($v['position_name']))
+                    $c->position_name = $a->position_applied;
             } else {
                 $c->person_id = $v['person_id'] ?: Employee::where('employee_id', $v['employee_id'])->value('person_id');
                 if ($v['source_contract_id']) {
@@ -140,7 +157,8 @@ class ContractController extends Controller
                     }
                 }
             }
-            if (!$c->person_id) $c->person_id = $request->input('person_id');
+            if (!$c->person_id)
+                $c->person_id = $request->input('person_id');
 
             $c->requires_draw_signature = $request->has('requires_draw_signature');
             $c->requires_camera = $request->has('requires_camera');
@@ -150,17 +168,18 @@ class ContractController extends Controller
             $cand = $this->resolveCandidate($c);
             $meta['person_name'] = $cand['name'];
             $meta['new_unit_name'] = Unit::find($v['unit_id'])?->name;
-            $meta['new_unit_id'] = (int)$v['unit_id'];
-            
+            $meta['new_unit_id'] = (int) $v['unit_id'];
+
             if (!in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
                 unset($meta['work_location']);
             }
-            
+
             $c->remuneration_json = $meta;
 
             if ($v['submit_action'] === 'submit') {
                 $c->status = 'review';
-                if (!$c->contract_no) $c->contract_no = $this->generateContractNumber($c);
+                if (!$c->contract_no)
+                    $c->contract_no = $this->generateContractNumber($c);
             } elseif ($isNew) {
                 $c->status = 'draft';
             }
@@ -169,10 +188,7 @@ class ContractController extends Controller
             }
 
             if ($isNew) {
-                // Pastikan kolom created_by_user_id ada di tabel contracts
-                // Jika tidak ada, gunakan user_id atau sesuaikan dengan struktur DB Anda
-                $c->created_by_user_id = $request->user()->id; 
-                // $c->created_by_person_id = $request->user()->person_id; // Opsional jika ada kolom ini
+                $c->created_by_user_id = $request->user()->id;
             }
             $c->save();
             $this->ensureDocumentRecord($c);
@@ -183,7 +199,8 @@ class ContractController extends Controller
             }
 
             DB::commit();
-            if ($isNew) return redirect()->route('recruitment.contracts.index', ['unit_id' => $c->unit_id])->with('success', 'Dokumen berhasil disimpan.');
+            if ($isNew)
+                return redirect()->route('recruitment.contracts.index', ['unit_id' => $c->unit_id])->with('success', 'Dokumen berhasil disimpan.');
             return back()->with('success', 'Dokumen berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -194,16 +211,44 @@ class ContractController extends Controller
     private function validateContract(Request $request)
     {
         $rules = [
-            'contract_type' => 'required', 'unit_id' => 'required', 'applicant_id' => 'nullable', 'employee_id' => 'nullable', 'person_id' => 'nullable',
-            'position_name' => 'nullable', 'employment_type' => 'nullable', 'start_date' => 'nullable|date', 'end_date' => 'nullable|date', 'remarks' => 'nullable',
-            'work_location' => 'nullable|string', 
-            'salary_amount' => 'nullable', 'salary_amount_words' => 'nullable', 'lunch_allowance_daily' => 'nullable', 'lunch_allowance_words' => 'nullable',
-            'allowance_special_amount' => 'nullable', 'allowance_special_words' => 'nullable', 'allowance_position_amount' => 'nullable', 'allowance_position_words' => 'nullable',
-            'allowance_communication_amount' => 'nullable', 'allowance_communication_words' => 'nullable', 'allowance_other_amount' => 'nullable', 'allowance_other_words' => 'nullable',
-            'allowance_other_desc' => 'nullable', 'other_benefits_desc' => 'nullable', 'work_days' => 'nullable|string', 'work_hours' => 'nullable|string', 'break_hours' => 'nullable|string',
-            'travel_allowance_stay' => 'nullable', 'travel_allowance_non_stay' => 'nullable',
-            'pb_effective_end' => 'nullable', 'pb_compensation_amount' => 'nullable', 'pb_compensation_amount_words' => 'nullable',
-            'submit_action' => 'required', 'source_contract_id' => 'nullable', 'requires_draw_signature' => 'nullable', 'requires_camera' => 'nullable', 'requires_geolocation' => 'nullable'
+            'contract_type' => 'required',
+            'unit_id' => 'required',
+            'applicant_id' => 'nullable',
+            'employee_id' => 'nullable',
+            'person_id' => 'nullable',
+            'position_name' => 'nullable',
+            'employment_type' => 'nullable',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'remarks' => 'nullable',
+            'work_location' => 'nullable|string',
+            'salary_amount' => 'nullable',
+            'salary_amount_words' => 'nullable',
+            'lunch_allowance_daily' => 'nullable',
+            'lunch_allowance_words' => 'nullable',
+            'allowance_special_amount' => 'nullable',
+            'allowance_special_words' => 'nullable',
+            'allowance_position_amount' => 'nullable',
+            'allowance_position_words' => 'nullable',
+            'allowance_communication_amount' => 'nullable',
+            'allowance_communication_words' => 'nullable',
+            'allowance_other_amount' => 'nullable',
+            'allowance_other_words' => 'nullable',
+            'allowance_other_desc' => 'nullable',
+            'other_benefits_desc' => 'nullable',
+            'work_days' => 'nullable|string',
+            'work_hours' => 'nullable|string',
+            'break_hours' => 'nullable|string',
+            'travel_allowance_stay' => 'nullable',
+            'travel_allowance_non_stay' => 'nullable',
+            'pb_effective_end' => 'nullable',
+            'pb_compensation_amount' => 'nullable',
+            'pb_compensation_amount_words' => 'nullable',
+            'submit_action' => 'required',
+            'source_contract_id' => 'nullable',
+            'requires_draw_signature' => 'nullable',
+            'requires_camera' => 'nullable',
+            'requires_geolocation' => 'nullable'
         ];
 
         if (!in_array($request->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
@@ -215,13 +260,15 @@ class ContractController extends Controller
 
     public function destroy(Contract $contract)
     {
-        if ($contract->status !== 'draft') return back()->withErrors('Hanya dokumen status Draft yang dapat dihapus.');
+        if ($contract->status !== 'draft')
+            return back()->withErrors('Hanya dokumen status Draft yang dapat dihapus.');
         DB::beginTransaction();
         try {
             if ($contract->document_id) {
                 $doc = Document::find($contract->document_id);
                 if ($doc) {
-                    if (Storage::disk('local')->exists($doc->path)) Storage::disk('local')->delete($doc->path);
+                    if (Storage::disk('local')->exists($doc->path))
+                        Storage::disk('local')->delete($doc->path);
                     $doc->delete();
                 }
             }
@@ -255,7 +302,9 @@ class ContractController extends Controller
         $data = $request->validate([
             'note' => 'nullable',
             'signature_image' => ($needsDraw ? 'required' : 'nullable'),
-            'geo_lat' => 'nullable|string', 'geo_lng' => 'nullable|string', 'geo_accuracy' => 'nullable|numeric',
+            'geo_lat' => 'nullable|string',
+            'geo_lng' => 'nullable|string',
+            'geo_accuracy' => 'nullable|numeric',
             'snapshot_image' => 'nullable|string',
         ]);
 
@@ -279,12 +328,18 @@ class ContractController extends Controller
 
             if ($role === 'Kepala Unit') {
                 Approval::where('approvable_id', $contract->id)->where('approvable_type', 'contract')->where('status', 'pending')->update([
-                    'status' => 'approved', 'approver_person_id' => $request->user()->person_id, 'approver_user_id' => $request->user()->id, 'decided_at' => now(), 'note' => $data['note'] ?? null
+                    'status' => 'approved',
+                    'approver_person_id' => $request->user()->person_id,
+                    'approver_user_id' => $request->user()->id,
+                    'decided_at' => now(),
+                    'note' => $data['note'] ?? null
                 ]);
-                if (!$contract->contract_no) $contract->contract_no = $this->generateContractNumber($contract);
+                if (!$contract->contract_no)
+                    $contract->contract_no = $this->generateContractNumber($contract);
             } else {
                 Approval::where('approvable_id', $contract->id)->where('approvable_type', 'contract')->where('status', 'approved')->update([
-                    'status' => 'completed', 'note' => $data['note'] ?? 'Signed'
+                    'status' => 'completed',
+                    'note' => $data['note'] ?? 'Signed'
                 ]);
             }
 
@@ -293,17 +348,27 @@ class ContractController extends Controller
             $verifCode = strtoupper(Str::random(10));
 
             Signature::create([
-                'document_id' => $contract->document_id, 'signer_person_id' => $request->user()->person_id, 'signer_user_id' => $request->user()->id,
-                'signer_role' => $role, 'signed_at' => now(),
-                'signature_draw_data' => $data['signature_image'] ?? null, 'signature_draw_hash' => $sigHash,
-                'geo_lat' => $data['geo_lat'] ?? null, 'geo_lng' => $data['geo_lng'] ?? null, 'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
-                'camera_photo_path' => $snapshotPath, 'camera_photo_hash' => $camHash, 'snapshot_data' => $snapshotPath,
-                'verification_code' => $verifCode, 'ip_address' => $request->ip()
+                'document_id' => $contract->document_id,
+                'signer_person_id' => $request->user()->person_id,
+                'signer_user_id' => $request->user()->id,
+                'signer_role' => $role,
+                'signed_at' => now(),
+                'signature_draw_data' => $data['signature_image'] ?? null,
+                'signature_draw_hash' => $sigHash,
+                'geo_lat' => $data['geo_lat'] ?? null,
+                'geo_lng' => $data['geo_lng'] ?? null,
+                'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
+                'camera_photo_path' => $snapshotPath,
+                'camera_photo_hash' => $camHash,
+                'snapshot_data' => $snapshotPath,
+                'verification_code' => $verifCode,
+                'ip_address' => $request->ip()
             ]);
 
             $contract->update(['status' => $status]);
             $contract->loadMissing('document');
-            if ($contract->document && Storage::disk('local')->exists($contract->document->path)) Storage::disk('local')->delete($contract->document->path);
+            if ($contract->document && Storage::disk('local')->exists($contract->document->path))
+                Storage::disk('local')->delete($contract->document->path);
             $this->generatePdfFile($contract);
 
             DB::commit();
@@ -338,11 +403,12 @@ class ContractController extends Controller
 
     public function submit(Request $request, Contract $contract)
     {
-        if ($contract->status !== 'draft') return response()->json(['success' => false, 'message' => 'Hanya draft yang bisa disubmit.'], 422);
-        
+        if ($contract->status !== 'draft')
+            return response()->json(['success' => false, 'message' => 'Hanya draft yang bisa disubmit.'], 422);
+
         DB::transaction(function () use ($contract, $request) {
             $contract->update([
-                'status' => 'review', 
+                'status' => 'review',
                 'contract_no' => $contract->contract_no ?: $this->generateContractNumber($contract)
             ]);
             $this->createApproval($contract, $request->user());
@@ -370,22 +436,18 @@ class ContractController extends Controller
     public function show(Contract $contract)
     {
         $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
-        
-        // --- LOGIKA MENDAPATKAN CREATOR NAME ---
+
         $creatorName = 'System';
         if ($contract->created_by_user_id) {
             $creator = User::find($contract->created_by_user_id);
             if ($creator) {
-                // Cek role untuk label yang lebih deskriptif (Opsional)
-                $roles = $creator->getRoleNames()->join(', '); // butuh spatie/laravel-permission
+                $roles = $creator->getRoleNames()->join(', ');
                 $realName = $creator->person ? $creator->person->full_name : $creator->name;
-                
-                // Format: Nama (Role) atau Nama saja
                 $creatorName = $realName;
-                if(!empty($roles)) $creatorName .= " ($roles)";
+                if (!empty($roles))
+                    $creatorName .= " ($roles)";
             }
         }
-        // ----------------------------------------
 
         $meta = $contract->remuneration_json ?? [];
         $cand = $this->resolveCandidate($contract);
@@ -394,7 +456,7 @@ class ContractController extends Controller
 
         $me = auth()->user();
         $isInternal = $me->hasRole(['Superadmin', 'DHC', 'SDM Unit', 'Kepala Unit']);
-        
+
         $latestRejection = Approval::where('approvable_id', $contract->id)
             ->where('approvable_type', 'contract')
             ->where('status', 'rejected')
@@ -410,7 +472,7 @@ class ContractController extends Controller
                 ->where('document_id', $contract->document_id)
                 ->orderByDesc('signed_at')
                 ->get()
-                ->map(function($sig) {
+                ->map(function ($sig) {
                     return [
                         'type' => 'signature',
                         'status' => 'signed',
@@ -428,7 +490,7 @@ class ContractController extends Controller
             ->where('approvable_type', 'contract')
             ->where('status', 'rejected')
             ->get()
-            ->map(function($app) {
+            ->map(function ($app) {
                 $name = $app->approverPerson->full_name ?? $app->approverUser->person->full_name ?? $app->approverUser->name ?? 'System';
                 $role = $app->approverUser->employee->latest_jobs_title ?? 'Kepala Unit';
                 return [
@@ -440,10 +502,10 @@ class ContractController extends Controller
                     'note' => $app->note
                 ];
             });
-        
+
         $logs = $logs->merge($rejections)->sortByDesc('date')->values();
-        
-        $approvalLogsFormatted = $logs->map(function($log) {
+
+        $approvalLogsFormatted = $logs->map(function ($log) {
             return [
                 'status' => $log['status'],
                 'name' => $log['name'],
@@ -455,14 +517,14 @@ class ContractController extends Controller
         });
 
         $headSig = $contract->document_id ? Signature::where('document_id', $contract->document_id)->where('signer_role', 'Kepala Unit')->first() : null;
-        
+
         $unitHeadUser = $this->getUnitHeadUser($this->resolveHeadUnit($contract->unit));
         $headRealName = $unitHeadUser->person->full_name ?? $unitHeadUser->name ?? 'Kepala Unit';
         $headPosition = 'Kepala Unit';
         if ($unitHeadUser && $unitHeadUser->employee) {
             $headPosition = $unitHeadUser->employee->latest_jobs_title ?? 'Kepala Unit';
         }
-        
+
         $headStatus = 'Waiting';
         $headDate = '-';
         $headCss = 'u-badge--glass';
@@ -485,16 +547,16 @@ class ContractController extends Controller
         }
 
         $headProgress = [
-            'status' => $headStatus, 
-            'name' => $headRealName, 
+            'status' => $headStatus,
+            'name' => $headRealName,
             'position' => $headPosition,
-            'date' => $headDate, 
+            'date' => $headDate,
             'css' => $headCss
         ];
 
         $candSig = $contract->document_id ? Signature::where('document_id', $contract->document_id)->whereIn('signer_role', ['Kandidat', 'Pegawai'])->first() : null;
         $candProgress = ['status' => 'Waiting', 'name' => $cand['name'], 'date' => '-', 'css' => 'u-badge--glass'];
-        
+
         if ($candSig) {
             $candProgress = [
                 'status' => 'Signed',
@@ -503,49 +565,57 @@ class ContractController extends Controller
                 'css' => 'u-badge--success'
             ];
         } elseif ($contract->status === 'approved') {
-             $candProgress = ['status' => 'Pending', 'name' => $cand['name'], 'date' => 'Menunggu Tanda Tangan', 'css' => 'u-badge--warn'];
+            $candProgress = ['status' => 'Pending', 'name' => $cand['name'], 'date' => 'Menunggu Tanda Tangan', 'css' => 'u-badge--warn'];
         }
 
         $canSign = $me->can('contract.sign') && $contract->status === 'approved';
-        if ($canSign && $me->hasRole('Karyawan') && $contract->employee_id !== $me->employee_id) $canSign = false;
+        if ($canSign && $me->hasRole('Karyawan') && $contract->employee_id !== $me->employee_id)
+            $canSign = false;
 
         $targetRole = in_array($contract->contract_type, ['PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN']) ? 'Pegawai' : 'Kandidat';
         $geoData = $this->getGeoData($contract, $me);
         $approvalLogs = $isInternal ? $approvalLogsFormatted : [];
 
-        return response()->json(['success' => true, 'data' => array_merge($contract->toArray(), [
-            'contract_type_label' => $typeCfg['label'] ?? $contract->contract_type, 
-            'person_name' => $cand['name'],
-            'start_date' => Carbon::parse($contract->start_date)->translatedFormat('d M Y'), 
-            'end_date' => Carbon::parse($contract->end_date)->translatedFormat('d M Y'),
-            'start_date_raw' => Carbon::parse($contract->start_date)->format('Y-m-d'),
-            'end_date_raw' => Carbon::parse($contract->end_date)->format('Y-m-d'),
-            'remuneration_json' => $meta,
-            'can_approve' => auth()->user()->can('contract.approve') && $contract->status === 'review',
-            'can_sign' => $canSign,
-            'doc_url' => $docUrl, 'approve_url' => route('recruitment.contracts.approve', $contract), 'sign_url' => route('recruitment.contracts.sign', $contract),
-            'reject_url' => route('recruitment.contracts.reject', $contract),
-            'ui_nik_ktp' => $cand['nik_ktp'], 'ui_employee_id' => $cand['employee_id'],
-            'target_role_label' => $targetRole,
-            'geolocation' => $geoData,
-            'tracker' => [
-                'head' => $headProgress,
-                'candidate' => $candProgress
-            ],
-            'ticket_number' => $contract->ticket_number,
-            'rejection_note' => $latestRejection ? $latestRejection->note : null,
-            'can_see_logs' => $isInternal,
-            'approval_logs' => $approvalLogs,
-            'creator_name' => $creatorName, // <-- Data ini yang diambil JS nanti
-            'created_at_human' => $contract->created_at->diffForHumans(),
-            'created_at_formatted' => $contract->created_at->translatedFormat('d M Y, H:i') . ' WIB'
-        ])]);
+        return response()->json([
+            'success' => true,
+            'data' => array_merge($contract->toArray(), [
+                'contract_type_label' => $typeCfg['label'] ?? $contract->contract_type,
+                'person_name' => $cand['name'],
+                'start_date' => Carbon::parse($contract->start_date)->translatedFormat('d M Y'),
+                'end_date' => Carbon::parse($contract->end_date)->translatedFormat('d M Y'),
+                'start_date_raw' => Carbon::parse($contract->start_date)->format('Y-m-d'),
+                'end_date_raw' => Carbon::parse($contract->end_date)->format('Y-m-d'),
+                'remuneration_json' => $meta,
+                'can_approve' => auth()->user()->can('contract.approve') && $contract->status === 'review',
+                'can_sign' => $canSign,
+                'doc_url' => $docUrl,
+                'approve_url' => route('recruitment.contracts.approve', $contract),
+                'sign_url' => route('recruitment.contracts.sign', $contract),
+                'reject_url' => route('recruitment.contracts.reject', $contract),
+                'ui_nik_ktp' => $cand['nik_ktp'],
+                'ui_employee_id' => $cand['employee_id'],
+                'target_role_label' => $targetRole,
+                'geolocation' => $geoData,
+                'tracker' => [
+                    'head' => $headProgress,
+                    'candidate' => $candProgress
+                ],
+                'ticket_number' => $contract->ticket_number,
+                'rejection_note' => $latestRejection ? $latestRejection->note : null,
+                'can_see_logs' => $isInternal,
+                'approval_logs' => $approvalLogs,
+                'creator_name' => $creatorName,
+                'created_at_human' => $contract->created_at->diffForHumans(),
+                'created_at_formatted' => $contract->created_at->translatedFormat('d M Y, H:i') . ' WIB'
+            ])
+        ]);
     }
 
     protected function getGeoData(Contract $contract, User $user)
     {
         $geo = ['head' => null, 'candidate' => null];
-        if (!$contract->document_id) return $geo;
+        if (!$contract->document_id)
+            return $geo;
 
         $headSig = Signature::where('document_id', $contract->document_id)->where('signer_role', 'Kepala Unit')->orderByDesc('signed_at')->orderByDesc('id')->first();
         $candSig = Signature::where('document_id', $contract->document_id)->whereIn('signer_role', ['Kandidat', 'Pegawai'])->orderByDesc('signed_at')->orderByDesc('id')->first();
@@ -554,7 +624,8 @@ class ContractController extends Controller
         if ($headSig && ($isPowerUser || $headSig->signer_person_id == $user->person_id)) {
             $tz = $this->resolveIndonesianTimezone($headSig->geo_lng);
             $geo['head'] = [
-                'lat' => $headSig->geo_lat, 'lng' => $headSig->geo_lng,
+                'lat' => $headSig->geo_lat,
+                'lng' => $headSig->geo_lng,
                 'ts' => Carbon::parse($headSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
                 'name' => 'Kepala Unit',
                 'image_url' => $this->resolveImageUrl($headSig->camera_photo_path ?: $headSig->snapshot_data)
@@ -563,7 +634,8 @@ class ContractController extends Controller
         if ($candSig && ($isPowerUser || $candSig->signer_person_id == $user->person_id)) {
             $tz = $this->resolveIndonesianTimezone($candSig->geo_lng);
             $geo['candidate'] = [
-                'lat' => $candSig->geo_lat, 'lng' => $candSig->geo_lng,
+                'lat' => $candSig->geo_lat,
+                'lng' => $candSig->geo_lng,
                 'ts' => Carbon::parse($candSig->signed_at)->timezone($tz['zone'])->format('d M Y H:i') . ' ' . $tz['abbr'],
                 'name' => 'Kandidat/Pegawai',
                 'image_url' => $this->resolveImageUrl($candSig->camera_photo_path ?: $candSig->snapshot_data)
@@ -574,30 +646,35 @@ class ContractController extends Controller
 
     private function resolveImageUrl($pathOrBase64)
     {
-        if (!$pathOrBase64) return null;
-        if (str_starts_with($pathOrBase64, 'data:image')) return $pathOrBase64;
+        if (!$pathOrBase64)
+            return null;
+        if (str_starts_with($pathOrBase64, 'data:image'))
+            return $pathOrBase64;
         return asset('storage/' . $pathOrBase64);
     }
 
     protected function resolveIndonesianTimezone($lng)
     {
-        $lng = (float)$lng;
-        if ($lng > 125.0) return ['zone' => 'Asia/Jayapura', 'abbr' => 'WIT'];
-        elseif ($lng > 114.5) return ['zone' => 'Asia/Makassar', 'abbr' => 'WITA'];
+        $lng = (float) $lng;
+        if ($lng > 125.0)
+            return ['zone' => 'Asia/Jayapura', 'abbr' => 'WIT'];
+        elseif ($lng > 114.5)
+            return ['zone' => 'Asia/Makassar', 'abbr' => 'WITA'];
         return ['zone' => 'Asia/Jakarta', 'abbr' => 'WIB'];
     }
 
     protected function resolveCandidate(Contract $c)
     {
-        $p = $c->person; 
+        $p = $c->person;
         if (!$p && $c->applicant_id) {
-             $app = RecruitmentApplicant::with('user.person')->find($c->applicant_id);
-             $p = $app?->user?->person;
+            $app = RecruitmentApplicant::with('user.person')->find($c->applicant_id);
+            $p = $app?->user?->person;
         }
-        if (!$p && $c->person_id) $p = Person::find($c->person_id);
+        if (!$p && $c->person_id)
+            $p = Person::find($c->person_id);
 
         $d = ['name' => 'Kandidat', 'address' => '-', 'nik_ktp' => '-', 'employee_id' => '-', 'pob' => '-', 'dob' => '-', 'gender' => '-'];
-        
+
         if ($p) {
             $d['name'] = $p->full_name ?? $p->name ?? 'Kandidat';
             $d['address'] = $p->address ?? $p->domicile_address ?? '-';
@@ -608,24 +685,27 @@ class ContractController extends Controller
             $d['pob'] = $p->place_of_birth ?? $p->pob ?? '-';
             $d['dob'] = $p->date_of_birth ? Carbon::parse($p->date_of_birth)->translatedFormat('d F Y') : '-';
             $g = strtoupper($p->gender ?? '');
-            if (in_array($g, ['L', 'MALE', 'PRIA', 'LAKI-LAKI'])) $d['gender'] = 'Laki-laki';
-            elseif (in_array($g, ['P', 'FEMALE', 'WANITA', 'PEREMPUAN'])) $d['gender'] = 'Perempuan';
+            if (in_array($g, ['L', 'MALE', 'PRIA', 'LAKI-LAKI']))
+                $d['gender'] = 'Laki-laki';
+            elseif (in_array($g, ['P', 'FEMALE', 'WANITA', 'PEREMPUAN']))
+                $d['gender'] = 'Perempuan';
         } elseif ($c->applicant) {
-             $d['name'] = $c->applicant->user?->name ?? 'Kandidat';
+            $d['name'] = $c->applicant->user?->name ?? 'Kandidat';
         }
         return $d;
     }
 
     protected function resolveSigner(Contract $c, $meta)
     {
-        $uId = (int)($meta['new_unit_id'] ?? $c->unit_id);
+        $uId = (int) ($meta['new_unit_id'] ?? $c->unit_id);
         $unit = $uId ? Unit::find($uId) : $c->unit;
         $headUnit = $this->resolveHeadUnit($unit);
         $headUser = $this->getUnitHeadUser($headUnit);
         $headArr = $headUser && $headUser->person && ($headUser->person->full_name ?? null) ? ['name' => $headUser->person->full_name, 'position' => $this->getUserJobTitle($headUser)] : null;
 
         if (!in_array($c->status, ['approved', 'signed'])) {
-            if ($headArr) return $headArr;
+            if ($headArr)
+                return $headArr;
             return ['name' => 'Nama Kepala Unit', 'position' => 'Kepala Unit'];
         }
 
@@ -634,10 +714,12 @@ class ContractController extends Controller
         $apArr = $apUser && $apUser->person && ($apUser->person->full_name ?? null) ? ['name' => $apUser->person->full_name, 'position' => $this->getUserJobTitle($apUser)] : null;
 
         if ($headArr) {
-            if ($apUser && $headUser && $apUser->id === $headUser->id) return $headArr;
+            if ($apUser && $headUser && $apUser->id === $headUser->id)
+                return $headArr;
             return $headArr;
         }
-        if ($apArr) return $apArr;
+        if ($apArr)
+            return $apArr;
         return ['name' => 'Nama Kepala Unit', 'position' => 'Kepala Unit'];
     }
 
@@ -645,10 +727,12 @@ class ContractController extends Controller
     {
         if ($u->employee_id) {
             $emp = Employee::where('employee_id', $u->employee_id)->first();
-            if ($emp && $emp->latest_jobs_title) return $emp->latest_jobs_title;
+            if ($emp && $emp->latest_jobs_title)
+                return $emp->latest_jobs_title;
             if ($emp && $emp->position_id) {
                 $pos = DB::table('positions')->where('id', $emp->position_id)->value('name');
-                if ($pos) return $pos;
+                if ($pos)
+                    return $pos;
             }
         }
         return 'Kepala Unit';
@@ -661,13 +745,14 @@ class ContractController extends Controller
         $uCode = $c->unit?->code ?? 'UNIT';
         $romanMonth = $this->getRomanMonth(now()->month);
         $year = now()->year;
-        $defaultHead = (string)(config('recruitment.numbering.default_head_code') ?? 'XX');
+        $defaultHead = (string) (config('recruitment.numbering.default_head_code') ?? 'XX');
         $headCode = $defaultHead;
         $headUnit = $this->resolveHeadUnit($c->unit);
         $head = $this->getUnitHeadUser($headUnit);
         if ($head && $head->person && ($head->person->full_name ?? null)) {
             $ini = $this->initialsFromName($head->person->full_name);
-            if ($ini) $headCode = $ini;
+            if ($ini)
+                $headCode = $ini;
         }
         $base = "/{$uCode}-{$romanMonth}/{$headCode}/{$year}";
         $last = DB::table('contracts')->where('contract_no', 'like', "%{$base}")->orderByRaw('LENGTH(contract_no) DESC')->orderBy('contract_no', 'desc')->value('contract_no');
@@ -675,20 +760,22 @@ class ContractController extends Controller
         if ($last) {
             $parts = explode('/', $last);
             $nums = explode('-', $parts[0] ?? '');
-            $seq = ((int)end($nums)) + 1;
+            $seq = ((int) end($nums)) + 1;
         }
         do {
             $candidate = sprintf("%s-%03d%s", $code, $seq, $base);
             $exists = DB::table('contracts')->where('contract_no', $candidate)->exists();
-            if ($exists) $seq++;
+            if ($exists)
+                $seq++;
         } while ($exists);
         return $candidate;
     }
 
     protected function initialsFromName($name)
     {
-        $n = trim(preg_replace('/\s+/', ' ', (string)$name));
-        if ($n === '') return null;
+        $n = trim(preg_replace('/\s+/', ' ', (string) $name));
+        if ($n === '')
+            return null;
         $parts = explode(' ', $n);
         $first = $parts[0] ?? '';
         $last = end($parts) ?: '';
@@ -700,16 +787,19 @@ class ContractController extends Controller
 
     protected function resolveHeadUnit(?Unit $unit)
     {
-        if (!$unit) return null;
+        if (!$unit)
+            return null;
         $rules = config('recruitment.numbering.head_unit_rules', []);
-        $cat = strtoupper((string)($unit->category ?? ''));
+        $cat = strtoupper((string) ($unit->category ?? ''));
         $rule = $rules[$cat] ?? ['mode' => 'self_unit'];
-        $mode = strtolower((string)($rule['mode'] ?? 'self_unit'));
+        $mode = strtolower((string) ($rule['mode'] ?? 'self_unit'));
         if ($mode === 'fixed_unit') {
             $m = $rule['unit_match'] ?? [];
             $q = Unit::query();
-            if (!empty($m['code'])) $q->where('code', $m['code']);
-            if (!empty($m['name_contains'])) $q->where('name', 'like', '%' . $m['name_contains'] . '%');
+            if (!empty($m['code']))
+                $q->where('code', $m['code']);
+            if (!empty($m['name_contains']))
+                $q->where('name', 'like', '%' . $m['name_contains'] . '%');
             $t = $q->first();
             return $t ?: $unit;
         }
@@ -720,21 +810,22 @@ class ContractController extends Controller
     {
         $contract->loadMissing(['unit', 'document']);
         $doc = config("recruitment.contract_types.{$contract->contract_type}.document_type");
-        if (!$doc) throw new \RuntimeException("document_type missing: {$contract->contract_type}");
+        if (!$doc)
+            throw new \RuntimeException("document_type missing: {$contract->contract_type}");
         $template = ContractTemplate::where('code', $doc)->firstOrFail();
         $vars = $this->getTemplateVars($contract);
         $html = $this->renderPdfHtml($contract, $template, $vars);
-        $cfg = (array)(config('recruitment.pdf', []) ?? []);
-        $page = (array)($cfg['page'] ?? []);
-        $paper = (string)($page['paper'] ?? 'a4');
-        $orientation = (string)($page['orientation'] ?? 'portrait');
-        $dompdf = (array)($cfg['dompdf'] ?? []);
-        $dpi = (int)($dompdf['dpi'] ?? 96);
+        $cfg = (array) (config('recruitment.pdf', []) ?? []);
+        $page = (array) ($cfg['page'] ?? []);
+        $paper = (string) ($page['paper'] ?? 'a4');
+        $orientation = (string) ($page['orientation'] ?? 'portrait');
+        $dompdf = (array) ($cfg['dompdf'] ?? []);
+        $dpi = (int) ($dompdf['dpi'] ?? 96);
         $pdf = Pdf::loadHTML($html)->setPaper($paper, $orientation);
         $dom = $pdf->getDomPDF();
         $dom->set_option('dpi', $dpi);
-        $dom->set_option('isRemoteEnabled', (bool)($dompdf['isRemoteEnabled'] ?? true));
-        $dom->set_option('isHtml5ParserEnabled', (bool)($dompdf['isHtml5ParserEnabled'] ?? true));
+        $dom->set_option('isRemoteEnabled', (bool) ($dompdf['isRemoteEnabled'] ?? true));
+        $dom->set_option('isHtml5ParserEnabled', (bool) ($dompdf['isHtml5ParserEnabled'] ?? true));
         $out = $pdf->output();
         Storage::disk('local')->put($contract->document->path, $out);
         $contract->document->update(['size_bytes' => strlen($out)]);
@@ -746,36 +837,43 @@ class ContractController extends Controller
             $doc = config("recruitment.contract_types.{$contract->contract_type}.document_type");
             $template = ContractTemplate::where('code', $doc)->firstOrFail();
         }
-        if (empty($vars)) $vars = $this->getTemplateVars($contract);
-        $body = (string)($template->body ?? '');
-        foreach ($vars as $k => $v) $body = str_replace("{{{$k}}}", (string)$v, $body);
+        if (empty($vars))
+            $vars = $this->getTemplateVars($contract);
+        $body = (string) ($template->body ?? '');
+        foreach ($vars as $k => $v)
+            $body = str_replace("{{{$k}}}", (string) $v, $body);
         $body = preg_replace('~<!doctype[^>]*>~i', '', $body);
         $body = preg_replace('~</?(html|head|body)[^>]*>~i', '', $body);
         $body = preg_replace('~<style\b[^>]*>.*?</style>~is', '', $body);
 
-        $cfg = (array)(config('recruitment.pdf', []) ?? []);
-        $tplKey = (string)($template->code ?? '');
-        $m = (array)(data_get($cfg, "templates.{$tplKey}.margin_cm") ?? data_get($cfg, 'margin_cm') ?? []);
-        $m['top'] = 3.5; $m['bottom'] = 3.5;
-        $mt = (float)($m['top']); $mr = (float)($m['right'] ?? 2.54); $mb = (float)($m['bottom']); $ml = (float)($m['left'] ?? 2.54);
-        $page = (array)($cfg['page'] ?? []);
-        $pw = (float)($page['width_cm'] ?? 21); $ph = (float)($page['height_cm'] ?? 29.7);
-        $font = (array)(data_get($cfg, "templates.{$tplKey}.font") ?? data_get($cfg, 'font') ?? []);
-        $ff = (string)($font['family'] ?? 'Tahoma');
-        $fs = (float)($font['size_pt'] ?? 11);
-        $lh = (float)($font['line_height'] ?? 1.3);
-        $titleSize = (float)($font['title_size_pt'] ?? 14);
-        $pa = (float)($font['paragraph_after_pt'] ?? 6);
+        $cfg = (array) (config('recruitment.pdf', []) ?? []);
+        $tplKey = (string) ($template->code ?? '');
+        $m = (array) (data_get($cfg, "templates.{$tplKey}.margin_cm") ?? data_get($cfg, 'margin_cm') ?? []);
+        $m['top'] = 3.5;
+        $m['bottom'] = 3.5;
+        $mt = (float) ($m['top']);
+        $mr = (float) ($m['right'] ?? 2.54);
+        $mb = (float) ($m['bottom']);
+        $ml = (float) ($m['left'] ?? 2.54);
+        $page = (array) ($cfg['page'] ?? []);
+        $pw = (float) ($page['width_cm'] ?? 21);
+        $ph = (float) ($page['height_cm'] ?? 29.7);
+        $font = (array) (data_get($cfg, "templates.{$tplKey}.font") ?? data_get($cfg, 'font') ?? []);
+        $ff = (string) ($font['family'] ?? 'Tahoma');
+        $fs = (float) ($font['size_pt'] ?? 11);
+        $lh = (float) ($font['line_height'] ?? 1.3);
+        $titleSize = (float) ($font['title_size_pt'] ?? 14);
+        $pa = (float) ($font['paragraph_after_pt'] ?? 6);
 
         $disk = 'public';
         $path = $template->header_image_path;
         if (!$path) {
-            $disk = (string)($cfg['letterhead_disk'] ?? 'public');
-            $path = (string)($cfg['letterhead_path'] ?? '');
+            $disk = (string) ($cfg['letterhead_disk'] ?? 'public');
+            $path = (string) ($cfg['letterhead_path'] ?? '');
         }
         $lhImg = $this->pdfDataUri($disk, $path);
-        $pathRegular = storage_path((string)($font['regular_file'] ?? 'app/fonts/tahoma.ttf'));
-        $pathBold = storage_path((string)($font['bold_file'] ?? 'app/fonts/tahomabd.ttf'));
+        $pathRegular = storage_path((string) ($font['regular_file'] ?? 'app/fonts/tahoma.ttf'));
+        $pathBold = storage_path((string) ($font['bold_file'] ?? 'app/fonts/tahomabd.ttf'));
         $fontFaceCss = '';
         $finalFamily = 'sans-serif';
         if (file_exists($pathRegular)) {
@@ -785,7 +883,7 @@ class ContractController extends Controller
             $fontFaceCss = "@font-face{font-family:'Tahoma';font-style:normal;font-weight:400;src:url(data:font/truetype;base64,{$fr64}) format('truetype');}@font-face{font-family:'Tahoma';font-style:normal;font-weight:700;src:url(data:font/truetype;base64,{$fb64}) format('truetype');}";
         }
 
-        $tplCss = preg_replace('~@page\s*[^{]*\{.*?\}~is', '', (string)($template->css ?? ''));
+        $tplCss = preg_replace('~@page\s*[^{]*\{.*?\}~is', '', (string) ($template->css ?? ''));
         $tplCss = preg_replace('~\b(html|body)\b\s*\{.*?\}~is', '', $tplCss);
 
         $css = "@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}{$fontFaceCss}
@@ -817,7 +915,8 @@ class ContractController extends Controller
 
     protected function pdfDataUri($disk, $path)
     {
-        if (!$path || !Storage::disk($disk)->exists($path)) return null;
+        if (!$path || !Storage::disk($disk)->exists($path))
+            return null;
         $bin = Storage::disk($disk)->get($path);
         $mime = Storage::disk($disk)->mimeType($path) ?: 'image/jpeg';
         return "data:{$mime};base64," . base64_encode($bin);
@@ -829,7 +928,7 @@ class ContractController extends Controller
         $meta = $c->remuneration_json ?? [];
         $signer = $this->resolveSigner($c, $meta);
         $cand = $this->resolveCandidate($c);
-        $fmt = fn($n) => 'Rp ' . number_format((float)preg_replace('/\D/', '', $n ?? 0), 0, ',', '.');
+        $fmt = fn($n) => 'Rp ' . number_format((float) preg_replace('/\D/', '', $n ?? 0), 0, ',', '.');
         $signerImg = Signature::where('document_id', $c->document_id)->where('signer_role', 'Kepala Unit')->orderByDesc('signed_at')->orderByDesc('id')->value('signature_draw_data');
         $candImg = Signature::where('document_id', $c->document_id)->whereIn('signer_role', ['Kandidat', 'Pegawai'])->orderByDesc('signed_at')->orderByDesc('id')->value('signature_draw_data');
         $signerTag = $signerImg ? "<img src='{$signerImg}' style='height:70px;'>" : "<div style='height:70px'></div>";
@@ -840,10 +939,13 @@ class ContractController extends Controller
             $endDatePlusOne = $c->end_date->copy()->addDay();
             $diff = $c->start_date->diff($endDatePlusOne);
             $parts = [];
-            if ($diff->y) $parts[] = $diff->y . " Tahun";
-            if ($diff->m) $parts[] = $diff->m . " Bulan";
-            if ($diff->d && $diff->d > 0) $parts[] = $diff->d . " Hari";
-            
+            if ($diff->y)
+                $parts[] = $diff->y . " Tahun";
+            if ($diff->m)
+                $parts[] = $diff->m . " Bulan";
+            if ($diff->d && $diff->d > 0)
+                $parts[] = $diff->d . " Hari";
+
             if (empty($parts)) {
                 $duration = '0 Hari';
             } else {
@@ -910,16 +1012,21 @@ class ContractController extends Controller
             $c->update(['document_id' => $doc->id]);
             $c->refresh();
         }
-        if (!Storage::disk('local')->exists('contracts')) Storage::disk('local')->makeDirectory('contracts');
+        if (!Storage::disk('local')->exists('contracts'))
+            Storage::disk('local')->makeDirectory('contracts');
     }
 
     private function formatAllowances($m, $fmt)
     {
         $list = [];
-        if (($v = $m['allowance_position_amount'] ?? 0)) $list[] = "T.Jabatan " . $fmt($v);
-        if (($v = $m['allowance_communication_amount'] ?? 0)) $list[] = "T.Komunikasi " . $fmt($v);
-        if (($v = $m['allowance_special_amount'] ?? 0)) $list[] = "T.Khusus " . $fmt($v);
-        if (($v = $m['allowance_other_amount'] ?? 0)) $list[] = "Lainnya " . $fmt($v);
+        if (($v = $m['allowance_position_amount'] ?? 0))
+            $list[] = "T.Jabatan " . $fmt($v);
+        if (($v = $m['allowance_communication_amount'] ?? 0))
+            $list[] = "T.Komunikasi " . $fmt($v);
+        if (($v = $m['allowance_special_amount'] ?? 0))
+            $list[] = "T.Khusus " . $fmt($v);
+        if (($v = $m['allowance_other_amount'] ?? 0))
+            $list[] = "Lainnya " . $fmt($v);
         return implode(', ', $list) ?: '-';
     }
 
@@ -938,19 +1045,26 @@ class ContractController extends Controller
     private function terbilang($x)
     {
         $a = ["", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh", "delapan", "sembilan", "sepuluh", "sebelas"];
-        if ($x < 12) return $a[$x];
-        if ($x < 20) return $this->terbilang($x - 10) . " belas";
-        if ($x < 100) return $this->terbilang($x / 10) . " puluh " . $this->terbilang($x % 10);
-        if ($x < 200) return "seratus " . $this->terbilang($x - 100);
-        if ($x < 1000) return $this->terbilang($x / 100) . " ratus " . $this->terbilang($x % 100);
-        if ($x < 2000) return "seribu " . $this->terbilang($x - 1000);
-        if ($x < 1000000) return $this->terbilang($x / 1000) . " ribu " . $this->terbilang($x % 1000);
+        if ($x < 12)
+            return $a[$x];
+        if ($x < 20)
+            return $this->terbilang($x - 10) . " belas";
+        if ($x < 100)
+            return $this->terbilang($x / 10) . " puluh " . $this->terbilang($x % 10);
+        if ($x < 200)
+            return "seratus " . $this->terbilang($x - 100);
+        if ($x < 1000)
+            return $this->terbilang($x / 100) . " ratus " . $this->terbilang($x % 100);
+        if ($x < 2000)
+            return "seribu " . $this->terbilang($x - 1000);
+        if ($x < 1000000)
+            return $this->terbilang($x / 1000) . " ribu " . $this->terbilang($x % 1000);
         return $this->terbilang($x / 1000000) . " juta " . $this->terbilang($x % 1000000);
     }
 
     public function terbilangApi(Request $request)
     {
-        return response()->json(['success' => true, 'data' => ['words' => strtoupper($this->terbilang((int)$request->amount) . ' RUPIAH')]]);
+        return response()->json(['success' => true, 'data' => ['words' => strtoupper($this->terbilang((int) $request->amount) . ' RUPIAH')]]);
     }
 
     private function getRomanMonth($m)
@@ -960,22 +1074,30 @@ class ContractController extends Controller
 
     protected function getUnitHeadUser(?Unit $unit)
     {
-        if (!$unit) return null;
-        $roleNames = (array)config('recruitment.numbering.head_role_names', []);
-        $teamKey = (string)(config('permission.team_foreign_key') ?? 'unit_id');
+        if (!$unit)
+            return null;
+        $roleNames = (array) config('recruitment.numbering.head_role_names', []);
+        $teamKey = (string) (config('permission.team_foreign_key') ?? 'unit_id');
         $hasTeamCol = false;
         try {
             $hasTeamCol = DB::getSchemaBuilder()->hasColumn('model_has_roles', $teamKey);
-        } catch (\Exception $e) { $hasTeamCol = false; }
+        } catch (\Exception $e) {
+            $hasTeamCol = false;
+        }
         $ids = null;
         try {
             $q = DB::table('model_has_roles as mhr')->join('roles as r', 'r.id', '=', 'mhr.role_id')->where('mhr.model_type', User::class)->whereIn('r.name', $roleNames);
-            if ($hasTeamCol) $q->where("mhr.{$teamKey}", $unit->id);
+            if ($hasTeamCol)
+                $q->where("mhr.{$teamKey}", $unit->id);
             $ids = $q->pluck('mhr.model_id')->unique()->values()->all();
-        } catch (\Exception $e) { $ids = null; }
+        } catch (\Exception $e) {
+            $ids = null;
+        }
         $uq = User::where('unit_id', $unit->id);
-        if (is_array($ids)) $uq->whereIn('id', $ids);
-        else $uq->whereHas('roles', fn($q) => $q->whereIn('name', $roleNames));
+        if (is_array($ids))
+            $uq->whereIn('id', $ids);
+        else
+            $uq->whereHas('roles', fn($q) => $q->whereIn('name', $roleNames));
         return $uq->with('person', 'roles')->first();
     }
 }
