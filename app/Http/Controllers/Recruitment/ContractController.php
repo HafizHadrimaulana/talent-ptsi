@@ -742,7 +742,10 @@ class ContractController extends Controller
     {
         $c->loadMissing('unit');
         $code = config("recruitment.numbering.doc_codes.{$c->contract_type}") ?? 'PERJ';
-        $uCode = $c->unit?->code ?? 'UNIT';
+        
+        $cat = strtoupper($c->unit?->category ?? '');
+        $uCode = ($cat === 'ENABLER') ? 'DSDM' : ($c->unit?->code ?? 'UNIT');
+
         $romanMonth = $this->getRomanMonth(now()->month);
         $year = now()->year;
         $defaultHead = (string) (config('recruitment.numbering.default_head_code') ?? 'XX');
@@ -936,8 +939,10 @@ class ContractController extends Controller
 
         $duration = '-';
         if ($c->start_date && $c->end_date) {
-            $endDatePlusOne = $c->end_date->copy()->addDay();
-            $diff = $c->start_date->diff($endDatePlusOne);
+            $startDate = $c->start_date->copy()->startOfDay();
+            $endDatePlusOne = $c->end_date->copy()->startOfDay()->addDay();
+            $diff = $startDate->diff($endDatePlusOne);
+            
             $parts = [];
             if ($diff->y)
                 $parts[] = $diff->y . " Tahun";
