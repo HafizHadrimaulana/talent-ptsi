@@ -71,17 +71,13 @@
            <i class="fas fa-spinner u-mr-xs"></i> Berjalan
         </a>
     </div>
-
     <div class="u-flex u-gap-sm">
         <form method="GET" action="{{ route('recruitment.principal-approval.index') }}" class="u-relative">
             @foreach(request()->except(['q', 'page']) as $key => $val)
                 <input type="hidden" name="{{ $key }}" value="{{ $val }}">
             @endforeach
             <div style="position: relative;">
-                <input type="text" name="q" value="{{ request('q') }}" 
-                       class="u-input" 
-                       placeholder="Cari Tiket / Judul..." 
-                       style="border-radius: 999px; min-width: 250px; padding-left: 35px;">
+                <input type="text" name="q" value="{{ request('q') }}" class="u-input" placeholder="Cari Tiket / Judul..." style="border-radius: 999px; min-width: 250px; padding-left: 35px;">
                 <i class="fas fa-search u-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"></i>
             </div>
         </form>
@@ -503,14 +499,10 @@
               <div class="u-grid-2 u-stack-mobile u-gap-md">
                 <div class="u-space-y-sm" style="position: relative;">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Kode Project / Nama Project</label>
-                
                 <input type="text" id="kodeProjectSearchInput" class="u-input" placeholder="Ketik Kode atau Nama Project..." autocomplete="off">
-                
-                <input type="hidden" id="kodeProjectInput" name="kode_project">
-                
+                <input type="hidden" id="kodeProjectInput" name="kode_project">                
                 <div id="kodeProjectSearchResults" class="u-card" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 4px;"></div>
                 </div>
-
                 <div class="u-space-y-sm">
                 <label class="u-block u-text-sm u-font-medium u-mb-sm">Nama Project<span class="text-red-500">*</span></label>
                 <input class="u-input" id="namaProjectInput" name="nama_project" readonly placeholder="Nama project akan terisi otomatis">
