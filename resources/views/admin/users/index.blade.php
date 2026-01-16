@@ -7,7 +7,7 @@
   $unitsOptions = $units ?? collect();
 @endphp
 
-<div class="u-card u-card--glass u-hover-lift"
+<div class="u-card u-card--glass u-hover-lift u-mb-xl"
      data-store-url="{{ route('admin.users.store') }}"
      data-update-url-base="{{ url('/admin/settings/access/users') }}">
   
@@ -38,21 +38,24 @@
     </div>
   @endif
 
-  <div class="u-scroll-x" data-table-url="{{ route('admin.users.index') }}">
-    <table id="users-table" class="u-table u-table-mobile" style="width:100%">
-      <thead>
-        <tr>
-          <th>Identity</th>
-          <th class="u-hide-mobile">Job / Unit</th>
-          <th>Status</th>
-          <th class="cell-actions">Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <div class="dt-wrapper">
+      <div class="u-scroll-x" data-table-url="{{ route('admin.users.index') }}">
+        <table id="users-table" class="u-table" style="width:100%">
+          <thead>
+            <tr>
+              <th>Identity</th>
+              <th>Job / Unit</th>
+              <th>Status</th>
+              <th class="cell-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
   </div>
 </div>
 
+{{-- MODALS --}}
 <div id="empModal" class="u-modal" hidden>
   <div class="u-modal__card u-modal__card--xl">
     <div class="u-modal__head">

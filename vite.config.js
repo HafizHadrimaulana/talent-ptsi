@@ -9,7 +9,6 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/css/app-layout.css',
                 'resources/css/app-ui.css',
-                'resources/css/auth.css', // Tambahkan jika ada file ini
                 'resources/js/app.js',
                 'resources/js/app-layout.js',
             ],

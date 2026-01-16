@@ -4,48 +4,6 @@
 
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-<style>
-    /* CSS Khusus untuk Responsif Mobile pada Tabel */
-    @media (max-width: 768px) {
-        .u-table-mobile thead { display: none; }
-        .u-table-mobile tr { 
-            display: block; 
-            margin-bottom: 1rem; 
-            border: 1px solid var(--border-color, #e2e8f0); 
-            border-radius: 0.5rem; 
-            padding: 1rem; 
-            background: var(--bg-surface, #fff); 
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        }
-        .u-table-mobile td { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 0.5rem 0; 
-            border: none; 
-            border-bottom: 1px dashed var(--border-color, #e2e8f0); 
-            text-align: right;
-        }
-        .u-table-mobile td:last-child { border-bottom: none; padding-top: 1rem; }
-        .u-table-mobile td::before { 
-            content: attr(data-label); 
-            font-weight: 600; 
-            color: var(--text-muted, #64748b); 
-            font-size: 0.85rem; 
-            text-transform: uppercase;
-            margin-right: 1rem;
-            text-align: left;
-        }
-        .u-table-mobile td .cell-actions__group { 
-            width: 100%; 
-            justify-content: flex-end; 
-            gap: 0.5rem;
-        }
-        /* Penyesuaian konten agar rapi di mobile */
-        .u-table-mobile td > div { text-align: right; width: 100%; }
-        .u-table-mobile td .u-flex { justify-content: flex-end; }
-    }
-</style>
 @endpush
 
 @section('content')
@@ -119,36 +77,47 @@
 
 <div class="dt-wrapper">
     <div class="u-scroll-x">
-        {{-- Hapus min-width agar responsif, tambah class u-table-mobile --}}
-        <table id="contracts-table" class="u-table u-table-mobile" style="width: 100%;">
+        {{-- 
+            PERBAIKAN PENTING:
+            1. Tambahkan class 'nowrap'. Ini WAJIB agar kolom yang tidak muat otomatis masuk ke tombol (+) 
+               alih-alih membuat tabel melebar ke kanan.
+            2. Tambahkan data-priority di <thead> agar kita bisa atur kolom mana yang tetap muncul di HP.
+        --}}
+        <table id="contracts-table" class="u-table nowrap" style="width: 100%;">
             <thead>
                 <tr>
-                    <th>Dokumen</th>
-                    <th>Ticket (Izin Prinsip)</th>
-                    <th>Personil</th>
-                    <th>Posisi & Unit</th>
-                    <th>Periode / Efektif</th>
-                    <th>Status</th>
-                    <th class="cell-actions" width="140">Aksi</th>
+                    {{-- Priority 1: Wajib tampil di HP (Judul & Aksi) --}}
+                    <th data-priority="1">Dokumen</th>
+                    
+                    {{-- Priority 3+: Sembunyi di HP, muncul di klik (+) --}}
+                    <th data-priority="3">Ticket</th>
+                    <th data-priority="4">Personil</th>
+                    <th data-priority="5">Posisi & Unit</th>
+                    <th data-priority="6">Periode</th>
+                    
+                    {{-- Priority 2: Tampil jika layar tablet --}}
+                    <th data-priority="2">Status</th>
+                    
+                    {{-- Priority 1: Wajib tampil --}}
+                    <th class="cell-actions" width="100" data-priority="1">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($contracts as $c)
                     <tr class="u-hover-bright">
-                        <td data-label="Dokumen">
+                        <td>
                             <div class="u-font-mono u-font-bold u-text-sm">{{ $c->contract_no ?: '(Draft)' }}</div>
                             <span class="u-badge u-badge--glass u-mt-xs u-text-sm">{{ $c->contract_type_label ?? $c->contract_type }}</span>
                         </td>
-                        <td data-label="Ticket">
+                        <td>
                             @if($c->ticket_number)
                                 <span class="u-badge u-badge--info u-text-2xs">{{ $c->ticket_number }}</span>
                             @else
                                 <span class="u-text-muted u-text-sm">-</span>
                             @endif
                         </td>
-                        <td data-label="Personil">
-                            <div class="u-flex u-items-center u-gap-sm" style="justify-content: flex-end;">
-                                <div class="u-avatar u-avatar--sm u-bg-light u-text-muted">{{ substr($c->person_name, 0, 1) }}</div>
+                        <td>
+                            <div class="u-flex u-items-center u-gap-sm">
                                 <div>
                                     <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
                                     <div class="u-text-sm u-muted u-mt-xxs">
@@ -159,11 +128,12 @@
                                 </div>
                             </div>
                         </td>
-                        <td data-label="Posisi & Unit">
-                            <div class="u-text-sm u-font-medium">{{ $c->position_name ?? '-' }}</div>
-                            <div class="u-text-sm u-muted"><i class="fas fa-building u-mr-xxs"></i> {{ $c->unit?->name ?? '-' }}</div>
+                        <td>
+                            {{-- Tambahkan style white-space:normal agar teks panjang turun ke bawah (wrap) saat di-expand --}}
+                            <div class="u-text-sm u-font-medium" style="white-space: normal;">{{ $c->position_name ?? '-' }}</div>
+                            <div class="u-text-sm u-muted" style="white-space: normal;"><i class="fas fa-building u-mr-xxs"></i> {{ $c->unit?->name ?? '-' }}</div>
                         </td>
-                        <td data-label="Periode">
+                        <td>
                             @if($c->contract_type === 'PB_PENGAKHIRAN')
                                 <span class="u-text-danger u-font-bold u-text-sm">
                                     <i class="fas fa-stop-circle u-mr-xxs"></i> End: {{ isset($c->remuneration_json['pb_effective_end']) ? \Carbon\Carbon::parse($c->remuneration_json['pb_effective_end'])->format('d M Y') : '-' }}
@@ -173,7 +143,7 @@
                                 <div class="u-text-sm u-muted">s/d {{ $c->end_date?->format('d/m/Y') }}</div>
                             @endif
                         </td>
-                        <td data-label="Status">
+                        <td>
                             @php
                                 $bg = match($c->status) {
                                     'draft' => 'u-badge--warn', 'review' => 'u-badge--primary',
@@ -183,7 +153,7 @@
                             @endphp
                             <span class="u-badge {{ $bg }}">{{ $statusOptions[$c->status] ?? $c->status }}</span>
                         </td>
-                        <td class="cell-actions" data-label="Aksi">
+                        <td class="cell-actions">
                             <div class="cell-actions__group">
                                 <button type="button" class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-btn-detail"
                                     data-show-url="{{ route('recruitment.contracts.show', $c) }}" title="Lihat Detail">
@@ -611,7 +581,7 @@
                         <div class="u-text-sm u-font-bold u-muted u-uppercase u-mb-sm u-border-b u-pb-xs">Kepala Unit (Approval)</div>
                         <div class="u-flex-col u-gap-md">
                             <div>
-                                <div id="map-head" class="map-container u-mb-xs" style="height:280px; border-radius: var(--radius-sm); width:100%;"></div>
+                                <div id="map-head" class="map-container u-mb-xs"></div>
                                 <div class="u-text-xs u-muted text-center" id="ts-head">Timestamp</div>
                             </div>
                             <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 280px; width: 100%; border-radius: var(--radius-sm);">
@@ -624,7 +594,7 @@
                         <div class="u-text-sm u-font-bold u-muted u-uppercase u-mb-sm u-border-b u-pb-xs">Kandidat / Pegawai (Signature)</div>
                         <div class="u-flex-col u-gap-md">
                             <div>
-                                <div id="map-cand" class="map-container u-mb-xs" style="height:280px; border-radius: var(--radius-sm); width:100%;"></div>
+                                <div id="map-cand" class="map-container u-mb-xs"></div>
                                 <div class="u-text-xs u-muted text-center" id="ts-cand">Timestamp</div>
                             </div>
                             <div class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 280px; width: 100%; border-radius: var(--radius-sm);">
@@ -753,12 +723,15 @@
                     <canvas id="signCanvas" style="width: 100%; height: 200px; touch-action: none; cursor: crosshair; display: block;"></canvas>
                 </div>
             </div>
-            <div class="u-card u-p-sm u-bg-light u-mb-lg u-flex u-items-center u-gap-sm">
-                <i class="fas fa-map-marker-alt u-text-muted" id="geoIcon"></i>
-                <div class="u-flex-1">
-                    <div class="u-text-sm u-font-bold u-muted">Lokasi Saat Ini</div>
-                    <div id="geoStatus" class="u-text-sm u-font-medium">Menunggu Izin Lokasi...</div>
+            <div class="u-card u-p-sm u-bg-light u-mb-lg u-flex u-flex-col u-gap-sm">
+                <div class="u-flex u-items-center u-gap-sm">
+                    <i class="fas fa-map-marker-alt u-text-muted" id="geoIcon"></i>
+                    <div class="u-flex-1">
+                        <div class="u-text-sm u-font-bold u-muted">Lokasi Saat Ini</div>
+                        <div id="geoStatus" class="u-text-sm u-font-medium">Menunggu Izin Lokasi...</div>
+                    </div>
                 </div>
+                <div id="map-sign" class="map-container" style="height: 150px; width: 100%; border-radius: 8px; margin-top: 5px; display: none;"></div>
             </div>
             <input type="hidden" name="signature_image">
             <input type="hidden" name="snapshot_image">
@@ -777,6 +750,13 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+
     const doc = document;
     const select = (sel, parent=doc) => parent.querySelector(sel);
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
@@ -851,7 +831,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (locInput && locValue) locInput.value = locValue;
             });
         });
-
         const hidCat = select('#createUnitCategoryHidden');
         const hidName = select('#createUnitNameHidden');
         if(hidCat && hidName) {
@@ -880,7 +859,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const appSel = select('#createApplicantSelect');
         const inpType = select('#createTypeInput');
         const inpMode = select('#createModeInput');
-
         const secSubtype = select('#createSubtypeWrap');
         const secMain = select('#createMainSection');
         const secPkwtSpk = select('#sectionPkwtSpk');
@@ -898,18 +876,25 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const resetCreateUI = () => {
-            formCreate.reset();
-            famSel.value = ""; subSel.value = ""; srcSel.value = ""; appSel.value = "";
-            existingSource = null;
-            hide(secSubtype); hide(secMain);
-            hide(secPkwtSpk); hide(secPb); hide(secRemun);
-            hide(secNew); hide(secExist);
-            hide(select('#createPersonPreview'));
-            if(prevTicket) prevTicket.textContent = '';
-            handleLocationAutofill();
+            try {
+                formCreate.reset();
+                famSel.value = ""; subSel.value = ""; srcSel.value = ""; appSel.value = "";
+                existingSource = null;
+                hide(secSubtype); hide(secMain);
+                hide(secPkwtSpk); hide(secPb); hide(secRemun);
+                hide(secNew); hide(secExist);
+                const preview = select('#createPersonPreview');
+                if(preview) hide(preview);
+                if(prevTicket) prevTicket.textContent = '';
+                if(typeof handleLocationAutofill === 'function') handleLocationAutofill();
+            } catch(e) { console.error(e); }
         };
 
-        btnCreate.onclick = (e) => { e.preventDefault(); resetCreateUI(); openModal('createContractModal'); };
+        btnCreate.addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            resetCreateUI(); 
+            openModal('createContractModal'); 
+        });
 
         const applyAutoFill = () => {
             const type = inpType.value;
@@ -940,85 +925,75 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isNew) {
                 showBlock(secNew); hide(secExist);
                 toggleInputs(secNew, true); toggleInputs(secExist, false);
-                if (type === 'SPK') hide(select('#createUnitNewWrap'));
-                else showBlock(select('#createUnitNewWrap'));
+                const unitNewWrap = select('#createUnitNewWrap');
+                if (type === 'SPK') hide(unitNewWrap); else showBlock(unitNewWrap);
             } else {
                 hide(secNew); showBlock(secExist);
                 toggleInputs(secNew, false); toggleInputs(secExist, true);
-                select('#labelSourceExisting').textContent = (type === 'PB_PENGAKHIRAN') ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
-                if (type === 'PB_PENGAKHIRAN') hide(select('#unitWrapperForExisting'));
-                else showBlock(select('#unitWrapperForExisting'));
+                const lbl = select('#labelSourceExisting');
+                if(lbl) lbl.textContent = (type === 'PB_PENGAKHIRAN') ? 'Pilih Kontrak yang Diakhiri' : 'Pilih Kontrak Dasar';
+                const unitExistWrap = select('#unitWrapperForExisting');
+                if (type === 'PB_PENGAKHIRAN') hide(unitExistWrap); else showBlock(unitExistWrap);
             }
 
             const isPb = (type === 'PB_PENGAKHIRAN');
-            if (isPb) {
-                hide(secPkwtSpk); hide(secRemun);
-                showBlock(secPb);
-            } else {
-                showBlock(secPkwtSpk); showBlock(secRemun);
-                hide(secPb);
-            }
+            if (isPb) { hide(secPkwtSpk); hide(secRemun); showBlock(secPb); } 
+            else { showBlock(secPkwtSpk); showBlock(secRemun); hide(secPb); }
 
-            const isPKWT = type.includes('PKWT');
+            const isPKWT = type && type.includes('PKWT');
             const locSection = select('#createLocationSection');
-            if (locSection) {
-                if (isPKWT) showBlock(locSection);
-                else hide(locSection);
-            }
-
+            if (locSection) { if (isPKWT) showBlock(locSection); else hide(locSection); }
             applyAutoFill();
         };
 
-        famSel.addEventListener('change', () => {
-            const val = famSel.value;
-            existingSource = null;
-            hide(secMain); hide(secSubtype);
-            if (!val) return;
-            if (val === 'PKWT') {
-                showBlock(secSubtype);
-                inpType.value = ''; inpMode.value = '';
-            } else {
-                const opt = famSel.options[famSel.selectedIndex];
-                inpType.value = (val === 'SPK') ? 'SPK' : ((val === 'PB') ? 'PB_PENGAKHIRAN' : '');
-                inpMode.value = opt.dataset.mode || '';
-                updateUI();
-            }
-        });
-
-        subSel.addEventListener('change', () => {
-            const val = subSel.value;
-            if (!val) { hide(secMain); return; }
-            const opt = subSel.options[subSel.selectedIndex];
-            inpType.value = val;
-            inpMode.value = opt.dataset.mode;
-            updateUI();
-        });
-
-        appSel.addEventListener('change', () => {
-            const o = appSel.options[appSel.selectedIndex];
-            const hidPerson = select('#createPersonIdInput');
-            const hidEmp = select('#createEmployeeIdInput');
-            if (appSel.value) {
-                hidPerson.value = o.dataset.personId || '';
-                hidEmp.value = '';
-                select('#prevName').textContent = o.dataset.fullname || '-';
-                select('#prevPos').textContent = o.dataset.pos || '-';
-                select('#prevUnit').textContent = o.dataset.unit || '-';
-                select('#prevNik').textContent = '-';
-                select('#prevDate').textContent = '-';
-                if(prevTicket) prevTicket.textContent = o.dataset.ticket ? `Ticket: ${o.dataset.ticket}` : '';
-                showBlock(select('#createPersonPreview'));
-                const uSel = select('#createUnitSelectNew');
-                if(uSel && o.dataset.unitId) {
-                    uSel.value = o.dataset.unitId;
-                    uSel.dispatchEvent(new Event('change'));
+        if(famSel) {
+            famSel.addEventListener('change', () => {
+                const val = famSel.value;
+                existingSource = null;
+                hide(secMain); hide(secSubtype);
+                if (!val) return;
+                if (val === 'PKWT') { showBlock(secSubtype); inpType.value = ''; inpMode.value = ''; } 
+                else {
+                    const opt = famSel.options[famSel.selectedIndex];
+                    inpType.value = (val === 'SPK') ? 'SPK' : ((val === 'PB') ? 'PB_PENGAKHIRAN' : '');
+                    inpMode.value = opt.dataset.mode || '';
+                    updateUI();
                 }
-                const inpPos = select('#createPosName');
-                if(inpPos) inpPos.value = o.dataset.pos || '';
-            } else {
-                hide(select('#createPersonPreview'));
-            }
-        });
+            });
+        }
+
+        if(subSel) {
+            subSel.addEventListener('change', () => {
+                const val = subSel.value;
+                if (!val) { hide(secMain); return; }
+                const opt = subSel.options[subSel.selectedIndex];
+                inpType.value = val; inpMode.value = opt.dataset.mode;
+                updateUI();
+            });
+        }
+
+        if(appSel) {
+            appSel.addEventListener('change', () => {
+                const o = appSel.options[appSel.selectedIndex];
+                const hidPerson = select('#createPersonIdInput');
+                const hidEmp = select('#createEmployeeIdInput');
+                if (appSel.value) {
+                    hidPerson.value = o.dataset.personId || '';
+                    hidEmp.value = '';
+                    select('#prevName').textContent = o.dataset.fullname || '-';
+                    select('#prevPos').textContent = o.dataset.pos || '-';
+                    select('#prevUnit').textContent = o.dataset.unit || '-';
+                    select('#prevNik').textContent = '-';
+                    select('#prevDate').textContent = '-';
+                    if(prevTicket) prevTicket.textContent = o.dataset.ticket ? `Ticket: ${o.dataset.ticket}` : '';
+                    showBlock(select('#createPersonPreview'));
+                    const uSel = select('#createUnitSelectNew');
+                    if(uSel && o.dataset.unitId) { uSel.value = o.dataset.unitId; uSel.dispatchEvent(new Event('change')); }
+                    const inpPos = select('#createPosName');
+                    if(inpPos) inpPos.value = o.dataset.pos || '';
+                } else { hide(select('#createPersonPreview')); }
+            });
+        }
 
         if(filterUnit && srcSel) {
             filterUnit.addEventListener('change', () => {
@@ -1052,12 +1027,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 hidSrc.value = existingSource.id;
                 hidPerson.value = existingSource.personId;
                 hidEmp.value = existingSource.employeeId;
-
                 const uExist = select('#createUnitSelectExisting');
-                if(uExist) {
-                    uExist.value = existingSource.unitId;
-                    uExist.dispatchEvent(new Event('change'));
-                }
+                if(uExist) { uExist.value = existingSource.unitId; uExist.dispatchEvent(new Event('change')); }
                 select('#prevName').textContent = existingSource.person || '-';
                 select('#prevPos').textContent = existingSource.pos || '-';
                 select('#prevUnit').textContent = existingSource.unitName || '-';
@@ -1076,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(inpType.value) {
                 if(inpType.value.startsWith('PKWT')) {
                     showBlock(secSubtype);
-                    subSel.value = inpType.value;
+                    if(subSel) subSel.value = inpType.value;
                 }
                 updateUI();
             }
@@ -1112,12 +1083,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isPKWT = d.contract_type.includes('PKWT');
                 const editLocSection = select('#editLocationSection');
                 if (editLocSection) {
-                    if (isPKWT) {
-                        showBlock(editLocSection);
-                        select('#editLocation').value = m.work_location || '';
-                    } else {
-                        hide(editLocSection);
-                    }
+                    if (isPKWT) { showBlock(editLocSection); select('#editLocation').value = m.work_location || ''; }
+                    else { hide(editLocSection); }
                 }
 
                 if(select('#editUnitSelect')) {
@@ -1161,15 +1128,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const initMap = (divId, lat, lng) => {
         if (!lat || !lng) return;
-        if (maps[divId]) { maps[divId].remove(); delete maps[divId]; }
+        const el = document.getElementById(divId);
+        if (!el) return;
+
+        if (maps[divId]) { 
+            maps[divId].off(); 
+            maps[divId].remove(); 
+            delete maps[divId]; 
+        }
+
         setTimeout(() => {
-            const el = doc.getElementById(divId); if (!el) return;
+            if(el.offsetParent === null) return;
             const map = L.map(divId).setView([lat, lng], 15);
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+                attribution: '', 
+                maxZoom: 19 
+            }).addTo(map);
             L.marker([lat, lng]).addTo(map);
+            L.circle([lat, lng], { color: 'blue', fillColor: '#30f', fillOpacity: 0.1, radius: 50 }).addTo(map);
             maps[divId] = map;
-            map.invalidateSize();
-        }, 300);
+            
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }, 150);
     };
 
     const handleSign = (url) => {
@@ -1183,6 +1163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnCap = select('#btnCapture');
         const btnRet = select('#btnRetake');
         const snapPrev = select('#snapshotPreview');
+        const mapSignDiv = select('#map-sign');
         let captured = false;
 
         f.reset();
@@ -1195,6 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         vid.style.display = 'block';
         hide(btnRet);
         if(btnCap) { showBlock(btnCap); btnCap.disabled = false; }
+        if(mapSignDiv) { mapSignDiv.style.display = 'none'; mapSignDiv.innerHTML = ''; }
         btnSubmit.disabled = true;
         openModal('signModal');
 
@@ -1209,19 +1191,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 150);
 
         const getGeo = () => {
-            if (!window.isSecureContext && location.hostname !== 'localhost') { geoStat.innerHTML = '<span class="u-text-danger">Wajib HTTPS!</span>'; return; }
+            if (!window.isSecureContext && location.hostname !== 'localhost') { 
+                geoStat.innerHTML = '<span class="u-text-danger"><i class="fas fa-lock"></i> Wajib HTTPS!</span>'; 
+                return; 
+            }
+            geoStat.textContent = "Mencari titik presisi...";
+            geoStat.className = "u-text-sm u-font-medium u-text-info u-animate-pulse";
+
+            const geoOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
+
             navigator.geolocation.getCurrentPosition((pos) => {
                 select('[name="geo_lat"]').value = pos.coords.latitude;
                 select('[name="geo_lng"]').value = pos.coords.longitude;
                 select('[name="geo_accuracy"]').value = pos.coords.accuracy;
-                geoStat.textContent = `Akurasi: ${pos.coords.accuracy.toFixed(0)}m`;
-                geoStat.className = "u-text-sm u-font-medium u-text-success";
-                select('#geoIcon').className = "fas fa-map-marker-alt u-text-success";
+                
+                const acc = Math.round(pos.coords.accuracy);
+                let accClass = "u-text-success";
+                let accIcon = "fas fa-satellite-dish";
+                if(acc > 100) { accClass = "u-text-warning"; accIcon = "fas fa-wifi"; }
+                
+                geoStat.innerHTML = `<i class="${accIcon}"></i> Akurasi: <strong>${acc} meter</strong>`;
+                geoStat.className = `u-text-sm u-font-medium ${accClass}`;
+                select('#geoIcon').className = `fas fa-map-marker-alt ${accClass}`;
+
+                if (mapSignDiv) {
+                    mapSignDiv.style.display = 'block';
+                    initMap('map-sign', pos.coords.latitude, pos.coords.longitude);
+                }
                 checkReady();
-            }, () => {
-                geoStat.textContent = "Gagal Deteksi Lokasi";
+            }, (err) => {
+                console.error(err);
+                let msg = "Gagal Deteksi Lokasi";
+                if(err.code === 1) msg = "Izin Lokasi Ditolak";
+                else if(err.code === 2) msg = "Sinyal GPS Lemah";
+                else if(err.code === 3) msg = "Waktu Habis (Timeout)";
+                geoStat.textContent = msg;
                 geoStat.className = "u-text-sm u-font-medium u-text-danger";
-            }, { enableHighAccuracy: true, timeout: 30000 });
+            }, geoOptions);
         };
         getGeo();
 
@@ -1233,7 +1239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 streamObj = stream;
                 vid.srcObject = stream;
                 select('#cameraPlaceholder').hidden = true;
-            }).catch(() => { select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak"; });
+            }).catch(() => { select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Tidak Ada"; });
         } else { hide(camSec); }
 
         if(btnCap) btnCap.onclick = () => {
@@ -1268,9 +1274,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let hasSigned = false;
         const ctx = cvs.getContext('2d');
         let rect = cvs.getBoundingClientRect();
+        window.addEventListener('scroll', () => { rect = cvs.getBoundingClientRect(); });
+        window.addEventListener('resize', () => { rect = cvs.getBoundingClientRect(); });
+
         const getXY = (e) => {
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            rect = cvs.getBoundingClientRect();
             return { x: clientX - rect.left, y: clientY - rect.top };
         };
         const drawMove = (e) => {
@@ -1280,11 +1290,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.lineTo(p.x, p.y);
             ctx.stroke();
         };
-        cvs.onmousedown = (e) => { isDown = true; rect = cvs.getBoundingClientRect(); ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
+        cvs.onmousedown = (e) => { isDown = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
         cvs.onmousemove = drawMove;
         window.addEventListener('mouseup', () => { if(isDown) { isDown = false; hasSigned = true; checkReady(); } });
 
-        cvs.ontouchstart = (e) => { isDown = true; rect = cvs.getBoundingClientRect(); ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
+        cvs.ontouchstart = (e) => { isDown = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
         cvs.ontouchmove = drawMove;
         window.addEventListener('touchend', () => { if(isDown) { isDown = false; hasSigned = true; checkReady(); } });
 
@@ -1302,6 +1312,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData(f);
             if (streamObj) streamObj.getTracks().forEach(track => track.stop());
             try {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
                 const r = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, body: fd });
                 const j = await r.json().catch(() => ({}));
                 if (r.ok && (j.success ?? true)) {
@@ -1311,7 +1323,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     throw new Error(j.message || 'Gagal memproses tanda tangan.');
                 }
-            } catch (err) { window.toastErr(err.message); }
+            } catch (err) { 
+                window.toastErr(err.message);
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Simpan & Tanda Tangan';
+            }
         };
 
         const cleanup = () => { if (streamObj) streamObj.getTracks().forEach(track => track.stop()); };
