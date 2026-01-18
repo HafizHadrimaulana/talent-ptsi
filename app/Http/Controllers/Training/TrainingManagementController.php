@@ -64,10 +64,10 @@ class TrainingManagementController extends Controller
 
                     'pengajuan-training-peserta' => [
                         'buttons' => [
-                            'import',
+                            // 'import',
                             'training-input'
                         ],
-                        'show_download_template' => true,
+                        // 'show_download_template' => true,
                         'tables' => [
                             'training-peserta-table',
                         ],
