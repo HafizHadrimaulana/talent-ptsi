@@ -3,6 +3,7 @@
 @section('title', 'Manajemen Dokumen Kontrak')
 
 @push('styles')
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 @endpush
 
@@ -14,22 +15,6 @@
     $statusOptions = config('recruitment.contract_statuses', []);
     $currentUnitId = $canSeeAll ? $selectedUnitId : $meUnit;
 @endphp
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-<div class="u-card u-card--glass u-mb-xl">
-    <div class="u-flex u-justify-between u-items-center u-stack-mobile u-gap-md">
-        <div>
-            <h2 class="u-title u-text-lg">Dokumen Kontrak</h2>
-            <p class="u-text-sm u-muted u-mt-xs">Manajemen SPK, PKWT, dan Perjanjian Bersama.</p>
-        </div>
-        @can('contract.create')
-        <button type="button" class="u-btn u-btn--brand u-shadow-lg u-hover-lift" id="btnOpenCreate" style="border-radius: 999px; padding-left: 1.5rem; padding-right: 1.5rem;">
-            <i class="fas fa-plus"></i> <span>Buat Dokumen</span>
-        </button>
-        @endcan
-    </div>
-</div>
 
 @if ($errors->any())
     <div class="u-card u-p-md u-mb-lg u-error u-flex u-gap-md u-items-start">
@@ -43,144 +28,73 @@
     </div>
 @endif
 
-<div class="u-card u-p-md u-mb-lg" style="background: var(--surface-1);">
-    <form method="get" class="u-grid-2 u-gap-lg">
+<div class="u-card u-card--glass u-p-0 u-overflow-hidden u-mb-xl">
+
+    <div class="u-p-lg u-border-b u-flex u-justify-between u-items-center u-stack-mobile u-gap-md u-bg-surface">
         <div>
-            <label class="u-text-sm u-font-bold u-muted u-uppercase u-mb-xs u-block">Unit Kerja</label>
-            @if ($canSeeAll)
-                <div class="u-search">
-                    <span class="u-search__icon"><i class="fas fa-building"></i></span>
-                    <select name="unit_id" class="u-search__input" onchange="this.form.submit()" style="background: transparent;">
-                        <option value="">Semua Unit</option>
-                        @foreach ($units as $u) <option value="{{ $u->id }}" @selected((string)$currentUnitId === (string)$u->id)>{{ $u->name }}</option> @endforeach
+            <h2 class="u-title u-text-lg">Dokumen Kontrak</h2>
+            <p class="u-text-sm u-muted u-mt-xs">Manajemen SPK, PKWT, dan Perjanjian Bersama.</p>
+        </div>
+        @can('contract.create')
+        <button type="button" class="u-btn u-btn--brand u-shadow-sm u-hover-lift" id="btnOpenCreate" style="border-radius: 999px; padding-left: 1.5rem; padding-right: 1.5rem;">
+            <i class="fas fa-plus"></i> <span>Buat Dokumen</span>
+        </button>
+        @endcan
+    </div>
+
+    <div class="u-p-md u-bg-light u-border-b">
+        <div class="u-grid-2 u-gap-lg">
+            <div>
+                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs u-block">Unit Kerja</label>
+                @if ($canSeeAll)
+                    <div class="u-search" style="background: var(--surface-0);">
+                        <span class="u-search__icon"><i class="fas fa-building"></i></span>
+                        <select name="unit_id" id="filterUnit" class="u-search__input" style="background: transparent;">
+                            <option value="">Semua Unit</option>
+                            @foreach ($units as $u) <option value="{{ $u->id }}" @selected((string)$currentUnitId === (string)$u->id)>{{ $u->name }}</option> @endforeach
+                        </select>
+                    </div>
+                @else
+                    <div class="u-input u-input--sm u-bg-white u-text-muted u-flex u-items-center u-gap-sm">
+                        <i class="fas fa-lock u-text-sm"></i> {{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}
+                    </div>
+                    <input type="hidden" name="unit_id" id="filterUnit" value="{{ $meUnit }}">
+                @endif
+            </div>
+
+            <div>
+                <label class="u-text-xs u-font-bold u-muted u-uppercase u-mb-xs u-block">Status Dokumen</label>
+                <div class="u-search" style="background: var(--surface-0);">
+                    <span class="u-search__icon"><i class="fas fa-filter"></i></span>
+                    <select name="status" id="filterStatus" class="u-search__input" style="background: transparent;">
+                        <option value="">Semua Status</option>
+                        @foreach ($statusOptions as $code => $label) <option value="{{ $code }}" @selected($statusFilter == $code)>{{ $label }}</option> @endforeach
                     </select>
                 </div>
-            @else
-                <div class="u-input u-input--sm u-bg-light u-text-muted u-flex u-items-center u-gap-sm">
-                    <i class="fas fa-lock u-text-sm"></i> {{ $units->firstWhere('id', $meUnit)->name ?? 'Unit Saya' }}
-                </div>
-                <input type="hidden" name="unit_id" value="{{ $meUnit }}">
-            @endif
-        </div>
-        <div>
-            <label class="u-text-sm u-font-bold u-muted u-uppercase u-mb-xs u-block">Status Dokumen</label>
-            <div class="u-search">
-                <span class="u-search__icon"><i class="fas fa-filter"></i></span>
-                <select name="status" class="u-search__input" onchange="this.form.submit()" style="background: transparent;">
-                    <option value="">Semua Status</option>
-                    @foreach ($statusOptions as $code => $label) <option value="{{ $code }}" @selected($statusFilter == $code)>{{ $label }}</option> @endforeach
-                </select>
             </div>
         </div>
-    </form>
+    </div>
+
+    <div class="dt-wrapper">
+        <div class="u-scroll-x">
+            <table id="contracts-table" class="u-table nowrap" style="width: 100%; margin: 0 !important; border: none;">
+                <thead>
+                    <tr>
+                        <th data-priority="1">Dokumen</th>
+                        <th data-priority="3">Ticket</th>
+                        <th data-priority="4">Personil</th>
+                        <th data-priority="5">Posisi & Unit</th>
+                        <th data-priority="6">Periode</th>
+                        <th data-priority="2">Status</th>
+                        <th class="cell-actions" width="100" data-priority="1">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
-<div class="dt-wrapper">
-    <div class="u-scroll-x">
-        {{-- 
-            PERBAIKAN PENTING:
-            1. Tambahkan class 'nowrap'. Ini WAJIB agar kolom yang tidak muat otomatis masuk ke tombol (+) 
-               alih-alih membuat tabel melebar ke kanan.
-            2. Tambahkan data-priority di <thead> agar kita bisa atur kolom mana yang tetap muncul di HP.
-        --}}
-        <table id="contracts-table" class="u-table nowrap" style="width: 100%;">
-            <thead>
-                <tr>
-                    {{-- Priority 1: Wajib tampil di HP (Judul & Aksi) --}}
-                    <th data-priority="1">Dokumen</th>
-                    
-                    {{-- Priority 3+: Sembunyi di HP, muncul di klik (+) --}}
-                    <th data-priority="3">Ticket</th>
-                    <th data-priority="4">Personil</th>
-                    <th data-priority="5">Posisi & Unit</th>
-                    <th data-priority="6">Periode</th>
-                    
-                    {{-- Priority 2: Tampil jika layar tablet --}}
-                    <th data-priority="2">Status</th>
-                    
-                    {{-- Priority 1: Wajib tampil --}}
-                    <th class="cell-actions" width="100" data-priority="1">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($contracts as $c)
-                    <tr class="u-hover-bright">
-                        <td>
-                            <div class="u-font-mono u-font-bold u-text-sm">{{ $c->contract_no ?: '(Draft)' }}</div>
-                            <span class="u-badge u-badge--glass u-mt-xs u-text-sm">{{ $c->contract_type_label ?? $c->contract_type }}</span>
-                        </td>
-                        <td>
-                            @if($c->ticket_number)
-                                <span class="u-badge u-badge--info u-text-2xs">{{ $c->ticket_number }}</span>
-                            @else
-                                <span class="u-text-muted u-text-sm">-</span>
-                            @endif
-                        </td>
-                        <td>
-                            <div class="u-flex u-items-center u-gap-sm">
-                                <div>
-                                    <div class="u-font-bold u-text-sm">{{ $c->person_name }}</div>
-                                    <div class="u-text-sm u-muted u-mt-xxs">
-                                        @if($c->applicant_id) <span class="u-text-accent"><i class="fas fa-user-check u-mr-xxs"></i> Pelamar</span>
-                                        @elseif($c->employee_id) <i class="fas fa-id-badge u-mr-xxs"></i> {{ $c->employee_id }}
-                                        @else - @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            {{-- Tambahkan style white-space:normal agar teks panjang turun ke bawah (wrap) saat di-expand --}}
-                            <div class="u-text-sm u-font-medium" style="white-space: normal;">{{ $c->position_name ?? '-' }}</div>
-                            <div class="u-text-sm u-muted" style="white-space: normal;"><i class="fas fa-building u-mr-xxs"></i> {{ $c->unit?->name ?? '-' }}</div>
-                        </td>
-                        <td>
-                            @if($c->contract_type === 'PB_PENGAKHIRAN')
-                                <span class="u-text-danger u-font-bold u-text-sm">
-                                    <i class="fas fa-stop-circle u-mr-xxs"></i> End: {{ isset($c->remuneration_json['pb_effective_end']) ? \Carbon\Carbon::parse($c->remuneration_json['pb_effective_end'])->format('d M Y') : '-' }}
-                                </span>
-                            @else
-                                <div class="u-text-sm">{{ $c->start_date?->format('d/m/Y') }}</div>
-                                <div class="u-text-sm u-muted">s/d {{ $c->end_date?->format('d/m/Y') }}</div>
-                            @endif
-                        </td>
-                        <td>
-                            @php
-                                $bg = match($c->status) {
-                                    'draft' => 'u-badge--warn', 'review' => 'u-badge--primary',
-                                    'approved' => 'u-badge--info', 'signed' => 'u-badge--success',
-                                    'rejected' => 'u-badge--danger', default => 'u-badge--glass'
-                                };
-                            @endphp
-                            <span class="u-badge {{ $bg }}">{{ $statusOptions[$c->status] ?? $c->status }}</span>
-                        </td>
-                        <td class="cell-actions">
-                            <div class="cell-actions__group">
-                                <button type="button" class="u-btn u-btn--ghost u-btn--icon u-btn--sm js-btn-detail"
-                                    data-show-url="{{ route('recruitment.contracts.show', $c) }}" title="Lihat Detail">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                @if ($c->status === 'draft' && auth()->user()->can('contract.update', $c))
-                                    <button type="button" class="u-btn u-btn--outline u-btn--icon u-btn--sm js-btn-edit"
-                                        data-show-url="{{ route('recruitment.contracts.show', $c ) }}"
-                                        data-update-url="{{ route('recruitment.contracts.update', $c) }}" title="Edit">
-                                        <i class="fas fa-pencil-alt"></i>
-                                    </button>
-                                    <button type="button" class="u-btn u-btn--danger u-btn--icon u-btn--sm js-btn-delete"
-                                        data-url="{{ route('recruitment.contracts.destroy', $c) }}" title="Hapus">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                @endif
-                            </div>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-    @if ($contracts instanceof \Illuminate\Pagination\AbstractPaginator)
-        <div class="u-mt-md">{{ $contracts->links() }}</div>
-    @endif
-</div>
 
 @can('contract.create')
 <div id="createContractModal" class="u-modal" hidden>
@@ -748,8 +662,12 @@
 @endsection
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Leaflet Icon Fix
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -757,10 +675,89 @@ document.addEventListener('DOMContentLoaded', () => {
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
 
+    // 2. DataTables Initialization
+    const table = $('#contracts-table').DataTable({
+        processing: true,
+        serverSide: true,
+        
+        // --- CUSTOM DOM LAYOUT (Agar sama dengan Users) ---
+        dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
+        
+        // --- RESPONSIVE RENDERER (Agar rapi di Mobile) ---
+        responsive: {
+            details: {
+                renderer: function (api, rowIdx, columns) {
+                    let data = $.map(columns, function (col, i) {
+                        return col.hidden ?
+                            `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
+                                <span class="u-dt-child-title">${col.title}</span>
+                                <span class="u-dt-child-data">${col.data}</span>
+                             </li>` : '';
+                    }).join('');
+                    return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
+                }
+            }
+        },
+
+        ajax: {
+            url: "{{ route('recruitment.contracts.index') }}",
+            data: function (d) {
+                d.unit_id = $('#filterUnit').val();
+                d.status = $('#filterStatus').val();
+            }
+        },
+        columns: [
+            { data: 0, orderable: true }, // Dokumen
+            { data: 1, orderable: true }, // Ticket
+            { data: 2, orderable: false }, // Personil
+            { data: 3, orderable: true }, // Posisi
+            { data: 4, orderable: true }, // Periode
+            { data: 5, orderable: true }, // Status
+            { data: 6, orderable: false, className: "text-center" } // Actions
+        ],
+        order: [[5, 'desc']], // Default sort by Status (sesuai controller)
+        
+        // --- BAHASA INGGRIS (Agar sama dengan Users) ---
+        language: {
+            search: "",
+            searchPlaceholder: "Search records...",
+            lengthMenu: "_MENU_ per page",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "Showing 0 to 0 of 0 entries",
+            infoFiltered: "(filtered from _MAX_ total entries)",
+            zeroRecords: "No matching records found",
+            paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+        },
+        
+        // --- DRAW CALLBACK (Styling Input & Pagination) ---
+        drawCallback: function() {
+            const wrapper = $(this.api().table().container());
+            
+            // Style Inputs
+            wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
+            wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
+            
+            // Style Pagination Buttons
+            const p = wrapper.find('.dataTables_paginate .paginate_button');
+            p.addClass('u-btn u-btn--sm u-btn--ghost');
+            p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
+            p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
+        }
+    });
+
+    // 3. Filter Event Listeners
+    $('#filterUnit, #filterStatus').on('change', function() {
+        table.draw();
+    });
+
+    // ... [Sisa Kode Javascript Modal & Map tetap sama, copy dari sebelumnya] ...
+    // Pastikan const doc = document; dst... ada di bawah sini
     const doc = document;
     const select = (sel, parent=doc) => parent.querySelector(sel);
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
     const csrf = select('meta[name="csrf-token"]')?.content;
+    
+    // Helper simple
     const hide = el => { if(el){ el.hidden = true; el.style.display = 'none'; el.classList.add('is-hidden'); } };
     const show = el => { if(el){ el.hidden = false; el.style.display = 'flex'; el.classList.remove('is-hidden'); } };
     const showBlock = el => { if(el){ el.hidden = false; el.style.display = 'block'; el.classList.remove('is-hidden'); } };
@@ -845,6 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     handleLocationAutofill();
 
+    // ... [Init Create Modal Logic] ...
     const initCreateModal = () => {
         const btnCreate = select('#btnOpenCreate');
         const formCreate = select('#createContractForm');
@@ -1055,11 +1053,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     initCreateModal();
 
+    // ... [Init Edit Modal Logic] ...
     const initEditModal = () => {
-        doc.body.addEventListener('click', async (e) => {
-            const btnEdit = e.target.closest('.js-btn-edit');
-            if(!btnEdit) return;
+        $(document).on('click', '.js-btn-edit', async function(e) {
             e.preventDefault();
+            const btnEdit = this;
             try {
                 const res = await fetch(btnEdit.dataset.showUrl, { headers: { 'Accept': 'application/json' } }).then(r => r.json());
                 if(!res.success) throw new Error(res.message);
@@ -1121,11 +1119,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else hide(boxNew);
 
                 openModal('editContractModal');
-            } catch(err) { window.toastErr(err.message); }
+            } catch(err) { alert(err.message); }
         });
     };
     initEditModal();
 
+    // ... [Init Map Logic] ...
     const initMap = (divId, lat, lng) => {
         if (!lat || !lng) return;
         const el = document.getElementById(divId);
@@ -1317,14 +1316,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const r = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, body: fd });
                 const j = await r.json().catch(() => ({}));
                 if (r.ok && (j.success ?? true)) {
-                    window.toastOk('Berhasil!');
+                    alert('Berhasil!');
                     closeModal(m);
                     setTimeout(() => location.reload(), 900);
                 } else {
                     throw new Error(j.message || 'Gagal memproses tanda tangan.');
                 }
             } catch (err) { 
-                window.toastErr(err.message);
+                alert(err.message);
                 btnSubmit.disabled = false;
                 btnSubmit.innerHTML = 'Simpan & Tanda Tangan';
             }
@@ -1341,8 +1340,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const noteEl = select('#rejectNote');
             const btn = select('#btnSubmitReject');
             const note = (noteEl?.value || '').trim();
-            if(!rejectCtx.url) return window.toastErr('URL reject tidak ditemukan.');
-            if(note.length < 5) return window.toastErr('Alasan penolakan wajib diisi (min 5 karakter).');
+            if(!rejectCtx.url) return alert('URL reject tidak ditemukan.');
+            if(note.length < 5) return alert('Alasan penolakan wajib diisi (min 5 karakter).');
             if(btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
 
             try {
@@ -1353,7 +1352,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const j = await r.json().catch(() => ({}));
                 if (r.ok && (j.success ?? true)) {
-                    window.toastOk('Berhasil Ditolak');
+                    alert('Berhasil Ditolak');
                     closeModal(select('#rejectModal'));
                     closeModal(select('#detailContractModal'));
                     setTimeout(() => location.reload(), 900);
@@ -1361,235 +1360,233 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(j.message || 'Gagal menolak dokumen.');
                 }
             } catch(err) {
-                window.toastErr(err.message);
+                alert(err.message);
                 if(btn) { btn.disabled = false; btn.textContent = 'Tolak Dokumen'; }
             }
         });
     }
 
-    doc.body.addEventListener('click', async (e) => {
-        const btnDet = e.target.closest('.js-btn-detail');
-        if(btnDet) {
-            e.preventDefault();
-            try {
-                const res = await fetch(btnDet.dataset.showUrl, { headers: { 'Accept': 'application/json' } }).then(r => r.json());
-                if(!res.success) throw new Error(res.message);
-                const d = res.data;
-                const m = safeJSON(d.remuneration_json);
-                const isPb = (d.contract_type === 'PB_PENGAKHIRAN');
+    $(document).on('click', '.js-btn-detail', async function(e) {
+        e.preventDefault();
+        const btnDet = this;
+        try {
+            const res = await fetch(btnDet.dataset.showUrl, { headers: { 'Accept': 'application/json' } }).then(r => r.json());
+            if(!res.success) throw new Error(res.message);
+            const d = res.data;
+            const m = safeJSON(d.remuneration_json);
+            const isPb = (d.contract_type === 'PB_PENGAKHIRAN');
 
-                const setText = (id, val) => { const el = select(id); if(el) el.textContent = val; };
+            const setText = (id, val) => { const el = select(id); if(el) el.textContent = val; };
 
-                setText('#detNo', d.contract_no || '-');
-                setText('#detType', d.contract_type_label || d.contract_type || '-');
-                setText('#detStatus', d.status || '-');
-                setText('#detUnit', d.unit?.name || '-');
-                setText('#detName', d.person_name || '-');
-                setText('#detNik', d.ui_employee_id || '-');
-                setText('#detNikReal', d.ui_nik_ktp || '-');
-                setText('#detPos', d.position_name || '-');
-                setText('#detEmpType', d.employment_type || '-');
-                setText('#detTicket', d.ticket_number || '-');
+            setText('#detNo', d.contract_no || '-');
+            setText('#detType', d.contract_type_label || d.contract_type || '-');
+            setText('#detStatus', d.status || '-');
+            setText('#detUnit', d.unit?.name || '-');
+            setText('#detName', d.person_name || '-');
+            setText('#detNik', d.ui_employee_id || '-');
+            setText('#detNikReal', d.ui_nik_ktp || '-');
+            setText('#detPos', d.position_name || '-');
+            setText('#detEmpType', d.employment_type || '-');
+            setText('#detTicket', d.ticket_number || '-');
 
-                const detRejectBox = select('#detRejectBox');
-                const rejNote = (d.rejection_note || '').toString().trim();
-                if ((d.status === 'draft' || d.status === 'rejected') && rejNote) {
-                    if(detRejectBox) { showBlock(detRejectBox); setText('#detRejectNote', rejNote); }
-                } else {
-                    hide(detRejectBox);
-                }
+            const detRejectBox = select('#detRejectBox');
+            const rejNote = (d.rejection_note || '').toString().trim();
+            if ((d.status === 'draft' || d.status === 'rejected') && rejNote) {
+                if(detRejectBox) { showBlock(detRejectBox); setText('#detRejectNote', rejNote); }
+            } else {
+                hide(detRejectBox);
+            }
 
-                const detLocRow = select('#detLocationRow');
-                if (detLocRow) {
-                    if (d.contract_type?.includes('PKWT')) { showBlock(detLocRow); setText('#detLocation', m.work_location || '-'); }
-                    else { hide(detLocRow); }
-                }
+            const detLocRow = select('#detLocationRow');
+            if (detLocRow) {
+                if (d.contract_type?.includes('PKWT')) { showBlock(detLocRow); setText('#detLocation', m.work_location || '-'); }
+                else { hide(detLocRow); }
+            }
 
-                if(d.tracker) {
-                    const h = d.tracker.head;
-                    const c = d.tracker.candidate;
-                     
-                    setText('#nameHead', h.name);
-                    setText('#posHead', h.position || 'Kepala Unit');
-                    setText('#dateHead', h.date);
-                     
-                    const bHead = select('#badgeHead'); 
-                    if(bHead) { bHead.textContent = h.status; bHead.className = `u-badge ${h.css}`; }
-                     
-                    const iHead = select('#iconHead');
-                    if(iHead) {
-                        iHead.className = `u-avatar u-avatar--md ${h.status==='Signed'||h.status==='Approved' ? 'u-bg-success-light u-text-success' : (h.status==='Rejected'?'u-bg-danger-light u-text-danger':'u-bg-light u-text-muted')}`;
-                        iHead.innerHTML = (h.status==='Signed'||h.status==='Approved') ? '<i class="fas fa-check"></i>' : (h.status==='Rejected'?'<i class="fas fa-times"></i>':'<i class="fas fa-user-tie"></i>');
-                    }
-
-                    setText('#nameCand', c.name);
-                    setText('#dateCand', c.date);
-                    if(d.target_role_label) setText('#labelCand', d.target_role_label);
-
-                    const bCand = select('#badgeCand'); 
-                    if(bCand) { bCand.textContent = c.status; bCand.className = `u-badge ${c.css}`; }
-                     
-                    const iCand = select('#iconCand');
-                    if(iCand) {
-                        iCand.className = `u-avatar u-avatar--md ${c.status==='Signed' ? 'u-bg-success-light u-text-success' : 'u-bg-light u-text-muted'}`;
-                        iCand.innerHTML = c.status==='Signed' ? '<i class="fas fa-check"></i>' : '<i class="fas fa-user"></i>';
-                    }
-                }
-
-                const geo = d.geolocation || {};
-                const mapSec = select('#detMapSection');
-                const wHead = select('#wrapperMapHead');
-                const wCand = select('#wrapperMapCand');
+            if(d.tracker) {
+                const h = d.tracker.head;
+                const c = d.tracker.candidate;
                  
-                const iHead = select('#img-head'); if(iHead) iHead.style.display='none';
-                const niHead = select('#no-img-head'); if(niHead) niHead.style.display='none';
-                const iCand = select('#img-cand'); if(iCand) iCand.style.display='none';
-                const niCand = select('#no-img-cand'); if(niCand) niCand.style.display='none';
-
-                if (geo.head || geo.candidate) showBlock(mapSec); else hide(mapSec);
-
-                if (geo.head) {
-                    showBlock(wHead);
-                    setText('#ts-head', `Ditandatangani: ${geo.head.ts}`);
-                    initMap('map-head', geo.head.lat, geo.head.lng);
-                    if(geo.head.image_url) { if(iHead) { iHead.src = geo.head.image_url; showBlock(iHead); } }
-                    else showBlock(niHead);
-                } else hide(wHead);
-
-                if (geo.candidate) {
-                    showBlock(wCand);
-                    setText('#ts-cand', `Ditandatangani: ${geo.candidate.ts}`);
-                    initMap('map-cand', geo.candidate.lat, geo.candidate.lng);
-                    if(geo.candidate.image_url) { if(iCand) { iCand.src = geo.candidate.image_url; showBlock(iCand); } }
-                    else showBlock(niCand);
-                } else hide(wCand);
-
-                if (isPb) {
-                    hide(select('#detRemunBox')); hide(select('#detPeriodRow')); showBlock(select('#detPbBox'));
-                    setText('#detPbEff', m.pb_effective_end || '-');
-                    setText('#detPbVal', 'Rp ' + money(m.pb_compensation_amount));
-                    setText('#detPbValW', (m.pb_compensation_amount_words || '').toString());
-                } else {
-                    showBlock(select('#detRemunBox')); showBlock(select('#detPeriodRow')); hide(select('#detPbBox'));
-                    setText('#detPeriod', `${d.start_date || '-'} s/d ${d.end_date || '-'}`);
-                    setText('#detSalary', 'Rp ' + money(m.salary_amount));
-                    setText('#detLunch', 'Rp ' + money(m.lunch_allowance_daily));
-                    setText('#detWorkDays', m.work_days || '-');
-                    setText('#detWorkHours', m.work_hours || '-');
-                    const allws = [];
-                    if(m.allowance_position_amount) allws.push(['T. Jabatan', m.allowance_position_amount]);
-                    if(m.allowance_communication_amount) allws.push(['T. Komunikasi', m.allowance_communication_amount]);
-                    if(m.allowance_special_amount) allws.push(['T. Khusus', m.allowance_special_amount]);
-                    if(m.allowance_other_amount) allws.push(['Lainnya', m.allowance_other_amount]);
-                    if(m.travel_allowance_stay) allws.push(['UHPD Inap', m.travel_allowance_stay]);
-                    if(m.travel_allowance_non_stay) allws.push(['UHPD Non-Inap', m.travel_allowance_non_stay]);
-                    const elAllw = select('#detAllowances');
-                    if(elAllw) elAllw.innerHTML = allws.map(x => `<div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-muted">${x[0]}</span><strong>Rp ${money(x[1])}</strong></div>`).join('');
+                setText('#nameHead', h.name);
+                setText('#posHead', h.position || 'Kepala Unit');
+                setText('#dateHead', h.date);
+                 
+                const bHead = select('#badgeHead'); 
+                if(bHead) { bHead.textContent = h.status; bHead.className = `u-badge ${h.css}`; }
+                 
+                const iHead = select('#iconHead');
+                if(iHead) {
+                    iHead.className = `u-avatar u-avatar--md ${h.status==='Signed'||h.status==='Approved' ? 'u-bg-success-light u-text-success' : (h.status==='Rejected'?'u-bg-danger-light u-text-danger':'u-bg-light u-text-muted')}`;
+                    iHead.innerHTML = (h.status==='Signed'||h.status==='Approved') ? '<i class="fas fa-check"></i>' : (h.status==='Rejected'?'<i class="fas fa-times"></i>':'<i class="fas fa-user-tie"></i>');
                 }
 
-                const boxNew = select('#detNewUnitBox');
-                const prevId = (m.prev_unit_id ?? '').toString();
-                const newId = (m.new_unit_id ?? '').toString();
-                if(d.contract_type === 'PKWT_PERPANJANGAN' && prevId && newId && prevId !== newId) {
-                    showBlock(boxNew); setText('#detNewUnit', m.new_unit_name || '-');
-                } else { hide(boxNew); }
+                setText('#nameCand', c.name);
+                setText('#dateCand', c.date);
+                if(d.target_role_label) setText('#labelCand', d.target_role_label);
 
-                const bPrev = select('#btnPreviewDoc');
-                d.doc_url ? (show(bPrev), bPrev.style.display='inline-flex', bPrev.href=d.doc_url) : hide(bPrev);
+                const bCand = select('#badgeCand'); 
+                if(bCand) { bCand.textContent = c.status; bCand.className = `u-badge ${c.css}`; }
+                 
+                const iCand = select('#iconCand');
+                if(iCand) {
+                    iCand.className = `u-avatar u-avatar--md ${c.status==='Signed' ? 'u-bg-success-light u-text-success' : 'u-bg-light u-text-muted'}`;
+                    iCand.innerHTML = c.status==='Signed' ? '<i class="fas fa-check"></i>' : '<i class="fas fa-user"></i>';
+                }
+            }
 
-                const bApp = select('#btnApprove');
-                d.can_approve ? (show(bApp), bApp.onclick=()=>handleSign(d.approve_url)) : hide(bApp);
+            const geo = d.geolocation || {};
+            const mapSec = select('#detMapSection');
+            const wHead = select('#wrapperMapHead');
+            const wCand = select('#wrapperMapCand');
+             
+            const iHead = select('#img-head'); if(iHead) iHead.style.display='none';
+            const niHead = select('#no-img-head'); if(niHead) niHead.style.display='none';
+            const iCand = select('#img-cand'); if(iCand) iCand.style.display='none';
+            const niCand = select('#no-img-cand'); if(niCand) niCand.style.display='none';
 
-                const bSign = select('#btnSign');
-                d.can_sign ? (show(bSign), bSign.onclick=()=>handleSign(d.sign_url)) : hide(bSign);
+            if (geo.head || geo.candidate) showBlock(mapSec); else hide(mapSec);
 
-                const bRej = select('#btnReject');
-                if(d.can_approve && d.reject_url) {
-                    show(bRej); bRej.onclick = () => openReject(d.reject_url, `${d.contract_no || '-'} • ${d.person_name || '-'}`);
-                } else { hide(bRej); }
+            if (geo.head) {
+                showBlock(wHead);
+                setText('#ts-head', `Ditandatangani: ${geo.head.ts}`);
+                initMap('map-head', geo.head.lat, geo.head.lng);
+                if(geo.head.image_url) { if(iHead) { iHead.src = geo.head.image_url; showBlock(iHead); } }
+                else showBlock(niHead);
+            } else hide(wHead);
 
-                const logSection = select('#detLogSection');
-                const logList = select('#detLogList');
-                if (d.can_see_logs && d.approval_logs) {
-                    showBlock(logSection);
-                    const logs = d.approval_logs.map(log => {
-                        let icon = '<i class="fas fa-check"></i>', bgClass = 'u-bg-success-light', textClass = 'u-text-success';
-                        if(log.status === 'rejected') { icon = '<i class="fas fa-times"></i>'; bgClass = 'u-bg-danger-light'; textClass = 'u-text-danger'; }
-                        else if(log.status === 'pending') { icon = '<i class="fas fa-clock"></i>'; bgClass = 'u-bg-light'; textClass = 'u-text-muted'; }
-                        return `<div class="u-flex u-gap-md u-mb-md u-items-start">
-                            <div class="u-avatar u-avatar--sm ${textClass}" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">${icon}</div>
-                            <div class="u-flex-1" style="min-width: 0;">
-                                <div class="u-flex u-justify-between u-items-start u-w-full" style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
-                                    <div class="u-pr-sm">
-                                        <div class="u-font-bold u-text-sm">${log.name}</div>
-                                        <div class="u-text-xs u-muted">${log.role}</div>
-                                    </div>
-                                    <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${log.time_ago}</div>
-                                </div>
-                                <div class="u-text-sm u-p-sm u-rounded ${bgClass} ${textClass} u-mt-xs">
-                                    <strong>${log.status.toUpperCase()}</strong>${log.note ? ': ' + log.note : ''}
-                                    <div class="u-text-xs u-mt-xxs u-muted">${log.date_formatted}</div>
-                                </div>
-                            </div>
-                        </div>`;
-                    }).join('');
+            if (geo.candidate) {
+                showBlock(wCand);
+                setText('#ts-cand', `Ditandatangani: ${geo.candidate.ts}`);
+                initMap('map-cand', geo.candidate.lat, geo.candidate.lng);
+                if(geo.candidate.image_url) { if(iCand) { iCand.src = geo.candidate.image_url; showBlock(iCand); } }
+                else showBlock(niCand);
+            } else hide(wCand);
 
-                    const createdLog = `<div class="u-flex u-gap-md u-mb-md u-items-start">
-                        <div class="u-avatar u-avatar--sm u-text-brand" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">
-                            <i class="fas fa-plus"></i>
-                        </div>
+            if (isPb) {
+                hide(select('#detRemunBox')); hide(select('#detPeriodRow')); showBlock(select('#detPbBox'));
+                setText('#detPbEff', m.pb_effective_end || '-');
+                setText('#detPbVal', 'Rp ' + money(m.pb_compensation_amount));
+                setText('#detPbValW', (m.pb_compensation_amount_words || '').toString());
+            } else {
+                showBlock(select('#detRemunBox')); showBlock(select('#detPeriodRow')); hide(select('#detPbBox'));
+                setText('#detPeriod', `${d.start_date || '-'} s/d ${d.end_date || '-'}`);
+                setText('#detSalary', 'Rp ' + money(m.salary_amount));
+                setText('#detLunch', 'Rp ' + money(m.lunch_allowance_daily));
+                setText('#detWorkDays', m.work_days || '-');
+                setText('#detWorkHours', m.work_hours || '-');
+                const allws = [];
+                if(m.allowance_position_amount) allws.push(['T. Jabatan', m.allowance_position_amount]);
+                if(m.allowance_communication_amount) allws.push(['T. Komunikasi', m.allowance_communication_amount]);
+                if(m.allowance_special_amount) allws.push(['T. Khusus', m.allowance_special_amount]);
+                if(m.allowance_other_amount) allws.push(['Lainnya', m.allowance_other_amount]);
+                if(m.travel_allowance_stay) allws.push(['UHPD Inap', m.travel_allowance_stay]);
+                if(m.travel_allowance_non_stay) allws.push(['UHPD Non-Inap', m.travel_allowance_non_stay]);
+                const elAllw = select('#detAllowances');
+                if(elAllw) elAllw.innerHTML = allws.map(x => `<div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-muted">${x[0]}</span><strong>Rp ${money(x[1])}</strong></div>`).join('');
+            }
+
+            const boxNew = select('#detNewUnitBox');
+            const prevId = (m.prev_unit_id ?? '').toString();
+            const newId = (m.new_unit_id ?? '').toString();
+            if(d.contract_type === 'PKWT_PERPANJANGAN' && prevId && newId && prevId !== newId) {
+                showBlock(boxNew); setText('#detNewUnit', m.new_unit_name || '-');
+            } else { hide(boxNew); }
+
+            const bPrev = select('#btnPreviewDoc');
+            d.doc_url ? (show(bPrev), bPrev.style.display='inline-flex', bPrev.href=d.doc_url) : hide(bPrev);
+
+            const bApp = select('#btnApprove');
+            d.can_approve ? (show(bApp), bApp.onclick=()=>handleSign(d.approve_url)) : hide(bApp);
+
+            const bSign = select('#btnSign');
+            d.can_sign ? (show(bSign), bSign.onclick=()=>handleSign(d.sign_url)) : hide(bSign);
+
+            const bRej = select('#btnReject');
+            if(d.can_approve && d.reject_url) {
+                show(bRej); bRej.onclick = () => openReject(d.reject_url, `${d.contract_no || '-'} • ${d.person_name || '-'}`);
+            } else { hide(bRej); }
+
+            const logSection = select('#detLogSection');
+            const logList = select('#detLogList');
+            if (d.can_see_logs && d.approval_logs) {
+                showBlock(logSection);
+                const logs = d.approval_logs.map(log => {
+                    let icon = '<i class="fas fa-check"></i>', bgClass = 'u-bg-success-light', textClass = 'u-text-success';
+                    if(log.status === 'rejected') { icon = '<i class="fas fa-times"></i>'; bgClass = 'u-bg-danger-light'; textClass = 'u-text-danger'; }
+                    else if(log.status === 'pending') { icon = '<i class="fas fa-clock"></i>'; bgClass = 'u-bg-light'; textClass = 'u-text-muted'; }
+                    return `<div class="u-flex u-gap-md u-mb-md u-items-start">
+                        <div class="u-avatar u-avatar--sm ${textClass}" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">${icon}</div>
                         <div class="u-flex-1" style="min-width: 0;">
                             <div class="u-flex u-justify-between u-items-start u-w-full" style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
                                 <div class="u-pr-sm">
-                                    <div class="u-font-bold u-text-sm">${d.creator_name || 'System'}</div>
-                                    <div class="u-text-xs u-muted">Document Created</div>
+                                    <div class="u-font-bold u-text-sm">${log.name}</div>
+                                    <div class="u-text-xs u-muted">${log.role}</div>
                                 </div>
-                                <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${d.created_at_human || ''}</div>
+                                <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${log.time_ago}</div>
                             </div>
-                            <div class="u-text-sm u-p-sm u-rounded u-bg-light u-text-muted u-mt-xs">
-                                <strong>CREATED</strong>
-                                <div class="u-text-xs u-mt-xxs u-muted">${d.created_at_formatted || ''}</div>
+                            <div class="u-text-sm u-p-sm u-rounded ${bgClass} ${textClass} u-mt-xs">
+                                <strong>${log.status.toUpperCase()}</strong>${log.note ? ': ' + log.note : ''}
+                                <div class="u-text-xs u-mt-xxs u-muted">${log.date_formatted}</div>
                             </div>
                         </div>
                     </div>`;
+                }).join('');
 
-                    logList.innerHTML = logs + createdLog;
-                } else { hide(logSection); }
+                const createdLog = `<div class="u-flex u-gap-md u-mb-md u-items-start">
+                    <div class="u-avatar u-avatar--sm u-text-brand" style="background: var(--surface-2); border: 1px solid var(--border-color); flex-shrink: 0;">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="u-flex-1" style="min-width: 0;">
+                        <div class="u-flex u-justify-between u-items-start u-w-full" style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div class="u-pr-sm">
+                                <div class="u-font-bold u-text-sm">${d.creator_name || 'System'}</div>
+                                <div class="u-text-xs u-muted">Document Created</div>
+                            </div>
+                            <div class="u-text-xs u-muted u-flex-shrink-0" style="margin-left: auto !important; white-space: nowrap; text-align: right;">${d.created_at_human || ''}</div>
+                        </div>
+                        <div class="u-text-sm u-p-sm u-rounded u-bg-light u-text-muted u-mt-xs">
+                            <strong>CREATED</strong>
+                            <div class="u-text-xs u-mt-xxs u-muted">${d.created_at_formatted || ''}</div>
+                        </div>
+                    </div>
+                </div>`;
 
-                openModal('detailContractModal');
-            } catch(err) { window.toastErr(err.message); }
-        }
+                logList.innerHTML = logs + createdLog;
+            } else { hide(logSection); }
 
-        const btnDelete = e.target.closest('.js-btn-delete');
-        if(btnDelete) {
-            e.preventDefault();
-            Swal.fire({
-                title: 'Hapus Dokumen?',
-                text: "Data tidak dapat dikembalikan!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                confirmButtonText: 'Ya, Hapus!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const form = doc.createElement('form');
-                    form.method = 'POST';
-                    form.action = btnDelete.dataset.url;
-                    const csrfInput = doc.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = '_token';
-                    csrfInput.value = csrf;
-                    form.appendChild(csrfInput);
-                    const methodInput = doc.createElement('input');
-                    methodInput.type = 'hidden';
-                    methodInput.name = '_method';
-                    methodInput.value = 'DELETE';
-                    form.appendChild(methodInput);
-                    doc.body.appendChild(form);
-                    form.submit();
-                }
-            });
-        }
+            openModal('detailContractModal');
+        } catch(err) { alert(err.message); }
+    });
+
+    $(document).on('click', '.js-btn-delete', function(e) {
+        e.preventDefault();
+        const btnDelete = this;
+        Swal.fire({
+            title: 'Hapus Dokumen?',
+            text: "Data tidak dapat dikembalikan!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Ya, Hapus!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = doc.createElement('form');
+                form.method = 'POST';
+                form.action = btnDelete.dataset.url;
+                const csrfInput = doc.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrf;
+                form.appendChild(csrfInput);
+                const methodInput = doc.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'DELETE';
+                form.appendChild(methodInput);
+                doc.body.appendChild(form);
+                form.submit();
+            }
+        });
     });
 });
 </script>

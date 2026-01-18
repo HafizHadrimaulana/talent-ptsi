@@ -1,6 +1,11 @@
 @extends('layouts.app')
 @section('title','User Management')
 
+@push('styles')
+<!-- <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"> -->
+
+@endpush
+
 @section('content')
 @php
   $rolesOptions = $roles ?? collect();
@@ -39,14 +44,14 @@
   @endif
 
   <div class="dt-wrapper">
-      <div class="u-scroll-x" data-table-url="{{ route('admin.users.index') }}">
-        <table id="users-table" class="u-table" style="width:100%">
+      <div class="u-scroll-x">
+        <table id="users-table" class="u-table nowrap" style="width:100%">
           <thead>
             <tr>
-              <th>Identity</th>
-              <th>Job / Unit</th>
-              <th>Status</th>
-              <th class="cell-actions">Actions</th>
+              <th data-priority="1">Identity</th>
+              <th data-priority="3">Job / Unit</th>
+              <th data-priority="4">Status</th>
+              <th class="cell-actions" width="100" data-priority="2">Actions</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -60,7 +65,7 @@
   <div class="u-modal__card u-modal__card--xl">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
-        <div id="empPhoto" class="u-avatar u-avatar--lg u-avatar--brand"><span id="empInitial">?</span></div>
+        <div id="empPhotoWrapper"></div>
         <div>
           <div id="empName" class="u-title">Name</div>
           <div class="u-flex u-gap-sm u-text-sm u-muted">
@@ -189,9 +194,228 @@
     </form>
   </div>
 </div>
+@endsection
 
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    
+    // --- 1. JS-INJECTED LIGHTBOX (SOLUSI FIX) ---
+    // Fungsi ini membuat CSS dan HTML untuk Lightbox secara dinamis saat halaman dimuat
+    // Ini memastikan popup selalu berada di root <body> dan tidak terpengaruh style card/tabel.
+    function initDynamicLightbox() {
+        if(document.getElementById('qv-lightbox-style')) return;
+
+        // 1. Inject Style CSS
+        const style = document.createElement('style');
+        style.id = 'qv-lightbox-style';
+        style.innerHTML = `
+            .qv-overlay {
+                position: fixed !important; top: 0; left: 0; width: 100vw; height: 100vh;
+                background-color: rgba(0,0,0,0.92); z-index: 2147483647 !important;
+                display: none; align-items: center; justify-content: center;
+                backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+                opacity: 0; transition: opacity 0.3s ease;
+            }
+            .qv-overlay.is-visible { display: flex !important; opacity: 1; }
+            .qv-img {
+                max-width: 90vw; max-height: 85vh; border-radius: 8px;
+                box-shadow: 0 0 40px rgba(0,0,0,0.8); object-fit: contain;
+                transform: scale(0.9); transition: transform 0.3s ease;
+            }
+            .qv-overlay.is-visible .qv-img { transform: scale(1); }
+            .qv-close {
+                position: absolute; top: 20px; right: 20px; color: #fff; font-size: 40px;
+                background: none; border: none; cursor: pointer; line-height: 1; padding: 10px;
+            }
+            .qv-close:hover { transform: scale(1.1); color: #ef4444; }
+            .qv-caption {
+                position: absolute; bottom: 30px; color: #fff; font-weight: 600;
+                font-size: 1.1rem; text-align: center; width: 100%; text-shadow: 0 2px 4px #000;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 2. Inject HTML Element
+        const div = document.createElement('div');
+        div.id = 'qv-lightbox';
+        div.className = 'qv-overlay';
+        div.innerHTML = `
+            <button class="qv-close" title="Close">&times;</button>
+            <img class="qv-img" src="">
+            <div class="qv-caption"></div>
+        `;
+        document.body.appendChild(div);
+
+        // 3. Setup Logic
+        const img = div.querySelector('.qv-img');
+        const caption = div.querySelector('.qv-caption');
+        const close = () => {
+            div.classList.remove('is-visible');
+            document.body.style.overflow = ''; // Restore scroll
+            setTimeout(() => { 
+                div.style.display = 'none'; 
+                img.src = ''; 
+            }, 300);
+        };
+
+        div.addEventListener('click', close);
+        div.querySelector('.qv-close').addEventListener('click', close);
+        img.addEventListener('click', e => e.stopPropagation()); // Klik gambar jangan tutup
+
+        // Escape Key
+        document.addEventListener('keydown', e => {
+            if(e.key === "Escape" && div.classList.contains('is-visible')) close();
+        });
+
+        // Global Function trigger
+        window.viewPhoto = function(url, name) {
+            if(!url) return;
+            img.src = url;
+            caption.innerText = name || '';
+            div.style.display = 'flex';
+            
+            // Force browser reflow agar transition jalan
+            void div.offsetWidth; 
+            
+            div.classList.add('is-visible');
+            document.body.style.overflow = 'hidden'; // Lock scroll
+        };
+    }
+
+    // Jalankan init
+    initDynamicLightbox();
+
+
+    // --- 2. DATATABLES SETUP ---
+    const usersTable = $('#users-table').DataTable({
+        processing: true,
+        serverSide: true,
+        dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
+        responsive: {
+            details: {
+                renderer: function (api, rowIdx, columns) {
+                    let data = $.map(columns, function (col, i) {
+                        return col.hidden ?
+                            `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
+                                <span class="u-dt-child-title">${col.title}</span>
+                                <span class="u-dt-child-data">${col.data}</span>
+                             </li>` : '';
+                    }).join('');
+                    return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
+                }
+            }
+        },
+        ajax: {
+            url: "{{ route('admin.users.index') }}",
+        },
+        columns: [
+            { 
+                data: 'full_name',
+                name: 'full_name',
+                orderable: true,
+                render: function(data, type, row) {
+                    let imgHtml = '';
+                    let name = row.full_name || 'Unknown';
+                    // Generate Initials
+                    let initials = name.replace(/[^a-zA-Z\s]/g, '').match(/\b\w/g) || [];
+                    initials = ((initials.shift() || '') + (initials.pop() || '')).toUpperCase();
+                    if(!initials) initials = name.substring(0, 2).toUpperCase();
+
+                    if(row.person_photo) {
+                        imgHtml = `
+                            <div class="u-avatar u-avatar--md is-interactive" 
+                                 onclick="event.stopPropagation(); window.viewPhoto('${row.person_photo}', '${name}')"
+                                 title="Zoom Foto"
+                                 style="background-image: url('${row.person_photo}')">
+                            </div>`;
+                    } else {
+                        imgHtml = `<div class="u-avatar u-avatar--md"><span class="u-avatar-initial">${initials}</span></div>`;
+                    }
+                    
+                    let sub = row.employee_email || row.user_email || '-';
+                    let idInfo = row.employee_id ? `<span class="u-badge u-badge--glass u-text-xxs">${row.employee_id}</span>` : '';
+
+                    return `
+                        <div class="u-flex u-items-center u-gap-md">
+                            ${imgHtml}
+                            <div class="u-min-w-0">
+                                <div class="u-font-bold u-text-md u-truncate">${name}</div>
+                                <div class="u-text-xs u-muted u-truncate">${sub}</div>
+                                <div class="u-mt-xxs">${idInfo}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            { 
+                data: 'job_title',
+                name: 'job_title',
+                orderable: true,
+                render: function(data, type, row) {
+                    return `
+                        <div>
+                            <div class="u-font-semibold u-text-sm">${row.job_title || '-'}</div>
+                            <div class="u-text-xs u-muted">${row.unit_name || '-'}</div>
+                            <div class="u-text-xs u-text-brand u-mt-xxs">${row.company_name || ''}</div>
+                        </div>
+                    `;
+                }
+            },
+            { 
+                data: 'employee_status',
+                name: 'employee_status',
+                orderable: true,
+                render: function(data, type, row) {
+                    if(row.user_id) {
+                        return `<span class="u-badge u-bg-success-light u-text-success"><i class="fas fa-check-circle u-mr-xs"></i> Active User</span>`;
+                    }
+                    return `<span class="u-badge u-badge--glass">${row.employee_status || 'Employee'}</span>`;
+                }
+            },
+            { 
+                data: null,
+                orderable: false,
+                className: "text-center",
+                render: function(data, type, row) {
+                    const rowData = JSON.stringify(row).replace(/"/g, '&quot;');
+                    let btns = `<div class="u-flex u-justify-end u-gap-sm">`;
+                    
+                    if(row.employee_pk) {
+                         btns += `<button class="u-btn u-btn--xs u-btn--ghost" onclick="window.openDetailModal(${rowData})" title="Detail"><i class="fas fa-eye"></i></button>`;
+                    }
+                    
+                    if(row.user_id || {{ auth()->user()->can('users.create') ? 'true' : 'false' }}) {
+                         btns += `<button class="u-btn u-btn--xs u-btn--outline" onclick="window.openEditModal(${rowData})" title="Edit Access"><i class="fas fa-user-lock"></i></button>`;
+                    }
+                    
+                    btns += `</div>`;
+                    return btns;
+                }
+            }
+        ],
+        order: [[0, 'asc']],
+        language: {
+            search: "",
+            searchPlaceholder: "Search users...",
+            lengthMenu: "_MENU_ per page",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "No entries found",
+            paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+        },
+        drawCallback: function() {
+            const wrapper = $(this.api().table().container());
+            wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
+            wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
+            const p = wrapper.find('.dataTables_paginate .paginate_button');
+            p.addClass('u-btn u-btn--sm u-btn--ghost');
+            p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
+            p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
+        }
+    });
+
     const shell = document.querySelector('.u-card[data-store-url]');
     const STORE_URL = shell?.dataset.storeUrl || '';
     const UPDATE_BASE = shell?.dataset.updateUrlBase || '';
@@ -237,17 +461,17 @@ document.addEventListener('DOMContentLoaded', function () {
     window.openEditModal = function(data) {
         const form = document.getElementById('editForm');
         form.reset();
-        document.getElementById('i_name').value = data.user?.name || data.full_name || '';
-        document.getElementById('i_email').value = data.user?.email || data.email || '';
-        document.getElementById('i_unit').value = data.user?.unit_id || '';
+        document.getElementById('i_name').value = data.user_name || data.full_name || '';
+        document.getElementById('i_email').value = data.user_email || data.employee_email || '';
+        document.getElementById('i_unit').value = data.user_unit_id || '';
         document.getElementById('f_employee_id').value = data.employee_id || '';
         window.toggleAllRoles(false);
-        (data.user?.roles_ids || []).forEach(id => {
+        (data.role_ids || []).forEach(id => {
             const cb = document.querySelector(`#rolesChecklist input[value="${id}"]`);
             if(cb) cb.checked = true;
         });
-        if(data.user?.id) {
-            form.action = `${UPDATE_BASE}/${data.user.id}`;
+        if(data.user_id) {
+            form.action = `${UPDATE_BASE}/${data.user_id}`;
             form.querySelector('input[name="_method"]').value = 'PUT';
             document.getElementById('editTitle').textContent = 'Edit User';
         } else {
@@ -262,21 +486,29 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     window.openDetailModal = function(d) {
+        if(!d.employee_pk) return;
         document.getElementById('empName').textContent = d.full_name;
         document.getElementById('empId').textContent = d.employee_id ? `ID: ${d.employee_id}` : 'External';
-        document.getElementById('empCompany').textContent = d.company || '—';
+        document.getElementById('empCompany').textContent = d.company_name || '—';
         
-        const av = document.getElementById('empPhoto');
-        const init = document.getElementById('empInitial');
-        if(d.photo_url){
-            av.style.backgroundImage = `url(${d.photo_url})`;
-            av.classList.remove('u-avatar--brand');
-            init.style.display='none';
+        const wrapper = document.getElementById('empPhotoWrapper');
+        let name = d.full_name || '?';
+        let initials = name.replace(/[^a-zA-Z\s]/g, '').match(/\b\w/g) || [];
+        initials = ((initials.shift() || '') + (initials.pop() || '')).toUpperCase();
+        if(!initials) initials = name.substring(0, 2).toUpperCase();
+
+        if(d.person_photo){
+            wrapper.innerHTML = `
+                <div id="empPhoto" class="u-avatar u-avatar--lg is-interactive" 
+                     onclick="window.viewPhoto('${d.person_photo}', '${name}')"
+                     title="Click to enlarge"
+                     style="background-image: url('${d.person_photo}')">
+                </div>`;
         } else {
-            av.style.backgroundImage = '';
-            av.classList.add('u-avatar--brand');
-            init.style.display='block';
-            init.textContent = (d.full_name||'?')[0];
+            wrapper.innerHTML = `
+                <div id="empPhoto" class="u-avatar u-avatar--lg">
+                    <span class="u-avatar-initial" id="empInitial">${initials}</span>
+                </div>`;
         }
 
         const rowStyle = 'display:flex; justify-content:space-between; align-items:flex-start; gap:1.5rem; margin-bottom:0.75rem;';
@@ -286,16 +518,16 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('ov-left').innerHTML = `
             <div style="${rowStyle}"><span style="${lblStyle}">Job Title</span><span style="${valStyle}">${d.job_title||'—'}</span></div>
             <div style="${rowStyle}"><span style="${lblStyle}">Unit</span><span style="${valStyle}">${d.unit_name||'—'}</span></div>
-            <div style="${rowStyle}"><span style="${lblStyle}">Directorate</span><span style="${valStyle}">${d.directorate||'—'}</span></div>
-            <div style="${rowStyle}"><span style="${lblStyle}">Start Date</span><span style="${valStyle}">${_fmtDate(d.start_date)}</span></div>
-            <div style="${rowStyle}"><span style="${lblStyle}">Status</span><span style="flex:1; text-align:right"><span class="u-badge u-badge--glass">${d.status||'—'}</span></span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Directorate</span><span style="${valStyle}">${d.directorate_name||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Start Date</span><span style="${valStyle}">${_fmtDate(d.latest_jobs_start_date)}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Status</span><span style="flex:1; text-align:right"><span class="u-badge u-badge--glass">${d.employee_status||'—'}</span></span></div>
         `;
         document.getElementById('ov-right').innerHTML = `
-            <div style="${rowStyle}"><span style="${lblStyle}">Email</span><span style="${valStyle}">${d.email||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Email</span><span style="${valStyle}">${d.employee_email||'—'}</span></div>
             <div style="${rowStyle}"><span style="${lblStyle}">Phone</span><span style="${valStyle}">${d.phone||'—'}</span></div>
-            <div style="${rowStyle}"><span style="${lblStyle}">Location</span><span style="${valStyle}">${d.city||'—'}</span></div>
-            <div style="${rowStyle}"><span style="${lblStyle}">Talent</span><span style="${valStyle}">${d.talent||'—'}</span></div>
-            <div style="${rowStyle}"><span style="${lblStyle}">Company</span><span style="${valStyle}">${d.company||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Location</span><span style="${valStyle}">${d.location_city||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Talent</span><span style="${valStyle}">${d.talent_class_level||'—'}</span></div>
+            <div style="${rowStyle}"><span style="${lblStyle}">Company</span><span style="${valStyle}">${d.company_name||'—'}</span></div>
         `;
 
         const lists = ['brevet-list', 'job-list', 'task-list', 'asg-list', 'edu-list', 'train-list', 'doc-list'];
@@ -307,28 +539,26 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('empModal').hidden = false;
         document.body.classList.add('modal-open');
 
-        if(d.id) {
-            fetch(`${UPDATE_BASE}/${d.id}`, {headers: {'Accept': 'application/json'}})
-                .then(res => res.ok ? res.json() : null)
-                .then(data => {
-                    if(!data) throw new Error('No Data');
-                    _renderList('brevet-list', data.brevet_list, (v)=>`
-                        <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${v.title || 'Brevet'}</h4><p class="u-text-xs u-muted">${v.organization || 'Organization'}</p></div><span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(v.start_date, v.end_date)}</span></div></div>`);
-                    _renderList('job-list', data.job_histories, (j)=>`
-                        <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${j.title || 'Position'}</h4><p class="u-text-xs u-muted">${j.unit_name || j.organization || ''}</p></div><span class="u-badge u-badge--primary u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(j.start_date, j.end_date)}</span></div></div>`);
-                    _renderList('task-list', data.taskforces, (t)=>`
-                        <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${t.title}</h4><p class="u-text-xs u-muted">${t.organization}</p></div><span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(t.start_date, t.end_date)}</span></div></div>`);
-                    _renderList('asg-list', data.assignments, (a)=>`
-                        <div class="u-item"><div class="u-flex u-justify-between u-items-start"><div><h4 class="u-font-semibold u-text-sm">${a.title}</h4><p class="u-text-xs u-muted">${a.description}</p></div></div></div>`);
-                    _renderList('edu-list', data.educations, (e)=> {
-                        let meta = {}; try { meta = typeof e.meta === 'string' ? JSON.parse(e.meta) : (e.meta || {}); } catch(_){}
-                        return `<div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${meta.level||e.level||'Education'} ${meta.major?'— '+meta.major:''}</h4><p class="u-text-xs u-muted">${e.organization || 'Institution'}</p></div><span class="u-badge u-badge--glass u-shrink-0">Grad: ${_year(e.start_date)}</span></div></div>`;
-                    });
-                    _renderList('train-list', data.trainings, (t)=>`<div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${t.title}</h4><p class="u-text-xs u-muted">${t.organization||'Provider'}</p></div><span class="u-badge u-badge--primary u-shrink-0">${_fmtDate(t.start_date)}</span></div></div>`);
-                    _renderList('doc-list', data.documents, (d)=>`<div class="u-item u-flex u-justify-between u-items-center"><div class="u-flex-1 u-mr-md u-min-w-0"><h4 class="u-font-semibold u-text-sm">${d.final_title || 'Untitled'}</h4><p class="u-text-xs u-muted">${d.doc_type}</p></div><div class="u-flex u-flex-col u-items-end u-gap-xs u-shrink-0">${d.meta_due_date ? `<div class="u-text-xs u-muted">Due: ${_fmtDate(d.meta_due_date)}</div>` : ''}${d.url?`<a href="${d.url}" target="_blank" class="u-btn u-btn--xs u-btn--outline">View</a>`:''}</div></div>`);
-                })
-                .catch(() => lists.forEach(id => document.getElementById(id).innerHTML = '<div class="u-empty u-text-xs">No data available</div>'));
-        }
+        fetch(`${UPDATE_BASE}/${d.employee_pk}`, {headers: {'Accept': 'application/json'}})
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+                if(!data) throw new Error('No Data');
+                _renderList('brevet-list', data.brevet_list, (v)=>`
+                    <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${v.title || 'Brevet'}</h4><p class="u-text-xs u-muted">${v.organization || 'Organization'}</p></div><span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(v.start_date, v.end_date)}</span></div></div>`);
+                _renderList('job-list', data.job_histories, (j)=>`
+                    <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${j.title || 'Position'}</h4><p class="u-text-xs u-muted">${j.unit_name || j.organization || ''}</p></div><span class="u-badge u-badge--primary u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(j.start_date, j.end_date)}</span></div></div>`);
+                _renderList('task-list', data.taskforces, (t)=>`
+                    <div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${t.title}</h4><p class="u-text-xs u-muted">${t.organization}</p></div><span class="u-badge u-badge--glass u-shrink-0" style="white-space:nowrap; width:fit-content">${_yearRange(t.start_date, t.end_date)}</span></div></div>`);
+                _renderList('asg-list', data.assignments, (a)=>`
+                    <div class="u-item"><div class="u-flex u-justify-between u-items-start"><div><h4 class="u-font-semibold u-text-sm">${a.title}</h4><p class="u-text-xs u-muted">${a.description}</p></div></div></div>`);
+                _renderList('edu-list', data.educations, (e)=> {
+                    let meta = {}; try { meta = typeof e.meta === 'string' ? JSON.parse(e.meta) : (e.meta || {}); } catch(_){}
+                    return `<div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${meta.level||e.level||'Education'} ${meta.major?'— '+meta.major:''}</h4><p class="u-text-xs u-muted">${e.organization || 'Institution'}</p></div><span class="u-badge u-badge--glass u-shrink-0">Grad: ${_year(e.start_date)}</span></div></div>`;
+                });
+                _renderList('train-list', data.trainings, (t)=>`<div class="u-item"><div class="u-flex u-justify-between u-items-start u-gap-md"><div class="u-flex-1 u-min-w-0"><h4 class="u-font-semibold u-text-sm">${t.title}</h4><p class="u-text-xs u-muted">${t.organization||'Provider'}</p></div><span class="u-badge u-badge--primary u-shrink-0">${_fmtDate(t.start_date)}</span></div></div>`);
+                _renderList('doc-list', data.documents, (d)=>`<div class="u-item u-flex u-justify-between u-items-center"><div class="u-flex-1 u-mr-md u-min-w-0"><h4 class="u-font-semibold u-text-sm">${d.final_title || 'Untitled'}</h4><p class="u-text-xs u-muted">${d.doc_type}</p></div><div class="u-flex u-flex-col u-items-end u-gap-xs u-shrink-0">${d.meta_due_date ? `<div class="u-text-xs u-muted">Due: ${_fmtDate(d.meta_due_date)}</div>` : ''}${d.url?`<a href="${d.url}" target="_blank" class="u-btn u-btn--xs u-btn--outline">View</a>`:''}</div></div>`);
+            })
+            .catch(() => lists.forEach(id => document.getElementById(id).innerHTML = '<div class="u-empty u-text-xs">No data available</div>'));
     };
 
     function _renderList(id, data, tpl){
@@ -356,4 +586,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-@endsection
+@endpush

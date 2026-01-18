@@ -20,43 +20,145 @@ class ContractController extends Controller
         $isEmployee = $user->hasRole('Karyawan');
         $canSeeAll = $isSuperadmin || $isDhc;
         $userUnitId = (int) ($user->unit_id ?? 0);
-        $userEmployeeId = $user->employee_id;
         $isApproverOnly = $user->can('contract.approve') && !$user->can('contract.update');
         $selectedUnitId = $canSeeAll ? ($request->filled('unit_id') ? (int) $request->integer('unit_id') : null) : $userUnitId;
 
-        $query = Contract::with(['unit:id,name', 'employee:id,employee_id,person_id', 'document', 'person:id,full_name', 'applicant.user.person'])->orderByDesc('created_at');
+        if ($request->ajax()) {
+            $query = Contract::with(['unit:id,name', 'person:id,full_name', 'applicant.user.person'])
+                ->select('contracts.*');
 
-        if ($isEmployee && !$isSuperadmin && !$isDhc && !$isApproverOnly) {
-            $query->where('employee_id', $userEmployeeId)->whereIn('status', ['approved', 'signed']);
-        } else {
-            if ($selectedUnitId) {
-                $query->where('unit_id', $selectedUnitId);
-            } elseif ($isDhc && !$isSuperadmin) {
-                $query->whereHas('unit', fn($q) => $q->where('category', 'ENABLER'));
-            } elseif ($isSuperadmin) {
-                $query->whereHas('unit', fn($q) => $q->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']));
+            if ($isEmployee && !$isSuperadmin && !$isDhc && !$isApproverOnly) {
+                $query->where('employee_id', $user->employee_id)->whereIn('status', ['approved', 'signed']);
+            } else {
+                if ($selectedUnitId) {
+                    $query->where('unit_id', $selectedUnitId);
+                } elseif ($isDhc && !$isSuperadmin) {
+                    $query->whereHas('unit', fn($q) => $q->where('category', 'ENABLER'));
+                } elseif ($isSuperadmin) {
+                    $query->whereHas('unit', fn($q) => $q->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']));
+                }
+                if ($isApproverOnly) {
+                    $query->where('status', '!=', 'draft');
+                }
             }
-            if ($isApproverOnly)
-                $query->where('status', '!=', 'draft');
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->input('status'));
+            }
+
+            $totalRecords = $query->count();
+
+            if ($search = $request->input('search.value')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('contract_no', 'like', "%{$search}%")
+                      ->orWhere('ticket_number', 'like', "%{$search}%")
+                      ->orWhere('position_name', 'like', "%{$search}%")
+                      ->orWhereHas('person', fn($sq) => $sq->where('full_name', 'like', "%{$search}%"));
+                });
+            }
+
+            $recordsFiltered = $query->count();
+
+            if ($request->has('order')) {
+                $colIdx = $request->input('order.0.column');
+                $dir = $request->input('order.0.dir');
+                $cols = [
+                    0 => 'contract_no', 
+                    1 => 'ticket_number', 
+                    3 => 'position_name', 
+                    4 => 'start_date', 
+                    5 => 'status'
+                ];
+                
+                if (isset($cols[$colIdx])) {
+                    $query->orderBy($cols[$colIdx], $dir);
+                } elseif ($colIdx === 2) {
+                     $query->orderBy('created_at', 'desc'); 
+                }
+            } else {
+                $query->orderByDesc('created_at');
+            }
+
+            $limit = $request->input('length', 10);
+            $start = $request->input('start', 0);
+            $data = $query->skip($start)->take($limit)->get();
+
+            $formatted = $data->map(function ($c) use ($user) {
+                $cand = $this->resolveCandidate($c);
+                $personName = $cand['name'];
+
+                $bg = match($c->status) {
+                    'draft' => 'u-badge--warn', 'review' => 'u-badge--primary',
+                    'approved' => 'u-badge--info', 'signed' => 'u-badge--success',
+                    'rejected' => 'u-badge--danger', default => 'u-badge--glass'
+                };
+                $statusLabel = config('recruitment.contract_statuses')[$c->status] ?? $c->status;
+                $statusHtml = "<span class='u-badge {$bg}'>{$statusLabel}</span>";
+
+                $typeLabel = collect(config('recruitment.contract_types'))->firstWhere('code', $c->contract_type)['label'] ?? $c->contract_type;
+                $docHtml = "<div class='u-font-mono u-font-bold u-text-sm'>" . ($c->contract_no ?: '(Draft)') . "</div>";
+                $docHtml .= "<span class='u-badge u-badge--glass u-mt-xs u-text-xs'>" . $typeLabel . "</span>";
+
+                $ticketHtml = $c->ticket_number ? "<span class='u-badge u-badge--info u-text-2xs'>{$c->ticket_number}</span>" : "<span class='u-text-muted u-text-xs'>-</span>";
+
+                $personHtml = "<div><div class='u-font-bold u-text-sm'>{$personName}</div><div class='u-text-xs u-muted u-mt-xxs'>";
+                if ($c->applicant_id) $personHtml .= "<span class='u-text-accent'><i class='fas fa-user-check u-mr-xxs'></i> Pelamar</span>";
+                elseif ($c->employee_id) $personHtml .= "<i class='fas fa-id-badge u-mr-xxs'></i> {$c->employee_id}";
+                else $personHtml .= "-";
+                $personHtml .= "</div></div>";
+
+                $posHtml = "<div class='u-text-sm u-font-medium' style='white-space: normal;'>" . ($c->position_name ?? '-') . "</div>";
+                $posHtml .= "<div class='u-text-xs u-muted' style='white-space: normal;'><i class='fas fa-building u-mr-xxs'></i> " . ($c->unit?->name ?? '-') . "</div>";
+
+                if ($c->contract_type === 'PB_PENGAKHIRAN') {
+                    $effEnd = isset($c->remuneration_json['pb_effective_end']) ? Carbon::parse($c->remuneration_json['pb_effective_end'])->format('d M Y') : '-';
+                    $periodHtml = "<span class='u-text-danger u-font-bold u-text-xs'><i class='fas fa-stop-circle u-mr-xxs'></i> End: {$effEnd}</span>";
+                } else {
+                    $s = $c->start_date ? Carbon::parse($c->start_date)->format('d/m/Y') : '-';
+                    $e = $c->end_date ? Carbon::parse($c->end_date)->format('d/m/Y') : '-';
+                    $periodHtml = "<div class='u-text-sm'>{$s}</div><div class='u-text-xs u-muted'>s/d {$e}</div>";
+                }
+
+                $actions = "<div class='cell-actions__group'>";
+                $urlShow = route('recruitment.contracts.show', $c->id);
+                $actions .= "<button type='button' class='u-btn u-btn--ghost u-btn--icon u-btn--sm js-btn-detail' data-show-url='{$urlShow}' title='Lihat Detail'><i class='fas fa-eye'></i></button>";
+                
+                if ($c->status === 'draft' && $user->can('contract.update', $c)) {
+                    $urlUp = route('recruitment.contracts.update', $c->id);
+                    $urlDel = route('recruitment.contracts.destroy', $c->id);
+                    $actions .= "<button type='button' class='u-btn u-btn--outline u-btn--icon u-btn--sm js-btn-edit' data-show-url='{$urlShow}' data-update-url='{$urlUp}' title='Edit'><i class='fas fa-pencil-alt'></i></button>";
+                    $actions .= "<button type='button' class='u-btn u-btn--danger u-btn--icon u-btn--sm js-btn-delete' data-url='{$urlDel}' title='Hapus'><i class='fas fa-trash'></i></button>";
+                }
+                $actions .= "</div>";
+
+                return [
+                    $docHtml,
+                    $ticketHtml,
+                    $personHtml,
+                    $posHtml,
+                    $periodHtml,
+                    $statusHtml,
+                    $actions
+                ];
+            });
+
+            return response()->json([
+                'draw' => intval($request->input('draw')),
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $recordsFiltered,
+                'data' => $formatted
+            ]);
         }
 
-        if ($request->filled('status'))
-            $query->where('status', $request->input('status'));
-
-        $contracts = $query->paginate(25)->withQueryString();
-
         $unitsQuery = Unit::query()->select('id', 'name', 'category');
-        if ($isSuperadmin)
-            $unitsQuery->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
-        elseif ($isDhc)
-            $unitsQuery->where('category', 'ENABLER');
-
-        $units = $canSeeAll ? $unitsQuery->orderBy('name')->get() : Unit::where('id', $selectedUnitId)->get(['id', 'name', 'category']);
+        if ($isSuperadmin) $unitsQuery->whereIn('category', ['ENABLER', 'CABANG', 'OPERASI']);
+        elseif ($isDhc) $unitsQuery->where('category', 'ENABLER');
+        
+        $units = ($isSuperadmin || $isDhc) ? $unitsQuery->orderBy('name')->get() : Unit::where('id', $selectedUnitId)->get(['id', 'name', 'category']);
 
         $expiringContracts = collect();
-
         if ($canSeeAll || $user->can('contract.create')) {
-            $expiringQuery = DB::table('portfolio_histories AS ph')
+             $expiringQuery = DB::table('portfolio_histories AS ph')
                 ->leftJoin('employees AS e', 'e.person_id', '=', 'ph.person_id')
                 ->leftJoin('units AS u', 'u.id', '=', 'e.unit_id')
                 ->select('ph.id', 'ph.person_id', 'e.employee_id', 'ph.title AS position_name', 'ph.start_date', 'ph.end_date', 'e.employee_status AS employment_type', 'e.unit_id', 'u.name AS unit_name', DB::raw("(SELECT full_name FROM persons WHERE persons.id = ph.person_id) AS person_name"))
@@ -70,33 +172,16 @@ class ContractController extends Controller
             } elseif (!$canSeeAll && $userUnitId) {
                 $expiringQuery->where('e.unit_id', $userUnitId);
             }
-
             $expiringContracts = $expiringQuery->orderBy('ph.end_date', 'asc')->get();
         }
 
         $applicants = RecruitmentApplicant::with(['user.person', 'recruitmentRequest.unit'])
             ->whereIn('status', config('recruitment.contract_applicant_statuses', ['APPROVED']))
-            ->get()
-            ->map(function ($item) {
-                $person = $item->user?->person;
-                return (object) [
-                    'id' => $item->id,
-                    'person_id' => $person?->id ?? $item->user?->person_id,
-                    'full_name' => $person?->full_name ?? $item->user?->name ?? 'No Name',
-                    'position_applied' => $item->position_applied,
-                    'unit_name' => $item->recruitmentRequest?->unit?->name,
-                    'unit_id' => $item->recruitmentRequest?->unit_id,
-                    'ticket_number' => $item->recruitmentRequest?->ticket_number,
-                    'request_title' => $item->recruitmentRequest?->title,
-                ];
-            })
-            ->sortBy('full_name')
-            ->values();
-
+            ->get();
+        
         $locations = DB::table('locations')->select('id', DB::raw("CONCAT(name, ', ', city) as location_label"), 'name', 'city')->orderBy('name')->get();
 
         return view('recruitment.contracts.index', [
-            'contracts' => $contracts,
             'units' => $units,
             'positions' => DB::table('positions')->select('id', 'name')->orderBy('name')->get(),
             'locations' => $locations,
@@ -134,8 +219,7 @@ class ContractController extends Controller
         try {
             $isNew = !$c->exists;
             $c->fill($v);
-            if ($isNew)
-                $c->contract_no = null;
+            if ($isNew) $c->contract_no = null;
             $c->unit_id = $v['unit_id'];
 
             if (in_array($v['contract_type'], ['SPK', 'PKWT_BARU']) && $v['applicant_id']) {
@@ -145,8 +229,7 @@ class ContractController extends Controller
                 if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number) {
                     $c->ticket_number = $a->recruitmentRequest->ticket_number;
                 }
-                if (empty($v['position_name']))
-                    $c->position_name = $a->position_applied;
+                if (empty($v['position_name'])) $c->position_name = $a->position_applied;
             } else {
                 $c->person_id = $v['person_id'] ?: Employee::where('employee_id', $v['employee_id'])->value('person_id');
                 if ($v['source_contract_id']) {
@@ -157,8 +240,7 @@ class ContractController extends Controller
                     }
                 }
             }
-            if (!$c->person_id)
-                $c->person_id = $request->input('person_id');
+            if (!$c->person_id) $c->person_id = $request->input('person_id');
 
             $c->requires_draw_signature = $request->has('requires_draw_signature');
             $c->requires_camera = $request->has('requires_camera');
@@ -178,18 +260,13 @@ class ContractController extends Controller
 
             if ($v['submit_action'] === 'submit') {
                 $c->status = 'review';
-                if (!$c->contract_no)
-                    $c->contract_no = $this->generateContractNumber($c);
-            } elseif ($isNew) {
-                $c->status = 'draft';
-            }
-            if ($v['submit_action'] === 'draft') {
+                if (!$c->contract_no) $c->contract_no = $this->generateContractNumber($c);
+            } elseif ($isNew || $v['submit_action'] === 'draft') {
                 $c->status = 'draft';
             }
 
-            if ($isNew) {
-                $c->created_by_user_id = $request->user()->id;
-            }
+            if ($isNew) $c->created_by_user_id = $request->user()->id;
+            
             $c->save();
             $this->ensureDocumentRecord($c);
 
@@ -199,8 +276,7 @@ class ContractController extends Controller
             }
 
             DB::commit();
-            if ($isNew)
-                return redirect()->route('recruitment.contracts.index', ['unit_id' => $c->unit_id])->with('success', 'Dokumen berhasil disimpan.');
+            if ($isNew) return redirect()->route('recruitment.contracts.index', ['unit_id' => $c->unit_id])->with('success', 'Dokumen berhasil disimpan.');
             return back()->with('success', 'Dokumen berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();

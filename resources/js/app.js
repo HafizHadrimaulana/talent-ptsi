@@ -9,60 +9,65 @@ document.addEventListener('DOMContentLoaded', () => {
         tableSelector: '#users-table'
     });
 
+    // --- LOGIKA USERS TABLE (Biarkan jika dipakai di halaman lain) ---
     if (document.querySelector('#users-table')) {
-        const tableUrl = document.querySelector('[data-table-url]').dataset.tableUrl;
-
-        initDataTables('#users-table', {
-            serverSide: true,
-            ajax: { url: tableUrl, type: 'GET' },
-            columns: [
-                { 
-                    data: 'full_name',
-                    title: 'Identity',
-                    className: 'all',
-                    render: (data, type, row) => {
-                        const sub = row.employee_id || row.user_email || 'Ext';
-                        return `<div><div class="u-font-semibold u-text-sm text-truncate" style="max-width:200px" title="${data}">${data}</div><div class="u-text-xs u-muted">${sub}</div></div>`;
+        // Pastikan elemen [data-table-url] ada sebelum mengakses dataset
+        const urlEl = document.querySelector('[data-table-url]');
+        if (urlEl) {
+            const tableUrl = urlEl.dataset.tableUrl;
+            initDataTables('#users-table', {
+                serverSide: true,
+                ajax: { url: tableUrl, type: 'GET' },
+                columns: [
+                    // ... columns config ...
+                    { 
+                        data: 'full_name',
+                        title: 'Identity',
+                        className: 'all',
+                        render: (data, type, row) => {
+                            const sub = row.employee_id || row.user_email || 'Ext';
+                            return `<div><div class="u-font-semibold u-text-sm text-truncate" style="max-width:200px" title="${data}">${data}</div><div class="u-text-xs u-muted">${sub}</div></div>`;
+                        }
+                    },
+                    { 
+                        data: 'job_title',
+                        title: 'Job / Unit',
+                        className: 'min-tablet',
+                        render: (data, type, row) => {
+                            const unit = row.unit_name || '—';
+                            const job = data || '—';
+                            return `<div><div class="u-font-medium u-text-sm text-truncate" style="max-width:220px" title="${job}">${job}</div><div class="u-text-xs u-muted text-truncate" style="max-width:220px" title="${unit}">${unit}</div></div>`;
+                        }
+                    },
+                    { 
+                        data: 'employee_status',
+                        title: 'Status',
+                        className: 'min-tablet',
+                        render: (data, type, row) => {
+                            if (data) return `<span class="u-badge u-badge--primary">${data}</span>`;
+                            if (row.user_id) return `<span class="u-badge u-badge--success">Active User</span>`;
+                            return `<span class="u-badge u-badge--glass" style="opacity:0.6">No Status</span>`;
+                        }
+                    },
+                    { 
+                        data: null,
+                        title: 'Actions',
+                        orderable: false, 
+                        searchable: false,
+                        className: 'all text-end', 
+                        width: '80px',
+                        render: (data, type, row) => {
+                            const json = encodeURIComponent(JSON.stringify(row));
+                            return `<div class="cell-actions__group">
+                                    <button class="u-btn u-btn--sm u-btn--outline" onclick="window.triggerEdit('${json}')"><i class="fa-solid fa-user-gear"></i></button>
+                                    <button class="u-btn u-btn--sm u-btn--ghost" onclick="window.triggerDetail('${json}')"><i class="fas fa-eye"></i></button>
+                                </div>`;
+                        }
                     }
-                },
-                { 
-                    data: 'job_title',
-                    title: 'Job / Unit',
-                    className: 'min-tablet',
-                    render: (data, type, row) => {
-                        const unit = row.unit_name || '—';
-                        const job = data || '—';
-                        return `<div><div class="u-font-medium u-text-sm text-truncate" style="max-width:220px" title="${job}">${job}</div><div class="u-text-xs u-muted text-truncate" style="max-width:220px" title="${unit}">${unit}</div></div>`;
-                    }
-                },
-                { 
-                    data: 'employee_status',
-                    title: 'Status',
-                    className: 'min-tablet',
-                    render: (data, type, row) => {
-                        if (data) return `<span class="u-badge u-badge--primary">${data}</span>`;
-                        if (row.user_id) return `<span class="u-badge u-badge--success">Active User</span>`;
-                        return `<span class="u-badge u-badge--glass" style="opacity:0.6">No Status</span>`;
-                    }
-                },
-                { 
-                    data: null,
-                    title: 'Actions',
-                    orderable: false, 
-                    searchable: false,
-                    className: 'all text-end', 
-                    width: '80px',
-                    render: (data, type, row) => {
-                        const json = encodeURIComponent(JSON.stringify(row));
-                        return `<div class="cell-actions__group">
-                                <button class="u-btn u-btn--sm u-btn--outline" onclick="window.triggerEdit('${json}')"><i class="fa-solid fa-user-gear"></i></button>
-                                <button class="u-btn u-btn--sm u-btn--ghost" onclick="window.triggerDetail('${json}')"><i class="fas fa-eye"></i></button>
-                            </div>`;
-                    }
-                }
-            ],
-            order: [[0, 'asc']]
-        });
+                ],
+                order: [[0, 'asc']]
+            });
+        }
     }
 
     if (document.querySelector('#roles-table')) {
@@ -75,14 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (document.querySelector('#contracts-table')) {
-        initDataTables('#contracts-table', {
-            columnDefs: [
-                { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 160 },
-                { targets: 0, responsivePriority: 1 },
-            ],
-        });
-    }
+    // --- HAPUS BAGIAN INI (PENYEBAB ERROR) ---
+    // if (document.querySelector('#contracts-table')) {
+    //     initDataTables('#contracts-table', {
+    //         columnDefs: [
+    //             { targets: -1, orderable: false, searchable: false, className: 'cell-actions', width: 160 },
+    //             { targets: 0, responsivePriority: 1 },
+    //         ],
+    //     });
+    // }
+    // ------------------------------------------
 
     if (document.querySelector('#ip-table')) initDataTables('#ip-table', { columnDefs: [{ targets: -1, orderable: false }] });
     if (document.querySelector('#ext-table')) initDataTables('#ext-table', { columnDefs: [{ targets: -1, orderable: false }] });
