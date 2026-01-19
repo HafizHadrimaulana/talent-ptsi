@@ -78,10 +78,6 @@
             @foreach(request()->except(['q', 'page']) as $key => $val)
                 <input type="hidden" name="{{ $key }}" value="{{ $val }}">
             @endforeach
-            <div style="position: relative;">
-                <input type="text" name="q" value="{{ request('q') }}" class="u-input" placeholder="Cari Tiket / Judul..." style="border-radius: 999px; min-width: 250px; padding-left: 35px;">
-                <i class="fas fa-search u-muted" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"></i>
-            </div>
         </form>
     </div>
   </div>
@@ -252,8 +248,8 @@
                     <span class="u-text-muted u-text-2xs" title="Menunggu approval Kepala Unit">-</span>
                 @endif
             </td>
-            <td class="cell-actions">
-              <div class="cell-actions__group">
+            <td class="cell-actions" style="text-align: right; vertical-align: top;">
+              <div class="flex flex-col gap-2 items-end">
                 @if($status === 'draft' && ($sameUnit || $meRoles['Superadmin']))
                   @if($canCreate)
                     <button type="button" class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Edit draft" 

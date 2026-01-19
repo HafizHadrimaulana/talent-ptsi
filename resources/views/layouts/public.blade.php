@@ -39,31 +39,66 @@
     </style>
   </head>
   <body class="min-h-screen bg-white text-gray-900">
-    <header id="navbar" class="fixed top-0 w-full h-20 z-30 bg-[#00A29A] backdrop-blur transition-all duration-300">
-      <div class="container mx-auto px-6 py-3 h-20 flex items-center justify-between">
-        <a href="{{ route('recruitment.external.index') }}" class="flex items-center gap-2">
-            <img src="/images/Danantara_Indonesia.svg.png" alt="Danantara" class="w-35 h-auto object-contain">
-            <img src="/images/logo.png" alt="Logo" class="w-35 h-auto object-contain">
-            <img src="/images/logo-white.png" alt="Test Company Logo" class="h-25 w-25 object-contain">   
-        </a>
-        <div class="flex items-center gap-6 text-white font-medium">
-          <nav class="hidden md:flex items-center gap-4 text-sm">
-            <a href="#about" class="hover:text-gray-100">Tentang Kami</a>
-            <span class="opacity-50">|</span>
-            <a href="#jobs" class="hover:text-gray-100">Lowongan</a>
-            <span class="opacity-50">|</span>
-            <a href="#contact" class="hover:text-gray-100">Kontak</a>
-          </nav>
-          <div class="flex items-center gap-4">
-            <button type="button" onclick="openLoginModal()" class="btn btn-sm bg-white text-[#00A29A] rounded-xl px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100 cursor-pointer">
-              Login
+    <header id="navbar" class="fixed top-0 w-full h-20 z-50 bg-[#00A29A] transition-all duration-300 shadow-md">
+        <div class="container mx-auto px-4 md:px-6 h-full flex items-center justify-end md:justify-between relative">
+            
+            <a href="{{ route('recruitment.external.index') }}" class="hidden md:flex items-center gap-2 md:gap-4 overflow-hidden">
+                <img src="/images/Danantara_Indonesia.svg.png" alt="Danantara" class="h-8 md:h-10 w-auto object-contain">
+                <img src="/images/logo.png" alt="Logo IDSurvey" class="h-8 md:h-10 w-auto object-contain">
+                <img src="/images/logo-white.png" alt="SI Logo" class="h-6 md:h-9 w-auto object-contain">    
+            </a>
+
+            <div class="hidden md:flex items-center gap-6 text-white font-medium">
+                <nav class="flex items-center gap-4 text-sm">
+                    <a href="#about" class="hover:text-[#A4F5DD] transition-colors">Tentang Kami</a>
+                    <span class="opacity-50">|</span>
+                    <a href="#jobs" class="hover:text-[#A4F5DD] transition-colors">Lowongan</a>
+                    <span class="opacity-50">|</span>
+                    <a href="#contact" class="hover:text-[#A4F5DD] transition-colors">Kontak</a>
+                </nav>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="openLoginModal()" class="px-5 py-2 rounded-xl bg-white text-[#00A29A] font-bold text-sm hover:bg-gray-100 transition shadow-sm cursor-pointer">
+                        Login
+                    </button>
+                    <button type="button" onclick="openModal()" class="px-5 py-2 rounded-xl border border-white text-white font-bold text-sm hover:bg-white/10 transition shadow-sm cursor-pointer">
+                        Register
+                    </button>
+                </div>
+            </div>
+
+            <button id="mobileMenuBtn" onclick="toggleMobileMenu()" class="md:hidden text-white p-2 focus:outline-none cursor-pointer z-50 rounded hover:bg-white/10 transition">
+                <svg id="iconOpen" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                </svg>
+                <svg id="iconClose" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8 hidden">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
             </button>
-          <button type="button" onclick="openModal()" class="btn btn-sm bg-white text-[#00A29A] rounded-xl px-5 py-2 font-medium transition-all duration-200 hover:bg-gray-100 cursor-pointer">
-            Register
-          </button>
+
+            <div id="mobileMenu" class="absolute top-20 right-0 left-0 bg-white border-t border-gray-100 shadow-xl transform origin-top scale-y-0 opacity-0 transition-all duration-300 ease-in-out md:hidden z-40">
+                <div class="flex flex-col p-4 gap-4">
+                    <a href="#about" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Tentang Kami</a>
+                    <a href="#jobs" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Lowongan</a>
+                    <a href="#contact" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Kontak</a>
+                    
+                    <hr class="border-gray-200">
+                    
+                    <button onclick="toggleMobileMenu(); setTimeout(openLoginModal, 200);" class="w-full text-left font-bold text-[#00A29A] flex items-center gap-3 py-3 px-3 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                        </svg>
+                        Login
+                    </button>
+                    
+                    <button onclick="toggleMobileMenu(); setTimeout(() => openModal(), 200);" class="w-full text-left font-bold text-white bg-[#1D4388] flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-[#15346b] transition shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3.75 17.25a4.875 4.875 0 009.75 0" />
+                        </svg>
+                        Register
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-      </div>
     </header>
     <section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center text-white px-6 overflow-hidden">
       <div class="absolute inset-0">
@@ -302,7 +337,7 @@
         <p>© {{ date('Y') }}  PT Surveyor Indonesia. All Rights Reserved.</p>
       </div>
     </footer>
-    <div id="registerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div id="registerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
         <div id="registerCard" class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative transform transition-all duration-300 scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
             <button type="button" onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10">
                 ✕
@@ -363,7 +398,7 @@
             </form>
         </div>
     </div>
-    <div id="loginModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div id="loginModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
         <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative">
             <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-5">
             <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">
@@ -471,7 +506,6 @@
         </div>
     </div>
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <script>
         function openPublicJobDetail(jobData) {
             const modal = document.getElementById('publicJobModal');
@@ -538,42 +572,93 @@
             document.body.style.overflow = 'auto';
         }
         function openLoginModal() {
-            const m = document.getElementById("loginModal");
-            if(m) { m.classList.remove("opacity-0", "pointer-events-none"); m.classList.add("opacity-100"); }
+            const modal = document.getElementById("loginModal");
+            if(modal) { 
+                modal.classList.remove("opacity-0", "pointer-events-none"); 
+                modal.classList.add("opacity-100", "pointer-events-auto"); 
+            }
+            document.body.style.overflow = 'hidden';
         }
+
         function closeLoginModal() {
-            const m = document.getElementById("loginModal");
-            if(m) { m.classList.add("opacity-0", "pointer-events-none"); m.classList.remove("opacity-100"); }
+            const modal = document.getElementById("loginModal");
+            if(modal) { 
+                modal.classList.add("opacity-0", "pointer-events-none"); 
+                modal.classList.remove("opacity-100", "pointer-events-auto"); 
+            }
+            document.body.style.overflow = 'auto';
         }
         function openModal() {
-            const m = document.getElementById('registerModal');
+            const modal = document.getElementById('registerModal');
             const card = document.getElementById('registerCard');
             
-            if(m) { 
-                m.classList.remove('opacity-0', 'pointer-events-none'); 
+            if(modal) { 
+                // Hapus class hidden/opacity agar muncul
+                modal.classList.remove('opacity-0', 'pointer-events-none'); 
+                modal.classList.add('opacity-100', 'pointer-events-auto'); // Pastikan pointer events aktif
             }
             if(card) {
-                card.classList.remove('opacity-0', 'scale-95');
-                card.classList.add('scale-100');
+                card.classList.remove('scale-95', 'opacity-0');
+                card.classList.add('scale-100', 'opacity-100');
             }
+            // Matikan scroll pada body saat modal terbuka
+            document.body.style.overflow = 'hidden';
         }
         function closeModal() {
-            const m = document.getElementById('registerModal');
+            const modal = document.getElementById('registerModal');
             const card = document.getElementById('registerCard');
 
-            if(m) { 
-                m.classList.add('opacity-0', 'pointer-events-none'); 
+            if(modal) { 
+                modal.classList.add('opacity-0', 'pointer-events-none'); 
+                modal.classList.remove('opacity-100', 'pointer-events-auto');
             }
             if(card) {
-                card.classList.add('opacity-0', 'scale-95');
-                card.classList.remove('scale-100');
+                card.classList.add('scale-95', 'opacity-0');
+                card.classList.remove('scale-100', 'opacity-100');
             }
+            // Hidupkan kembali scroll body
+            document.body.style.overflow = 'auto';
         }
         
         function triggerLoginForApply() {
             closePublicJobModal();
             setTimeout(() => { openLoginModal(); }, 300);
         }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const iconOpen = document.getElementById('iconOpen');
+            const iconClose = document.getElementById('iconClose');
+            
+            // Cek apakah menu sedang tertutup
+            if (menu.classList.contains('scale-y-0')) {
+                // BUKA MENU
+                menu.classList.remove('scale-y-0', 'opacity-0');
+                menu.classList.add('scale-y-100', 'opacity-100');
+                
+                // Ubah icon jadi X
+                if(iconOpen) iconOpen.classList.add('hidden');
+                if(iconClose) iconClose.classList.remove('hidden');
+            } else {
+                // TUTUP MENU
+                menu.classList.add('scale-y-0', 'opacity-0');
+                menu.classList.remove('scale-y-100', 'opacity-100');
+                
+                // Ubah icon balik jadi Titik 3
+                if(iconOpen) iconOpen.classList.remove('hidden');
+                if(iconClose) iconClose.classList.add('hidden');
+            }
+        }
+
+        // Menutup menu jika klik di luar area
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.getElementById('mobileMenuBtn');
+            
+            if (menu && btn && !menu.contains(event.target) && !btn.contains(event.target) && !menu.classList.contains('scale-y-0')) {
+                toggleMobileMenu();
+            }
+        });
         document.addEventListener("DOMContentLoaded", function() {
             document.body.addEventListener('click', function(e) {
                 const btn = e.target.closest('.js-btn-detail');
@@ -664,31 +749,44 @@
             }
             const termsCheckbox = document.getElementById('termsCheckbox');
             const regSubmitBtn = document.getElementById('submitBtn');
+
             if(termsCheckbox && regSubmitBtn){
-                termsCheckbox.addEventListener('change', function () {
-                    regSubmitBtn.disabled = !this.checked;
-                    if(this.checked) {
+                // Fungsi untuk cek status checkbox & update tombol
+                const updateSubmitBtn = () => {
+                    regSubmitBtn.disabled = !termsCheckbox.checked;
+                    if(termsCheckbox.checked) {
                         regSubmitBtn.classList.remove("bg-gray-300", "cursor-not-allowed");
                         regSubmitBtn.classList.add("bg-[#00A29A]", "hover:bg-[#008f87]", "cursor-pointer", "shadow-md");
                     } else {
                         regSubmitBtn.classList.add("bg-gray-300", "cursor-not-allowed");
                         regSubmitBtn.classList.remove("bg-[#00A29A]", "hover:bg-[#008f87]", "cursor-pointer", "shadow-md");
                     }
-                });
+                };
+
+                // Jalankan saat checkbox berubah
+                termsCheckbox.addEventListener('change', updateSubmitBtn);
+                
+                // PENTING: Jalankan sekali saat load agar status awal benar (mengatasi cache browser)
+                updateSubmitBtn();
             }
             const loginTermsCheckbox = document.getElementById("loginTermsCheckbox");
             const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+            
             if (loginTermsCheckbox && loginSubmitBtn) {
-                loginTermsCheckbox.addEventListener("change", function() {
-                    loginSubmitBtn.disabled = !this.checked;
-                    if(this.checked) {
+                const updateLoginBtn = () => {
+                    loginSubmitBtn.disabled = !loginTermsCheckbox.checked;
+                    if(loginTermsCheckbox.checked) {
                         loginSubmitBtn.classList.remove("bg-[#98A4B8]", "cursor-not-allowed");
                         loginSubmitBtn.classList.add("bg-[#00A29A]", "cursor-pointer");
                     } else {
                         loginSubmitBtn.classList.remove("bg-[#00A29A]", "cursor-pointer");
                         loginSubmitBtn.classList.add("bg-[#98A4B8]", "cursor-not-allowed");
                     }
-                });
+                };
+                
+                loginTermsCheckbox.addEventListener("change", updateLoginBtn);
+                // Jalankan saat load juga
+                updateLoginBtn();
             }
             const boxes = document.querySelectorAll(".akh-box");
             const dialog = document.getElementById("akhDialog");

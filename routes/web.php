@@ -5,10 +5,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Public\CareersController;
 use App\Http\Controllers\Account\AccountController;
-use App\Http\Controllers\Recruitment\PrincipalApprovalController;
 use App\Http\Controllers\Recruitment\SalaryController;
-use App\Http\Controllers\Recruitment\ExternalRecruitmentController;
-use App\Http\Controllers\Recruitment\ApplicantDataController;
 
 Route::middleware('web')->group(function () {
     Route::middleware('guest')->group(function () {
@@ -17,35 +14,14 @@ Route::middleware('web')->group(function () {
         Route::post('register', [RegisteredUserController::class, 'store'])->name('register');
         Route::get('/careers', [CareersController::class, 'index'])->name('careers.index');
     });
-    Route::middleware(['auth', 'team.scope'])->group(function () { 
-        // Route::get('/', fn() => redirect()->route('dashboard'));
-        // Route::get('/dashboard', fn() => view('dashboard.dashboard'))->name('dashboard');
-        Route::group(['prefix' => 'recruitment/applicant-data', 'as' => 'recruitment.applicant-data.'], function () {
-            Route::get('/', [ApplicantDataController::class, 'index'])->name('index');
-            Route::post('/update', [ApplicantDataController::class, 'update'])->name('update');
-        });
-        Route::group(['prefix' => 'recruitment/external', 'as' => 'recruitment.external.'], function () {
-            Route::get('/', [ExternalRecruitmentController::class, 'index'])->name('index');
-            Route::post('/apply', [ExternalRecruitmentController::class, 'apply'])->name('apply');
-            Route::get('/{id}/applicants', [ExternalRecruitmentController::class, 'getApplicants'])->name('getApplicants');
-            Route::post('/applicant/{id}/update', [ExternalRecruitmentController::class, 'updateApplicantStatus'])->name('updateApplicantStatus');
-            Route::get('/applicant/{id}/biodata', [ExternalRecruitmentController::class, 'showApplicantBiodata'])->name('applicant.biodata');
-            Route::get('/applicant/{id}/download-pdf', [ExternalRecruitmentController::class, 'downloadBiodataPdf'])->name('download-pdf');
-            Route::post('/{id}/update-description', [ExternalRecruitmentController::class, 'updateDescription'])->name('updateDescription');
-            Route::post('/{id}/unpublish', [ExternalRecruitmentController::class, 'unpublish'])->name('unpublish');
-            Route::post('/{id}/publish', [ExternalRecruitmentController::class, 'publish'])->name('publish');
-        });
-        Route::post('/recruitment/uraian-jabatan/preview-pdf', [PrincipalApprovalController::class, 'previewUraianPdf'])
-            ->name('recruitment.uraian-jabatan.preview-pdf');
-        Route::post('recruitment/principal-approval/{req}/publish', [PrincipalApprovalController::class, 'publish'])
-            ->name('recruitment.principal-approval.publish');
-        Route::get('recruitment/principal-approval/export', [PrincipalApprovalController::class, 'exportExcel'])
-            ->name('recruitment.principal-approval.export');
-        Route::post('recruitment/project/store', [PrincipalApprovalController::class, 'storeProject'])
-            ->name('recruitment.project.store');
+
+    Route::middleware(['auth', 'team.scope'])->group(function () {        
+        // Route Akun & Utilitas Umum
         Route::post('/account/profile',  [AccountController::class, 'updateProfile'])->name('account.profile.update');
         Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+        
+        // API Helpers (Tetap disini atau pindah ke api.php/admin.php tergantung kebutuhan JS)
         Route::post('/ajax/calculate-salary', [SalaryController::class, 'calculate'])->name('api.calculate.salary');
         Route::get('/api/project-codes', [\App\Http\Controllers\ProjectCodeController::class, 'index'])
             ->name('api.project_codes.index');
