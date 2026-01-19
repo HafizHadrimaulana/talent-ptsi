@@ -42,7 +42,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($list as $row)
+                    @foreach($list as $row)
                         @php
                             $allPositions = [];
                             $details = $row->meta['recruitment_details'] ?? [];
@@ -138,13 +138,7 @@
                                 </div>
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ $isPelamar ? 4 : 7 }}" class="u-text-center u-p-md u-muted">
-                                Belum ada lowongan dibuka.
-                            </td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
@@ -409,12 +403,13 @@
             dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
             language: {
                 search: "",
-                searchPlaceholder: "Cari data...",
-                lengthMenu: "_MENU_ per halaman",
-                info: "Menampilkan _START_ s/d _END_ dari _TOTAL_ data",
-                infoEmpty: "Menampilkan 0 s/d 0 dari 0 data",
-                infoFiltered: "(difilter dari _MAX_ total data)",
-                zeroRecords: "Tidak ada data yang cocok",
+                searchPlaceholder: "Search...",
+                lengthMenu: "_MENU_ per page",
+                info: "Showing _START_ s/d _END_ from _TOTAL_ data",
+                infoEmpty: "Showing 0 s/d 0 from 0 data",
+                infoFiltered: "(filtered from _MAX_ total data)",
+                zeroRecords: "No matching records found",
+                emptyTable: "Belum ada lowongan dibuka.",
                 paginate: { first: "«", last: "»", next: "›", previous: "‹" }
             },
             drawCallback: function() {

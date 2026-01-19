@@ -429,12 +429,12 @@
             dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
             language: {
                 search: "",
-                searchPlaceholder: "Cari riwayat...",
-                lengthMenu: "_MENU_ baris",
-                info: "Menampilkan _START_-_END_ dari _TOTAL_",
+                searchPlaceholder: "Search...",
+                lengthMenu: "_MENU_ per page",
+                info: "Showing _START_-_END_ from _TOTAL_",
                 infoEmpty: "0 data",
-                infoFiltered: "(filter dari _MAX_)",
-                zeroRecords: "Tidak ada data lamaran.",
+                infoFiltered: "(filtered from _MAX_)",
+                zeroRecords: "No application data found.",
                 paginate: { first: "«", last: "»", next: "›", previous: "‹" }
             },
             drawCallback: function() {
