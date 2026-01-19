@@ -322,7 +322,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($applications as $app)
+                                @foreach($applications as $app)
                                     <tr>
                                         <td>
                                             <div class="flex items-start gap-3">
@@ -379,20 +379,7 @@
                                             @endif
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="text-center">
-                                            <div class="flex flex-col items-center justify-center">
-                                                <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4" style="background-color: var(--surface-1);">
-                                                    <i class="fas fa-inbox u-muted text-3xl"></i>
-                                                </div>
-                                                <h4 class="u-muted font-semibold">Belum ada lamaran</h4>
-                                                <p class="u-muted text-xs mt-1">Anda belum melamar posisi apapun saat ini.</p>
-                                                <a href="{{ route('recruitment.external.index') }}" class="u-btn u-btn--brand u-btn--sm mt-4 rounded-full px-6">Cari Lowongan</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforelse
+                                @endforeach
                             </tbody>
                         </table>
                     </div>
@@ -435,6 +422,14 @@
                 infoEmpty: "0 data",
                 infoFiltered: "(filtered from _MAX_)",
                 zeroRecords: "No application data found.",
+                emptyTable: `<div class="flex flex-col items-center justify-center p-4">
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4" style="background-color: var(--surface-1);">
+                            <i class="fas fa-inbox u-muted text-3xl"></i>
+                        </div>
+                        <h4 class="u-muted font-semibold">Belum ada lamaran</h4>
+                        <p class="u-muted text-xs mt-1">Anda belum melamar posisi apapun saat ini.</p>
+                        <a href="{{ route('recruitment.external.index') }}" class="u-btn u-btn--brand u-btn--sm mt-4 rounded-full px-6">Cari Lowongan</a>
+                    </div>`,
                 paginate: { first: "«", last: "»", next: "›", previous: "‹" }
             },
             drawCallback: function() {
