@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\Access\PermissionController;
 use App\Http\Controllers\Admin\ContractTemplateController;
 use App\Http\Controllers\Self\ProfileController;
 
+use App\Http\Controllers\Dashboard\DashboardController;
+
 use App\Http\Controllers\Recruitment\MonitoringController as RecruitmentMonitoringController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController as RecruitmentApprovalController;
 use App\Http\Controllers\Recruitment\ContractController;
@@ -46,7 +48,11 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('contract-templates', ContractTemplateController::class);
     });
-
+    
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    });
+    
     Route::prefix('admin/org')->name('admin.org.')->middleware('permission:org.view')->group(function () {
         Route::get('/', [OrgController::class, 'index'])->name('index');
         Route::get('tree', [OrgController::class, 'tree'])->name('tree');
