@@ -1,8 +1,10 @@
 @extends('layouts.app')
 @section('title','Izin Prinsip')
+@push('styles')
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+@endpush
 @section('content')
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
-
 @php
   use Illuminate\Support\Facades\DB;
   use Illuminate\Support\Facades\Gate;
@@ -89,7 +91,7 @@
       <span class="u-badge u-badge--glass">{{ $canSeeAll && !$selectedUnitId ? 'All units' : 'Unit ID: '.($selectedUnitId ?? $meUnit) }}</span>
     </div>
     <div class="u-scroll-x">
-      <table id="ip-table" class="u-table" data-dt>
+      <table id="ip-table" class="u-table nowrap" style="width:100%" data-dt>
         <thead>
           <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progress</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
         </thead>
@@ -268,7 +270,7 @@
                           data-budget-source-type="{{ e($budgetSource ?? '') }}" 
                           data-budget-ref="{{ e($budgetRef) }}" 
                           data-justification="{{ e($justif) }}"
-                          data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'>
+                          data-meta-json="{{ json_encode($r->meta['recruitment_details'] ?? []) }}">
                           <i class="fas fa-edit u-mr-xs"></i> Edit
                     </button>
                     <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" class="u-inline js-confirm">@csrf<button class="u-btn u-btn--outline u-btn--sm u-hover-lift"><i class="fas fa-paper-plane u-mr-xs"></i> Submit</button></form>
@@ -294,7 +296,7 @@
                         data-can-approve="{{ $canStage ? 'true' : 'false' }}" 
                         data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" 
                         data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" 
-                        data-meta-json='{{ json_encode($r->meta['recruitment_details'] ?? []) }}'
+                        data-meta-json="{{ json_encode($r->meta['recruitment_details'] ?? []) }}"
                         data-is-published="{{ $r->is_published ? '1' : '0' }}"
                         data-can-publish="{{ ($me->hasRole('DHC') || $me->hasRole('Superadmin') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit')) ? 'true' : 'false' }}">
                         <i class="fas fa-info-circle u-mr-xs"></i> Detail
@@ -608,7 +610,7 @@
                   </div>
                   <div class="u-space-y-sm">
                       <label class="u-block u-text-sm u-font-medium u-mb-sm">Pengalaman<span class="text-red-500">*</span></label>
-                      <input class="u-input" type="text" id="dyn_experience" placeholder="Masukkan pengalaman" required>
+                      <input class="u-input" type="text" id="dyn_experience" placeholder="Masukkan pengalaman yang paling utama" required>
                   </div>
               </div>
               <div class="u-bg-light u-p-sm u-rounded u-font-bold u-text-sm u-mb-sm" style="color:#374151;"><b>Remunerasi</b></div>
@@ -889,11 +891,11 @@
           </div>
           <div id="previewArea" style="display: none; border: 2px dashed #cbd5e1; padding: 20px; border-radius: 8px; background: #f8fafc; margin-top: 20px;">
               <div class="u-text-center u-mb-md">
-                  <span class="u-badge u-badge--warning">PREVIEW TAMPILAN</span>
+                  <span class="u-badge u-badge--warning">PREVIEW PUBLIKASI</span>
               </div>
               <h3 class="u-font-bold u-text-xl u-mb-xs" id="previewTitle">Posisi</h3>
               <div class="u-text-sm u-muted u-mb-md">
-                  <span id="previewDates"></span> • <span id="previewTicket"></span>
+                  <span id="previewDates"></span> <br> <span id="previewLocation"></span>
               </div>
               <div id="previewContent" class="ck-content"></div>
           </div>
@@ -912,6 +914,11 @@
     </div>
   </div>
 </div>
+@endsection
+
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script>
     function toggleHistoryNote(id) {
         const el = document.getElementById(id);
@@ -1002,6 +1009,7 @@
                 const d1 = new Date(startDate).toLocaleDateString('id-ID');
                 const d2 = new Date(endDate).toLocaleDateString('id-ID');
                 document.getElementById('previewDates').textContent = `Periode: ${d1} s/d ${d2}`;
+                document.getElementById('previewLocation').textContent = `Lokasi: ${document.getElementById('publish_location').value}`;
                 document.getElementById('previewContent').innerHTML = content;
                 previewArea.style.display = 'block';
                 previewArea.scrollIntoView({ behavior: 'smooth' });
@@ -1774,22 +1782,33 @@
                     });
                 }
                 document.addEventListener('click', function(e) {
-                    if (e.target.closest('#uraianModal [data-modal-close]')) {
-                        const m = document.getElementById('uraianModal');
-                        m.hidden = true; 
-                    }
-                    else if (e.target.closest('#createApprovalModal [data-modal-close]') || e.target.closest('#detailApprovalModal [data-modal-close]')) {
+                    const closeBtn = e.target.closest('[data-modal-close]');
+                    const modalBackdrop = e.target.classList.contains('u-modal'); // Jika klik backdrop
+                    if (closeBtn || modalBackdrop) {
                         const m = e.target.closest('.u-modal');
-                        if(m) { m.hidden = true; document.body.classList.remove('modal-open'); }
+                        if(m) { 
+                            m.hidden = true; 
+                            m.style.display = 'none'; // Reset display
+                            document.body.classList.remove('modal-open'); 
+                        }
+                        return;
                     }
                     const btnCreate = e.target.closest('[data-modal-open="createApprovalModal"]');
                     if(btnCreate) {
+                        e.preventDefault();
                         const m = document.getElementById('createApprovalModal');
                         const deleteForm = document.getElementById('deleteDraftForm');
+                        
                         if(m) { 
-                            m.hidden = false; document.body.classList.add('modal-open'); 
+                            // PERBAIKAN: Set display flex agar tampil
+                            m.hidden = false; 
+                            m.style.display = 'flex'; 
+                            document.body.classList.add('modal-open'); 
+                            
                             const mode = btnCreate.getAttribute('data-mode');
                             multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1;            
+                            
+                            // Logic Create/Edit bawaan Anda tetap sama di bawah ini
                             if(mode === 'create') {
                                 form.reset(); 
                                 setBudgetLock(false, ''); 
@@ -1799,6 +1818,8 @@
                                 if(deleteForm) deleteForm.style.display = 'none';
                                 let methodField = form.querySelector('input[name="_method"]');
                                 if (methodField) methodField.remove();
+                                
+                                // Reset manual inputs
                                 [positionSearchInput, positionInput, positionOrganikSearchInput, positionOrganikInput, 
                                 picProjectSearchInput, picProjectInput, picOrganikSearchInput, picOrganikInput].forEach(el => { if(el) el.value = ''; });
                                 resetDynamicInputs();
@@ -1850,6 +1871,7 @@
                     }
                     const btnDetail = e.target.closest('.js-open-detail');
                     if(btnDetail && detailModal) {
+                        e.preventDefault();
                         const safeTxt = (attr) => btnDetail.getAttribute(attr) || '-';
                         const metaJsonStr = btnDetail.getAttribute('data-meta-json');
                         let detailsArray = [];
@@ -2089,6 +2111,7 @@
                         });          
                         renderContent(0);
                         detailModal.hidden = false; 
+                        detailModal.style.display = 'flex';
                         document.body.classList.add('modal-open');
                         const isPublished = safeTxt('data-is-published') === '1';
                         const canPublishUser = btnDetail.getAttribute('data-can-publish') === 'true';
@@ -2131,6 +2154,8 @@
                             }
                             btnPublish.setAttribute('data-default-location', defaultLocation);
                         }
+
+                        
                     }
                 });
                 form.addEventListener('click', function(e) {
@@ -2220,6 +2245,64 @@
                 updateVisibility();
             }, 
             initDT() { 
+                this.dt = $('#ip-table').DataTable({
+                    processing: true, // Client-side processing indicator
+                    responsive: {
+                        details: {
+                            renderer: function (api, rowIdx, columns) {
+                                let data = $.map(columns, function (col, i) {
+                                    return col.hidden ?
+                                        `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
+                                            <span class="u-dt-child-title">${col.title}</span>
+                                            <span class="u-dt-child-data">${col.data}</span>
+                                        </li>` : '';
+                                }).join('');
+                                return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
+                            }
+                        }
+                    },
+                    // Custom Layout DOM
+                    dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
+                    language: {
+                        search: "",
+                        searchPlaceholder: "Cari data...",
+                        lengthMenu: "_MENU_ per halaman",
+                        info: "Menampilkan _START_ s/d _END_ dari _TOTAL_ data",
+                        infoEmpty: "Menampilkan 0 s/d 0 dari 0 data",
+                        infoFiltered: "(difilter dari _MAX_ total data)",
+                        zeroRecords: "Tidak ada data yang cocok",
+                        paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+                    },
+                    drawCallback: function() {
+                        const wrapper = $(this.api().table().container());
+                        
+                        // Style Inputs (Search & Length)
+                        wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
+                        wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
+                        
+                        // Style Pagination Buttons
+                        const p = wrapper.find('.dataTables_paginate .paginate_button');
+                        p.addClass('u-btn u-btn--sm u-btn--ghost');
+                        p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
+                        p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
+
+                        // Inject Export Button logic (memindahkan tombol export ke sebelah pagination/length)
+                        if (!document.getElementById('btn-export-excel')) {
+                            const headerContainer = wrapper.find('.u-dt-header');
+                            const currentParams = new URLSearchParams(window.location.search);
+                            const exportUrl = "{{ route('recruitment.principal-approval.export') }}?" + currentParams.toString();
+                            
+                            const exportBtn = $(`<a id="btn-export-excel" href="${exportUrl}" target="_blank" class="u-btn u-btn--brand u-btn--sm u-hover-lift" style="margin-left: auto;">
+                                <i class="fas fa-file-excel u-mr-xs"></i> Export Excel
+                            </a>`);
+                            
+                            // Menambahkan tombol export di samping search box atau di header
+                            if(headerContainer.length) {
+                                headerContainer.append(exportBtn);
+                            }
+                        }
+                    }
+                });
                 setTimeout(() => {
                     const selectElement = document.getElementById('dt-length-0');
                     if (selectElement && !document.getElementById('btn-export-excel')) {
@@ -2346,4 +2429,4 @@
             }
         });
 </script>
-@endsection 
+@endpush

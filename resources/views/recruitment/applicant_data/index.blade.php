@@ -1,5 +1,8 @@
 @extends('layouts.app')
 @section('title', 'Biodata Pelamar')
+@push('styles')
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+@endpush
 @section('content')
     <div class="u-card u-card--glass u-hover-lift">
         <div class="u-flex u-justify-between u-items-center u-mb-lg u-gap-md u-stack-mobile">
@@ -308,8 +311,8 @@
                             <i class="fas fa-briefcase u-mr-xs text-blue-600"></i> Riwayat Lamaran
                         </h3>
                     </div>
-                    <div class="u-scroll-x">
-                        <table class="u-table w-full" id="bio-table">
+                    <div class="dt-wrapper">
+                        <table class="u-table nowrap w-full" id="bio-table" style="width:100%">
                             <thead>
                                 <tr>
                                     <th style="width: 35%;">Posisi & Unit</th>
@@ -402,7 +405,49 @@
             </div>
         </form>
     </div>
+@endsection
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const bioTable = $('#bio-table').DataTable({
+            responsive: {
+                details: {
+                    renderer: function (api, rowIdx, columns) {
+                        let data = $.map(columns, function (col, i) {
+                            return col.hidden ?
+                                `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
+                                    <span class="u-dt-child-title">${col.title}</span>
+                                    <span class="u-dt-child-data">${col.data}</span>
+                                 </li>` : '';
+                        }).join('');
+                        return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
+                    }
+                }
+            },
+            dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
+            language: {
+                search: "",
+                searchPlaceholder: "Cari riwayat...",
+                lengthMenu: "_MENU_ baris",
+                info: "Menampilkan _START_-_END_ dari _TOTAL_",
+                infoEmpty: "0 data",
+                infoFiltered: "(filter dari _MAX_)",
+                zeroRecords: "Tidak ada data lamaran.",
+                paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+            },
+            drawCallback: function() {
+                const wrapper = $(this.api().table().container());
+                wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
+                wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
+                const p = wrapper.find('.dataTables_paginate .paginate_button');
+                p.addClass('u-btn u-btn--sm u-btn--ghost');
+                p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
+                p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
+            }
+        });
+    });
     function handlePhotoUpload(input) {
         const preview = document.getElementById('photo_preview');
         const placeholder = document.getElementById('photo_placeholder');
@@ -469,4 +514,4 @@
         }
     }
 </script>
-@endsection
+@endpush

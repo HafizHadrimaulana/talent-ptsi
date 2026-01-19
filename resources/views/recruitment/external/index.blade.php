@@ -1,5 +1,8 @@
 @extends('layouts.app')
 @section('title','External Recruitment')
+@push('styles')
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+@endpush
 @section('content')
 <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
 <div class="u-card u-card--glass u-hover-lift">
@@ -20,126 +23,127 @@
             <i class="fas fa-check-circle u-mr-xs"></i> {{ session('ok') }}
         </div> 
     @endif
-    <div class="u-overflow-auto">
-        <table class="u-table" id="ext-table" data-dt>
-            <thead>
-                <tr>
-                    @if(!$isPelamar)
-                        <th>No Ticket</th>
-                    @endif
-                    <th>Posisi</th>
-                    <th>Unit Penempatan</th>
-                    <th>Status</th>
-                    @if(!$isPelamar)
-                        <th>Kuota</th>
-                        <th>Pelamar Masuk</th>
-                    @endif
-                    <th class="cell-actions" style="text-align: center;">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($list as $row)
-                    @php
-                        $allPositions = [];
-                        $details = $row->meta['recruitment_details'] ?? [];
-                        if (!empty($details) && is_array($details) && count($details) > 0) {
-                            foreach($details as $d) {
-                                $posName = $d['position_text'] ?? $d['position'] ?? '-';
-                                $allPositions[] = $posName;
-                            }
-                        } else {
-                            $posName = $row->positionObj->name ?? $row->position ?? '-';
-                            $allPositions[] = $posName;
-                        }
-
-                        $userApps = $myApplications->get($row->id) ?? collect([]);
-                        $appliedPositions = $userApps->pluck('position_applied')->filter()->toArray();
-
-                        if ($userApps->count() > 0 && count($appliedPositions) === 0) {
-                            $appliedPositions = $allPositions; 
-                        }
-
-                        $availablePositions = array_diff($allPositions, $appliedPositions);
-                        $availableJson = [];
-                        foreach($availablePositions as $p) {
-                            $availableJson[] = ['name' => $p, 'id' => $p];
-                        }
-                    @endphp
+    <div class="dt-wrapper">
+        <div class="u-scroll-x">
+            <table class="u-table nowrap" id="ext-table" style="width:100%">
+                <thead>
                     <tr>
                         @if(!$isPelamar)
-                            <td><span class="u-badge u-badge--glass">{{ $row->ticket_number ?? '-' }}</span></td>
+                            <th>No Ticket</th>
                         @endif
-                        <td>
-                            <div class="u-font-bold text-sm">
-                                @if(count($allPositions) > 1)
-                                    <ul class="list-disc list-inside text-gray-700">
-                                        @foreach($allPositions as $pos)
-                                            <li>
-                                                {{ $pos }}
-                                                @if(in_array($pos, $appliedPositions))
-                                                    <i class="fas fa-check-circle text-green-500 text-xs ml-1" title="Sudah dilamar"></i>
-                                                @endif
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                @else
-                                    {{ $allPositions[0] }}
-                                @endif
-                            </div>
-                        </td>
-                        <td>{{ $row->unit->name ?? '-' }}</td>
-                        <td>
-                            @if($row->is_published)
-                                <span class="u-badge u-badge--success">
-                                    <i class="fas fa-check-circle u-mr-xs"></i> Dibuka
-                                </span>
-                            @else
-                                <span class="u-badge u-badge--danger">
-                                    <i class="fas fa-ban u-mr-xs"></i> Ditutup
-                                </span>
-                            @endif
-                        </td>
+                        <th>Posisi</th>
+                        <th>Unit Penempatan</th>
+                        <th>Status</th>
                         @if(!$isPelamar)
-                            <td>{{ $row->headcount }} Orang</td>
-                            <td>
-                                <span class="u-badge u-badge--info">
-                                    <i class="fas fa-users u-mr-xs"></i> {{ $row->applicants->count() }}
-                                </span>
-                            </td>
+                            <th>Kuota</th>
+                            <th>Pelamar Masuk</th>
                         @endif
-                        <td class="cell-actions" style="text-align: right; vertical-align: top;">
-                            <div class="flex flex-col gap-2 items-end">
-                                @if($isDHC)
-                                    <button class="u-btn u-btn--sm u-btn--primary u-btn--outline" onclick="openManageModal({{ $row->id }}, '{{ $row->ticket_number }}')">
-                                        <i class="fas fa-users-cog u-mr-xs"></i> Kelola Pelamar
-                                    </button>
-                                    <button class="u-btn u-btn--sm u-btn--warning u-btn--outline" 
-                                        onclick='openEditVacancyModal({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!})'>
-                                        <i class="fas fa-edit u-mr-xs"></i> Edit/Buka/Tutup
-                                    </button>
-                                @elseif($isPelamar)
-                                    @if(count($availableJson) > 0)
-                                        <button class="u-btn u-btn--sm u-btn--info u-btn--outline" 
-                                            onclick='openVacancyDetail({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!}, {!! htmlspecialchars(json_encode($availableJson), ENT_QUOTES, 'UTF-8') !!})'>
-                                            <i class="fas fa-file-alt u-mr-xs"></i> Lihat Deskripsi
-                                        </button>
-                                    @endif
-                                    @foreach($userApps as $app)
-                                        <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs" type="button" onclick="openMyStatusModal(this)" data-status="{{ $app->status }}" data-date="{{ $app->interview_schedule }}" data-note="{{ $app->hr_notes }}">
-                                            <i class="fas fa-info-circle u-mr-xs"></i> 
-                                            Status
-                                        </button>
-                                    @endforeach
-                                @endif
-                            </div>
-                        </td>
+                        <th class="cell-actions" style="text-align: center;">Aksi</th>
                     </tr>
-                @empty
-                    <tr><td colspan="{{ $isPelamar ? 3 : 6 }}" class="u-text-center u-p-md u-muted">Belum ada lowongan dibuka.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div class="u-mt-md">{{ $list->links() }}</div>
+                </thead>
+                <tbody>
+                    @forelse($list as $row)
+                        @php
+                            $allPositions = [];
+                            $details = $row->meta['recruitment_details'] ?? [];
+                            if (!empty($details) && is_array($details) && count($details) > 0) {
+                                foreach($details as $d) {
+                                    $posName = $d['position_text'] ?? $d['position'] ?? '-';
+                                    $allPositions[] = $posName;
+                                }
+                            } else {
+                                $posName = $row->positionObj->name ?? $row->position ?? '-';
+                                $allPositions[] = $posName;
+                            }
+
+                            $userApps = $myApplications->get($row->id) ?? collect([]);
+                            $appliedPositions = $userApps->pluck('position_applied')->filter()->toArray();
+
+                            if ($userApps->count() > 0 && count($appliedPositions) === 0) {
+                                $appliedPositions = $allPositions; 
+                            }
+
+                            $availablePositions = array_diff($allPositions, $appliedPositions);
+                            $availableJson = [];
+                            foreach($availablePositions as $p) {
+                                $availableJson[] = ['name' => $p, 'id' => $p];
+                            }
+                        @endphp
+                        <tr>
+                            @if(!$isPelamar)
+                                <td><span class="u-badge u-badge--glass">{{ $row->ticket_number ?? '-' }}</span></td>
+                            @endif
+                            <td>
+                                <div class="u-font-bold text-sm">
+                                    @if(count($allPositions) > 1)
+                                        <ul class="list-disc list-inside text-gray-700">
+                                            @foreach($allPositions as $pos)
+                                                <li>
+                                                    {{ $pos }}
+                                                    @if(in_array($pos, $appliedPositions))
+                                                        <i class="fas fa-check-circle text-green-500 text-xs ml-1" title="Sudah dilamar"></i>
+                                                    @endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @else
+                                        {{ $allPositions[0] }}
+                                    @endif
+                                </div>
+                            </td>
+                            <td>{{ $row->unit->name ?? '-' }}</td>
+                            <td>
+                                @if($row->is_published)
+                                    <span class="u-badge u-badge--success">
+                                        <i class="fas fa-check-circle u-mr-xs"></i> Dibuka
+                                    </span>
+                                @else
+                                    <span class="u-badge u-badge--danger">
+                                        <i class="fas fa-ban u-mr-xs"></i> Ditutup
+                                    </span>
+                                @endif
+                            </td>
+                            @if(!$isPelamar)
+                                <td>{{ $row->headcount }} Orang</td>
+                                <td>
+                                    <span class="u-badge u-badge--info">
+                                        <i class="fas fa-users u-mr-xs"></i> {{ $row->applicants->count() }}
+                                    </span>
+                                </td>
+                            @endif
+                            <td class="cell-actions" style="text-align: right; vertical-align: top;">
+                                <div class="flex flex-col gap-2 items-end">
+                                    @if($isDHC)
+                                        <button class="u-btn u-btn--sm u-btn--primary u-btn--outline" onclick="openManageModal({{ $row->id }}, '{{ $row->ticket_number }}')">
+                                            <i class="fas fa-users-cog u-mr-xs"></i> Kelola Pelamar
+                                        </button>
+                                        <button class="u-btn u-btn--sm u-btn--warning u-btn--outline" 
+                                            onclick='openEditVacancyModal({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!})'>
+                                            <i class="fas fa-edit u-mr-xs"></i> Edit/Buka/Tutup
+                                        </button>
+                                    @elseif($isPelamar)
+                                        @if(count($availableJson) > 0)
+                                            <button class="u-btn u-btn--sm u-btn--info u-btn--outline" 
+                                                onclick='openVacancyDetail({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!}, {!! htmlspecialchars(json_encode($availableJson), ENT_QUOTES, 'UTF-8') !!})'>
+                                                <i class="fas fa-file-alt u-mr-xs"></i> Lihat Deskripsi
+                                            </button>
+                                        @endif
+                                        @foreach($userApps as $app)
+                                            <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs" type="button" onclick="openMyStatusModal(this)" data-status="{{ $app->status }}" data-date="{{ $app->interview_schedule }}" data-note="{{ $app->hr_notes }}">
+                                                <i class="fas fa-info-circle u-mr-xs"></i> 
+                                                Status
+                                            </button>
+                                        @endforeach
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="{{ $isPelamar ? 3 : 6 }}" class="u-text-center u-p-md u-muted">Belum ada lowongan dibuka.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -374,8 +378,71 @@
         </div>
     </div>
 </div>
+@endsection
+@push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script>
     let editVacancyEditor = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        const table = $('#ext-table').DataTable({
+            processing: true, 
+            responsive: {
+                details: {
+                    renderer: function (api, rowIdx, columns) {
+                        let data = $.map(columns, function (col, i) {
+                            return col.hidden ?
+                                `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
+                                    <span class="u-dt-child-title">${col.title}</span>
+                                    <span class="u-dt-child-data">${col.data}</span>
+                                 </li>` : '';
+                        }).join('');
+                        return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
+                    }
+                }
+            },
+            // Custom Layout DOM
+            dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
+            language: {
+                search: "",
+                searchPlaceholder: "Cari data...",
+                lengthMenu: "_MENU_ per halaman",
+                info: "Menampilkan _START_ s/d _END_ dari _TOTAL_ data",
+                infoEmpty: "Menampilkan 0 s/d 0 dari 0 data",
+                infoFiltered: "(difilter dari _MAX_ total data)",
+                zeroRecords: "Tidak ada data yang cocok",
+                paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+            },
+            drawCallback: function() {
+                const wrapper = $(this.api().table().container());
+                
+                // Style Inputs
+                wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
+                wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
+                
+                // Style Pagination
+                const p = wrapper.find('.dataTables_paginate .paginate_button');
+                p.addClass('u-btn u-btn--sm u-btn--ghost');
+                p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
+                p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
+            }
+        });
+
+        // Init CKEditor (Existing code)
+        if (document.querySelector('#editEditorContent')) {
+            ClassicEditor
+                .create(document.querySelector('#editEditorContent'), {
+                    toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
+                    placeholder: 'Edit deskripsi pekerjaan, kualifikasi, dll...'
+                })
+                .then(editor => {
+                    editVacancyEditor = editor;
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+        }
+    });
     document.addEventListener('DOMContentLoaded', function() {
         if (document.querySelector('#editEditorContent')) {
             ClassicEditor
@@ -772,4 +839,4 @@
         openModal('vacancyDetailModal');
     }
 </script>
-@endsection
+@endpush
