@@ -339,7 +339,7 @@
     </footer>
     <div id="registerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
         <div id="registerCard" class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
-            <button type="button" onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10">
+            <button type="button" onclick="closeRegisterModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10">
                 ✕
             </button>
             <div class="text-center mb-5">
@@ -383,12 +383,12 @@
                 </div>
                 <div class="text-sm text-[#667085] mt-4" style="text-align: right;">
                     Sudah punya akun? 
-                    <a href="#" onclick="event.preventDefault(); openLoginModal(); closeModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
+                    <a href="#" onclick="event.preventDefault(); openLoginModal(); closeRegisterModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
                         Masuk
                     </a>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium transition cursor-pointer">
+                    <button type="button" onclick="closeRegisterModal()" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium transition cursor-pointer">
                         Batal
                     </button>
                     <button id="submitBtn" type="submit" disabled class="px-6 py-2 rounded-lg bg-gray-300 text-white text-sm font-medium cursor-not-allowed transition-all">
@@ -432,7 +432,7 @@
                 </div>
                 <div class="text-sm text-[#667085]" style="text-align: right;">
                     Belum punya akun? 
-                    <a href="#" onclick="event.preventDefault(); closeLoginModal(); openModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
+                    <a href="#" onclick="event.preventDefault(); closeLoginModal(); openRegisterModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
                         Daftar disini
                     </a>
                 </div>
@@ -579,14 +579,6 @@
             }
             document.body.style.overflow = 'hidden';
         }
-        function openRegisterModal() {
-            const modal = document.getElementById("registerModal");
-            if(modal) { 
-                modal.classList.remove("opacity-0", "pointer-events-none"); 
-                modal.classList.add("opacity-100", "pointer-events-auto"); 
-            }
-            document.body.style.overflow = 'hidden';
-        }
 
         function closeLoginModal() {
             const modal = document.getElementById("loginModal");
@@ -596,27 +588,23 @@
             }
             document.body.style.overflow = 'auto';
         }
-        function openModal() {
-            const modal = document.getElementById('registerModal');
-            // Kita tidak perlu memanipulasi 'card' lagi, cukup modal wrapper-nya saja
-            // agar sama persis logikanya dengan Login Modal yang sudah berhasil.
-            
+        function openRegisterModal() {
+            const modal = document.getElementById("registerModal");
             if(modal) { 
-                modal.classList.remove('opacity-0', 'pointer-events-none'); 
-                modal.classList.add('opacity-100', 'pointer-events-auto'); 
+                modal.classList.remove("opacity-0", "pointer-events-none"); 
+                modal.classList.add("opacity-100", "pointer-events-auto"); 
             }
             document.body.style.overflow = 'hidden';
         }
-
-        function closeModal() {
-            const modal = document.getElementById('registerModal');
-            
+        function closeRegisterModal() {
+            const modal = document.getElementById("registerModal");
             if(modal) { 
-                modal.classList.add('opacity-0', 'pointer-events-none'); 
-                modal.classList.remove('opacity-100', 'pointer-events-auto');
+                modal.classList.add("opacity-0", "pointer-events-none"); 
+                modal.classList.remove("opacity-100", "pointer-events-auto"); 
             }
             document.body.style.overflow = 'auto';
         }
+        
         
         function triggerLoginForApply() {
             closePublicJobModal();
