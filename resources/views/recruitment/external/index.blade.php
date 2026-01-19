@@ -139,7 +139,11 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="{{ $isPelamar ? 3 : 6 }}" class="u-text-center u-p-md u-muted">Belum ada lowongan dibuka.</td></tr>
+                        <tr>
+                            <td colspan="{{ $isPelamar ? 4 : 7 }}" class="u-text-center u-p-md u-muted">
+                                Belum ada lowongan dibuka.
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

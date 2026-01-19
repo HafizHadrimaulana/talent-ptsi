@@ -1,16 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\Admin\Access\UserController;
 use App\Http\Controllers\Admin\Access\RoleController;
 use App\Http\Controllers\Admin\Access\PermissionController;
-
 use App\Http\Controllers\Admin\ContractTemplateController;
 use App\Http\Controllers\Self\ProfileController;
-
+use App\Http\Controllers\Recruitment\ExternalRecruitmentController;
 use App\Http\Controllers\Dashboard\DashboardController;
-
 use App\Http\Controllers\Recruitment\MonitoringController as RecruitmentMonitoringController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController as RecruitmentApprovalController;
 use App\Http\Controllers\Recruitment\ContractController;
@@ -72,8 +69,30 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
     Route::prefix('recruitment')->name('recruitment.')->group(function () {
 
+        Route::group(['prefix' => 'external', 'as' => 'external.'], function () {
+            Route::get('/', [ExternalRecruitmentController::class, 'index'])->name('index');
+            Route::post('/apply', [ExternalRecruitmentController::class, 'apply'])->name('apply');
+            Route::get('/{id}/applicants', [ExternalRecruitmentController::class, 'getApplicants'])->name('getApplicants');
+            Route::post('/applicant/{id}/update', [ExternalRecruitmentController::class, 'updateApplicantStatus'])->name('updateApplicantStatus');
+            Route::get('/applicant/{id}/biodata', [ExternalRecruitmentController::class, 'showApplicantBiodata'])->name('applicant.biodata');
+            Route::get('/applicant/{id}/download-pdf', [ExternalRecruitmentController::class, 'downloadBiodataPdf'])->name('download-pdf');
+            Route::post('/{id}/update-description', [ExternalRecruitmentController::class, 'updateDescription'])->name('updateDescription');
+            Route::post('/{id}/unpublish', [ExternalRecruitmentController::class, 'unpublish'])->name('unpublish');
+            Route::post('/{id}/publish', [ExternalRecruitmentController::class, 'publish'])->name('publish');
+        });
+
+        // 2. Project & Uraian Jabatan (Pindahan dari web.php)
+        Route::post('/project/store', [RecruitmentApprovalController::class, 'storeProject'])->name('project.store');
+        Route::post('/uraian-jabatan/preview-pdf', [RecruitmentApprovalController::class, 'previewUraianPdf'])->name('uraian-jabatan.preview-pdf');
+
+        // 3. Principal Approval
         Route::get('principal-approval', [RecruitmentApprovalController::class, 'index'])->middleware('permission:recruitment.view')->name('principal-approval.index');
         Route::post('principal-approval', [RecruitmentApprovalController::class, 'store'])->middleware('permission:recruitment.update')->name('principal-approval.store');
+        
+        // Pindahan dari web.php (Export & Publish spesifik) digabung disini
+        Route::get('principal-approval/export', [RecruitmentApprovalController::class, 'exportExcel'])->name('principal-approval.export');
+        Route::post('principal-approval/{req}/publish', [RecruitmentApprovalController::class, 'publish'])->name('principal-approval.publish');
+
         Route::delete('principal-approval/{req}', [RecruitmentApprovalController::class, 'destroy'])->middleware('permission:recruitment.update')->name('principal-approval.destroy');
         Route::put('principal-approval/{req}', [RecruitmentApprovalController::class, 'update'])->middleware('permission:recruitment.update')->name('principal-approval.update');
         Route::post('principal-approval/{req}/submit',  [RecruitmentApprovalController::class, 'submit'])->middleware('permission:recruitment.submit')->name('principal-approval.submit');
