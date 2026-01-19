@@ -105,29 +105,12 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
 
     Route::prefix('training')->name('training.')->group(function () {
 
+    // DASHBOARD
         Route::get('dashboard', [TrainingDashboardController::class,'index'])
             ->middleware('permission:training.dashboard.view')->name('dashboard');
-        Route::get('dashboard/data-evaluation', [TrainingDashboardController::class,'getDataEvaluation'])
-            ->name('dashboard.data-evaluation');
-
-        Route::get('dashboard/{id}/detail-evaluation', [TrainingDashboardController::class,'getDataEvaluationByID'])
-            ->name('dashboard.detail-evaluation');
-
-        Route::post('dashboard/input-evaluation', [TrainingDashboardController::class,'inputEvaluation'])
-            ->name('dashboard.input-evaluation');
-        Route::post('dashboard/{id}/update-jenis-pelatihan', [TrainingDashboardController::class,'updateJenisPelatihan'])
-             ->name('dashboard.update-jenis-pelatihan');
-
-        Route::get('dashboard/{id}/get-detail-evaluation', [TrainingDashboardController::class,'getDetailEvaluation'])
-            ->name('dashboard.get-detail-evaluation');
-
-        Route::post('dashboard/upload-certif-evaluation', [TrainingDashboardController::class,'uploadCertifEvaluation'])
-            ->name('dashboard.upload-certif-evaluation');
-        Route::post('dashboard/{id}/update-realisasi-date', [TrainingDashboardController::class,'updateRealisasiDate'])
-            ->name('dashboard.update-realisasi-date');
-
         Route::get('dashboard/{unit_id}/get-detail-anggaran', [TrainingDashboardController::class,'getDetailAnggaran'])
             ->name('dashboard.get-detail-anggaran');
+    /// END DASHBOARD ///
 
     /// Start Training ///
         Route::get('training-request', [TrainingRequestController::class, 'index'])
