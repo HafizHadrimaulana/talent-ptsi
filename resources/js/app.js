@@ -91,8 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // }
     // ------------------------------------------
 
-    if (document.querySelector('#ip-table')) initDataTables('#ip-table', { columnDefs: [{ targets: -1, orderable: false }] });
-    if (document.querySelector('#ext-table')) initDataTables('#ext-table', { columnDefs: [{ targets: -1, orderable: false }] });
+    // if (document.querySelector('#ip-table')) initDataTables('#ip-table', { columnDefs: [{ targets: -1, orderable: false }] });
+    // if (document.querySelector('#ext-table')) initDataTables('#ext-table', { columnDefs: [{ targets: -1, orderable: false }] });
     if (document.querySelector('#perms-table')) initDataTables('#perms-table', { columnDefs: [{ targets: -1, orderable: false }] });
     if (document.querySelector('#izin-table')) initDataTables('#izin-table', { columnDefs: [{ targets: -1, orderable: false }] });
     
