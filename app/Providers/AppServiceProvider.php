@@ -5,20 +5,28 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\Facades\Auth; 
+use Illuminate\Support\Facades\Auth;
 use App\Models\RecruitmentRequest;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Bind interface -> implementation, passing the logger as required by HttpSitmsClient
+if ($this->app->environment('production')) {
+        $publicPath = base_path('../public_html');
+        $this->app->usePublicPath($publicPath);
+
+        config([
+            'dompdf.public_path' => $publicPath,
+            'dompdf.options.chroot' => $publicPath,
+        ]);
+    }
+
         $this->app->bind(\App\Services\SITMS\SitmsClient::class, function ($app) {
             /** @var LoggerInterface $logger */
             $logger = $app->make(LoggerInterface::class);
 
             if (config('sitms.read_enabled')) {
-                // HttpSitmsClient constructor expects $log
                 return new \App\Services\SITMS\HttpSitmsClient($logger);
             }
 
@@ -28,7 +36,6 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // --- NOTIFIKASI GLOBAL (IZIN PRINSIP, TRAINING, DLL) ---
         View::composer('layouts.app', function ($view) {
             $allNotifications = collect();
 
@@ -42,10 +49,9 @@ class AppServiceProvider extends ServiceProvider
                             ->where('employees.person_id', $me->person_id)
                             ->value('positions.name');
                     }
-                    
-                    // --- NOTIFIKASI IZIN PRINSIP ---
+                     
                     $approverRoles = ['Kepala Proyek (MP)', 'SDM Unit','Kepala Unit', 'DHC', 'AVP', 'VP Human Capital', 'Dir SDM', 'Superadmin'];
-                    
+                     
                     if ($me->hasAnyRole($approverRoles)) {
                         $query = RecruitmentRequest::with(['approvals', 'unit'])
                             ->whereIn('status', ['submitted', 'in_review']);
@@ -73,6 +79,7 @@ class AppServiceProvider extends ServiceProvider
                                 else if ($stageKey === 'avp_hc_ops' && ($me->hasRole('AVP') && $myJobTitle === 'AVP Human Capital Operation')) {$shouldShow = true;}
                                 else if ($stageKey === 'vp_hc' && ($me->hasRole('VP Human Capital') || $myJobTitle === 'VP Human Capital')) {$shouldShow = true;}
                                 else if ($stageKey === 'dir_sdm' && $me->hasRole('Dir SDM')) {$shouldShow = true;}
+                                
                                 if ($shouldShow) {
                                     $slaTime = $req->created_at;
                                     $kaUnitApp = $req->approvals->filter(function($a) {
@@ -97,29 +104,6 @@ class AppServiceProvider extends ServiceProvider
                             }
                         }
                     }
-
-                    // --- 2. NOTIFIKASI TRAINING (CONTOH) ---
-                    // Contoh:
-                    /*
-                    if ($me->hasRole('Training Manager')) {
-                        $trainings = TrainingRequest::where('status', 'pending')->get();
-                        foreach($trainings as $train) {
-                             $allNotifications->push((object)[
-                                'id' => $train->id,
-                                'type' => 'training',
-                                'title' => $train->topic,
-                                'subtitle' => 'Training Request',
-                                'desc' => $train->participant_count . ' Peserta',
-                                'status' => 'pending',
-                                'url' => route('training.approval.index', ['id' => $train->id]),
-                                'time' => $train->created_at,
-                                'icon' => 'fa-chalkboard-user',
-                                'color_class' => 'text-green-600'
-                            ]);
-                        }
-                    }
-                    */
-
                 } catch (\Exception $e) {
                 }
             }
