@@ -12,8 +12,8 @@ use App\Http\Controllers\Recruitment\ApplicantDataController;
 
 Route::middleware('web')->group(function () {
     Route::middleware('guest')->group(function () {
-        Route::get('/login',  [AuthenticatedSessionController::class, 'create'])->name('login');
-        Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+        Route::get('/',  [AuthenticatedSessionController::class, 'create'])->name('login');
+        Route::post('/', [AuthenticatedSessionController::class, 'store'])->name('login.store');
         Route::post('register', [RegisteredUserController::class, 'store'])->name('register');
         Route::get('/careers', [CareersController::class, 'index'])->name('careers.index');
     });
