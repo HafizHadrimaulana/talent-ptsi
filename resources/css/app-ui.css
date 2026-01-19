@@ -159,3 +159,26 @@ table.dataTable.no-footer{border-bottom:1px solid var(--border-color)}
     /* Cursor Zoom untuk Foto */
     .u-avatar.is-interactive { cursor: zoom-in; transition: transform 0.2s; }
     .u-avatar.is-interactive:hover { transform: scale(1.1); z-index: 5; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+
+
+/* Efek saat radio button dipilih */
+.peer-radio:checked + .radio-box {
+    border-color: var(--accent) !important;
+    background-color: rgba(var(--accent-rgb), 0.1) !important; /* Jika variabel RGB ada */
+    background-color: #f0f7ff !important; /* Fallback warna biru muda */
+    color: var(--accent) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+/* Efek saat kursor mendekat */
+.radio-box:hover {
+    border-color: var(--accent);
+    background: #ffffff;
+    color: var(--accent);
+}
+
+/* Memastikan teks label di dalam box rapi */
+.radio-box span {
+    margin-top: 2px;
+}

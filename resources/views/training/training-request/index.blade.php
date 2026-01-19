@@ -207,6 +207,8 @@
             );
         }
 
+        updateStepUI();
+
     });
 
     function renderQuestions(containerId, questions, emptyMessage) {
@@ -226,27 +228,106 @@
             let radios = '';
             for (let i = 1; i <= 5; i++) {
                 radios += `
-                    <label class="u-flex u-items-center u-gap-xs cursor-pointer">
-                        <input type="radio"
-                            name="answers[${q.id}]"
-                            value="${i}"
-                            class="u-radio"
-                            required>
-                        <span class="text-xs font-bold">${i}</span>
-                    </label>
+                    <div style="flex: 1;">
+                        <label style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; group">
+                            <input type="radio" 
+                                name="answers[${q.id}]" 
+                                value="${i}" 
+                                style="display: none;" 
+                                class="peer-radio"
+                                required>
+                            
+                            <div class="radio-box" style="
+                                width: 100%;
+                                padding: 10px 0;
+                                border-radius: 8px;
+                                border: 2px solid var(--border);
+                                background: var(--surface-0);
+                                color: var(--muted);
+                                font-weight: bold;
+                                text-align: center;
+                                transition: all 0.2s ease;
+                                font-size: 14px;
+                            ">
+                                ${i}
+                            </div>
+                        </label>
+                    </div>
                 `;
             }
 
             container.innerHTML += `
-                <div class="u-p-sm border border-gray-50 u-rounded-lg">
-                    <label class="block text-sm font-medium text-gray-800 u-mb-xs">
+                <div style="padding: var(--space-md); border: 1px solid var(--border); border-radius: 12px; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: var(--space-md);">
+                    <label style="display: block; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: var(--space-md); line-height: 1.5;">
                         ${index + 1}. ${q.question_text}
                     </label>
-                    <div class="u-flex u-gap-md">
+                    <div style="display: flex; gap: 8px; width: 100%;">
                         ${radios}
                     </div>
                 </div>
             `;
+        });
+
+    }
+
+    let currentStep = 3;
+    const totalSteps = 3;
+
+    // 2. Ambil elemen-elemen yang dibutuhkan
+    const btnNext = document.getElementById('btn-next'); // Pastikan ID ini ada di tombol footer
+    const btnBack = document.getElementById('btn-back'); // Pastikan ID ini ada di tombol footer
+    const progressLine = document.getElementById('progress-line');
+
+    function updateStepUI() {
+        const steps = document.querySelectorAll('.step-item');
+        const progressLine = document.getElementById('progress-line');
+        
+        const totalSteps = steps.length;
+        // Persentase sekarang akan relatif terhadap lebar pembungkus garis (tengah 1 ke tengah 3)
+        const progressPercent = ((currentStep - 1) / (totalSteps - 1)) * 100;
+        
+        if (progressLine) {
+            progressLine.style.width = progressPercent + '%';
+        }
+
+        steps.forEach((el, idx) => {
+            const stepNum = idx + 1;
+            const circle = el.querySelector('.step-circle');
+            const label = el.querySelector('.step-label');
+            const numText = el.querySelector('.step-num');
+            const icon = el.querySelector('.fa-check');
+
+            // Pastikan background putih solid untuk menutupi garis di bawahnya
+            if (stepNum < currentStep) {
+                circle.style.setProperty('background-color', 'var(--accent)', 'important');
+                circle.style.borderColor = 'var(--accent)';
+                circle.style.borderWidth = '2px';
+                label.style.color = 'var(--accent)';
+                label.classList.remove('u-muted');
+                if (numText) numText.style.display = 'none';
+                if (icon) icon.classList.remove('is-hidden');
+            } 
+            else if (stepNum === currentStep) {
+                circle.style.setProperty('background-color', '#ffffff', 'important');
+                circle.style.borderColor = 'var(--accent)';
+                circle.style.borderWidth = '6px';
+                label.style.color = 'var(--accent)';
+                label.classList.remove('u-muted');
+                if (numText) numText.style.display = 'none';
+                if (icon) icon.classList.add('is-hidden');
+            } 
+            else {
+                circle.style.setProperty('background-color', '#ffffff', 'important');
+                circle.style.borderColor = 'var(--border)';
+                circle.style.borderWidth = '2px';
+                label.style.color = 'var(--muted)';
+                label.classList.add('u-muted');
+                if (numText) {
+                    numText.style.display = 'block';
+                    numText.style.color = 'var(--muted)';
+                }
+                if (icon) icon.classList.add('is-hidden');
+            }
         });
     }
 

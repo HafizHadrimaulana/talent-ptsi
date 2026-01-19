@@ -4,20 +4,6 @@ import { initUpdateRealisasiDateHandler } from "./handler/updateRealisasiDate";
 import { getJSON } from "../../utils/fetch";
 
 document.addEventListener("DOMContentLoaded", () => {
-    initModalHandler(
-        "#btn-input-evaluation",
-        "#modal-input-evaluation",
-        "#close-input-evaluation"
-    );
-    initModalHandler(
-        "#btn-upload-certif",
-        "#modal-upload-certif",
-        "#close-upload-certif"
-    );
-
-    const tableBody = document.querySelector("#dashboard-table tbody");
-    if (tableBody) initGetDataEvaluationTable();
-    // initUpdateRealisasiDateHandler(tableBody);
 
     document.querySelectorAll(".btn-detail-anggaran").forEach((btn) => {
         btn.addEventListener("click", async () => {
@@ -64,12 +50,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     data.details.forEach((row) => {
                         tbody.innerHTML += `
                         <tr>
-                            <td>${row.training}</td>
-                            <td>${row.peserta}</td>
-                            <td class="u-font-bold">${formatRupiah(
-                                row.biaya
-                            )}</td>
-                            <td>${row.tanggal}</td>
+                            <td>
+                                <div class="u-font-medium">${row.training}</div>
+                            </td>
+                            <td>
+                                <div class="u-font-bold">${row.peserta}</div>
+                                <div class="u-text-xs u-muted">${row.nik}</div> </td>
+                            <td>
+                                <div class="u-font-bold">${formatRupiah(row.biaya)}</div>
+                            </td>
+                            <td>
+                                <div class="u-text-sm">${row.tanggal}</div>
+                            </td>
                         </tr>
                     `;
                     });

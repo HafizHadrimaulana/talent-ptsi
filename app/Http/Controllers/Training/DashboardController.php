@@ -119,7 +119,8 @@ class DashboardController extends Controller
             ->join('training_references', 'training_request.training_reference_id', '=', 'training_references.id')
             ->select(
                 'training_references.judul_sertifikasi as nama_training',
-                'persons.full_name as nama_peserta',
+                'persons.full_name as nama_peserta',    
+                'employees.employee_id as nik',
                 'training_request.realisasi_biaya_pelatihan as biaya',
                 'training_request.start_date as tanggal',
             )
@@ -143,6 +144,7 @@ class DashboardController extends Controller
                 return [
                     'training' => $item->nama_training,
                     'peserta'  => $item->nama_peserta,
+                    'nik'      => $item->nik,
                     'biaya'    => $item->biaya,
                     'tanggal'  => $item->tanggal ? date('d M Y', strtotime($item->tanggal)) : '-'
                 ];
