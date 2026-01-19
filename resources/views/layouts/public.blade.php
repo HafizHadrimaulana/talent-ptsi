@@ -60,7 +60,7 @@
                     <button type="button" onclick="openLoginModal()" class="px-5 py-2 rounded-xl bg-white text-[#00A29A] font-bold text-sm hover:bg-gray-100 transition shadow-sm cursor-pointer">
                         Login
                     </button>
-                    <button type="button" onclick="openModal()" class="px-5 py-2 rounded-xl border border-white text-white font-bold text-sm hover:bg-white/10 transition shadow-sm cursor-pointer">
+                    <button type="button" onclick="openRegisterModal()" class="px-5 py-2 rounded-xl border border-white text-white font-bold text-sm hover:bg-white/10 transition shadow-sm cursor-pointer">
                         Register
                     </button>
                 </div>
@@ -90,7 +90,7 @@
                         Login
                     </button>
                     
-                    <button onclick="toggleMobileMenu(); setTimeout(() => openModal(), 200);" class="w-full text-left font-bold text-white bg-[#1D4388] flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-[#15346b] transition shadow-md">
+                    <button onclick="toggleMobileMenu(); setTimeout(openModal, 200);" class="w-full text-left font-bold text-white bg-[#1D4388] flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-[#15346b] transition shadow-md">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3.75 17.25a4.875 4.875 0 009.75 0" />
                         </svg>
@@ -338,7 +338,7 @@
       </div>
     </footer>
     <div id="registerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
-        <div id="registerCard" class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative transform transition-all duration-300 scale-95 opacity-0 max-h-[90vh] overflow-y-auto">
+        <div id="registerCard" class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
             <button type="button" onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10">
                 ✕
             </button>
@@ -579,6 +579,14 @@
             }
             document.body.style.overflow = 'hidden';
         }
+        function openRegisterModal() {
+            const modal = document.getElementById("registerModal");
+            if(modal) { 
+                modal.classList.remove("opacity-0", "pointer-events-none"); 
+                modal.classList.add("opacity-100", "pointer-events-auto"); 
+            }
+            document.body.style.overflow = 'hidden';
+        }
 
         function closeLoginModal() {
             const modal = document.getElementById("loginModal");
@@ -590,33 +598,23 @@
         }
         function openModal() {
             const modal = document.getElementById('registerModal');
-            const card = document.getElementById('registerCard');
+            // Kita tidak perlu memanipulasi 'card' lagi, cukup modal wrapper-nya saja
+            // agar sama persis logikanya dengan Login Modal yang sudah berhasil.
             
             if(modal) { 
-                // Hapus class hidden/opacity agar muncul
                 modal.classList.remove('opacity-0', 'pointer-events-none'); 
-                modal.classList.add('opacity-100', 'pointer-events-auto'); // Pastikan pointer events aktif
+                modal.classList.add('opacity-100', 'pointer-events-auto'); 
             }
-            if(card) {
-                card.classList.remove('scale-95', 'opacity-0');
-                card.classList.add('scale-100', 'opacity-100');
-            }
-            // Matikan scroll pada body saat modal terbuka
             document.body.style.overflow = 'hidden';
         }
+
         function closeModal() {
             const modal = document.getElementById('registerModal');
-            const card = document.getElementById('registerCard');
-
+            
             if(modal) { 
                 modal.classList.add('opacity-0', 'pointer-events-none'); 
                 modal.classList.remove('opacity-100', 'pointer-events-auto');
             }
-            if(card) {
-                card.classList.add('scale-95', 'opacity-0');
-                card.classList.remove('scale-100', 'opacity-100');
-            }
-            // Hidupkan kembali scroll body
             document.body.style.overflow = 'auto';
         }
         
