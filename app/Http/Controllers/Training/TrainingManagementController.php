@@ -63,11 +63,6 @@ class TrainingManagementController extends Controller
                     ],
 
                     'pengajuan-training-peserta' => [
-                        'buttons' => [
-                            // 'import',
-                            'training-input'
-                        ],
-                        // 'show_download_template' => true,
                         'tables' => [
                             'training-peserta-table',
                         ],
@@ -82,7 +77,6 @@ class TrainingManagementController extends Controller
                 'tab_configs' => [
 
                     'training-peserta' => [
-                        'buttons' => [],
                         'tables' => [
                             'training-peserta-table',
                         ],
@@ -97,7 +91,6 @@ class TrainingManagementController extends Controller
                 'tab_configs' => [
 
                    'approval-training-data' => [
-                        'buttons' => [],
                         'tables' => [
                             'approval-data-training-table',
                         ],
@@ -112,7 +105,6 @@ class TrainingManagementController extends Controller
                 'tab_configs' => [
 
                     'training-peserta' => [
-                        'buttons' => [],
                         'tables' => [
                             'training-peserta-table',
                         ],
