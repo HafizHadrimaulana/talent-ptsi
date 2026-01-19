@@ -1,34 +1,73 @@
-export function initModalHandler(
-    openBtnSelector,
-    modalSelector,
-    closeBtnSelector
-) {
-    const openBtn = document.querySelector(openBtnSelector);
-    const modal = document.querySelector(modalSelector);
-    const closeBtn = document.querySelector(closeBtnSelector);
+export function openModal(modalOrId) {
+    let modal = modalOrId;
+    
+    if (typeof modalOrId === 'string') {
+        const id = modalOrId.startsWith('#') ? modalOrId.substring(1) : modalOrId;
+        modal = document.getElementById(id);
+    }
 
-    if (!openBtn || !modal || !closeBtn) return;
+    if (!modal) return;
 
-    // FUNGSI BUKA
-    openBtn.addEventListener("click", () => {
-        modal.classList.remove("hidden");
-        modal.style.display = "flex";
-        modal.hidden = false;
+    modal.classList.remove('hidden', 'is-hidden');
+    modal.hidden = false;
+    modal.style.display = 'flex'; 
+    document.body.classList.add('overflow-hidden', 'modal-open');
+    document.body.style.overflow = 'hidden';
+}
+
+export function closeModal(modalOrId) {
+    let modal = modalOrId;
+
+    if (typeof modalOrId === 'string') {
+        const id = modalOrId.startsWith('#') ? modalOrId.substring(1) : modalOrId;
+        modal = document.getElementById(id);
+    }
+
+    if (!modal) {
+        modal = document.querySelector('.u-modal:not(.hidden):not([hidden])');
+    }
+
+    if (!modal) return;
+
+    modal.classList.add('hidden', 'is-hidden');
+    modal.hidden = true;
+    modal.style.display = 'none';
+
+    const otherOpen = document.querySelectorAll('.u-modal:not(.hidden):not([hidden])');
+    const isAnyOtherOpen = Array.from(otherOpen).some(el => el !== modal && el.style.display !== 'none');
+
+    if (!isAnyOtherOpen) {
+        document.body.classList.remove('overflow-hidden', 'modal-open');
+        document.body.style.overflow = ''; 
+    }
+}
+
+export function initModalHandler() {
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+
+        if (
+            target.classList.contains('u-modal') || 
+            target.classList.contains('u-modal__backdrop') ||
+            target.closest('.js-close-modal') ||
+            target.closest('[data-modal-dismiss]')
+        ) {
+            const modal = target.closest('.u-modal');
+            if (modal) {
+                e.preventDefault();
+                closeModal(modal);
+            }
+        }
+
+        const openBtn = target.closest('[data-modal-target]');
+        if (openBtn) {
+            e.preventDefault();
+            const targetId = openBtn.dataset.modalTarget;
+            if (targetId) openModal(targetId);
+        }
     });
 
-    // FUNGSI TUTUP
-    const closeModal = () => {
-        modal.classList.add("hidden");
-        modal.style.display = "none";
-        modal.hidden = true;
-    };
-
-    closeBtn.addEventListener("click", closeModal);
-
-    // FUNGSI KLIK LUAR (Overlay)
-    modal.addEventListener("click", (e) => {
-        if (e.target === modal) {
-            closeModal();
-        }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
     });
 }

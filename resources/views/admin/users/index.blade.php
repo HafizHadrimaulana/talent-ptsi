@@ -1,11 +1,6 @@
 @extends('layouts.app')
 @section('title','User Management')
 
-@push('styles')
-<!-- <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"> -->
-
-@endpush
-
 @section('content')
 @php
   $rolesOptions = $roles ?? collect();
@@ -60,8 +55,8 @@
   </div>
 </div>
 
-{{-- MODALS --}}
 <div id="empModal" class="u-modal" hidden>
+  <div class="u-modal__backdrop" data-modal-dismiss></div>
   <div class="u-modal__card u-modal__card--xl">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
@@ -73,7 +68,7 @@
           </div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--icon" onclick="window.closeAllModals()"><i class='bx bx-x'></i></button>
+      <button class="u-btn u-btn--ghost u-btn--icon" data-modal-dismiss><i class='bx bx-x'>X</i></button>
     </div>
     
     <div class="u-modal__body">
@@ -115,6 +110,7 @@
 </div>
 
 <div id="editModal" class="u-modal" hidden>
+  <div class="u-modal__backdrop" data-modal-dismiss></div>
   <div class="u-modal__card">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
@@ -124,7 +120,7 @@
           <div class="u-text-sm u-muted">Credentials & Access</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--icon" onclick="window.closeAllModals()"><i class='bx bx-x'></i></button>
+      <button class="u-btn u-btn--ghost u-btn--icon" data-modal-dismiss><i class='bx bx-x'>X</i></button>
     </div>
 
     <form id="editForm" method="post">
@@ -188,7 +184,7 @@
       </div>
 
       <div class="u-modal__foot">
-        <button type="button" class="u-btn u-btn--ghost" onclick="window.closeAllModals()">Cancel</button>
+        <button type="button" class="u-btn u-btn--ghost" data-modal-dismiss>Cancel</button>
         <button class="u-btn u-btn--brand" id="submitEdit">Save</button>
       </div>
     </form>
@@ -202,13 +198,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     
-    // --- 1. JS-INJECTED LIGHTBOX (SOLUSI FIX) ---
-    // Fungsi ini membuat CSS dan HTML untuk Lightbox secara dinamis saat halaman dimuat
-    // Ini memastikan popup selalu berada di root <body> dan tidak terpengaruh style card/tabel.
     function initDynamicLightbox() {
         if(document.getElementById('qv-lightbox-style')) return;
 
-        // 1. Inject Style CSS
         const style = document.createElement('style');
         style.id = 'qv-lightbox-style';
         style.innerHTML = `
@@ -238,7 +230,6 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
         document.head.appendChild(style);
 
-        // 2. Inject HTML Element
         const div = document.createElement('div');
         div.id = 'qv-lightbox';
         div.className = 'qv-overlay';
@@ -249,12 +240,11 @@ document.addEventListener('DOMContentLoaded', function () {
         `;
         document.body.appendChild(div);
 
-        // 3. Setup Logic
         const img = div.querySelector('.qv-img');
         const caption = div.querySelector('.qv-caption');
         const close = () => {
             div.classList.remove('is-visible');
-            document.body.style.overflow = ''; // Restore scroll
+            document.body.style.overflow = ''; 
             setTimeout(() => { 
                 div.style.display = 'none'; 
                 img.src = ''; 
@@ -263,33 +253,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
         div.addEventListener('click', close);
         div.querySelector('.qv-close').addEventListener('click', close);
-        img.addEventListener('click', e => e.stopPropagation()); // Klik gambar jangan tutup
+        img.addEventListener('click', e => e.stopPropagation());
 
-        // Escape Key
         document.addEventListener('keydown', e => {
             if(e.key === "Escape" && div.classList.contains('is-visible')) close();
         });
 
-        // Global Function trigger
         window.viewPhoto = function(url, name) {
             if(!url) return;
             img.src = url;
             caption.innerText = name || '';
             div.style.display = 'flex';
             
-            // Force browser reflow agar transition jalan
             void div.offsetWidth; 
             
             div.classList.add('is-visible');
-            document.body.style.overflow = 'hidden'; // Lock scroll
+            document.body.style.overflow = 'hidden';
         };
     }
 
-    // Jalankan init
     initDynamicLightbox();
 
-
-    // --- 2. DATATABLES SETUP ---
     const usersTable = $('#users-table').DataTable({
         processing: true,
         serverSide: true,
@@ -319,7 +303,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 render: function(data, type, row) {
                     let imgHtml = '';
                     let name = row.full_name || 'Unknown';
-                    // Generate Initials
                     let initials = name.replace(/[^a-zA-Z\s]/g, '').match(/\b\w/g) || [];
                     initials = ((initials.shift() || '') + (initials.pop() || '')).toUpperCase();
                     if(!initials) initials = name.substring(0, 2).toUpperCase();
@@ -420,11 +403,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const STORE_URL = shell?.dataset.storeUrl || '';
     const UPDATE_BASE = shell?.dataset.updateUrlBase || '';
 
-    window.closeAllModals = function() {
-        document.querySelectorAll('.u-modal').forEach(m => m.hidden = true);
-        document.body.classList.remove('modal-open');
-    };
-
     window.switchDetailTab = function(name, btn) {
         document.querySelectorAll('#detailModalTabs .u-tab').forEach(t => t.classList.remove('is-active'));
         btn.classList.add('is-active');
@@ -454,8 +432,8 @@ document.addEventListener('DOMContentLoaded', function () {
         window.toggleAllRoles(false);
         const firstTab = document.querySelector('#editModalTabs .u-tab');
         if(firstTab) window.switchEditTab('identity', firstTab);
-        document.getElementById('editModal').hidden = false;
-        document.body.classList.add('modal-open');
+        
+        window.openModal('#editModal');
     };
 
     window.openEditModal = function(data) {
@@ -481,8 +459,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         const firstTab = document.querySelector('#editModalTabs .u-tab');
         if(firstTab) window.switchEditTab('identity', firstTab);
-        document.getElementById('editModal').hidden = false;
-        document.body.classList.add('modal-open');
+        
+        window.openModal('#editModal');
     };
 
     window.openDetailModal = function(d) {
@@ -536,8 +514,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const firstTab = document.querySelector('#detailModalTabs .u-tab');
         if(firstTab) window.switchDetailTab('ov', firstTab);
 
-        document.getElementById('empModal').hidden = false;
-        document.body.classList.add('modal-open');
+        window.openModal('#empModal');
 
         fetch(`${UPDATE_BASE}/${d.employee_pk}`, {headers: {'Accept': 'application/json'}})
             .then(res => res.ok ? res.json() : null)

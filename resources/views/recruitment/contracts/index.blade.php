@@ -3,7 +3,6 @@
 @section('title', 'Manajemen Dokumen Kontrak')
 
 @push('styles')
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 @endpush
 
@@ -527,14 +526,14 @@
                           <div class="u-card u-card--glass u-p-md" style="margin-bottom: 1rem;">
                                 <div class="u-flex u-justify-between u-items-start u-w-full">
                                     <div class="u-flex u-gap-md u-items-center">
-                                        <div id="iconHead" class="u-avatar u-avatar--md u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user-tie"></i></div>
-                                        <div>
-                                            <div id="nameHead" class="u-font-bold u-text-md text-ellipsis">-</div>
-                                            <div id="posHead" class="u-text-xs u-muted u-uppercase u-font-bold u-mt-xxs">-</div>
-                                            <div class="u-text-xs u-muted u-mt-xs flex items-center gap-1">
-                                                <i class="far fa-clock"></i> <span id="dateHead">-</span>
+                                            <div id="iconHead" class="u-avatar u-avatar--md u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user-tie"></i></div>
+                                            <div>
+                                                <div id="nameHead" class="u-font-bold u-text-md text-ellipsis">-</div>
+                                                <div id="posHead" class="u-text-xs u-muted u-uppercase u-font-bold u-mt-xxs">-</div>
+                                                <div class="u-text-xs u-muted u-mt-xs flex items-center gap-1">
+                                                    <i class="far fa-clock"></i> <span id="dateHead">-</span>
+                                                </div>
                                             </div>
-                                        </div>
                                     </div>
                                     <span id="badgeHead" class="u-badge u-badge--glass u-ml-sm u-flex-shrink-0" style="white-space: nowrap;">Waiting</span>
                                 </div>
@@ -543,14 +542,14 @@
                           <div class="u-card u-card--glass u-p-md">
                                 <div class="u-flex u-justify-between u-items-start u-w-full">
                                     <div class="u-flex u-gap-md u-items-center">
-                                        <div id="iconCand" class="u-avatar u-avatar--md u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user"></i></div>
-                                        <div>
-                                            <div id="nameCand" class="u-font-bold u-text-md text-ellipsis">-</div>
-                                            <div id="labelCand" class="u-text-xs u-muted u-uppercase u-font-bold u-mt-xxs">Kandidat / Pegawai</div>
-                                            <div class="u-text-xs u-muted u-mt-xs flex items-center gap-1">
-                                                <i class="far fa-clock"></i> <span id="dateCand">-</span>
+                                            <div id="iconCand" class="u-avatar u-avatar--md u-bg-light u-text-muted" style="flex-shrink: 0;"><i class="fas fa-user"></i></div>
+                                            <div>
+                                                <div id="nameCand" class="u-font-bold u-text-md text-ellipsis">-</div>
+                                                <div id="labelCand" class="u-text-xs u-muted u-uppercase u-font-bold u-mt-xxs">Kandidat / Pegawai</div>
+                                                <div class="u-text-xs u-muted u-mt-xs flex items-center gap-1">
+                                                    <i class="far fa-clock"></i> <span id="dateCand">-</span>
+                                                </div>
                                             </div>
-                                        </div>
                                     </div>
                                     <span id="badgeCand" class="u-badge u-badge--glass u-ml-sm u-flex-shrink-0" style="white-space: nowrap;">Waiting</span>
                                 </div>
@@ -662,12 +661,9 @@
 @endsection
 
 @push('scripts')
-<!-- <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script> -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Leaflet Icon Fix
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -675,69 +671,28 @@ document.addEventListener('DOMContentLoaded', () => {
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
 
-    // 2. DataTables Initialization
-    const table = $('#contracts-table').DataTable({
-        processing: true,
-        serverSide: true,
-        
-        // --- CUSTOM DOM LAYOUT (Agar sama dengan Users) ---
-        dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
-        
-        // --- RESPONSIVE RENDERER (Agar rapi di Mobile) ---
-        responsive: {
-            details: {
-                renderer: function (api, rowIdx, columns) {
-                    let data = $.map(columns, function (col, i) {
-                        return col.hidden ?
-                            `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
-                                <span class="u-dt-child-title">${col.title}</span>
-                                <span class="u-dt-child-data">${col.data}</span>
-                             </li>` : '';
-                    }).join('');
-                    return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
-                }
-            }
-        },
-
+    const table = window.initDataTables('#contracts-table', {
         ajax: {
             url: "{{ route('recruitment.contracts.index') }}",
             data: function (d) {
-                d.unit_id = $('#filterUnit').val();
-                d.status = $('#filterStatus').val();
+                d.unit_id = document.getElementById('filterUnit')?.value;
+                d.status = document.getElementById('filterStatus')?.value;
             }
         },
+        order: [[5, 'desc']],
         columns: [
-            { data: 0, orderable: true }, // Dokumen
-            { data: 1, orderable: true }, // Ticket
-            { data: 2, orderable: false }, // Personil
-            { data: 3, orderable: true }, // Posisi
-            { data: 4, orderable: true }, // Periode
-            { data: 5, orderable: true }, // Status
-            { data: 6, orderable: false, className: "text-center" } // Actions
+            { data: 0, orderable: true },
+            { data: 1, orderable: true },
+            { data: 2, orderable: false },
+            { data: 3, orderable: true },
+            { data: 4, orderable: true },
+            { data: 5, orderable: true },
+            { data: 6, orderable: false, className: "text-center" }
         ],
-        order: [[5, 'desc']], // Default sort by Status (sesuai controller)
-        
-        // --- BAHASA INGGRIS (Agar sama dengan Users) ---
-        language: {
-            search: "",
-            searchPlaceholder: "Search records...",
-            lengthMenu: "_MENU_ per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-            infoEmpty: "Showing 0 to 0 of 0 entries",
-            infoFiltered: "(filtered from _MAX_ total entries)",
-            zeroRecords: "No matching records found",
-            paginate: { first: "«", last: "»", next: "›", previous: "‹" }
-        },
-        
-        // --- DRAW CALLBACK (Styling Input & Pagination) ---
         drawCallback: function() {
             const wrapper = $(this.api().table().container());
-            
-            // Style Inputs
             wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
             wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
-            
-            // Style Pagination Buttons
             const p = wrapper.find('.dataTables_paginate .paginate_button');
             p.addClass('u-btn u-btn--sm u-btn--ghost');
             p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
@@ -745,19 +700,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 3. Filter Event Listeners
-    $('#filterUnit, #filterStatus').on('change', function() {
-        table.draw();
-    });
+    $('#filterUnit, #filterStatus').on('change', () => table.draw());
 
-    // ... [Sisa Kode Javascript Modal & Map tetap sama, copy dari sebelumnya] ...
-    // Pastikan const doc = document; dst... ada di bawah sini
     const doc = document;
     const select = (sel, parent=doc) => parent.querySelector(sel);
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
     const csrf = select('meta[name="csrf-token"]')?.content;
     
-    // Helper simple
     const hide = el => { if(el){ el.hidden = true; el.style.display = 'none'; el.classList.add('is-hidden'); } };
     const show = el => { if(el){ el.hidden = false; el.style.display = 'flex'; el.classList.remove('is-hidden'); } };
     const showBlock = el => { if(el){ el.hidden = false; el.style.display = 'block'; el.classList.remove('is-hidden'); } };
@@ -768,11 +717,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let maps = {};
     let rejectCtx = { url: '', meta: '' };
 
-    const toggleBodyLock = () => {
-        const anyOpen = selectAll('.u-modal').some(m => !m.hidden && (m.style.display || '') !== 'none');
-        doc.body.classList.toggle('modal-open', anyOpen);
-    };
-
     const bindCalc = (root) => {
         selectAll('input[data-rupiah="true"]', root).forEach(el => {
             const tgtId = el.dataset.terbilangTarget;
@@ -782,15 +726,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(tgt) tgt.value = (v && v != '0') ? (terbilang(v) + ' rupiah').toUpperCase() : '';
             });
         });
-    };
-
-    const openModal = (id) => {
-        const m = doc.getElementById(id);
-        if(m) { m.hidden = false; m.style.display = 'flex'; toggleBodyLock(); }
-    };
-
-    const closeModal = (m) => {
-        if(m) { m.hidden = true; m.style.display = 'none'; toggleBodyLock(); }
     };
 
     const openReject = (url, meta) => {
@@ -806,11 +741,28 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { if(noteEl) noteEl.focus(); }, 80);
     };
 
-    doc.body.addEventListener('click', (e) => {
-        if(e.target.closest('.js-close-modal') || e.target.classList.contains('u-modal__backdrop')) closeModal(e.target.closest('.u-modal'));
-        const btn = e.target.closest('[data-modal-open]');
-        if(btn) { e.preventDefault(); openModal(btn.dataset.modalOpen); }
-    });
+    window.triggerEdit = function(encodedRow) {
+        const row = JSON.parse(decodeURIComponent(encodedRow));
+        const btnEdit = document.createElement('button');
+        btnEdit.dataset.showUrl = `{{ url('recruitment/contracts') }}/${row.id}`;
+        btnEdit.dataset.updateUrl = `{{ url('recruitment/contracts') }}/${row.id}`;
+        
+        btnEdit.classList.add('js-btn-edit');
+        document.body.appendChild(btnEdit);
+        btnEdit.click();
+        document.body.removeChild(btnEdit);
+    };
+
+    window.triggerDetail = function(encodedRow) {
+        const row = JSON.parse(decodeURIComponent(encodedRow));
+        const btnDet = document.createElement('button');
+        btnDet.dataset.showUrl = `{{ url('recruitment/contracts') }}/${row.id}`;
+        
+        btnDet.classList.add('js-btn-detail');
+        document.body.appendChild(btnDet);
+        btnDet.click();
+        document.body.removeChild(btnDet);
+    };
 
     const handleLocationAutofill = () => {
         const selects = selectAll('.js-location-autofill');
@@ -842,7 +794,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     handleLocationAutofill();
 
-    // ... [Init Create Modal Logic] ...
     const initCreateModal = () => {
         const btnCreate = select('#btnOpenCreate');
         const formCreate = select('#createContractForm');
@@ -1053,7 +1004,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     initCreateModal();
 
-    // ... [Init Edit Modal Logic] ...
     const initEditModal = () => {
         $(document).on('click', '.js-btn-edit', async function(e) {
             e.preventDefault();
@@ -1124,7 +1074,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     initEditModal();
 
-    // ... [Init Map Logic] ...
     const initMap = (divId, lat, lng) => {
         if (!lat || !lng) return;
         const el = document.getElementById(divId);
@@ -1406,14 +1355,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if(d.tracker) {
                 const h = d.tracker.head;
                 const c = d.tracker.candidate;
-                 
+                
                 setText('#nameHead', h.name);
                 setText('#posHead', h.position || 'Kepala Unit');
                 setText('#dateHead', h.date);
-                 
+                
                 const bHead = select('#badgeHead'); 
                 if(bHead) { bHead.textContent = h.status; bHead.className = `u-badge ${h.css}`; }
-                 
+                
                 const iHead = select('#iconHead');
                 if(iHead) {
                     iHead.className = `u-avatar u-avatar--md ${h.status==='Signed'||h.status==='Approved' ? 'u-bg-success-light u-text-success' : (h.status==='Rejected'?'u-bg-danger-light u-text-danger':'u-bg-light u-text-muted')}`;
@@ -1426,7 +1375,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const bCand = select('#badgeCand'); 
                 if(bCand) { bCand.textContent = c.status; bCand.className = `u-badge ${c.css}`; }
-                 
+                
                 const iCand = select('#iconCand');
                 if(iCand) {
                     iCand.className = `u-avatar u-avatar--md ${c.status==='Signed' ? 'u-bg-success-light u-text-success' : 'u-bg-light u-text-muted'}`;

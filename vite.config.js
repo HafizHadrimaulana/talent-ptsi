@@ -12,6 +12,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/app-layout.js',
                 'resources/js/pages/dashboard/index.js',
+                'resources/js/pages/training/index.js'
             ],
             refresh: true,
         }),

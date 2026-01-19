@@ -6,7 +6,7 @@
   <div class="u-flex u-items-center u-justify-between u-mb-md">
     <h2 class="u-title">Role Management</h2>
     @can('rbac.assign')
-    <button class="u-btn u-btn--brand u-hover-lift" data-modal-open="createRoleModal">
+    <button class="u-btn u-btn--brand u-hover-lift" data-modal-target="#createRoleModal">
       <i class="fas fa-plus u-mr-xs"></i> Add Role
     </button>
     @endcan
@@ -64,8 +64,7 @@
             <td><span class="u-badge u-badge--glass">{{ $r->users_count }} users</span></td>
             <td class="cell-actions">
               <div class="cell-actions__group">
-                <button class="u-btn u-btn--outline u-btn--sm u-hover-lift"
-                        data-modal-open="editRoleModal"
+                <button class="u-btn u-btn--outline u-btn--sm u-hover-lift js-btn-edit"
                         data-role='@json([
                           "id"=>$r->id,
                           "name"=>$r->name,
@@ -92,8 +91,8 @@
   </div>
 </div>
 
-<!-- Create Role Modal -->
 <div id="createRoleModal" class="u-modal" hidden>
+  <div class="u-modal__backdrop" data-modal-dismiss></div>
   <div class="u-modal__card">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
@@ -103,7 +102,7 @@
           <div class="u-muted u-text-sm">Add a new role to the system</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class='fas fa-times'></i></button>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-dismiss aria-label="Close"><i class='fas fa-times'></i></button>
     </div>
 
     <form method="post" action="{{ route('admin.roles.store') }}" id="createRoleForm">
@@ -170,7 +169,7 @@
       <div class="u-modal__foot">
         <div class="u-muted u-text-sm">Press <kbd>Esc</kbd> to close</div>
         <div class="u-flex u-gap-sm">
-          <button type="button" class="u-btn u-btn--ghost" data-modal-close>Cancel</button>
+          <button type="button" class="u-btn u-btn--ghost" data-modal-dismiss>Cancel</button>
           <button class="u-btn u-btn--brand u-hover-lift"><i class='fas fa-save u-mr-xs'></i> Create Role</button>
         </div>
       </div>
@@ -178,8 +177,8 @@
   </div>
 </div>
 
-<!-- Edit Role Modal -->
 <div id="editRoleModal" class="u-modal" hidden>
+  <div class="u-modal__backdrop" data-modal-dismiss></div>
   <div class="u-modal__card">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
@@ -189,7 +188,7 @@
           <div class="u-muted u-text-sm" id="editRoleId">ID: </div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close"><i class='fas fa-times'></i></button>
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-dismiss aria-label="Close"><i class='fas fa-times'></i></button>
     </div>
 
     <form id="editRoleForm" method="post">
@@ -252,7 +251,7 @@
       <div class="u-modal__foot">
         <div class="u-muted u-text-sm">Press <kbd>Esc</kbd> to close</div>
         <div class="u-flex u-gap-sm">
-          <button type="button" class="u-btn u-btn--ghost" data-modal-close>Cancel</button>
+          <button type="button" class="u-btn u-btn--ghost" data-modal-dismiss>Cancel</button>
           <button class="u-btn u-btn--brand u-hover-lift"><i class='fas fa-save u-mr-xs'></i> Update Role</button>
         </div>
       </div>
@@ -262,6 +261,14 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  if(window.initDataTables) {
+      window.initDataTables('#roles-table', {
+          serverSide: false,
+          processing: false,
+          ajax: null
+      });
+  }
+
   const $ = (q, root=document) => root.querySelector(q);
   const $$ = (q, root=document) => [...root.querySelectorAll(q)];
 
@@ -283,47 +290,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  function bindModalOpenClose() {
-    document.addEventListener('click', (e) => {
-      const openCreate = e.target.closest('[data-modal-open="createRoleModal"]');
-      if (openCreate) { $('#createRoleModal').hidden = false; document.body.classList.add('modal-open'); }
-
-      const openEdit = e.target.closest('[data-modal-open="editRoleModal"]');
-      if (openEdit) {
-        const data = JSON.parse(openEdit.dataset.role);
-        openEditModal(data);
-      }
-
-      const closeBtn = e.target.closest('[data-modal-close]');
-      if (closeBtn) {
-        const modal = closeBtn.closest('.u-modal');
-        modal.hidden = true; document.body.classList.remove('modal-open');
-      }
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        $$('.u-modal').forEach(m=>m.hidden = true);
-        document.body.classList.remove('modal-open');
-      }
-    });
-  }
-
-  function openEditModal(roleData){
-    const modal = $('#editRoleModal');
-    const form  = $('#editRoleForm');
-    form.action = "{{ url('admin/settings/access/roles') }}/" + roleData.id;
-    form.querySelector('input[name=name]').value = roleData.name;
-
-    $('#editRoleName').textContent = roleData.name;
-    $('#editRoleId').textContent   = 'ID: ' + roleData.id;
-
-    const current = new Set(roleData.perms || []);
-    $$('#editRolePermsWrap input[type=checkbox]').forEach(cb => cb.checked = current.has(cb.value));
-
-    modal.hidden = false; document.body.classList.add('modal-open');
-  }
-
   function bindPermSelectHelpers(root=document) {
     root.addEventListener('click', (e) => {
       const allBtn  = e.target.closest('[data-check="all"]');
@@ -338,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const grpBtn = e.target.closest('[data-group-check]');
       if (grpBtn) {
         const group = grpBtn.getAttribute('data-group-check');
-        const mode  = grpBtn.getAttribute('data-mode'); // all|none
+        const mode  = grpBtn.getAttribute('data-mode');
         const panel = e.target.closest('.u-panel');
         if (!panel) return;
         panel.querySelectorAll(`input[type=checkbox][data-group="${group}"]`).forEach(cb => cb.checked = (mode==='all'));
@@ -346,9 +312,29 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  document.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('.js-btn-edit');
+      if (editBtn) {
+          const data = JSON.parse(editBtn.dataset.role);
+          
+          const modal = $('#editRoleModal');
+          const form  = $('#editRoleForm');
+          
+          form.action = "{{ url('admin/settings/access/roles') }}/" + data.id;
+          form.querySelector('input[name=name]').value = data.name;
+
+          $('#editRoleName').textContent = data.name;
+          $('#editRoleId').textContent   = 'ID: ' + data.id;
+
+          const current = new Set(data.perms || []);
+          $$('#editRolePermsWrap input[type=checkbox]').forEach(cb => cb.checked = current.has(cb.value));
+
+          if(window.openModal) window.openModal('#editRoleModal');
+      }
+  });
+
   wireTabs(document.getElementById('createRoleModal'));
   wireTabs(document.getElementById('editRoleModal'));
-  bindModalOpenClose();
   bindPermSelectHelpers(document);
 });
 </script>

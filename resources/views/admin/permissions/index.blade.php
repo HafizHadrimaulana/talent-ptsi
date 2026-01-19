@@ -67,8 +67,7 @@
             <td class="cell-actions">
               <div class="cell-actions__group">
                 <button
-                  class="u-btn u-btn--outline u-btn--sm u-hover-lift"
-                  data-modal-open="editPermModal"
+                  class="u-btn u-btn--outline u-btn--sm u-hover-lift js-btn-edit"
                   data-perm="{{ $permPayload }}"
                 >
                   <i class='fas fa-edit u-mr-xs'></i> Edit
@@ -81,12 +80,10 @@
       </table>
     </div>
   </div>
-
-
 </div>
 
-<!-- Edit Permission Modal -->
 <div id="editPermModal" class="u-modal" hidden>
+  <div class="u-modal__backdrop" data-modal-dismiss></div>
   <div class="u-modal__card">
     <div class="u-modal__head">
       <div class="u-flex u-items-center u-gap-md">
@@ -98,7 +95,7 @@
           <div class="u-muted u-text-sm" id="permMeta">ID: -</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-close aria-label="Close">
+      <button class="u-btn u-btn--ghost u-btn--sm" data-modal-dismiss aria-label="Close">
         <i class='fas fa-times'></i>
       </button>
     </div>
@@ -116,7 +113,6 @@
         </div>
 
         <div class="u-panels">
-          {{-- TAB: BASIC INFO --}}
           <div class="u-panel is-active" id="perm-edit-basic">
             <div class="u-grid-2 u-stack-mobile u-gap-md u-p-md">
               <div class="u-grid-col-span-2">
@@ -151,7 +147,6 @@
             </div>
           </div>
 
-          {{-- TAB: ASSIGNED ROLES --}}
           <div class="u-panel" id="perm-edit-roles">
             <div class="u-p-md">
               <div class="u-flex u-items-center u-justify-between u-mb-md u-stack-mobile">
@@ -214,7 +209,7 @@
           Press <kbd>Esc</kbd> to close
         </div>
         <div class="u-flex u-gap-sm">
-          <button type="button" class="u-btn u-btn--ghost" data-modal-close>Cancel</button>
+          <button type="button" class="u-btn u-btn--ghost" data-modal-dismiss>Cancel</button>
           <button class="u-btn u-btn--brand u-hover-lift">
             <i class='fas fa-save u-mr-xs'></i> Update Permission
           </button>
@@ -226,6 +221,14 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  if(window.initDataTables) {
+      window.initDataTables('#perms-table', {
+          serverSide: false,
+          processing: false,
+          ajax: null
+      });
+  }
+
   const $  = (q, root = document) => root.querySelector(q);
   const $$ = (q, root = document) => [...root.querySelectorAll(q)];
 
@@ -264,9 +267,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   document.addEventListener('click', (e) => {
-    const opener = e.target.closest('[data-modal-open="editPermModal"]');
-    if (opener) {
-      const payload = opener.getAttribute('data-perm') || '{}';
+    const editBtn = e.target.closest('.js-btn-edit');
+    if (editBtn) {
+      const payload = editBtn.getAttribute('data-perm') || '{}';
       let data = {};
       try { data = JSON.parse(payload); } catch (_) {}
 
@@ -286,15 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cb.checked = current.has(cb.value);
       });
 
-      modal.hidden = false;
-      document.body.classList.add('modal-open');
-    }
-
-    const closeBtn = e.target.closest('[data-modal-close]');
-    if (closeBtn) {
-      const modal = closeBtn.closest('.u-modal');
-      if (modal) modal.hidden = true;
-      document.body.classList.remove('modal-open');
+      if(window.openModal) window.openModal('#editPermModal');
     }
 
     const allRolesBtn  = e.target.closest('[data-check="roles-all"]');
@@ -304,16 +299,6 @@ document.addEventListener('DOMContentLoaded', function () {
       $$('#permRolesWrap input[type=checkbox][name="roles[]"]').forEach(cb => {
         cb.checked = checked;
       });
-    }
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      const modal = $('#editPermModal');
-      if (modal && !modal.hidden) {
-        modal.hidden = true;
-        document.body.classList.remove('modal-open');
-      }
     }
   });
 
