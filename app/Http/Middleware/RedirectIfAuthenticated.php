@@ -18,16 +18,8 @@ class RedirectIfAuthenticated
             if (Auth::guard($guard)->check()) {
                 $user = Auth::user();
 
-                if ($user->hasRole('Pelamar')) {
-                    return redirect()->route('recruitment.applicant-data.index');
-                }
-
                 if ($user->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit', 'Admin Operasi Unit'])) {
                     return redirect()->route('admin.dashboard');
-                }
-
-                if ($user->hasAnyRole(['Kepala Unit', 'Dir SDM', 'AVP', 'Kepala Proyek (MP)', 'DBS Unit'])) {
-                    return redirect()->route('recruitment.principal-approval.index');
                 }
 
                 return redirect()->route('employee.dashboard');

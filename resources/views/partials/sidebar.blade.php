@@ -98,10 +98,12 @@
                 </a>
                 @endif
 
+                @can('recruitment.external.view')
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}" href="{{ route('recruitment.external.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
                     <span class="label">Careers</span>
                 </a>
+                @endcan
 
                 @if( ($isSuper || $user?->can('recruitment.view')) && !$hideMenuForNonHcAvp )
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.monitoring')?'active':'' }}" href="{{ \Illuminate\Support\Facades\Route::has('recruitment.monitoring') ? route('recruitment.monitoring') : '#' }}">
@@ -111,13 +113,6 @@
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.principal-approval*')?'active':'' }}" href="{{ route('recruitment.principal-approval.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="m9 12 2 2 4-4" /></svg>
                     <span class="label">Principal Approval</span>
-                </a>
-                @endif
-
-                @if(!$isPelamar && ($isSuper || $user?->can('recruitment.external.view')))
-                <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}" href="{{ route('recruitment.external.index') }}">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" /></svg>
-                    <span class="label">External Recruitment</span>
                 </a>
                 @endif
 
@@ -158,7 +153,7 @@
                 @if($isSuper || $user?->can('training.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('training.training-request')?'active':'' }}" href="{{ route('training.training-request') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
-                    <span class="label">My Training</span>
+                    <span class="label">Training</span>
                 </a>
                 @endif
 
@@ -180,7 +175,7 @@
 
     @if($showSettings)
     <nav class="nav-section">
-        <div class="nav-title">System Settings</div>
+        <div class="nav-title">Settings</div>
         <div class="nav">
             @canany(['users.view','rbac.view'])
             <button type="button" class="nav-item js-accordion {{ $acOpen ? 'open' : '' }} {{ $isSetActive ? 'active' : '' }}" data-accordion="nav-access" aria-expanded="{{ $acOpen ? 'true' : 'false' }}">

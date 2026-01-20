@@ -98,18 +98,10 @@ class AuthenticatedSessionController extends Controller
             $this->provisionInitialRoles($user);
         }
 
-        if ($user->hasRole('Pelamar')) {
-            return redirect()->route('recruitment.applicant-data.index');
-        }
-
-        // Logic Redirect Baru:
-        // Admin Operasional/Sistem -> Admin Dashboard
         if ($user->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit', 'Admin Operasi Unit'])) {
             return redirect()->route('admin.dashboard');
         }
 
-        // Approver (Kepala Unit, AVP, Direksi) & Karyawan -> Employee Dashboard
-        // Nanti di dashboard dikasi widget "Pending Approval"
         return redirect()->route('employee.dashboard');
     }
 
