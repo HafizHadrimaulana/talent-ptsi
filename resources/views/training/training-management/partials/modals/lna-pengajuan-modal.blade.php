@@ -1,4 +1,4 @@
-<div id="lna-input-modal" class="u-modal" hidden>
+<div id="lna-pengajuan-modal" class="u-modal" hidden>
   <div class="u-modal__card u-modal__card--xl">
 
     {{-- Modal Header --}}
@@ -6,18 +6,18 @@
       <div class="u-flex u-items-center u-gap-md">
         <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-clipboard-check"></i></div>
         <div>
-          <div class="u-title" id="ip-modal-title">Input Pelatihan Baru</div>
+          <div class="u-title" id="ip-modal-title">Pengajuan Pelatihan Baru</div>
           <div class="u-muted u-text-sm" id="ip-modal-subtitle">Tambah pelatihan</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm lna-input-close-modal" aria-label="Close">
+      <button class="u-btn u-btn--ghost u-btn--sm lna-pengajuan-close-modal" aria-label="Close">
         <i class="fas fa-times"></i>
       </button>
     </div>
 
     {{-- Modal Body --}}
     <div class="u-modal__body u-p-md u-space-y-lg">
-      <form id="lna-input-form" method="POST">
+      <form id="lna-pengajuan-form" method="POST">
         @csrf
 
         {{-- Section Title --}}
@@ -38,8 +38,8 @@
 
             {{-- DROPDOWN UNIT --}}
             <div>
-              <label class="font-medium after:content-['*'] after:text-red-500">Unit</label>
-                <select name="unit_id" id="select-unit" class="u-input u-font-semibold" required>
+              <label class="font-medium">Unit</label>
+                <select name="unit_id" class="u-input u-font-semibold js-select-unit" required>
                     <option value="">-- Pilih Unit --</option>
                 </select>
             </div>
@@ -106,7 +106,7 @@
       <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
       <div class="u-flex u-gap-sm">
         <button type="button" class="u-btn u-btn--ghost lna-input-close-modal">Batal</button>
-        <button type="submit" form="lna-input-form" class="u-btn u-btn--brand u-hover-lift">Simpan</button>
+        <button type="submit" form="lna-pengajuan-form" class="u-btn u-btn--brand u-hover-lift">Simpan</button>
       </div>
     </div>
 

@@ -166,6 +166,12 @@ Route::middleware(['web', 'auth', 'team.scope'])->group(function () {
             ->name('training-request.reject-training-request');
         
         Route::get('training-management', [TrainingManagementController::class, 'index'])->middleware('permission:training.management.view')->name('training-management');
+
+        Route::get('training-management/get-data-pengajuan-lna', [TrainingManagementController::class, 'getDataPengajuanLna'])
+            ->name('training-management.get-data-pengajuan-lna');
+        Route::get('training-management/{unitId}/get-pengajuan-training-peserta', [TrainingManagementController::class, 'getPengajuanTrainingPeserta'])
+            ->name('training-management.get-pengajuan-training-peserta');
+
         Route::post('training-management/{id}/approve-training-submission', [TrainingManagementController::class,'approveTrainingSubmission']);
         Route::post('training-management/{id}/reject-training-submission', [TrainingManagementController::class,'rejectTrainingSubmission']);
         

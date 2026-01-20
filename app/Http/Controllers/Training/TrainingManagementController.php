@@ -16,7 +16,7 @@ class TrainingManagementController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $role = $user->getRoleNames()->first();
+        $roles = $user->getRoleNames()->toArray();
 
         // |--------------------------------------------------------------------------
         // |  UI CONFIG
@@ -45,26 +45,27 @@ class TrainingManagementController extends Controller
                         'tables' => [
                             'approval-data-training-table',
                         ],
-                    ]
+                    ],
+
+                    
                 ],
             ],
 
             'SDM Unit' => [
-                'tabs' => ['pengajuan-training-peserta', 'data-LNA'],
+                'tabs' => ['pengajuan-training-peserta', 'pengajuan-data-LNA'],
                 'default_tab' => 'pengajuan-training-peserta',
 
                 'tab_configs' => [
 
-                    'data-LNA' => [
-                        'buttons' => ['lna-input'],
+                    'pengajuan-training-peserta' => [
                         'tables' => [
-                            'data-lna-table',
+                            'pengajuan-training-peserta-table',
                         ],
                     ],
 
-                    'pengajuan-training-peserta' => [
+                    'pengajuan-data-LNA' => [
                         'tables' => [
-                            'training-peserta-table',
+                            'pengajuan-data-lna-table',
                         ],
                     ]
                 ],
@@ -114,23 +115,76 @@ class TrainingManagementController extends Controller
 
         ];
 
-        $ui = $uiMap[$role] ?? [
+        $ui = [
             'tabs' => [],
-            'buttons' => [],
-            'tables' => [
-                'data-LNA',
-            ],
+            'tab_configs' => [],
+            'default_tab' => null,
         ];
 
-        $activeTab = $request->get('tab', $ui['default_tab'] ?? null);
+        foreach ($roles as $role) {
+            if (!isset($uiMap[$role])) {
+                continue;
+            }
 
+            $roleUi = $uiMap[$role];
+
+            // Merge tabs
+            $ui['tabs'] = array_values(array_unique(array_merge(
+                $ui['tabs'],
+                $roleUi['tabs'] ?? []
+            )));
+
+            // Merge tab configs
+            foreach ($roleUi['tab_configs'] ?? [] as $tab => $config) {
+
+                if (!isset($ui['tab_configs'][$tab])) {
+                    $ui['tab_configs'][$tab] = $config;
+                } else {
+                    // merge buttons
+                    if (!empty($config['buttons'])) {
+                        $ui['tab_configs'][$tab]['buttons'] = array_values(array_unique(array_merge(
+                            $ui['tab_configs'][$tab]['buttons'] ?? [],
+                            $config['buttons']
+                        )));
+                    }
+
+                    // merge tables
+                    if (!empty($config['tables'])) {
+                        $ui['tab_configs'][$tab]['tables'] = array_values(array_unique(array_merge(
+                            $ui['tab_configs'][$tab]['tables'] ?? [],
+                            $config['tables']
+                        )));
+                    }
+                }
+            }
+
+            // default tab (ambil role pertama yang punya default)
+            if (!$ui['default_tab'] && isset($roleUi['default_tab'])) {
+                $ui['default_tab'] = $roleUi['default_tab'];
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | ACTIVE TAB
+        |--------------------------------------------------------------------------
+        */
+        $activeTab = $request->get(
+            'tab',
+            $ui['default_tab'] ?? ($ui['tabs'][0] ?? null)
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | LOGGING (DEBUG FRIENDLY)
+        |--------------------------------------------------------------------------
+        */
         Log::info('training.index.ui', [
-            'role' => $role,
+            'roles' => $roles,
+            'tabs' => $ui['tabs'],
             'activeTab' => $activeTab,
         ]);
 
-        Log::info("Role index: " . $role);
-    
         return view('training.training-management.index', [
             'ui' => $ui,
             'activeTab' => $activeTab,
@@ -256,11 +310,7 @@ class TrainingManagementController extends Controller
             }
 
             $nextStatus = match ($role) {
-                'DBS Unit' => $trainingReference->status_training_reference === 'pending'
-                    ? 'in_review_dhc'
-                    : null,
-
-                'DHC' => $trainingReference->status_training_reference === 'in_review_dhc'
+                'DHC' => $trainingReference->status_training_reference === 'pending'
                     ? 'active'
                     : null,
 
@@ -323,8 +373,7 @@ class TrainingManagementController extends Controller
 
             // validasi
             $allowedReject = match ($role) {
-                'DBS Unit' => $trainingReference->status_training_reference === 'pending',
-                'DHC'      => $trainingReference->status_training_reference === 'in_review_dhc',
+                'DHC'      => $trainingReference->status_training_reference === 'pending',
                 default    => false,
             };
 
@@ -422,83 +471,279 @@ class TrainingManagementController extends Controller
         }
     }
 
-    public function inputLna(Request $request) 
+    public function getDataPengajuanLna(Request $request)
     {
-        $user = auth()->user();
-        $role = $user->getRoleNames()->first();
+        try {
+            $user = auth()->user();
 
-        Log::info("Mulai input LNA sdm request:", $request->all());
+            if (!$user->hasRole('SDM Unit')) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Akses ditolak'
+                ], 403);
+            }
 
-        $statusTrainingReference = 'active';
-
-        if ($role === 'SDM Unit') {
-            $unitId = optional($user->employee)->unit_id 
+            $unitId = optional($user->employee)->unit_id
                 ?? optional($user->person)->unit_id;
 
             if (!$unitId) {
                 return response()->json([
-                    "status" => "error",
+                    'status'  => 'error',
+                    'message' => 'Unit kerja tidak ditemukan'
+                ], 422);
+            }
+
+            $perPage = (int) $request->input('per_page', 10);
+            $page    = (int) $request->input('page', 1);
+            $search  = $request->input('search');
+
+            $query = TrainingReference::with('unit')
+                ->where('unit_id', $unitId) 
+                ->orderByDesc('created_at');
+
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('judul_sertifikasi', 'like', "%{$search}%")
+                    ->orWhere('penyelenggara', 'like', "%{$search}%")
+                    ->orWhereHas('unit', function ($qu) use ($search) {
+                        $qu->where('name', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            $data = $query->paginate($perPage, ['*'], 'page', $page);
+
+            $mappedItems = $data->getCollection()->map(function ($item) {
+                return [
+                    "id"        => $item->id,
+                    "judul_sertifikasi" => $item->judul_sertifikasi ?? "-",
+                    "unit_id"   => $item->unit_id,
+                    "unit_kerja"=> optional($item->unit)->name ?? "-",
+                    "penyelenggara" => $item->penyelenggara ?? "-",
+                    "jumlah_jam" => $item->jumlah_jam ?? "-",
+                    "waktu_pelaksanaan" => $item->waktu_pelaksanaan ?? "-",
+                    "biaya_pelatihan" => $item->biaya_pelatihan ?? 0,
+                    "nama_proyek" => $item->nama_proyek ?? "-",
+                    "jenis_portofolio" => $item->jenis_portofolio ?? "-",
+                    "fungsi" => $item->fungsi ?? "-",
+                    "status_training_reference" => $item->status_training_reference,
+                    "created_at" => optional($item->created_at)?->format('Y-m-d H:i:s'),
+                ];
+            })->values();
+
+            return response()->json([
+                "status" => "success",
+                "data" => $mappedItems,
+                "pagination" => [
+                    "current_page" => $data->currentPage(),
+                    "last_page" => $data->lastPage(),
+                    "per_page" => $data->perPage(),
+                    "total" => $data->total(),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error fetch pengajuan LNA", [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                "status" => "error",
+                "message" => "Terjadi kesalahan server"
+            ], 500);
+        }
+    }
+
+    public function getPengajuanTrainingPeserta(Request $request, $unitId = null)
+    {
+        try {
+            $user   = auth()->user();
+            $roles  = $user->getRoleNames()->toArray();
+
+            $employeeUnitId = optional($user->employee)->unit_id
+                ?? optional($user->person)->unit_id;
+
+            if (!$employeeUnitId && in_array('SDM Unit', $roles)) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Unit user tidak ditemukan'
+                ], 422);
+            }
+
+            $perPage = $request->input('per_page', 10);
+
+            /**
+             * ==================================================
+             * QUERY BASE
+             * ==================================================
+             */
+            $query = TrainingRequest::query()
+                ->with([
+                    'trainingReference:id,judul_sertifikasi',
+                    'employee:id,unit_id,person_id',
+                    'employee.person:id,full_name',
+                ])
+                ->orderByDesc('id');
+
+            /**
+             * ==================================================
+             * FILTER UNIT (ROLE BASED)
+             * ==================================================
+             */
+            if (in_array('SDM Unit', $roles)) {
+
+                // 🔒 SDM Unit → hanya unit sendiri
+                $query->whereHas('employee', function ($q) use ($employeeUnitId) {
+                    $q->where('unit_id', $employeeUnitId);
+                });
+
+            } elseif ($unitId) {
+
+                // 🧭 DHC / Admin → optional filter unit
+                $query->whereHas('employee', function ($q) use ($unitId) {
+                    $q->where('unit_id', $unitId);
+                });
+            }
+
+            /**
+             * ==================================================
+             * PAGINATION
+             * ==================================================
+             */
+            $data = $query->paginate($perPage);
+
+            /**
+             * ==================================================
+             * MAPPING RESPONSE
+             * ==================================================
+             */
+            $mappedData = collect($data->items())->map(function ($item, $index) use ($data) {
+                return [
+                    'no'                       => ($data->currentPage() - 1) * $data->perPage() + $index + 1,
+                    'id'                       => $item->id,
+                    'judul_sertifikasi'        => $item->trainingReference?->judul_sertifikasi ?? '-',
+                    'peserta'                  => $item->employee?->person?->full_name ?? '-',
+                    'tanggal_mulai'            => $item->start_date,
+                    'tanggal_berakhir'         => $item->end_date,
+                    'realisasi_biaya_pelatihan'=> $item->realisasi_biaya_pelatihan ?? 0,
+                    'lampiran_penawaran'       => $item->lampiran_penawaran,
+                    'status_approval_training' => $item->status_approval_training,
+                    'actions'                  => null,
+                ];
+            });
+
+            Log::info('getPengajuanTrainingPeserta OK', [
+                'user_id' => $user->id,
+                'roles'   => $roles,
+                'unit'    => in_array('SDM Unit', $roles) ? $employeeUnitId : $unitId,
+                'total'   => $data->total(),
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'data'   => $mappedData,
+                'pagination' => [
+                    'current_page' => $data->currentPage(),
+                    'last_page'    => $data->lastPage(),
+                    'per_page'     => $data->perPage(),
+                    'total'        => $data->total(),
+                ]
+            ]);
+
+        } catch (\Throwable $e) {
+
+            Log::error('getPengajuanTrainingPeserta ERROR', [
+                'message' => $e->getMessage(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan saat mengambil data'
+            ], 500);
+        }
+    }
+
+    public function inputLna(Request $request) 
+    {
+        $user  = auth()->user();
+        $roles = $user->getRoleNames()->toArray();
+
+        Log::info("Mulai input LNA request:", [
+            'roles' => $roles,
+            'payload' => $request->all(),
+        ]);
+
+        $statusTrainingReference = 'active';
+
+        $isSdmUnit = in_array('SDM Unit', $roles);
+
+        if ($isSdmUnit) {
+            $unitId = optional($user->employee)->unit_id
+                ?? optional($user->person)->unit_id;
+
+            if (!$unitId) {
+                return response()->json([
+                    "status"  => "error",
                     "message" => "Unit kerja SDM Unit tidak ditemukan"
                 ], 422);
             }
 
-            // unit_id dari backend
             $request->merge([
                 'unit_id' => $unitId
             ]);
 
             $statusTrainingReference = 'pending';
-        };
+        }
 
         $request->merge([
-            'biaya_pelatihan'      => $this->cleanRupiah($request->biaya_pelatihan),
+            'biaya_pelatihan' => $this->cleanRupiah($request->biaya_pelatihan),
         ]);
 
         try {
-            // Validasi sederhana
             $request->validate([
-                'unit_id'               => 'nullable|exists:units,id',
-                'judul_sertifikasi'     => 'nullable|string|max:255',
-                'penyelenggara'         => 'nullable|string|max:255',
-                'jumlah_jam'            => 'nullable|string|max:255',
-                'waktu_pelaksanaan'     => 'nullable|string|max:255',
-                'biaya_pelatihan'       => 'nullable|numeric',
-                'nama_proyek'           => 'nullable|string|max:255',
-                'jenis_portofolio'      => 'nullable|string|max:255',
-                'fungsi'                => 'nullable|string|max:255',
+                'unit_id'               => 'required|exists:units,id',
+                'judul_sertifikasi'     => 'required|string|max:255',
+                'penyelenggara'         => 'required|string|max:255',
+                'jumlah_jam'            => 'required|string|max:255',
+                'waktu_pelaksanaan'     => 'required|string|max:255',
+                'biaya_pelatihan'       => 'required|numeric',
+                'nama_proyek'           => 'required|string|max:255',
+                'jenis_portofolio'      => 'required|string|max:255',
+                'fungsi'                => 'required|string|max:255',
             ]);
-    
-            // Simpan ke tabel training_reference
-            $data = TrainingReference::create([
-                'judul_sertifikasi'      => $request->judul_sertifikasi,
-                'unit_id'                => $request->unit_id,
-                'penyelenggara'          => $request->penyelenggara,
-                'jumlah_jam'             => $request->jumlah_jam,
-                'waktu_pelaksanaan'      => $request->waktu_pelaksanaan,
-                'nama_proyek'            => $request->nama_proyek,
-                'jenis_portofolio'       => $request->jenis_portofolio,
-                'fungsi'                 => $request->fungsi,
-                'biaya_pelatihan'        => $request->biaya_pelatihan,
 
-                // pending jika sdm unit
-                'status_training_reference' => $statusTrainingReference,
+            $data = TrainingReference::create([
+                'judul_sertifikasi'           => $request->judul_sertifikasi,
+                'unit_id'                     => $request->unit_id,
+                'penyelenggara'               => $request->penyelenggara,
+                'jumlah_jam'                  => $request->jumlah_jam,
+                'waktu_pelaksanaan'           => $request->waktu_pelaksanaan,
+                'nama_proyek'                 => $request->nama_proyek,
+                'jenis_portofolio'            => $request->jenis_portofolio,
+                'fungsi'                      => $request->fungsi,
+                'biaya_pelatihan'             => $request->biaya_pelatihan,
+                'status_training_reference'   => $statusTrainingReference,
             ]);
-    
+
             Log::info("Data training berhasil disimpan.", $data->toArray());
-    
+
             return response()->json([
-                "status" => "success",
-                'message' => 'Data training berhasil disimpan.',
-                'data'    => $data
+                "status"  => "success",
+                "message" => "Data training berhasil disimpan.",
+                "data"    => $data
             ]);
 
         } catch (\Exception $e) {
+            Log::error("Gagal input LNA", [
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
-                "status" => "error",
-                "message" => $e->getMessage()
+                "status"  => "error",
+                "message" => "Terjadi kesalahan server"
             ], 500);
         }
-        
     }
 
     /// UTILS APPROVAL ///
@@ -516,11 +761,6 @@ class TrainingManagementController extends Controller
             'isHumanCapital' => $isHumanCapital,
         ]);
 
-        /**
-         * =========================================
-         * APPROVAL FLOW CONFIG (SINGLE SOURCE)
-         * =========================================
-         */
         $approvalFlow = [
             'in_review_gmvp' => [
                 'next' => 'in_review_dhc',

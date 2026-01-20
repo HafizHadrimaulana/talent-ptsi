@@ -50,8 +50,8 @@ const TABLE_CONFIGS = {
         dataMapper: (res) => res.data || [],
     },
 
-    "training-request-table": {
-        tableId: "training-request-table",
+    "approval-training-request-table": {
+        tableId: "approval-training-request-table",
         modalId: "#training-peserta-modal",
         apiEndpoint: () =>
             `/training/training-request/get-training-request-list`,
@@ -64,6 +64,46 @@ const TABLE_CONFIGS = {
             "realisasi_biaya_pelatihan",
             "lampiran_penawaran",
             "status_approval_training",
+            "actions",
+        ],
+        dataMapper: (res) => res.data || [],
+    },
+
+    "pengajuan-training-peserta-table": {
+        tableId: "pengajuan-training-peserta-table",
+        modalId: "#training-peserta-modal",
+        apiEndpoint: (unitId) => `/training/training-management/${unitId}/get-pengajuan-training-peserta`,
+        columns: [
+            "no",
+            "judul_sertifikasi",
+            "peserta",
+            "tanggal_mulai",
+            "tanggal_berakhir",
+            "realisasi_biaya_pelatihan",
+            "lampiran_penawaran",
+            "status_approval_training",
+            "actions",
+        ],
+        dataMapper: (res) => res.data || [],
+    },
+
+    "pengajuan-data-lna-table": {
+        tableId: "pengajuan-data-lna-table",
+        modalId: "#lna-modal",
+        apiEndpoint: () =>
+            `/training/training-management/get-data-pengajuan-lna`,
+        columns: [
+            "no",
+            "judul_sertifikasi",
+            "unit_kerja",
+            "penyelenggara",
+            "jumlah_jam",
+            "waktu_pelaksanaan",
+            "biaya_pelatihan",
+            "nama_proyek",
+            "jenis_portofolio",
+            "fungsi",
+            "status_training_reference",
             "actions",
         ],
         dataMapper: (res) => res.data || [],
@@ -95,7 +135,7 @@ const COLUMN_RENDERERS = {
 
     lampiran_penawaran: (d) => {
         const hasFile = d && d !== "null" && d !== "";
-        return `<div class="text-center"><span class="u-badge ${
+        return `<div><span class="u-badge ${
             hasFile ? "u-badge--success" : "u-badge--danger"
         }">${hasFile ? "Tersedia" : "Kosong"}</span></div>`;
     },
@@ -104,7 +144,7 @@ const COLUMN_RENDERERS = {
     status_training_reference: (d) => renderStatusBadge(d),
 
     actions: (data, type, row, meta, config) => `
-        <div class="u-flex u-justify-center">
+        <div class="">
             <button type="button" class="u-btn u-btn--xs u-btn--outline btn-trigger-modal" 
                 data-table="${config.tableId}">
                 <i class="fas fa-eye"></i> Detail
@@ -126,10 +166,12 @@ const initModalSystem = () => {
 
             if (!config) return;
 
-            const rowData = $(`#${tableId}`)
-                .DataTable()
-                .row($btn.closest("tr"))
-                .data();
+            const dt = DATA_TABLE_INSTANCES[tableId];
+            if (!dt) return;
+
+            const row = dt.row($btn.parents("tr"));
+            const rowData = row.data();
+
             const $modal = $(config.modalId);
 
             console.log("row data aaa", rowData);
@@ -177,8 +219,13 @@ const initModalSystem = () => {
         const modalId = $modal.attr("id");
         const note = $modal.find("#catatan").val();
 
-        const reloadTable = () =>
-            $(".dataTable").DataTable().ajax.reload(null, false);
+        const reloadTable = () => {
+            const tableId = $modal.find(".btn-trigger-modal")?.data("table");
+
+            if (tableId) {
+                DataTableManager.reload(tableId);
+            }
+        };
 
         if (modalId === "training-peserta-modal") {
             console.log("id data", id);
@@ -194,8 +241,13 @@ const initModalSystem = () => {
         const modalId = $modal.attr("id");
         const note = $modal.find("#catatan").val();
 
-        const reloadTable = () =>
-            $(".dataTable").DataTable().ajax.reload(null, false);
+        const reloadTable = () => {
+            const tableId = $modal.find(".btn-trigger-modal")?.data("table");
+
+            if (tableId) {
+                DataTableManager.reload(tableId);
+            }
+        };
 
         if (modalId === "training-peserta-modal") {
             executeReject(id, reloadTable, note);
@@ -247,7 +299,7 @@ const populateModalData = ($modal, data) => {
 
     // Informasi Biaya
     $modal
-        .find(".detail-biaya_pelatihan, .detail-biaya_pelatihan")
+        .find(".detail-biaya_pelatihan")
         .text(formatRupiah(data.biaya_pelatihan || 0));
     $modal
         .find(".detail-realisasi_biaya_pelatihan")
@@ -277,7 +329,7 @@ const populateModalData = ($modal, data) => {
         $modal
             .find(".detail-lampiran_penawaran")
             .html(
-                '<span class="u-muted u-text-sm italic">Tidak ada lampiran</span>'
+                '<span class="u-muted u-text-sm italic">Tidak ada lampiran</span>',
             );
     }
 };
@@ -315,9 +367,9 @@ const toggleEditMode = ($modal, isEditing) => {
             .val($modal.find(".detail-jenis_portofolio").text().trim());
         $modal.find('input[name="biaya_pelatihan"]').val(
             $modal
-                .find(".detail-biaya-pelatihan")
+                .find(".detail-biaya_pelatihan")
                 .text()
-                .replace(/[^0-9]/g, "")
+                .replace(/[^0-9]/g, ""),
         );
 
         // Ubah UI Tombol
@@ -345,11 +397,38 @@ const toggleEditMode = ($modal, isEditing) => {
 // --- DATATABLE INITIALIZATION ---
 
 let isGlobalInitialized = false;
+const DATA_TABLE_INSTANCES = {};
 
-export function initGetDataTable(tableBody, options = {}) {
-    const tableId = $(tableBody).closest("table").attr("id");
+export const DataTableManager = {
+    get(tableId) {
+        return DATA_TABLE_INSTANCES[tableId] || null;
+    },
+
+    reload(tableId) {
+        const dt = DATA_TABLE_INSTANCES[tableId];
+        if (dt) {
+            dt.ajax.reload(null, false);
+        }
+    },
+
+    reloadAll() {
+        Object.values(DATA_TABLE_INSTANCES).forEach((dt) => {
+            dt.ajax.reload(null, false);
+        });
+    },
+};
+
+export function initGetDataTable(tableSelector, options = {}) {
+    const $table = $(tableSelector);
+    if (!$table.length) return;
+
+    const tableId = $table.attr("id");
     const baseConfig = TABLE_CONFIGS[tableId];
     if (!baseConfig) return;
+
+    if (DATA_TABLE_INSTANCES[tableId]) {
+        return DATA_TABLE_INSTANCES[tableId];
+    }
 
     // Inisialisasi sistem modal (hanya sekali)
     if (!isGlobalInitialized) {
@@ -357,7 +436,7 @@ export function initGetDataTable(tableBody, options = {}) {
         isGlobalInitialized = true;
     }
 
-    return initDataTables(`#${tableId}`, {
+    const dt = initDataTables(`#${tableId}`, {
         serverSide: true,
         ajax: async (data, callback) => {
             const params = new URLSearchParams({
@@ -370,7 +449,7 @@ export function initGetDataTable(tableBody, options = {}) {
 
             try {
                 const response = await getJSON(
-                    `${baseConfig.apiEndpoint(options.unitId)}?${params}`
+                    `${baseConfig.apiEndpoint(options.unitId)}?${params}`,
                 );
                 callback({
                     draw: data.draw,
@@ -392,9 +471,12 @@ export function initGetDataTable(tableBody, options = {}) {
             render: (d, t, r, m) =>
                 COLUMN_RENDERERS[col]
                     ? COLUMN_RENDERERS[col](d, t, r, m, baseConfig)
-                    : d ?? "-",
+                    : (d ?? "-"),
         })),
     });
+
+    DATA_TABLE_INSTANCES[tableId] = dt;
+    return dt;
 }
 
 // --- HELPERS ---
@@ -412,7 +494,7 @@ const handleUpdateAction = (id, formData, $modal) => {
             $submitBtn
                 .prop("disabled", true)
                 .html(
-                    '<i class="fas fa-spinner fa-spin u-mr-xs"></i> Menyimpan...'
+                    '<i class="fas fa-spinner fa-spin u-mr-xs"></i> Menyimpan...',
                 );
         },
         success: (res) => {
@@ -445,7 +527,7 @@ const renderApprovalTimeline = (approvals) => {
 
     if (!approvals?.length) {
         $container.append(
-            '<div class="u-text-center u-py-md u-muted u-text-xs italic">Belum ada riwayat.</div>'
+            '<div class="u-text-center u-py-md u-muted u-text-xs italic">Belum ada riwayat.</div>',
         );
         return;
     }
@@ -492,6 +574,7 @@ const formatRupiah = (v) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(v || 0);
+
 const formatDate = (d) =>
     d
         ? new Date(d).toLocaleDateString("id-ID", {
@@ -500,13 +583,45 @@ const formatDate = (d) =>
               year: "numeric",
           })
         : "-";
-const renderStatusBadge = (s) => {
-    const MAP = {
-        approved: "bg-blue-100 text-blue-700",
-        rejected: "u-badge--danger",
-        in_review_gmvp: "u-badge--info",
+
+const renderStatusBadge = (status) => {
+    const STATUS_MAP = {
+        approved: {
+            label: "Approved",
+            class: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+        },
+        rejected: {
+            label: "Rejected",
+            class: "bg-red-100 text-red-700 border border-red-200",
+        },
+        in_review_gmvp: {
+            label: "In Review",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        active: {
+            label: "Aktif",
+            class: "bg-green-100 text-green-700 border border-green-200",
+        },
+        pending: {
+            label: "Pending",
+            class: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+        },
     };
-    return `<div class="text-center"><span class="u-badge ${
-        MAP[s] || "u-badge--secondary"
-    }">${s?.toUpperCase() || "-"}</span></div>`;
+
+    const config = STATUS_MAP[status] || {
+        label: status || "-",
+        class: "bg-gray-100 text-gray-600 border border-gray-200",
+    };
+
+    return `
+        <span class="
+            inline-flex items-center gap-1.5
+            px-3 py-1
+            rounded-full text-xs font-semibold
+            whitespace-nowrap
+            ${config.class}
+        ">
+            ${config.label}
+        </span>
+    `;
 };

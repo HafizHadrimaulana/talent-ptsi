@@ -1,4 +1,4 @@
-<div id="lna-edit-modal"
+<!-- <div id="lna-edit-modal"
      class="u-modal hidden">
     <div class="u-modal__card">
 
@@ -100,4 +100,4 @@
             </div>
         </div>
     </div>
-</div>
+</div> -->
