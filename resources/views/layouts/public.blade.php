@@ -10,14 +10,14 @@
     <style>
       html { scroll-padding-top: 90px; }
       body { background-color: #ffffff; color: #111827; }
-      header { background-color: #00A29A !important; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+      header { background-color: #008b84 !important; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
       nav a { color: #ffffff; transition: color 0.3s ease; }
       nav a:hover,
       nav a.active { color: #A4F5DD; }
       nav a.active::after { content: ""; position: absolute; left: 0; bottom: -4px; width: 100%; height: 2px; background: #A4F5DD; border-radius: 2px; }
       #navbar { transition: background-color 1.0s ease, box-shadow 1.0s ease, opacity 1.0s ease; }
       #navbar.transparent { background-color: transparent !important; box-shadow: none !important; opacity: 1; }
-      #navbar.visible {background-color: #00A29A !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1); opacity: 1;}
+      #navbar.visible {background-color: rgba(3, 147, 140, 0.85) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); opacity: 1; }
       .fade-section { opacity: 0; transform: translateY(30px); transition: all 1.5s ease-out; }
       .fade-section.visible { opacity: 1; transform: translateY(0); }
       .hero-slideshow { position: relative; width: 100%; height: 100%; overflow: hidden; }
@@ -41,13 +41,11 @@
   <body class="min-h-screen bg-white text-gray-900">
     <header id="navbar" class="fixed top-0 w-full h-20 z-50 bg-[#00A29A] transition-all duration-300 shadow-md">
         <div class="container mx-auto px-4 md:px-6 h-full flex items-center justify-end md:justify-between relative">
-            
             <a href="{{ route('recruitment.external.index') }}" class="hidden md:flex items-center gap-2 md:gap-4 overflow-hidden">
                 <img src="/images/Danantara_Indonesia.svg.png" alt="Danantara" class="h-8 md:h-10 w-auto object-contain">
                 <img src="/images/logo.png" alt="Logo IDSurvey" class="h-8 md:h-10 w-auto object-contain">
-                <img src="/images/logo-white.png" alt="SI Logo" class="h-6 md:h-9 w-auto object-contain">    
+                <img src="/images/logo_SI.png" alt="SI Logo" class="h-6 md:h-9 w-auto object-contain">    
             </a>
-
             <div class="hidden md:flex items-center gap-6 text-white font-medium">
                 <nav class="flex items-center gap-4 text-sm">
                     <a href="#about" class="hover:text-[#A4F5DD] transition-colors">Tentang Kami</a>
@@ -74,22 +72,18 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
-
             <div id="mobileMenu" class="absolute top-20 right-0 left-0 bg-white border-t border-gray-100 shadow-xl transform origin-top scale-y-0 opacity-0 transition-all duration-300 ease-in-out md:hidden z-40">
                 <div class="flex flex-col p-4 gap-4">
                     <a href="#about" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Tentang Kami</a>
                     <a href="#jobs" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Lowongan</a>
                     <a href="#contact" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Kontak</a>
-                    
                     <hr class="border-gray-200">
-                    
                     <button onclick="toggleMobileMenu(); setTimeout(openLoginModal, 200);" class="w-full text-left font-bold text-[#00A29A] flex items-center gap-3 py-3 px-3 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                         </svg>
                         Login
                     </button>
-                    
                     <button onclick="toggleMobileMenu(); setTimeout(openModal, 200);" class="w-full text-left font-bold text-white bg-[#1D4388] flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-[#15346b] transition shadow-md">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3.75 17.25a4.875 4.875 0 009.75 0" />
@@ -120,16 +114,7 @@
           </a>
         </div>
       </div>
-      <!-- <button id="prevBtn"
-        class="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/60 text-white p-3 rounded-full transition cursor-pointer">
-        ❮
-      </button>
-      <button id="nextBtn"
-        class="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-black/40 hover:bg-black/60 text-white p-3 rounded-full transition cursor-pointer">
-        ❯
-      </button> -->
       <div id="dotsContainer" class="absolute bottom-6 flex gap-3 z-20"></div>
-
     </section>
     <div class="relative">
       <img src="/images/tekstur.png"
@@ -333,8 +318,8 @@
           <li><a href="https://sapahc.ptsi.co.id/privacy-policy" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
         </ul>
       </div>
-      <div class="relative mt-10 border-t border-gray-700 pt-6 text-center text-xs text-gray-400">
-        <p>© {{ date('Y') }}  PT Surveyor Indonesia. All Rights Reserved.</p>
+      <div class="relative mt-10 border-t border-gray-700 pt-6 text-center center text-xs text-gray-400">
+        <p>© {{ date('Y') }}  HCIS. All Rights Reserved.</p>
       </div>
     </footer>
     <div id="registerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
@@ -408,7 +393,18 @@
                 @csrf
                 <div class="flex flex-col gap-3">
                     <input type="text" name="login" value="{{ old('login') }}" placeholder="email@domain.com / EMP12345" autocomplete="username" class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
-                    <input type="password" name="password" placeholder="********" autocomplete="current-password" class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
+                    <div class="relative">
+                        <input type="password" id="loginPassword" name="password" placeholder="********" autocomplete="current-password" class="w-full rounded-lg border border-[#d8dee8] bg-white px-4 py-2.5 pr-10 text-sm focus:border-brand focus:ring-2 focus:ring-brand" />
+                        <button type="button" onclick="togglePasswordVisibility('loginPassword')" class="absolute inset-y-0 right-0 z-10 flex items-center px-3 text-gray-500 hover:text-[#00A29A] focus:outline-none cursor-pointer bg-transparent">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <svg id="eyeSlashIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 hidden">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.452 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                        </button>
+                    </div>
                     @if($errors->has('login') || $errors->has('password'))
                         <div class="text-red-600 text-xs">
                             {{ $errors->first('login') ?: $errors->first('password') }}
@@ -577,7 +573,6 @@
                 modal.classList.remove("opacity-0", "pointer-events-none"); 
                 modal.classList.add("opacity-100", "pointer-events-auto"); 
             }
-            document.body.style.overflow = 'hidden';
         }
 
         function closeLoginModal() {
@@ -586,7 +581,6 @@
                 modal.classList.add("opacity-0", "pointer-events-none"); 
                 modal.classList.remove("opacity-100", "pointer-events-auto"); 
             }
-            document.body.style.overflow = 'auto';
         }
         function openRegisterModal() {
             const modal = document.getElementById("registerModal");
@@ -594,7 +588,6 @@
                 modal.classList.remove("opacity-0", "pointer-events-none"); 
                 modal.classList.add("opacity-100", "pointer-events-auto"); 
             }
-            document.body.style.overflow = 'hidden';
         }
         function closeRegisterModal() {
             const modal = document.getElementById("registerModal");
@@ -602,9 +595,7 @@
                 modal.classList.add("opacity-0", "pointer-events-none"); 
                 modal.classList.remove("opacity-100", "pointer-events-auto"); 
             }
-            document.body.style.overflow = 'auto';
         }
-        
         
         function triggerLoginForApply() {
             closePublicJobModal();
@@ -615,28 +606,18 @@
             const menu = document.getElementById('mobileMenu');
             const iconOpen = document.getElementById('iconOpen');
             const iconClose = document.getElementById('iconClose');
-            
-            // Cek apakah menu sedang tertutup
             if (menu.classList.contains('scale-y-0')) {
-                // BUKA MENU
                 menu.classList.remove('scale-y-0', 'opacity-0');
                 menu.classList.add('scale-y-100', 'opacity-100');
-                
-                // Ubah icon jadi X
                 if(iconOpen) iconOpen.classList.add('hidden');
                 if(iconClose) iconClose.classList.remove('hidden');
             } else {
-                // TUTUP MENU
                 menu.classList.add('scale-y-0', 'opacity-0');
                 menu.classList.remove('scale-y-100', 'opacity-100');
-                
-                // Ubah icon balik jadi Titik 3
                 if(iconOpen) iconOpen.classList.remove('hidden');
                 if(iconClose) iconClose.classList.add('hidden');
             }
         }
-
-        // Menutup menu jika klik di luar area
         document.addEventListener('click', function(event) {
             const menu = document.getElementById('mobileMenu');
             const btn = document.getElementById('mobileMenuBtn');
@@ -645,6 +626,22 @@
                 toggleMobileMenu();
             }
         });
+
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const eyeIcon = document.getElementById('eyeIcon');
+            const eyeSlashIcon = document.getElementById('eyeSlashIcon');
+
+            if (input.type === "password") {
+                input.type = "text";
+                eyeIcon.classList.add('hidden');
+                eyeSlashIcon.classList.remove('hidden');
+            } else {
+                input.type = "password";
+                eyeIcon.classList.remove('hidden');
+                eyeSlashIcon.classList.add('hidden');
+            }
+        }
         document.addEventListener("DOMContentLoaded", function() {
             document.body.addEventListener('click', function(e) {
                 const btn = e.target.closest('.js-btn-detail');

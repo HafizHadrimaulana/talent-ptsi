@@ -159,9 +159,19 @@
             $justif          = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
             $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
             $progressText = 'In Review';
-            if ($status === 'draft') $progressText = 'Draft';
-            elseif ($status === 'rejected') $progressText = 'Ditolak';
-            elseif ($status === 'approved') $progressText = 'Selesai (Approved by Dir TSDU)';
+            $badgeClass = 'u-badge--warning';
+            if ($status === 'draft') {
+                $progressText = 'Draft';
+                $badgeClass = 'u-badge--glass';
+            }
+            elseif ($status === 'rejected') {
+                $progressText = 'Ditolak';
+                $badgeClass = 'u-badge--danger';
+            }
+            elseif ($status === 'approved') {
+                $progressText = 'Selesai (Approved by Dir TSDU)';
+                $badgeClass = 'u-badge--success';
+            }
             else {
                 if ($currentStage == 'admin_ops') $progressText = 'Menunggu Admin Ops';
                 elseif ($currentStage == 'kepala_mp') $progressText = 'Menunggu Kepala MP';
@@ -226,7 +236,7 @@
                 @endif
             </td>
             <td>{{ $unitNameRow }}</td>
-            <td><span class="u-badge u-badge--glass u-text-2xs">{{ $requestType }}</span></td>
+            <td><span>{{ $requestType }}</span></td>
             <td>
               @if($hasMultiData)
                 <div class="u-flex u-flex-col u-gap-xs">
@@ -236,9 +246,9 @@
                 </div>
               @else {{ $positionDisplay }} @endif
             </td>
-            <td><span class="u-badge u-badge--glass">{{ $r->headcount }} Orang</span></td>
-            <td>@if($employmentType) <span class="u-badge u-badge--glass">{{ $employmentType }}</span> @else - @endif</td>
-            <td><div class="u-text-2xs"><span class="u-badge u-badge--glass">{{ $progressText }}</span></div></td>
+            <td><span >{{ $r->headcount }} Orang</span></td>
+            <td>@if($employmentType) <span>{{ $employmentType }}</span> @else - @endif</td>
+            <td><div class="u-text-2xs"><span class="u-badge {{ $badgeClass }}">{{ $progressText }}</span></div></td>
             <td>
                 @if($slaText !== '-')
                     <span class="u-badge {{ $slaBadgeClass }} u-text-2xs" title="Dihitung sejak approval Kepala Unit">
