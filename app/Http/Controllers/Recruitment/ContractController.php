@@ -755,7 +755,7 @@ class ContractController extends Controller
             $d['name'] = $p->full_name ?? $p->name ?? 'Kandidat';
             $d['address'] = $p->address ?? $p->domicile_address ?? '-';
             $ktpDb = DB::table('identities')->where('person_id', $p->id)->whereIn('system', ['nik', 'ktp', 'e_ktp'])->value('external_id');
-            $d['nik_ktp'] = $ktpDb ?? $p->nik_hash ?? $p->nik ?? '-';
+            $d['nik_ktp'] = $ktpDb ?? $p->nik ?? $p->nik ?? '-';
             $empId = $c->employee_id ?: (Employee::where('person_id', $p->id)->value('employee_id') ?? '-');
             $d['employee_id'] = $empId;
             $d['pob'] = $p->place_of_birth ?? $p->pob ?? '-';

@@ -272,10 +272,7 @@ class UserController extends Controller
         if (!empty($data['employee_id'])) $user->employee_id = $data['employee_id'];
         $user->save();
 
-        $this->withTeamContext(function () use ($user, $data) {
-            $assignables = $this->resolveAssignableRoles($data['roles'] ?? [], (int) $data['unit_id'], 'web');
-            $user->syncRoles($assignables);
-        }, $data['unit_id']);
+        $this->syncUserRolesSplitContext($user, $data['roles'] ?? [], (int) $data['unit_id']);
 
         return back()->with('ok', 'User created successfully.');
     }
@@ -296,14 +293,34 @@ class UserController extends Controller
         $user->unit_id = $data['unit_id'];
         $user->save();
 
-        $this->withTeamContext(function () use ($user, $data) {
-            if (array_key_exists('roles', $data)) {
-                $assignables = $this->resolveAssignableRoles($data['roles'] ?? [], (int) $data['unit_id'], 'web');
-                $user->syncRoles($assignables);
-            }
-        }, $data['unit_id']);
+        if (array_key_exists('roles', $data)) {
+            $this->syncUserRolesSplitContext($user, $data['roles'] ?? [], (int) $data['unit_id']);
+        }
 
         return back()->with('ok', 'User updated successfully.');
+    }
+
+    protected function syncUserRolesSplitContext(User $user, array $inputRoleIds, int $unitId)
+    {
+        $dhcRoleIds = Role::where('name', 'DHC')->pluck('id')->toArray();
+        $shouldHaveDhc = !empty(array_intersect($inputRoleIds, $dhcRoleIds));
+        $unitRoleIds = array_diff($inputRoleIds, $dhcRoleIds);
+
+        $this->withTeamContext(function () use ($user, $shouldHaveDhc) {
+            $user->unsetRelation('roles');
+
+            if ($shouldHaveDhc) {
+                if (!$user->hasRole('DHC')) $user->assignRole('DHC');
+            } else {
+                if ($user->hasRole('DHC')) $user->removeRole('DHC');
+            }
+        }, 0);
+
+        $this->withTeamContext(function () use ($user, $unitRoleIds, $unitId) {
+            $user->unsetRelation('roles');
+            $assignables = $this->resolveAssignableRoles($unitRoleIds, $unitId, 'web');
+            $user->syncRoles($assignables);
+        }, $unitId);
     }
 
     public function roleOptions(Request $req) { return response()->json([]); }
