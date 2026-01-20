@@ -1789,12 +1789,12 @@
                 }
                 document.addEventListener('click', function(e) {
                     const closeBtn = e.target.closest('[data-modal-close]');
-                    const modalBackdrop = e.target.classList.contains('u-modal'); // Jika klik backdrop
+                    const modalBackdrop = e.target.classList.contains('u-modal');
                     if (closeBtn || modalBackdrop) {
                         const m = e.target.closest('.u-modal');
                         if(m) { 
                             m.hidden = true; 
-                            m.style.display = 'none'; // Reset display
+                            m.style.display = 'none';
                             document.body.classList.remove('modal-open'); 
                         }
                         return;
@@ -2277,6 +2277,7 @@
                         infoEmpty: "Showing 0 s/d 0 from 0 data",
                         infoFiltered: "(filtered from _MAX_ total data)",
                         zeroRecords: "No matching records found",
+                        processing: '<div class="u-dt-loader-container"><div class="u-dt-liquid-spinner"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div><div class="u-dt-loading-text">Loading...</div></div>',
                         paginate: { first: "«", last: "»", next: "›", previous: "‹" }
                     },
                     drawCallback: function() {
