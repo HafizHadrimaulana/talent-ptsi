@@ -403,13 +403,14 @@
             dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
             language: {
                 search: "",
-                searchPlaceholder: "Search...",
+                searchPlaceholder: "Search records...",
                 lengthMenu: "_MENU_ per page",
-                info: "Showing _START_ s/d _END_ from _TOTAL_ data",
+                info: "Showing _START_ s/d _END_ from _TOTAL_ entries",
                 infoEmpty: "Showing 0 s/d 0 from 0 data",
                 infoFiltered: "(filtered from _MAX_ total data)",
                 zeroRecords: "No matching records found",
                 emptyTable: "Belum ada lowongan dibuka.",
+                processing: '<div class="u-dt-loader-container"><div class="u-dt-liquid-spinner"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div><div class="u-dt-loading-text">Loading...</div></div>',
                 paginate: { first: "«", last: "»", next: "›", previous: "‹" }
             },
             drawCallback: function() {
