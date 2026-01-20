@@ -180,7 +180,7 @@
 
     @if($showSettings)
     <nav class="nav-section">
-        <div class="nav-title">System Settings</div>
+        <div class="nav-title">Settings</div>
         <div class="nav">
             @canany(['users.view','rbac.view','employees.view'])
             <button type="button" class="nav-item js-accordion {{ $acOpen ? 'open' : '' }} {{ $isSetActive ? 'active' : '' }}" data-accordion="nav-access" aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
