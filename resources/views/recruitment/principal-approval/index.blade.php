@@ -1789,12 +1789,12 @@
                 }
                 document.addEventListener('click', function(e) {
                     const closeBtn = e.target.closest('[data-modal-close]');
-                    const modalBackdrop = e.target.classList.contains('u-modal'); // Jika klik backdrop
+                    const modalBackdrop = e.target.classList.contains('u-modal');
                     if (closeBtn || modalBackdrop) {
                         const m = e.target.closest('.u-modal');
                         if(m) { 
                             m.hidden = true; 
-                            m.style.display = 'none'; // Reset display
+                            m.style.display = 'none';
                             document.body.classList.remove('modal-open'); 
                         }
                         return;

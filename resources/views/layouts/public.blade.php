@@ -639,7 +639,6 @@
             const input = document.getElementById(inputId);
             const eyeIcon = document.getElementById('eyeIcon');
             const eyeSlashIcon = document.getElementById('eyeSlashIcon');
-
             if (input.type === "password") {
                 input.type = "text";
                 eyeIcon.classList.add('hidden');
@@ -651,13 +650,38 @@
             }
         }
         document.addEventListener("DOMContentLoaded", function() {
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal) {
+                loginModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeLoginModal();
+                    }
+                });
+            }
+
+            const registerModal = document.getElementById('registerModal');
+            if (registerModal) {
+                registerModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeRegisterModal();
+                    }
+                });
+            }
+            const publicJobModal = document.getElementById('publicJobModal');
+            if (publicJobModal) {
+                publicJobModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closePublicJobModal();
+                    }
+                });
+            }
             document.body.addEventListener('click', function(e) {
                 const btn = e.target.closest('.js-btn-detail');
                 if (btn) {
                     try {
                         const rawData = btn.getAttribute('data-job');
                         if (!rawData) {
-                            throw new Error("Data job kosong");
+                            throw new Error("Data lowongan kosong");
                         }
                         const jobData = JSON.parse(rawData);
                         openPublicJobDetail(jobData);
@@ -742,7 +766,6 @@
             const regSubmitBtn = document.getElementById('submitBtn');
 
             if(termsCheckbox && regSubmitBtn){
-                // Fungsi untuk cek status checkbox & update tombol
                 const updateSubmitBtn = () => {
                     regSubmitBtn.disabled = !termsCheckbox.checked;
                     if(termsCheckbox.checked) {
@@ -753,13 +776,10 @@
                         regSubmitBtn.classList.remove("bg-[#00A29A]", "hover:bg-[#008f87]", "cursor-pointer", "shadow-md");
                     }
                 };
-
-                // Jalankan saat checkbox berubah
                 termsCheckbox.addEventListener('change', updateSubmitBtn);
-                
-                // PENTING: Jalankan sekali saat load agar status awal benar (mengatasi cache browser)
                 updateSubmitBtn();
             }
+
             const loginTermsCheckbox = document.getElementById("loginTermsCheckbox");
             const loginSubmitBtn = document.getElementById("loginSubmitBtn");
             
