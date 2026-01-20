@@ -18,18 +18,21 @@ class RegisteredUserController extends Controller
 {
     public function store(Request $request)
     {
-        // 1. Validasi
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'nik'  => ['required', 'string', 'max:16', 'unique:persons,nik'],
+            'nik'  => ['required', 'string', 'min:16', 'max:16', 'unique:persons,nik_hash'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            ], [
+            
+            'email.unique' => 'Email tersebut sudah digunakan. Silakan gunakan email lain atau Login.',
+            'nik.unique' => 'NIK sudah terdaftar di sistem kami.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'required' => 'Kolom :attribute wajib diisi.'
         ]);
 
-        // ID Unit Khusus Pelamar
         $pelamarUnitId = 100; 
 
-        // 2. Buat User
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -37,20 +40,14 @@ class RegisteredUserController extends Controller
             'unit_id' => $pelamarUnitId,
         ]);
 
-        // =====================================================================
-        // PERBAIKAN: Buat Role "Pelamar" SPESIFIK untuk Unit 100
-        // =====================================================================
-        // Kita cari atau buat role yang unit_id-nya 100. 
-        // Jangan pakai yang NULL (Global) agar tidak conflict.
         $role = Role::firstOrCreate(
             [
                 'name' => 'Pelamar', 
                 'guard_name' => 'web', 
-                'unit_id' => $pelamarUnitId // <--- PENTING: Role ini milik Unit 100
+                'unit_id' => $pelamarUnitId 
             ]
         );
 
-        // Pastikan Role Unit 100 ini punya permission
         if ($role->permissions->isEmpty()) {
             $role->syncPermissions([
                 'applicant.data.view', 
@@ -59,22 +56,21 @@ class RegisteredUserController extends Controller
             ]);
         }
 
-        // 3. Assign Role ke User (Manual Insert untuk Pivot)
         DB::table('model_has_roles')->insert([
             'role_id'    => $role->id,
             'model_type' => get_class($user),
             'model_id'   => $user->id,
-            'unit_id'    => $pelamarUnitId // <--- PENTING: Pivot juga Unit 100
+            'unit_id'    => $pelamarUnitId
         ]);
 
-        // Reset Cache Permission
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // 4. Buat Data Person
         $person = Person::create([
             'full_name' => $user->name,
             'email'     => $user->email,
-            'nik'       => $request->nik,
+            'nik_hash'  => $request->nik, 
+            'nik_last4' => substr($request->nik, -4),
+            'nik'       => null,
         ]);
         
         $user->person_id = $person->id;
@@ -82,10 +78,7 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        // 5. Login & Set Context
         Auth::login($user);
-
-        // Set context team id ke 100 agar Spatie membaca Role Unit 100
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId($pelamarUnitId);
 

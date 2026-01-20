@@ -313,7 +313,7 @@
         <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
             <button class="u-btn u-btn--ghost" onclick="closeModal('vacancyDetailModal')">Tutup</button>
             <button class="u-btn u-btn--brand" id="btnApplyFromDetail" style="text-white;">
-                <i class="fas fa-paper-plane u-mr-xs"></i> Apply Now
+                <i class="fas fa-paper-plane u-mr-xs"></i> Lamar Posisi
             </button>
         </div>
     </div>
@@ -442,21 +442,6 @@
                 });
         }
     });
-    document.addEventListener('DOMContentLoaded', function() {
-        if (document.querySelector('#editEditorContent')) {
-            ClassicEditor
-                .create(document.querySelector('#editEditorContent'), {
-                    toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
-                    placeholder: 'Edit deskripsi pekerjaan, kualifikasi, dll...'
-                })
-                .then(editor => {
-                    editVacancyEditor = editor;
-                })
-                .catch(error => {
-                    console.error(error);
-                });
-        }
-    });
     function openEditVacancyModal(id, rowData) {
         document.getElementById('edit_req_id').value = id;
         const startDate = rowData.publish_start_date ? rowData.publish_start_date.substring(0, 10) : '';
@@ -514,7 +499,8 @@
                 body: JSON.stringify({ 
                     description: content,
                     publish_start_date: startDate,
-                    publish_end_date: endDate
+                    publish_end_date: endDate,
+                    publish_location: locationVal
                 })
             })
             .then(res => res.json())

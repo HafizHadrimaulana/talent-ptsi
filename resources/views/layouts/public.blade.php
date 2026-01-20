@@ -84,7 +84,7 @@
                         </svg>
                         Login
                     </button>
-                    <button onclick="toggleMobileMenu(); setTimeout(openModal, 200);" class="w-full text-left font-bold text-white bg-[#1D4388] flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-[#15346b] transition shadow-md">
+                    <button onclick="toggleMobileMenu(); setTimeout(openRegisterModal, 200);" class="w-full text-left font-bold text-white bg-[#1D4388] flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-[#15346b] transition shadow-md">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3.75 17.25a4.875 4.875 0 009.75 0" />
                         </svg>
@@ -277,7 +277,9 @@
     </section>
     <footer id="contact" class="bg-[#0b132b] text-gray-200 py-12 relative overflow-hidden fade-section">
       <div class="absolute inset-0 opacity-5 bg-[url('/images/pattern-lines.svg')] bg-center bg-cover"></div>
+      
       <div class="relative container mx-auto px-6 grid md:grid-cols-3 gap-10 text-sm">
+        
         <div>
           <h3 class="text-xl font-semibold text-[#49D4A9] mb-3">PT Surveyor Indonesia</h3>
           <p class="leading-relaxed mb-4">
@@ -297,13 +299,14 @@
               <img src="/images/2021_Facebook_icon.svg.png" alt="Facebook" class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
             </a>
           </div>
-          <button onclick="window.scrollTo({top:0, behavior:'smooth'})" class="mt-6 border border-gray-600 hover:border-[#49D4A9] hover:text-[#49D4A9] text-xs uppercase px-4 py-2 rounded-md transition flex items-center gap-2 " style = " cursor: pointer;">
+          <button onclick="window.scrollTo({top:0, behavior:'smooth'})" class="mt-6 border border-gray-600 hover:border-[#49D4A9] hover:text-[#49D4A9] text-xs uppercase px-4 py-2 rounded-md transition flex items-center gap-2 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
             </svg>
             Back to Top
           </button>
         </div>
+
         <div>
           <h4 class="font-semibold text-lg mb-3 text-white">Site Map</h4>
           <ul class="space-y-2">
@@ -312,14 +315,19 @@
             <li><a href="#contact" class="hover:text-[#49D4A9] transition">Kontak</a></li>
           </ul>
         </div>
-      <div>
-        <h4 class="font-semibold text-lg mb-3 text-white">Legal</h4>
-        <ul class="space-y-2">
-          <li><a href="https://sapahc.ptsi.co.id/privacy-policy" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
-        </ul>
+
+        <div>
+          <h4 class="font-semibold text-lg mb-3 text-white">Legal</h4>
+          <ul class="space-y-2">
+            <li><a href="https://sapahc.ptsi.co.id/privacy-policy" class="hover:text-[#49D4A9] transition">Kebijakan Privasi</a></li>
+          </ul>
+        </div>
       </div>
-      <div class="relative mt-10 border-t border-gray-700 pt-6 text-center center text-xs text-gray-400">
-        <p>© {{ date('Y') }}  HCIS. All Rights Reserved.</p>
+
+      <div class="relative mt-10 border-t border-gray-700 pt-6 w-full flex flex-col items-center justify-center">
+        <p class="text-xs text-gray-400 text-center">
+            &copy; {{ date('Y') }} HCIS. All Rights Reserved.
+        </p>
       </div>
     </footer>
     <div id="registerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
@@ -794,10 +802,10 @@
             }, { threshold: 0.15 });
             document.querySelectorAll('.fade-section').forEach(sec => observer.observe(sec));
             @if($errors->any())
-                @if($errors->has('login') || $errors->has('password'))
+                @if($errors->has('login'))
                     openLoginModal();
                 @else
-                    openModal();
+                    openRegisterModal();
                 @endif
             @endif
         });
