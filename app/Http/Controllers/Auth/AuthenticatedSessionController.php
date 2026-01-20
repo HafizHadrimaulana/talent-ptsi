@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use App\Models\RecruitmentRequest;
 
@@ -25,8 +23,6 @@ class AuthenticatedSessionController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Kirim variabel $vacancies ke view layouts.public
-        // Pastikan nama view sesuai dengan lokasi file blade Anda
         return view('layouts.public', compact('vacancies'));
     }
 
@@ -39,10 +35,8 @@ class AuthenticatedSessionController extends Controller
 
         $login    = trim($cred['login']);
         $password = $cred['password'];
-
         $newlyProvisioned = false;
 
-        // 1) Cari user by email → kalau nggak ada, coba by employee/id_sitms
         $user = User::query()->where('email', $login)->first();
 
         if (!$user) {
@@ -63,7 +57,7 @@ class AuthenticatedSessionController extends Controller
                         $user->unit_id     = $emp->unit_id;
                         $user->name        = $this->resolveDisplayNameFromEmployee($emp);
                         $user->email       = $emp->email;
-                        $user->password    = Hash::make('password'); // Password default jika auto-create
+                        $user->password    = Hash::make('password');
                         $user->save();
 
                         $newlyProvisioned = true;
@@ -72,13 +66,8 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        // --- PERUBAHAN DI SINI ---
-        // Kita HAPUS blok "if (!$user) throw..." yang lama agar tidak bocor informasinya.
-        
-        // 2) Auth
         $loggedIn = false;
 
-        // Cek login hanya dilakukan jika $user berhasil ditemukan/dibuat di tahap sebelumnya
         if ($user) {
             if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
                 if (Auth::attempt(['email' => $login, 'password' => $password], $request->boolean('remember'))) {
@@ -86,7 +75,6 @@ class AuthenticatedSessionController extends Controller
                     $loggedIn = true;
                 }
             } else {
-                // Manual check hash untuk login non-email (NIP/ID)
                 if (Hash::check($password, (string) $user->password)) {
                     Auth::login($user, $request->boolean('remember'));
                     $request->session()->regenerate();
@@ -95,36 +83,34 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        // 3) Satu Pintu Error
-        // Jika user tidak ditemukan ($user null) ATAU password salah ($loggedIn false), masuk ke sini.
         if (!$loggedIn) {
             throw ValidationException::withMessages([
                 'login' => 'Kredensial Salah.', 
             ]);
         }
 
-        // 4) Set Spatie team scope ke unit user
-        /** @var PermissionRegistrar $registrar */
         $registrar = app(PermissionRegistrar::class);
         $registrar->setPermissionsTeamId($user->unit_id);
 
-        // 5) Sinkronisasi display name
         $this->syncDisplayNameFromHR($user);
 
-        // 6) Provision Initial Roles (Hanya saat auto-create user dari Employee)
         if ($newlyProvisioned) {
             $this->provisionInitialRoles($user);
         }
 
-        // === LOGIKA REDIRECT DISINI ===
         if ($user->hasRole('Pelamar')) {
-            // Arahkan ke Dashboard Data Pelamar
-            return redirect()->route('recruitment.applicant-data.index')
-                ->with('ok', 'Selamat datang! Silakan lengkapi data diri Anda.');
-        } else {
-            // Arahkan user internal ke dashboard biasa
-            return redirect()->intended(route('dashboard'));
+            return redirect()->route('recruitment.applicant-data.index');
         }
+
+        // Logic Redirect Baru:
+        // Admin Operasional/Sistem -> Admin Dashboard
+        if ($user->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit', 'Admin Operasi Unit'])) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        // Approver (Kepala Unit, AVP, Direksi) & Karyawan -> Employee Dashboard
+        // Nanti di dashboard dikasi widget "Pending Approval"
+        return redirect()->route('employee.dashboard');
     }
 
     public function destroy(Request $request)
@@ -134,8 +120,6 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
         return redirect('/');
     }
-
-    // ================= Helpers =================
 
     private function resolveDisplayNameFromEmployee(?Employee $emp): string
     {
@@ -147,7 +131,7 @@ class AuthenticatedSessionController extends Controller
                     return (string) $row->full_name;
                 }
             }
-        } catch (\Throwable $e) { /* ignore */ }
+        } catch (\Throwable $e) { }
 
         if (!empty($emp->full_name)) return (string) $emp->full_name;
         if (!empty($emp->email))     return (string) $emp->email;
@@ -196,7 +180,6 @@ class AuthenticatedSessionController extends Controller
         }
         $targets = array_values(array_unique($targets));
 
-        /** @var PermissionRegistrar $registrar */
         $registrar = app(PermissionRegistrar::class);
         $currentUnitId = $user->unit_id ?: 0;
         $guard = $this->resolveGuardName($user);
