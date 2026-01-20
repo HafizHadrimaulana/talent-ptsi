@@ -20,7 +20,7 @@
     $showMain = true;
     $showRecruitment = $isAdminSystem || $isPelamar || $user?->hasAnyPermission(['recruitment.view','contract.view']);
     $showTraining = !$isPelamar && ($isAdminSystem || $user?->hasAnyPermission(['training.view']));
-    $showSettings = !$isPelamar && ($user && ($user->can('users.view') || $user->can('rbac.view') || $user->can('employees.view')));
+    $showSettings = !$isPelamar && ($user && ($user->can('users.view') || $user->can('rbac.view')));
     $showMaster = !$isPelamar && ($isAdminSystem || ($user && $user->can('org.view')));
 
     $printedAnySection = false;
@@ -165,7 +165,7 @@
                 @if($isSuper || $user?->can('training.management.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('training.training-management')?'active':'' }}" href="{{ route('training.training-management') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-                    <span class="label">Approval & Manage</span>
+                    <span class="label">Management</span>
                 </a>
                 @endif
             </div>
@@ -180,9 +180,9 @@
 
     @if($showSettings)
     <nav class="nav-section">
-        <div class="nav-title">Settings</div>
+        <div class="nav-title">System Settings</div>
         <div class="nav">
-            @canany(['users.view','rbac.view','employees.view'])
+            @canany(['users.view','rbac.view'])
             <button type="button" class="nav-item js-accordion {{ $acOpen ? 'open' : '' }} {{ $isSetActive ? 'active' : '' }}" data-accordion="nav-access" aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
                 <span class="label">Configuration</span>
