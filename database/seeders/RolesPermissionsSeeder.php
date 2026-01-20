@@ -16,14 +16,12 @@ class RolesPermissionsSeeder extends Seeder
         $permissions = [
             'users.view', 'users.create', 'users.update', 'users.delete',
             'rbac.view', 'rbac.assign',
-            'employees.view',
             'org.view', 'org.create', 'org.update', 'org.delete',
             'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'recruitment.approve', 'recruitment.reject',
             'recruitment.external.view', 'recruitment.external.apply', 'recruitment.external.manage',
             'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve', 'contract.sign',
             'training.dashboard.view', 'training.view',
             'training.management.view', 'training.management.approve',
-            'reports.export',
             'applicant.data.view',
         ];
 
@@ -34,23 +32,23 @@ class RolesPermissionsSeeder extends Seeder
         $roles = [
             'Superadmin' => Permission::all(),
             'DHC' => [
-                'users.view', 'rbac.view', 'rbac.assign', 'employees.view',
+                'users.view', 'rbac.view', 'rbac.assign',
                 'org.view', 'org.create', 'org.update', 'org.delete',
                 'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.approve', 'recruitment.reject',
                 'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve',
-                'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
+                'recruitment.external.view', 'recruitment.external.manage',
                 'training.dashboard.view', 'training.view', 'training.management.view', 'training.management.approve',
             ],
             'Dir SDM' => [
-                'employees.view', 'org.view', 'org.update',
+                'org.view', 'org.update',
                 'recruitment.view', 'recruitment.approve', 'recruitment.reject',
-                'contract.view', 'contract.approve', 'training.view', 'reports.export',
+                'contract.view', 'contract.approve', 'training.view',
             ],
             'SDM Unit' => [
-                'users.view', 'employees.view', 'org.view', 'org.create', 'org.update',
+                'users.view', 'org.view', 'org.create', 'org.update',
                 'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'recruitment.approve', 'recruitment.reject',
                 'contract.view', 'contract.create', 'contract.update', 'contract.delete',
-                'reports.export', 'recruitment.external.view', 'recruitment.external.manage',
+                'recruitment.external.view', 'recruitment.external.manage',
                 'training.view', 'training.dashboard.view', 'training.management.view',
             ],
             'Kepala Unit' => [
@@ -59,10 +57,10 @@ class RolesPermissionsSeeder extends Seeder
                 'training.dashboard.view', 'training.view', 'training.management.view', 'training.management.approve',
             ],
             'Admin Operasi Unit' => [
-                'employees.view', 'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'training.view',
+                'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'training.view',
             ],
             'Kepala Proyek (MP)' => [
-                'employees.view', 'recruitment.view', 'recruitment.approve', 'recruitment.reject', 'training.view',
+                'recruitment.view', 'recruitment.approve', 'recruitment.reject', 'training.view',
             ],
             'AVP' => [
                 'training.view', 'training.management.view', 'training.management.approve','recruitment.view', 'recruitment.approve', 'recruitment.reject',

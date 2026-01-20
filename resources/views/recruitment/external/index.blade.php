@@ -313,7 +313,7 @@
         <div class="u-modal__foot u-flex u-justify-end u-gap-sm">
             <button class="u-btn u-btn--ghost" onclick="closeModal('vacancyDetailModal')">Tutup</button>
             <button class="u-btn u-btn--brand" id="btnApplyFromDetail" style="text-white;">
-                <i class="fas fa-paper-plane u-mr-xs"></i> Apply Now
+                <i class="fas fa-paper-plane u-mr-xs"></i> Lamar Posisi
             </button>
         </div>
     </div>
@@ -403,13 +403,14 @@
             dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
             language: {
                 search: "",
-                searchPlaceholder: "Search...",
+                searchPlaceholder: "Search records...",
                 lengthMenu: "_MENU_ per page",
-                info: "Showing _START_ s/d _END_ from _TOTAL_ data",
+                info: "Showing _START_ s/d _END_ from _TOTAL_ entries",
                 infoEmpty: "Showing 0 s/d 0 from 0 data",
                 infoFiltered: "(filtered from _MAX_ total data)",
                 zeroRecords: "No matching records found",
                 emptyTable: "Belum ada lowongan dibuka.",
+                processing: '<div class="u-dt-loader-container"><div class="u-dt-liquid-spinner"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div><div class="u-dt-loading-text">Loading...</div></div>',
                 paginate: { first: "«", last: "»", next: "›", previous: "‹" }
             },
             drawCallback: function() {
@@ -428,21 +429,6 @@
         });
 
         // Init CKEditor (Existing code)
-        if (document.querySelector('#editEditorContent')) {
-            ClassicEditor
-                .create(document.querySelector('#editEditorContent'), {
-                    toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
-                    placeholder: 'Edit deskripsi pekerjaan, kualifikasi, dll...'
-                })
-                .then(editor => {
-                    editVacancyEditor = editor;
-                })
-                .catch(error => {
-                    console.error(error);
-                });
-        }
-    });
-    document.addEventListener('DOMContentLoaded', function() {
         if (document.querySelector('#editEditorContent')) {
             ClassicEditor
                 .create(document.querySelector('#editEditorContent'), {
@@ -514,7 +500,8 @@
                 body: JSON.stringify({ 
                     description: content,
                     publish_start_date: startDate,
-                    publish_end_date: endDate
+                    publish_end_date: endDate,
+                    publish_location: locationVal
                 })
             })
             .then(res => res.json())

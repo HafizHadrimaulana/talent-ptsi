@@ -41,7 +41,7 @@
     <form method="get" class="u-flex u-gap-sm u-items-center">
       @if($canSeeAll)
         <label class="u-text-sm u-font-medium">Unit</label>
-        <select name="unit_id" class="u-input" onchange="this.form.submit()">
+        <select name="unit_id" class="u-input">
           <option value="">All units</option>
           @foreach($units as $u) <option value="{{ $u->id }}" @selected((string)$u->id === (string)($selectedUnitId ?? ''))>{{ $u->name }}</option> @endforeach
         </select>
@@ -92,215 +92,7 @@
           <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progress</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
         </thead>
         <tbody>
-          @foreach($list as $r)
-          @php
-            $me = auth()->user();
-            $meUnit = $me->unit_id; 
-            $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
-            $approvalHistory = [];
-            $activeApp = null;
-            $currentStage = '';
-            if ($r->relationLoaded('approvals')) {
-                foreach ($r->approvals as $app) {
-                    if ($app->status == 'pending') {
-                        $activeApp = $app;
-                        preg_match('/\[stage=([^\]]+)\]/', $app->note, $m);
-                        $currentStage = $m[1] ?? '';
-                    }
-                    $rawNote = $app->note;
-                    preg_match('/\[stage=([^\]]+)\]/', $rawNote, $matches);
-                    $histKey = $matches[1] ?? '';
-                    $lbl = 'Approver';
-                    if ($histKey == 'admin_ops') $lbl = 'Admin Ops';
-                    elseif ($histKey == 'kepala_mp') $lbl = 'Kepala MP';
-                    elseif ($histKey == 'sdm_unit') $lbl = 'SDM Unit';
-                    elseif ($histKey == 'kepala_unit') $lbl = 'Kepala Unit';
-                    elseif ($histKey == 'dhc_checker') $lbl = 'DHC';
-                    elseif ($histKey == 'avp_hc_ops') $lbl = 'AVP DHC';
-                    elseif ($histKey == 'vp_hc') $lbl = 'VP DHC';
-                    elseif ($histKey == 'dir_sdm') $lbl = 'Dir SDM';
-                    $cleanNote = trim(preg_replace('/\[stage=[^\]]+\]/', '', $rawNote));
-                    $approvalHistory[] = [
-                        'role' => $lbl,
-                        'status' => $app->status,
-                        'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->format('d M Y H:i') : '-',
-                        'note' => $cleanNote
-                    ];
-                }
-            }
-            $myJobTitle = null;
-            if ($me->person_id) {
-                $myJobTitle = DB::table('employees')
-                    ->join('positions', 'employees.position_id', '=', 'positions.id')
-                    ->where('employees.person_id', $me->person_id)
-                    ->value('positions.name');
-            }
-            $clnTitle = strtoupper($myJobTitle ?? '');
-            $meRoles = [
-                'Superadmin' => $me->hasRole('Superadmin'),
-                'Admin Ops'  => $me->hasRole('Admin Operasi Unit') || str_contains($clnTitle, 'STAF ADMINISTRASI OPERASI'),
-                'Kepala MP'  => $me->hasRole('Kepala Proyek (MP)') || str_contains($clnTitle, 'KEPALA PROYEK (MP)'),
-                'SDM Unit'   => $me->hasRole('SDM Unit'),
-                'Kepala Unit'=> $me->hasRole('Kepala Unit'),
-                'DHC'        => $me->hasRole('DHC'),
-                'AVP HC Ops' => ($me->hasRole('AVP') && $clnTitle == 'AVP HUMAN CAPITAL OPERATION'),
-                'VP HC'      => $me->hasRole('VP Human Capital') || $clnTitle == 'VP HUMAN CAPITAL',
-                'Dir SDM'    => $me->hasRole('Dir SDM')
-            ];
-            $isRequester = $me->id === $r->created_by || $me->id === $r->requested_by;
-            $isApprover = in_array(true, $meRoles, true);
-            $canViewNotes = $isRequester || $isApprover;
-            $status          = $r->status ?? 'draft';
-            $employmentType  = $r->employment_type ?? $r->contract_type ?? null;
-            $targetStart     = $r->target_start_date ?? $r->start_date ?? null;
-            $budgetSource    = $r->budget_source_type ?? $r->budget_source ?? null;
-            $requestType     = $r->request_type ?? $r->type ?? 'Rekrutmen';
-            $budgetRef       = $r->budget_ref ?? $r->rkap_ref ?? $r->rab_ref ?? $r->budget_reference ?? '';
-            $justif          = $r->justification ?? $r->reason ?? $r->notes ?? $r->note ?? $r->description ?? '';
-            $unitNameRow     = $r->unit_id ? ($unitMap[$r->unit_id] ?? ('Unit #'.$r->unit_id)) : '-';
-            $progressText = 'In Review';
-            if ($status === 'draft') $progressText = 'Draft';
-            elseif ($status === 'rejected') $progressText = 'Ditolak';
-            elseif ($status === 'approved') $progressText = 'Selesai (Approved by Dir TSDU)';
-            else {
-                if ($currentStage == 'admin_ops') $progressText = 'Menunggu Admin Ops';
-                elseif ($currentStage == 'kepala_mp') $progressText = 'Menunggu Kepala MP';
-                elseif ($currentStage == 'sdm_unit') $progressText = 'Menunggu SDM Unit';
-                elseif ($currentStage == 'kepala_unit') $progressText = 'Menunggu Ka. Unit';
-                elseif ($currentStage == 'dhc_checker') $progressText = 'Menunggu DHC';
-                elseif ($currentStage == 'avp_hc_ops') $progressText = 'Menunggu AVP DHC';
-                elseif ($currentStage == 'vp_hc') $progressText = 'Menunggu VP DHC';
-                elseif ($currentStage == 'dir_sdm') $progressText = 'Menunggu Dir TSDU';
-            }
-            $canStage = false;
-            $isKaUnitDHC = $meRoles['Kepala Unit'] && $dhcUnitId && ((string)$meUnit === (string)$dhcUnitId);
-            if (in_array($status, ['in_review','submitted'])) {
-                if ($meRoles['Superadmin']) {
-                    $canStage = true;
-                } else {
-                    if ($currentStage === 'admin_ops' && $meRoles['Admin Ops'] && $sameUnit) $canStage = true;
-                    elseif ($currentStage === 'kepala_mp' && $meRoles['Kepala MP'] && $sameUnit) $canStage = true;
-                    elseif ($currentStage === 'sdm_unit' && $meRoles['SDM Unit'] && $sameUnit) $canStage = true;
-                    elseif ($currentStage === 'kepala_unit' && $meRoles['Kepala Unit'] && $sameUnit) $canStage = true;
-                    elseif ($currentStage === 'dhc_checker' && ($meRoles['DHC'] || $isKaUnitDHC)) $canStage = true;
-                    elseif ($currentStage === 'avp_hc_ops' && $meRoles['AVP HC Ops']) $canStage = true; 
-                    elseif ($currentStage === 'vp_hc' && $meRoles['VP HC']) $canStage = true;
-                    elseif ($currentStage === 'dir_sdm' && $meRoles['Dir SDM']) $canStage = true;
-                }
-            }
-            $recruitmentDetails = collect($r->meta['recruitment_details'] ?? []);
-            $hasMultiData = $recruitmentDetails->count() > 1;
-            $posObj = $positions->firstWhere('id', $r->position);
-            $positionDisplay = $posObj ? $posObj->name : $r->position;
-            $slaBadgeClass = ''; $slaText = '-';
-            $kaUnitApp = null;
-            foreach($r->approvals as $ap) { 
-                if(strpos($ap->note, 'stage=kepala_unit')!==false && $ap->status=='approved') $kaUnitApp = $ap; 
-            }
-            if (in_array($status, ['submitted', 'in_review']) && $kaUnitApp) {
-                $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
-                $daysDiff = $slaTimeBase->diffInDays(now());
-                $rawText = $slaTimeBase->locale('id')->diffForHumans(['parts'=>2,'join'=>true,'syntax'=>\Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW]);
-                $cleanText = str_replace(['yang ', 'setelahnya', 'sebelumnya', ' dan '], ['', '', '', ', '], $rawText);
-                $slaText = trim($cleanText);
-                if ($daysDiff >= 5) { $slaBadgeClass = 'u-badge--danger'; } 
-                elseif ($daysDiff >= 3) { $slaBadgeClass = 'u-badge--warning'; } 
-                else { $slaBadgeClass = 'u-badge--info'; }
-            }
-          @endphp
-          <tr class="recruitment-main-row u-align-top" data-recruitment-id="{{ $r->id }}">
-            <td>@if(!empty($r->ticket_number)) <span class="u-badge u-badge--primary u-text-2xs">{{ $r->ticket_number }}</span> @else <span class="u-text-2xs u-text-muted">-</span> @endif</td>
-            <td style="min-width: 200px;">
-                @if($hasMultiData)
-                    <div class="u-flex u-flex-col u-gap-xs">
-                        @foreach($recruitmentDetails as $detail)
-                        <div style="border-bottom: 1px dashed #e5e7eb; padding-bottom: 4px; margin-bottom: 4px;">
-                            <span class="u-font-medium">{{ $detail['title'] ?? $r->title }}</span>
-                            <div class="u-text-2xs u-muted">Dibuat {{ optional($r->created_at)->format('d M Y') ?? '-' }}</div>
-                        </div>
-                        @endforeach
-                    </div>
-                @else
-                    <span class="u-font-medium">{{ $r->title }}</span>
-                    <div class="u-text-2xs u-muted">Dibuat {{ optional($r->created_at)->format('d M Y') ?? '-' }}</div>
-                @endif
-            </td>
-            <td>{{ $unitNameRow }}</td>
-            <td><span class="u-badge u-badge--glass u-text-2xs">{{ $requestType }}</span></td>
-            <td>
-              @if($hasMultiData)
-                <div class="u-flex u-flex-col u-gap-xs">
-                    @foreach($recruitmentDetails as $detail)
-                    <div class="u-text-sm" style="border-bottom: 1px dashed #e5e7eb; padding-bottom: 4px; margin-bottom: 4px;">{{ $detail['position_text'] ?? $detail['position'] ?? '-' }}</div>
-                    @endforeach
-                </div>
-              @else {{ $positionDisplay }} @endif
-            </td>
-            <td><span class="u-badge u-badge--glass">{{ $r->headcount }} Orang</span></td>
-            <td>@if($employmentType) <span class="u-badge u-badge--glass">{{ $employmentType }}</span> @else - @endif</td>
-            <td><div class="u-text-2xs"><span class="u-badge u-badge--glass">{{ $progressText }}</span></div></td>
-            <td>
-                @if($slaText !== '-')
-                    <span class="u-badge {{ $slaBadgeClass }} u-text-2xs" title="Dihitung sejak approval Kepala Unit">
-                        <i class="far fa-clock u-mr-xs"></i> {{ $slaText }}
-                    </span>
-                @else
-                    <span class="u-text-muted u-text-2xs" title="Menunggu approval Kepala Unit">-</span>
-                @endif
-            </td>
-            <td class="cell-actions" style="text-align: right; vertical-align: top;">
-              <div class="flex flex-col gap-2 items-end">
-                @if($status === 'draft' && ($sameUnit || $meRoles['Superadmin']))
-                  @if($canCreate)
-                    <button type="button" class="u-btn u-btn--outline u-btn--sm u-hover-lift" title="Edit draft" 
-                          data-modal-open="createApprovalModal" 
-                          data-mode="edit" 
-                          data-update-url="{{ route('recruitment.principal-approval.update',$r) }}" 
-                          data-delete-url="{{ route('recruitment.principal-approval.destroy', ['req' => $r->id]) }}"
-                          data-request-type="{{ e($requestType) }}" 
-                          data-title="{{ e($r->title) }}" 
-                          data-position="{{ e($r->position) }}" 
-                          data-headcount="{{ (int) $r->headcount }}" 
-                          data-employment-type="{{ e($employmentType ?? '') }}" 
-                          data-target-start="{{ $targetStart }}" 
-                          data-budget-source-type="{{ e($budgetSource ?? '') }}" 
-                          data-budget-ref="{{ e($budgetRef) }}" 
-                          data-justification="{{ e($justif) }}"
-                          data-meta-json="{{ json_encode($r->meta['recruitment_details'] ?? []) }}">
-                          <i class="fas fa-edit u-mr-xs"></i> Edit
-                    </button>
-                    <form method="POST" action="{{ route('recruitment.principal-approval.submit',$r) }}" class="u-inline js-confirm">@csrf<button class="u-btn u-btn--outline u-btn--sm u-hover-lift"><i class="fas fa-paper-plane u-mr-xs"></i> Submit</button></form>
-                  @endif
-                @endif
-                <button type="button" class="u-btn u-btn--outline u-btn--sm u-hover-lift js-open-detail" 
-                        data-modal-open="detailApprovalModal" 
-                        data-id="{{ $r->id }}" 
-                        data-ticket-number="{{ $r->ticket_number ?? '-' }}" 
-                        data-title="{{ e($r->title) }}" 
-                        data-unit="{{ e($unitNameRow) }}" 
-                        data-request-type="{{ e($requestType) }}" 
-                        data-position="{{ e($positionDisplay) }}" 
-                        data-headcount="{{ (int) $r->headcount }}" 
-                        data-employment-type="{{ e($employmentType ?? '') }}" 
-                        data-target-start="{{ $targetStart ? \Illuminate\Support\Carbon::parse($targetStart)->format('d M Y') : '-' }}" 
-                        data-budget-source="{{ e($budgetSource ?? '') }}" 
-                        data-budget-ref="{{ e($budgetRef) }}" 
-                        data-justification="{{ e($justif) }}" 
-                        data-status="{{ e(ucfirst($status)) }}" 
-                        data-history='{{ json_encode($approvalHistory) }}'
-                        data-can-view-notes="{{ $canViewNotes ? 'true' : 'false' }}"
-                        data-can-approve="{{ $canStage ? 'true' : 'false' }}" 
-                        data-approve-url="{{ route('recruitment.principal-approval.approve',$r) }}" 
-                        data-reject-url="{{ route('recruitment.principal-approval.reject',$r) }}" 
-                        data-meta-json="{{ json_encode($r->meta['recruitment_details'] ?? []) }}"
-                        data-is-published="{{ $r->is_published ? '1' : '0' }}"
-                        data-can-publish="{{ ($me->hasRole('DHC') || $me->hasRole('Superadmin') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit')) ? 'true' : 'false' }}">
-                        <i class="fas fa-info-circle u-mr-xs"></i> Detail
-                </button>
-              </div>
-            </td>
-          </tr>
-          @endforeach
+          
         </tbody>
       </table>
     </div>
@@ -1779,12 +1571,12 @@
                 }
                 document.addEventListener('click', function(e) {
                     const closeBtn = e.target.closest('[data-modal-close]');
-                    const modalBackdrop = e.target.classList.contains('u-modal'); // Jika klik backdrop
+                    const modalBackdrop = e.target.classList.contains('u-modal');
                     if (closeBtn || modalBackdrop) {
                         const m = e.target.closest('.u-modal');
                         if(m) { 
                             m.hidden = true; 
-                            m.style.display = 'none'; // Reset display
+                            m.style.display = 'none';
                             document.body.classList.remove('modal-open'); 
                         }
                         return;
@@ -2241,86 +2033,73 @@
                 updateVisibility();
             }, 
             initDT() { 
-                this.dt = $('#ip-table').DataTable({
-                    processing: true, // Client-side processing indicator
-                    responsive: {
-                        details: {
-                            renderer: function (api, rowIdx, columns) {
-                                let data = $.map(columns, function (col, i) {
-                                    return col.hidden ?
-                                        `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
-                                            <span class="u-dt-child-title">${col.title}</span>
-                                            <span class="u-dt-child-data">${col.data}</span>
-                                        </li>` : '';
-                                }).join('');
-                                return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
-                            }
+                this.dt = window.initDataTables('#ip-table', {
+                    // AKTIFKAN Server Side AJAX
+                    serverSide: true,
+                    processing: true,
+                    
+                    // URL endpoint (ke method index controller yg sama)
+                    ajax: {
+                        url: "{{ route('recruitment.principal-approval.index') }}",
+                        data: function(d) {
+                            // Kirim parameter filter tambahan ke controller
+                            // Pastikan input select filter di HTML punya ID yang sesuai
+                            const unitSelect = document.querySelector('select[name="unit_id"]');
+                            const tabActive = new URLSearchParams(window.location.search).get('tab');
+                            
+                            d.unit_id = unitSelect ? unitSelect.value : '';
+                            d.tab = tabActive || 'berjalan';
                         }
                     },
-                    // Custom Layout DOM
-                    dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
-                    language: {
-                        search: "",
-                        searchPlaceholder: "Search...",
-                        lengthMenu: "_MENU_ per page",
-                        info: "Showing _START_ s/d _END_ from _TOTAL_ data",
-                        infoEmpty: "Showing 0 s/d 0 from 0 data",
-                        infoFiltered: "(filtered from _MAX_ total data)",
-                        zeroRecords: "No matching records found",
-                        paginate: { first: "«", last: "»", next: "›", previous: "‹" }
-                    },
+                    
+                    // Mapping data JSON dari controller ke kolom tabel
+                    // Urutan harus sama persis dengan return $formattedData di Controller
+                    columns: [
+                        { data: 0 }, // No Ticket
+                        { data: 1 }, // Judul
+                        { data: 2 }, // Unit
+                        { data: 3 }, // Jenis
+                        { data: 4 }, // Posisi
+                        { data: 5 }, // HC
+                        { data: 6 }, // Kontrak
+                        { data: 7 }, // Progress
+                        { data: 8 }, // SLA
+                        { data: 9, className: "text-right" }  // Aksi
+                    ],
+
+                    order: [[0, 'desc']], 
+                    columnDefs: [
+                        { orderable: false, targets: -1 }, // Aksi gak bisa disort
+                        { orderable: false, targets: 1 }, // Judul html sulit disort, matikan dulu
+                        { orderable: false, targets: 4 }, // Posisi html
+                    ],
+                    
                     drawCallback: function() {
+                        // Styling script (Sama seperti sebelumnya)
                         const wrapper = $(this.api().table().container());
-                        
-                        // Style Inputs (Search & Length)
                         wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
                         wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
-                        
-                        // Style Pagination Buttons
                         const p = wrapper.find('.dataTables_paginate .paginate_button');
                         p.addClass('u-btn u-btn--sm u-btn--ghost');
                         p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
                         p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
 
-                        // Inject Export Button logic (memindahkan tombol export ke sebelah pagination/length)
-                        if (!document.getElementById('btn-export-excel')) {
-                            const headerContainer = wrapper.find('.u-dt-header');
-                            const currentParams = new URLSearchParams(window.location.search);
-                            const exportUrl = "{{ route('recruitment.principal-approval.export') }}?" + currentParams.toString();
-                            
-                            const exportBtn = $(`<a id="btn-export-excel" href="${exportUrl}" target="_blank" class="u-btn u-btn--brand u-btn--sm u-hover-lift" style="margin-left: auto;">
-                                <i class="fas fa-file-excel u-mr-xs"></i> Export Excel
-                            </a>`);
-                            
-                            // Menambahkan tombol export di samping search box atau di header
-                            if(headerContainer.length) {
-                                headerContainer.append(exportBtn);
-                            }
-                        }
+                        // Re-bind event listener untuk tombol yang baru dirender AJAX
+                        // (Misalnya tombol detail atau edit yang ada di dalam tabel)
+                        // Karena konten baru muncul, event onclick global document sudah aman,
+                        // tapi kalau ada inisialisasi spesifik (tooltip, dll), lakukan di sini.
                     }
                 });
-                setTimeout(() => {
-                    const selectElement = document.getElementById('dt-length-0');
-                    if (selectElement && !document.getElementById('btn-export-excel')) {
-                        const container = selectElement.parentNode; 
-                        const currentParams = new URLSearchParams(window.location.search);
-                        const exportUrl = "{{ route('recruitment.principal-approval.export') }}?" + currentParams.toString();
-                        const exportBtn = document.createElement('a');
-                        exportBtn.id = 'btn-export-excel';
-                        exportBtn.href = exportUrl;
-                        exportBtn.target = '_blank';
-                        exportBtn.className = 'u-btn u-btn--brand u-btn--sm';
-                        exportBtn.style.marginLeft = '12px';
-                        exportBtn.style.display = 'inline-flex';
-                        exportBtn.style.alignItems = 'center';
-                        exportBtn.style.textDecoration = 'none';
-                        exportBtn.style.height = '32px';
-                        exportBtn.innerHTML = '<i class="fas fa-file-excel u-mr-xs"></i> Export Excel';
-                        container.style.display = 'flex';
-                        container.style.alignItems = 'center';
-                        container.appendChild(exportBtn);
-                    }
-                }, 800);
+
+                // Event Listener agar saat Filter Unit berubah, tabel reload AJAX
+                const unitSelect = document.querySelector('select[name="unit_id"]');
+                if(unitSelect) {
+                    unitSelect.addEventListener('change', () => {
+                        this.dt.draw(); // Refresh tabel via AJAX
+                    });
+                    // Hapus attribute onchange="this.form.submit()" dari HTML select agar tidak reload page
+                    unitSelect.removeAttribute('onchange');
+                }
             },
             bindExternalSearch() {
                 const projectSearchInput = document.getElementById('kodeProjectSearchInput');

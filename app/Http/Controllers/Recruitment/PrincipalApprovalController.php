@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\RecruitmentRequestExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Gate;
 
 class PrincipalApprovalController extends Controller
 {
@@ -111,47 +112,339 @@ class PrincipalApprovalController extends Controller
         $selectedUnitId = $canSeeAll
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
             : (int) ($me?->unit_id);
-        $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
-        $currentTab = $r->input('tab', 'berjalan');
-        if ($currentTab === 'disetujui') {
-            $query->where('status', 'approved');
-        } else {
-            $query->where(function($q) {
-                $q->where('status', '!=', 'approved')
-                  ->orWhereNull('status');
+
+        if ($r->ajax()) {
+            $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
+            $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc'), 'unit']);
+            if ($r->has('search') && !empty($r->input('search.value'))) {
+                $search = $r->input('search.value');
+                $query->where(function($q) use ($search) {
+                    $q->where('ticket_number', 'like', "%{$search}%")
+                      ->orWhere('title', 'like', "%{$search}%")
+                      ->orWhere('position', 'like', "%{$search}%")
+                      ->orWhereHas('unit', fn($u) => $u->where('name', 'like', "%{$search}%"));
+                });
+            }
+            $currentTab = $r->input('tab', 'berjalan');
+            if ($currentTab === 'disetujui') {
+                $query->where('status', 'approved');
+            } else {
+                $query->where(function($q) {
+                    $q->where('status', '!=', 'approved')->orWhereNull('status');
+                });
+            }
+
+            // 3. Sorting
+            if ($r->has('order')) {
+                $order = $r->input('order')[0];
+                $colIdx = $order['column'];
+                $dir = $order['dir'];
+                $cols = ['ticket_number', 'title', 'unit_id', 'request_type', 'position', 'headcount', 'employment_type', 'status', 'created_at']; 
+                if (isset($cols[$colIdx])) {
+                    $columnName = $cols[$colIdx];
+                    if($columnName === 'unit_id') {
+                        $query->join('units', 'recruitment_requests.unit_id', '=', 'units.id')->orderBy('units.name', $dir);
+                    } else {
+                        $query->orderBy($columnName, $dir);
+                    }
+                }
+            } else {
+                $query->latest();
+            }
+
+            $countTotal = $query->count(); 
+            $start = $r->input('start', 0);
+            $length = $r->input('length', 10);
+            $data = $query->skip($start)->take($length)->get();
+
+            // 5. Formatting Data
+            $formattedData = $data->map(function($row) use ($me) {
+                return [
+                    $row->ticket_number ?? '-', 
+                    $this->renderTitleColumn($row), 
+                    $row->unit->name ?? '-', 
+                    $row->request_type ?? '-', 
+                    $this->renderPositionColumn($row), 
+                    $row->headcount . ' Orang', 
+                    $row->employment_type ?? '-', 
+                    $this->renderProgressColumn($row), 
+                    $this->renderSlaColumn($row), // Fixed SLA
+                    $this->renderActionColumn($row, $me) // Fixed Actions & Attributes
+                ];
             });
+
+            return response()->json([
+                'draw' => intval($r->input('draw')),
+                'recordsTotal' => RecruitmentRequest::count(), 
+                'recordsFiltered' => $countTotal, 
+                'data' => $formattedData
+            ]);
         }
-        if ($r->filled('q')) {
-            $search = $r->input('q');
-            $query->where(function($q) use ($search) {
-                $q->where('ticket_number', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhere('position', 'like', "%{$search}%");
-            });
-        }
-        if ($r->filled('open_ticket_id')) {
-            $ticketId = $r->input('open_ticket_id');
-            $query->where('id', $ticketId);
-        }
-        $list = $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc')])
-                      ->latest()
-                      ->paginate(50)
-                      ->withQueryString();
+
+        // View non-AJAX
         $units = $canSeeAll
             ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
             : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
         $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
-        $projects  = [];
 
         return view('recruitment.principal-approval.index', [
-            'list'           => $list,
             'units'          => $units,
             'canSeeAll'      => $canSeeAll,
             'selectedUnitId' => $selectedUnitId,
-            'projects'       => $projects,
             'locations'      => $locations,
-            'currentTab'     => $currentTab,
+            'currentTab'     => $r->input('tab', 'berjalan'),
         ]);
+    }
+
+    private function renderTitleColumn($r) {
+        $date = optional($r->created_at)->format('d M Y') ?? '-';
+        $details = $r->meta['recruitment_details'] ?? [];
+        $html = '';
+        if (count($details) > 1) {
+            $html .= '<div class="u-flex u-flex-col u-gap-xs">';
+            foreach($details as $d) {
+                $t = $d['title'] ?? $r->title;
+                $html .= "<div style='border-bottom: 1px dashed #e5e7eb; padding-bottom: 4px; margin-bottom: 4px;'><span class='u-font-medium'>{$t}</span><div class='u-text-2xs u-muted'>Dibuat {$date}</div></div>";
+            }
+            $html .= '</div>';
+        } else {
+            $html = "<span class='u-font-medium'>{$r->title}</span><div class='u-text-2xs u-muted'>Dibuat {$date}</div>";
+        }
+        return $html;
+    }
+
+    private function renderPositionColumn($r) {
+        $details = $r->meta['recruitment_details'] ?? [];
+        if (count($details) > 1) {
+            $html = '<div class="u-flex u-flex-col u-gap-xs">';
+            foreach($details as $d) {
+                $p = $d['position_text'] ?? $d['position'] ?? '-';
+                $html .= "<div class='u-text-sm' style='border-bottom: 1px dashed #e5e7eb; padding-bottom: 4px;'>{$p}</div>";
+            }
+            $html .= '</div>';
+            return $html;
+        }
+        $posName = $r->position;
+        if (is_numeric($r->position)) {
+             $posName = DB::table('positions')->where('id', $r->position)->value('name') ?? $r->position;
+        }
+        return $posName;
+    }
+
+    private function renderProgressColumn($r) {
+        $status = $r->status ?? 'draft';
+        $progressText = 'In Review';
+        $badgeClass = 'u-badge--warning';
+        $activeApp = $r->approvals->where('status', 'pending')->first();
+        $currentStage = '';
+        if ($activeApp) {
+             preg_match('/\[stage=([^\]]+)\]/', $activeApp->note, $m);
+             $currentStage = $m[1] ?? '';
+        }
+        if ($status === 'draft') { $progressText = 'Draft'; $badgeClass = 'u-badge--glass'; }
+        elseif ($status === 'rejected') { $progressText = 'Ditolak'; $badgeClass = 'u-badge--danger'; }
+        elseif ($status === 'approved') { $progressText = 'Selesai'; $badgeClass = 'u-badge--success'; }
+        else {
+             $map = [
+                 'admin_ops' => 'Menunggu Admin Ops', 'kepala_mp' => 'Menunggu Kepala MP',
+                 'sdm_unit' => 'Menunggu SDM Unit', 'kepala_unit' => 'Menunggu Ka. Unit',
+                 'dhc_checker' => 'Menunggu DHC', 'avp_hc_ops' => 'Menunggu AVP DHC',
+                 'vp_hc' => 'Menunggu VP DHC', 'dir_sdm' => 'Menunggu Dir TSDU'
+             ];
+             $progressText = $map[$currentStage] ?? 'In Review';
+        }
+        return "<div class='u-text-2xs'><span class='u-badge {$badgeClass}'>{$progressText}</span></div>";
+    }
+
+    private function renderSlaColumn($r) {
+        // [FIXED] Mengembalikan logika SLA
+        $status = $r->status ?? 'draft';
+        $slaBadgeClass = ''; $slaText = '-';
+        $kaUnitApp = null;
+        
+        foreach($r->approvals as $ap) { 
+            if(strpos($ap->note, 'stage=kepala_unit')!==false && $ap->status=='approved') $kaUnitApp = $ap; 
+        }
+
+        if (in_array($status, ['submitted', 'in_review']) && $kaUnitApp) {
+            $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
+            $daysDiff = $slaTimeBase->diffInDays(now());
+            // Format diffForHumans
+            $rawText = $slaTimeBase->locale('id')->diffForHumans(['parts'=>2,'join'=>true,'syntax'=>\Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW]);
+            $cleanText = str_replace(['yang ', 'setelahnya', 'sebelumnya', ' dan '], ['', '', '', ', '], $rawText);
+            $slaText = trim($cleanText);
+
+            if ($daysDiff >= 5) { $slaBadgeClass = 'u-badge--danger'; } 
+            elseif ($daysDiff >= 3) { $slaBadgeClass = 'u-badge--warning'; } 
+            else { $slaBadgeClass = 'u-badge--info'; }
+
+            return "<span class='u-badge {$slaBadgeClass} u-text-2xs' title='Dihitung sejak approval Kepala Unit'>
+                        <i class='far fa-clock u-mr-xs'></i> {$slaText}
+                    </span>";
+        }
+
+        return '<span class="u-text-muted u-text-2xs" title="Menunggu approval Kepala Unit">-</span>'; 
+    }
+
+    private function renderActionColumn($r, $me) {
+        // [FIXED] Menambahkan semua data attributes yang dibutuhkan modal
+        $meUnit = $me->unit_id;
+        $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
+        $jobTitle = $this->getUserJobTitle($me->id);
+        $clnTitle = strtoupper($jobTitle ?? '');
+        
+        $meRoles = [
+            'Superadmin' => $me->hasRole('Superadmin'),
+            'Admin Ops'  => $me->hasRole('Admin Operasi Unit') || str_contains($clnTitle, 'STAF ADMINISTRASI OPERASI'),
+            'Kepala MP'  => $me->hasRole('Kepala Proyek (MP)') || str_contains($clnTitle, 'KEPALA PROYEK (MP)'),
+            'SDM Unit'   => $me->hasRole('SDM Unit'),
+            'Kepala Unit'=> $me->hasRole('Kepala Unit'),
+            'DHC'        => $me->hasRole('DHC'),
+            'AVP HC Ops' => ($me->hasRole('AVP') && $clnTitle == 'AVP HUMAN CAPITAL OPERATION'),
+            'VP HC'      => $me->hasRole('VP Human Capital') || $clnTitle == 'VP HUMAN CAPITAL',
+            'Dir SDM'    => $me->hasRole('Dir SDM')
+        ];
+
+        $approvalHistory = [];
+        $activeApp = null;
+        $currentStage = '';
+        foreach($r->approvals as $app) {
+             if ($app->status == 'pending') {
+                $activeApp = $app;
+                preg_match('/\[stage=([^\]]+)\]/', $app->note, $m);
+                $currentStage = $m[1] ?? '';
+             }
+             // Label History
+             $rawNote = $app->note;
+             preg_match('/\[stage=([^\]]+)\]/', $rawNote, $matches);
+             $histKey = $matches[1] ?? '';
+             $lbl = 'Approver';
+             $mapLbl = [
+                'admin_ops'=>'Admin Ops', 'kepala_mp'=>'Kepala MP', 'sdm_unit'=>'SDM Unit', 
+                'kepala_unit'=>'Kepala Unit', 'dhc_checker'=>'DHC', 'avp_hc_ops'=>'AVP DHC', 
+                'vp_hc'=>'VP DHC', 'dir_sdm'=>'Dir SDM'
+             ];
+             $lbl = $mapLbl[$histKey] ?? 'Approver';
+             $cleanNote = trim(preg_replace('/\[stage=[^\]]+\]/', '', $rawNote));
+             $approvalHistory[] = [
+                 'role' => $lbl,
+                 'status' => $app->status,
+                 'date' => $app->decided_at ? \Carbon\Carbon::parse($app->decided_at)->format('d M Y H:i') : '-',
+                 'note' => $cleanNote
+             ];
+        }
+
+        // Logic Can Approve
+        $canStage = false;
+        $isKaUnitDHC = $meRoles['Kepala Unit'] && $this->dhcUnitId() && ((string)$meUnit === (string)$this->dhcUnitId());
+        $status = $r->status ?? 'draft';
+
+        if (in_array($status, ['in_review','submitted'])) {
+            if ($meRoles['Superadmin']) {
+                $canStage = true;
+            } else {
+                if ($currentStage === 'admin_ops' && $meRoles['Admin Ops'] && $sameUnit) $canStage = true;
+                elseif ($currentStage === 'kepala_mp' && $meRoles['Kepala MP'] && $sameUnit) $canStage = true;
+                elseif ($currentStage === 'sdm_unit' && $meRoles['SDM Unit'] && $sameUnit) $canStage = true;
+                elseif ($currentStage === 'kepala_unit' && $meRoles['Kepala Unit'] && $sameUnit) $canStage = true;
+                elseif ($currentStage === 'dhc_checker' && ($meRoles['DHC'] || $isKaUnitDHC)) $canStage = true;
+                elseif ($currentStage === 'avp_hc_ops' && $meRoles['AVP HC Ops']) $canStage = true; 
+                elseif ($currentStage === 'vp_hc' && $meRoles['VP HC']) $canStage = true;
+                elseif ($currentStage === 'dir_sdm' && $meRoles['Dir SDM']) $canStage = true;
+            }
+        }
+
+        $isPublished = $r->is_published ? '1' : '0';
+        $canPublish = ($me->hasRole('DHC') || $me->hasRole('Superadmin') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit')) ? 'true' : 'false';
+        $canViewNotes = ($me->id === $r->created_by || $me->id === $r->requested_by || in_array(true, $meRoles, true)) ? 'true' : 'false';
+        $canApproveStr = $canStage ? 'true' : 'false';
+
+        // Prepare JSON Safe Strings
+        $historyJson = htmlspecialchars(json_encode($approvalHistory), ENT_QUOTES, 'UTF-8');
+        $metaJson    = htmlspecialchars(json_encode($r->meta['recruitment_details'] ?? []), ENT_QUOTES, 'UTF-8');
+        
+        // Prepare Simple Data Strings
+        $reqType = e($r->request_type ?? $r->type ?? 'Rekrutmen');
+        $title = e($r->title);
+        $unitName = e($r->unit->name ?? '-');
+        $posName = e($this->renderPositionColumn($r)); // Use HTML free version if needed, but here simple
+        $posNameSimple = strip_tags($posName);
+        $headcount = (int) $r->headcount;
+        $empType = e($r->employment_type ?? '');
+        $tgtStart = $r->target_start_date ? \Carbon\Carbon::parse($r->target_start_date)->format('d M Y') : '-';
+        $budgetSrc = e($r->budget_source_type ?? '');
+        $budgetRef = e($r->budget_ref ?? '');
+        $justif = e($r->justification ?? '');
+        $statStr = e(ucfirst($status));
+
+        $approveUrl = route('recruitment.principal-approval.approve',$r->id);
+        $rejectUrl = route('recruitment.principal-approval.reject',$r->id);
+
+        $btns = '<div class="flex flex-col gap-2 items-end">';
+        
+        // Tombol Edit/Submit (Hanya Draft)
+        $canCreate = Gate::allows('recruitment.create') || Gate::allows('recruitment.update') || $meRoles['SDM Unit'] || $meRoles['Superadmin'];
+        if ($status === 'draft' && ($sameUnit || $meRoles['Superadmin'])) {
+             if ($canCreate) {
+                 $urlUpdate = route('recruitment.principal-approval.update', $r->id);
+                 $urlDelete = route('recruitment.principal-approval.destroy', ['req' => $r->id]);
+                 $urlSubmit = route('recruitment.principal-approval.submit', $r->id);
+                 $csrf = csrf_field();
+
+                 $btns .= "<button type='button' class='u-btn u-btn--outline u-btn--sm u-hover-lift' 
+                            data-modal-open='createApprovalModal' 
+                            data-mode='edit'
+                            data-update-url='{$urlUpdate}'
+                            data-delete-url='{$urlDelete}'
+                            data-request-type='{$reqType}'
+                            data-title='{$title}'
+                            data-position='{$posNameSimple}'
+                            data-headcount='{$headcount}'
+                            data-employment-type='{$empType}'
+                            data-target-start='{$r->target_start_date}'
+                            data-budget-source-type='{$budgetSrc}'
+                            data-budget-ref='{$budgetRef}'
+                            data-justification='{$justif}'
+                            data-meta-json='{$metaJson}'>
+                            <i class='fas fa-edit u-mr-xs'></i> Edit
+                           </button>";
+                 
+                 $btns .= "<form method='POST' action='{$urlSubmit}' class='u-inline js-confirm'>
+                            {$csrf}
+                            <button class='u-btn u-btn--outline u-btn--sm u-hover-lift'><i class='fas fa-paper-plane u-mr-xs'></i> Submit</button>
+                           </form>";
+             }
+        }
+
+        // Tombol Detail (Selalu muncul, lengkap dengan semua atribut)
+        $btns .= "<button type='button' class='u-btn u-btn--outline u-btn--sm u-hover-lift js-open-detail'
+                    data-modal-open='detailApprovalModal'
+                    data-id='{$r->id}'
+                    data-ticket-number='{$r->ticket_number}'
+                    data-title='{$title}'
+                    data-unit='{$unitName}'
+                    data-request-type='{$reqType}'
+                    data-position='{$posNameSimple}'
+                    data-headcount='{$headcount}'
+                    data-employment-type='{$empType}'
+                    data-target-start='{$tgtStart}'
+                    data-budget-source='{$budgetSrc}'
+                    data-budget-ref='{$budgetRef}'
+                    data-justification='{$justif}'
+                    data-status='{$statStr}'
+                    data-history='{$historyJson}'
+                    data-can-view-notes='{$canViewNotes}'
+                    data-can-approve='{$canApproveStr}'
+                    data-approve-url='{$approveUrl}'
+                    data-reject-url='{$rejectUrl}'
+                    data-meta-json='{$metaJson}'
+                    data-is-published='{$isPublished}'
+                    data-can-publish='{$canPublish}'>
+                    <i class='fas fa-info-circle u-mr-xs'></i> Detail
+                  </button>";
+
+        $btns .= '</div>';
+        return $btns;
     }
 
     public function storeProject(Request $request)
@@ -449,7 +742,6 @@ class PrincipalApprovalController extends Controller
             $appr->update($payload);
         }
     }
-
     protected function canActOnStage($user, int $stageIdx, $reqUnitId): bool
     {
         if (!$user) return false;
@@ -465,7 +757,6 @@ class PrincipalApprovalController extends Controller
                 break;
             }
         }
-
         if ($stage['key'] === 'kepala_mp') {
              $isTitleMatch = str_contains($cleanJobTitle, 'KEPALA PROYEK (MP)');
              return ($allowed || $isTitleMatch) && ((string) $user->unit_id === (string) $reqUnitId);
@@ -510,57 +801,29 @@ class PrincipalApprovalController extends Controller
     {
         $json = $request->input('data');
         $d = json_decode($json, true);
-
         if (!$d) return "Data error: JSON tidak valid.";
-
-        // 1. Ambil Template
         $template = ContractTemplate::where('code', 'UJ')->first();
         if (!$template) return "Template 'UJ' belum ada.";
-
-        // 2. SETUP FONT TAHOMA (FIX UTAMA UNTUK TAMPILAN)
-        // Kita load font dari storage/path aplikasi dan convert ke Base64 CSS
-        // Pastikan file font ada di storage_path('app/fonts/') atau sesuaikan path-nya
         $fontCss = "";
         try {
-            // Cek path sesuai config/recruitment.php Anda
-            // Biasanya ada di storage/app/fonts atau public/fonts
             $fontRegular = storage_path('app/fonts/tahoma.ttf');
             $fontBold    = storage_path('app/fonts/tahomabd.ttf');
-            
-            // Fallback ke public path jika di storage tidak ada
             if (!file_exists($fontRegular)) $fontRegular = public_path('fonts/tahoma.ttf');
             if (!file_exists($fontBold)) $fontBold = public_path('fonts/tahomabd.ttf');
-
             if (file_exists($fontRegular)) {
                 $fReg = base64_encode(file_get_contents($fontRegular));
                 $fBld = file_exists($fontBold) ? base64_encode(file_get_contents($fontBold)) : $fReg;
                 
                 $fontCss = "
-                    @font-face {
-                        font-family: 'Tahoma';
-                        font-style: normal;
-                        font-weight: normal;
-                        src: url(data:font/truetype;charset=utf-8;base64,{$fReg}) format('truetype');
-                    }
-                    @font-face {
-                        font-family: 'Tahoma';
-                        font-style: normal;
-                        font-weight: bold;
-                        src: url(data:font/truetype;charset=utf-8;base64,{$fBld}) format('truetype');
-                    }
-                ";
+                    @font-face {font-family: 'Tahoma'; font-style: normal; font-weight: normal; src: url(data:font/truetype;charset=utf-8;base64,{$fReg}) format('truetype');}
+                    @font-face {font-family: 'Tahoma'; font-style: normal; font-weight: bold; src: url(data:font/truetype;charset=utf-8;base64,{$fBld}) format('truetype');}";
             } else {
-                // Jika file font benar-benar tidak ada, fallback ke Helvetica agar tetap rapi
                 $fontCss = "body { font-family: Helvetica, Arial, sans-serif !important; }"; 
             }
         } catch (\Exception $e) { }
 
-
-        // 3. SETUP HEADER IMAGE (KOP SURAT)
         $disk = config('recruitment.pdf.letterhead_disk', 'public');
         $bgImage = '';
-        
-        // Prioritas: Gambar dari Template DB -> Config -> Kosong
         $headerPath = $template->header_image_path; 
         if (!$headerPath && config('recruitment.pdf.letterhead_path')) {
              $headerPath = config('recruitment.pdf.letterhead_path');
@@ -571,47 +834,19 @@ class PrincipalApprovalController extends Controller
             $type = pathinfo($path, PATHINFO_EXTENSION);
             $dataImg = file_get_contents($path);
             $base64 = 'data:image/' . $type . ';base64,' . base64_encode($dataImg);
-            
-            // CSS Background Fixed A4 Full
             $bgImage = "<img class='letterhead-img' src='{$base64}'>";
         }
-
-        // 4. SETUP MARGIN
-        // Gunakan number_format agar CSS valid (titik bukan koma)
         $mt = number_format($template->margin_top ?? 3.5, 2, '.', '');
         $mr = number_format($template->margin_right ?? 2.54, 2, '.', '');
         $mb = number_format($template->margin_bottom ?? 2.54, 2, '.', '');
         $ml = number_format($template->margin_left ?? 2.54, 2, '.', '');
-
-        // 5. CSS DINAMIS GABUNGAN
-        // Note: Kita set margin body, bukan @page, agar background image (yg ada di body) bisa full page.
         $dynamicCss = "
             {$fontCss}
-            
             @page { margin: 0cm; }
-            
-            body {
-                font-family: 'Tahoma', sans-serif;
-                margin-top: {$mt}cm;
-                margin-right: {$mr}cm;
-                margin-bottom: {$mb}cm;
-                margin-left: {$ml}cm;
-            }
-
-            .letterhead-img {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 21cm;
-                height: 29.7cm;
-                z-index: -1000;
-            }
+            body {font-family: 'Tahoma', sans-serif; margin-top: {$mt}cm; margin-right: {$mr}cm; margin-bottom: {$mb}cm; margin-left: {$ml}cm;}
+            .letterhead-img {position: fixed; top: 0; left: 0; width: 21cm; height: 29.7cm; z-index: -1000;}
         ";
-
-        // 6. MAPPING VARIABEL
         $fmt = fn($t) => !empty($t) ? nl2br(e($t)) : '-';
-        
-        // Handle Org Chart
         $orgChart = '-';
         if (!empty($d['struktur_organisasi'])) {
             $src = $d['struktur_organisasi'];
@@ -647,27 +882,18 @@ class PrincipalApprovalController extends Controller
             'reports_to_name_sig' => !empty($d['melapor']) ? $d['melapor'] : '................................',
             'incumbent_name_sig' => !empty($d['pemangku']) ? $d['pemangku'] : '................................'
         ];
-
-        // 7. RENDER FINAL HTML
         $html = $this->renderPdfTemplate($template, $vars, $dynamicCss, $bgImage);
-
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
         $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
         $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
-
         return $pdf->stream('Uraian_Jabatan.pdf');
     }
 
     private function renderPdfTemplate($template, $vars, $dynamicCss, $bgImage)
     {
         $body = $template->body ?? '';
-        // Gabungkan CSS
         $css  = $dynamicCss . "\n" . ($template->css ?? '');
-
-        foreach ($vars as $key => $val) {
-            $body = str_replace("{{" . $key . "}}", (string)$val, $body);
-        }
-
+        foreach ($vars as $key => $val) {$body = str_replace("{{" . $key . "}}", (string)$val, $body);}
         return "
         <!DOCTYPE html>
         <html>
