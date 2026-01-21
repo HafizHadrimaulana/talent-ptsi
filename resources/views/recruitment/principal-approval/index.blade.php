@@ -2033,6 +2033,28 @@
                 updateVisibility();
             }, 
             initDT() { 
+                setTimeout(() => {
+                    const selectElement = document.getElementById('dt-length-0');
+                    if (selectElement && !document.getElementById('btn-export-excel')) {
+                        const container = selectElement.parentNode; 
+                        const currentParams = new URLSearchParams(window.location.search);
+                        const exportUrl = "{{ route('recruitment.principal-approval.export') }}?" + currentParams.toString();
+                        const exportBtn = document.createElement('a');
+                        exportBtn.id = 'btn-export-excel';
+                        exportBtn.href = exportUrl;
+                        exportBtn.target = '_blank';
+                        exportBtn.className = 'u-btn u-btn--brand u-btn--sm';
+                        exportBtn.style.marginLeft = '12px';
+                        exportBtn.style.display = 'inline-flex';
+                        exportBtn.style.alignItems = 'center';
+                        exportBtn.style.textDecoration = 'none';
+                        exportBtn.style.height = '32px';
+                        exportBtn.innerHTML = '<i class="fas fa-file-excel u-mr-xs"></i> Export Excel';
+                        container.style.display = 'flex';
+                        container.style.alignItems = 'center';
+                        container.appendChild(exportBtn);
+                    }
+                }, 800);
                 this.dt = window.initDataTables('#ip-table', {
                     // AKTIFKAN Server Side AJAX
                     serverSide: true,

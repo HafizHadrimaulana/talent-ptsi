@@ -14,72 +14,216 @@ class ExternalRecruitmentController extends Controller
     public function index(Request $request)
     {
         $me = Auth::user();
-        $isCentralHR = $me->hasAnyRole(['Superadmin', 'DHC', 'VP Human Capital']); 
-        $isPelamar = $me->hasRole('Pelamar'); 
+        $isCentralHR = $me->hasAnyRole(['Superadmin', 'DHC', 'VP Human Capital']);
+        $isPelamar = $me->hasRole('Pelamar');
         $isUnitHR = !$isCentralHR && !$isPelamar && $me->unit_id;
-        $q = $request->input('q');
-        $perPage = $request->input('per_page', 10);
-        $query = RecruitmentRequest::with(['unit', 'applicants', 'positionObj']) 
-            ->where('type', 'Rekrutmen')
-            ->where(function($qq) {
-                $qq->where('status', 'approved')
-                ->orWhere('status', 'like', '%Selesai%') 
-                ->orWhere('status', 'Final');
-            });
-        if ($isPelamar) {
-            $query->where('is_published', 1);
-        }
         
-        if ($q) {
-            $query->where(function($sub) use ($q) {
-                $sub->where('ticket_number', 'like', "%{$q}%")
-                    ->orWhereHas('positionObj', function($p) use ($q) {
-                        $p->where('name', 'like', "%{$q}%");
-                    })
-                    ->orWhere('position', 'like', "%{$q}%")
-                    ->orWhereHas('unit', function($u) use ($q) {
-                        $u->where('name', 'like', "%{$q}%");
-                    });
-            });
-        }
-        if ($request->filled('unit_id')) {
-            $query->where('unit_id', $request->unit_id);
-        }
-        if ($isUnitHR) {
-            $query->where('unit_id', $me->unit_id);
-        }
-        $vacancies = $query->orderBy('updated_at', 'desc')
-                           ->paginate($perPage)
-                           ->withQueryString();
-        
-        $myApplications = collect([]); 
-        if ($isPelamar) {
-            $myApplications = RecruitmentApplicant::where('user_id', $me->id)
-                ->get()
-                ->groupBy('recruitment_request_id');
-        }
-        $positionsMap = Position::pluck('name', 'id')->toArray();
+        // Definisikan variabel $isDHC agar bisa dipakai di closure
+        $isDHC = ($isCentralHR || $isUnitHR);
 
+        // --- BAGIAN AJAX REQUEST (DATATABLES LOWONGAN) ---
+        if ($request->ajax()) {
+            $query = RecruitmentRequest::with(['unit', 'applicants', 'positionObj'])
+                ->where('type', 'Rekrutmen')
+                ->where(function ($qq) {
+                    $qq->where('status', 'approved')
+                        ->orWhere('status', 'like', '%Selesai%')
+                        ->orWhere('status', 'Final');
+                });
+
+            if ($isPelamar) {
+                $query->where('is_published', 1);
+            }
+
+            if ($isUnitHR) {
+                $query->where('unit_id', $me->unit_id);
+            }
+
+            // 1. Searching Global
+            if ($request->has('search') && !empty($request->input('search.value'))) {
+                $search = $request->input('search.value');
+                $query->where(function ($q) use ($search) {
+                    $q->where('ticket_number', 'like', "%{$search}%")
+                        ->orWhereHas('positionObj', function ($p) use ($search) {
+                            $p->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhere('position', 'like', "%{$search}%")
+                        ->orWhereHas('unit', function ($u) use ($search) {
+                            $u->where('name', 'like', "%{$search}%");
+                        });
+                });
+            }
+
+            // 2. Sorting
+            if ($request->has('order')) {
+                $order = $request->input('order')[0];
+                $colIdx = $order['column'];
+                $dir = $order['dir'];
+                // Mapping index kolom (sesuaikan dengan urutan kolom di JS)
+                // Default (DHC): 0:Ticket, 1:Posisi, 2:Unit, 3:Status, 4:Kuota, 5:Pelamar, 6:Aksi
+                $cols = ['ticket_number', 'position', 'unit_id', 'is_published', 'headcount', null, null];
+                
+                // Jika Pelamar: 0:Posisi, 1:Unit, 2:Status, 3:Aksi
+                if ($isPelamar) {
+                    $cols = ['position', 'unit_id', 'is_published', null];
+                }
+
+                if (isset($cols[$colIdx]) && $cols[$colIdx]) {
+                    if ($cols[$colIdx] === 'unit_id') {
+                        $query->join('units', 'recruitment_requests.unit_id', '=', 'units.id')
+                              ->orderBy('units.name', $dir);
+                    } else {
+                        $query->orderBy($cols[$colIdx], $dir);
+                    }
+                } else {
+                    $query->orderBy('updated_at', 'desc');
+                }
+            } else {
+                $query->orderBy('updated_at', 'desc');
+            }
+
+            // 3. Pagination & Data
+            $countTotal = $query->count();
+            $start = $request->input('start', 0);
+            $length = $request->input('length', 10);
+            $data = $query->skip($start)->take($length)->get();
+
+            // Prepare helper data for User Applications
+            $myApplications = collect([]);
+            if ($isPelamar) {
+                $myApplications = RecruitmentApplicant::where('user_id', $me->id)
+                    ->get()
+                    ->groupBy('recruitment_request_id');
+            }
+
+            // 4. Formatting Data
+            $formattedData = $data->map(function ($row) use ($isDHC, $isPelamar, $myApplications) {
+                return $this->formatVacancyRow($row, $isDHC, $isPelamar, $myApplications);
+            });
+
+            return response()->json([
+                'draw' => intval($request->input('draw')),
+                'recordsTotal' => RecruitmentRequest::where('type', 'Rekrutmen')->count(),
+                'recordsFiltered' => $countTotal,
+                'data' => $formattedData
+            ]);
+        }
+
+        // --- VIEW HTML UTAMA ---
         return view('recruitment.external.index', [
-            'list'           => $vacancies,
-            'isDHC'          => ($isCentralHR || $isUnitHR), 
-            'isPelamar'      => $isPelamar,
-            'myApplications' => $myApplications,
-            'positionsMap'   => $positionsMap
+            'isDHC'      => $isDHC,
+            'isPelamar'  => $isPelamar,
         ]);
     }
 
-    public function apply(Request $request)
+    // Helper: Format Baris Tabel Lowongan
+    private function formatVacancyRow($row, $isDHC, $isPelamar, $myApplications)
     {
-        $request->validate(['recruitment_request_id' => 'required|exists:recruitment_requests,id', 'name'=>'required|string','email'=>'required|email','phone'=>'required|string','university'=>'required|string','major'=>'required|string','cv_file'=>'required|mimes:pdf|max:2048']);
-        $path = null;
-        if ($request->hasFile('cv_file')) {
-            $file = $request->file('cv_file');
-            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
-            $path = $file->storeAs('cv_uploads', $filename, 'public');
+        // Logic Posisi (Multi/Single)
+        $allPositions = [];
+        $details = $row->meta['recruitment_details'] ?? [];
+        if (!empty($details) && is_array($details) && count($details) > 0) {
+            foreach ($details as $d) {
+                $allPositions[] = $d['position_text'] ?? $d['position'] ?? '-';
+            }
+        } else {
+            $allPositions[] = $row->positionObj->name ?? $row->position ?? '-';
         }
-        RecruitmentApplicant::create(['recruitment_request_id'=> $request->recruitment_request_id,'user_id'=> Auth::id(),'name'=> $request->name,'email'=> $request->email,'phone'=> $request->phone,'university'=> $request->university,'major'=> $request->major,'cv_path'=> $path,'status'=>'Screening CV']);
-        return redirect()->back()->with('ok', 'Lamaran berhasil dikirim! Silakan pantau status Anda.');
+
+        // Logic Aplikasi User (untuk Pelamar)
+        $userApps = $myApplications->get($row->id) ?? collect([]);
+        $appliedPositions = $userApps->pluck('position_applied')->filter()->toArray();
+        if ($userApps->count() > 0 && count($appliedPositions) === 0) {
+            $appliedPositions = $allPositions;
+        }
+        $availablePositions = array_diff($allPositions, $appliedPositions);
+        $availableJson = [];
+        foreach ($availablePositions as $p) {
+            $availableJson[] = ['name' => $p, 'id' => $p];
+        }
+
+        // --- RENDER HTML KOLOM ---
+        
+        // 1. No Ticket
+        $colTicket = $row->ticket_number ? '<span class="u-badge u-badge--glass">' . $row->ticket_number . '</span>' : '-';
+
+        // 2. Posisi
+        $colPosisi = '<div class="u-font-bold text-sm">';
+        if (count($allPositions) > 1) {
+            $colPosisi .= '<ul class="list-disc list-inside text-gray-700">';
+            foreach ($allPositions as $pos) {
+                $colPosisi .= '<li>' . e($pos);
+                if (in_array($pos, $appliedPositions)) {
+                    $colPosisi .= ' <i class="fas fa-check-circle text-green-500 text-xs ml-1" title="Sudah dilamar"></i>';
+                }
+                $colPosisi .= '</li>';
+            }
+            $colPosisi .= '</ul>';
+        } else {
+            $colPosisi .= e($allPositions[0]);
+            if (count($appliedPositions) > 0) { 
+                 $colPosisi .= ' <i class="fas fa-check-circle text-green-500 text-xs ml-1" title="Sudah dilamar"></i>';
+            }
+        }
+        $colPosisi .= '</div>';
+
+        // 3. Unit
+        $colUnit = $row->unit->name ?? '-';
+
+        // 4. Status
+        if ($row->is_published) {
+            $colStatus = '<span class="u-badge u-badge--success"><i class="fas fa-check-circle u-mr-xs"></i> Dibuka</span>';
+        } else {
+            $colStatus = '<span class="u-badge u-badge--danger"><i class="fas fa-ban u-mr-xs"></i> Ditutup</span>';
+        }
+
+        // 5. Kuota
+        $colKuota = $row->headcount . ' Orang';
+
+        // 6. Pelamar Masuk
+        $colPelamar = '<span class="u-badge u-badge--info"><i class="fas fa-users u-mr-xs"></i> ' . $row->applicants->count() . '</span>';
+
+        // 7. Aksi
+        $colAksi = '<div class="flex flex-col gap-2 items-end">';
+        if ($isDHC) {
+            $colAksi .= '<button class="u-btn u-btn--sm u-btn--primary u-btn--outline" onclick="openManageModal(' . $row->id . ', \'' . $row->ticket_number . '\')">
+                            <i class="fas fa-users-cog u-mr-xs"></i> Kelola Pelamar
+                         </button>';
+            $jsonRow = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
+            $colAksi .= "<button class='u-btn u-btn--sm u-btn--warning u-btn--outline' onclick='openEditVacancyModal({$row->id}, {$jsonRow})'>
+                            <i class='fas fa-edit u-mr-xs'></i> Edit/Buka/Tutup
+                         </button>";
+        } elseif ($isPelamar) {
+            if (count($availableJson) > 0) {
+                $jsonRow = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
+                $jsonAvail = htmlspecialchars(json_encode($availableJson), ENT_QUOTES, 'UTF-8');
+                $colAksi .= "<button class='u-btn u-btn--sm u-btn--info u-btn--outline' onclick='openVacancyDetail({$row->id}, {$jsonRow}, {$jsonAvail})'>
+                                <i class='fas fa-file-alt u-mr-xs'></i> Lihat Deskripsi
+                             </button>";
+            }
+            foreach ($userApps as $app) {
+                // Pastikan null safe untuk property object
+                $status = $app->status ?? '-';
+                $date = $app->interview_schedule ?? '';
+                $note = htmlspecialchars($app->hr_notes ?? '', ENT_QUOTES);
+                
+                $colAksi .= "<button class='u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs' type='button' 
+                                onclick='openMyStatusModal(this)' 
+                                data-status='{$status}' 
+                                data-date='{$date}' 
+                                data-note='{$note}'>
+                                <i class='fas fa-info-circle u-mr-xs'></i> Status
+                             </button>";
+            }
+        }
+        $colAksi .= '</div>';
+
+        // Return array sesuai urutan kolom
+        if ($isPelamar) {
+            return [$colPosisi, $colUnit, $colStatus, $colAksi];
+        } else {
+            return [$colTicket, $colPosisi, $colUnit, $colStatus, $colKuota, $colPelamar, $colAksi];
+        }
     }
 
     public function getApplicants($requestId)
@@ -87,35 +231,73 @@ class ExternalRecruitmentController extends Controller
         $applicants = RecruitmentApplicant::where('recruitment_request_id', $requestId)
             ->orderBy('created_at', 'desc')
             ->get();
-        return response()->json(['data' => $applicants]);
+        
+        // Format data untuk DataTables Client-side (atau Server-side simple) di dalam modal
+        $data = $applicants->map(function($app) {
+             $cvBtn = $app->cv_path 
+                ? "<a href='/storage/{$app->cv_path}' target='_blank' class='u-text-brand u-font-bold hover:u-underline'><i class='fas fa-file-pdf'></i> PDF</a>" 
+                : '-';
+             
+             // Badge Logic Status Pelamar
+             $badgeClass = 'st-screening'; // default CSS class
+             // Sesuaikan class badge Anda (contoh sederhana)
+             if(str_contains($app->status, 'Interview') || str_contains($app->status, 'Psikotes')) $badgeClass = 'st-interview';
+             if($app->status === 'Passed' || $app->status === 'Hired') $badgeClass = 'st-passed';
+             if(in_array($app->status, ['Rejected', 'Failed', 'Ditolak'])) $badgeClass = 'st-rejected';
+             
+             $statusHtml = "<span class='status-badge {$badgeClass}'>{$app->status}</span>";
+             
+             $dateShow = $app->interview_schedule ? \Carbon\Carbon::parse($app->interview_schedule)->format('d M Y H:i') : '-';
+             
+             $actions = "<div class='u-flex u-gap-xs u-justify-end'>
+                            <button class='u-btn u-btn--xs u-btn--info u-btn--outline' onclick='openBiodataModal({$app->id})' title='Lihat Biodata Lengkap'><i class='fas fa-id-card'></i> Bio</button>
+                            <button class='u-btn u-btn--xs u-btn--outline' onclick='openUpdateStatus({$app->id}, \"{$app->status}\")' title='Update Status'><i class='fas fa-edit'></i> Proses</button>
+                         </div>";
+
+             return [
+                 'name_info' => "<div class='u-font-bold'>{$app->name}</div><div class='u-text-xs u-muted'>{$app->email}</div><div class='u-text-xs u-muted'>{$app->phone}</div>",
+                 'edu_info' => "<div class='u-text-sm u-font-medium'>{$app->major}</div><div class='u-text-xs u-muted'>{$app->university}</div>",
+                 'cv' => $cvBtn,
+                 'status' => $statusHtml,
+                 'schedule' => "<div class='u-text-xs'>{$dateShow}</div>",
+                 'actions' => $actions
+             ];
+        });
+
+        return response()->json(['data' => $data]);
     }
+
+    public function apply(Request $request)
+    {
+        $request->validate(['recruitment_request_id' => 'required|exists:recruitment_requests,id', 'name' => 'required|string', 'email' => 'required|email', 'phone' => 'required|string', 'university' => 'required|string', 'major' => 'required|string', 'cv_file' => 'required|mimes:pdf|max:2048']);
+        $path = null;
+        if ($request->hasFile('cv_file')) {
+            $file = $request->file('cv_file');
+            $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
+            $path = $file->storeAs('cv_uploads', $filename, 'public');
+        }
+        RecruitmentApplicant::create(['recruitment_request_id' => $request->recruitment_request_id, 'user_id' => Auth::id(), 'name' => $request->name, 'email' => $request->email, 'phone' => $request->phone, 'university' => $request->university, 'major' => $request->major, 'cv_path' => $path, 'status' => 'Screening CV']);
+        return redirect()->back()->with('ok', 'Lamaran berhasil dikirim! Silakan pantau status Anda.');
+    }
+
     public function updateApplicantStatus(Request $request, $applicantId)
     {
         $app = RecruitmentApplicant::findOrFail($applicantId);
         $app->status = $request->status;
         $app->hr_notes = $request->notes;
-        $statusesWithSchedule = [
-            'Psikotes', 
-            'FGD', 
-            'Interview HR',
-            'Tes Teknis',
-            'Interview User', 
-            'Medical Check-Up'
-        ];
+        $statusesWithSchedule = ['Psikotes', 'FGD', 'Interview HR', 'Tes Teknis', 'Interview User', 'Medical Check-Up'];
         if (in_array($request->status, $statusesWithSchedule) || str_contains($request->status, 'Interview')) {
-            $app->interview_schedule = $request->interview_schedule; 
+            $app->interview_schedule = $request->interview_schedule;
         } else {
-            $app->interview_schedule = null; 
+            $app->interview_schedule = null;
         }
-
         $app->save();
-
         return redirect()->back()->with('ok', 'Status pelamar berhasil diperbarui.');
     }
 
     public function showApplicantBiodata($applicantId)
     {
-        $applicant = RecruitmentApplicant::with('user.person')->findOrFail($applicantId);   
+        $applicant = RecruitmentApplicant::with('user.person')->findOrFail($applicantId);
         $person = $applicant->user->person;
         if (!$person) {
             return '<div class="u-p-md u-text-center u-text-danger">Data Biodata belum dilengkapi pelamar.</div>';

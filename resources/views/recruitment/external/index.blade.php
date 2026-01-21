@@ -25,7 +25,7 @@
     @endif
     <div class="dt-wrapper">
         <div class="u-scroll-x">
-            <table class="u-table nowrap" id="ext-table" style="width:100%">
+            <table class="u-table nowrap" id="ext-table" style="width:100%" data-dt>
                 <thead>
                     <tr>
                         @if(!$isPelamar)
@@ -42,103 +42,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($list as $row)
-                        @php
-                            $allPositions = [];
-                            $details = $row->meta['recruitment_details'] ?? [];
-                            if (!empty($details) && is_array($details) && count($details) > 0) {
-                                foreach($details as $d) {
-                                    $posName = $d['position_text'] ?? $d['position'] ?? '-';
-                                    $allPositions[] = $posName;
-                                }
-                            } else {
-                                $posName = $row->positionObj->name ?? $row->position ?? '-';
-                                $allPositions[] = $posName;
-                            }
-
-                            $userApps = $myApplications->get($row->id) ?? collect([]);
-                            $appliedPositions = $userApps->pluck('position_applied')->filter()->toArray();
-
-                            if ($userApps->count() > 0 && count($appliedPositions) === 0) {
-                                $appliedPositions = $allPositions; 
-                            }
-
-                            $availablePositions = array_diff($allPositions, $appliedPositions);
-                            $availableJson = [];
-                            foreach($availablePositions as $p) {
-                                $availableJson[] = ['name' => $p, 'id' => $p];
-                            }
-                        @endphp
-                        <tr>
-                            @if(!$isPelamar)
-                                <td><span class="u-badge u-badge--glass">{{ $row->ticket_number ?? '-' }}</span></td>
-                            @endif
-                            <td>
-                                <div class="u-font-bold text-sm">
-                                    @if(count($allPositions) > 1)
-                                        <ul class="list-disc list-inside text-gray-700">
-                                            @foreach($allPositions as $pos)
-                                                <li>
-                                                    {{ $pos }}
-                                                    @if(in_array($pos, $appliedPositions))
-                                                        <i class="fas fa-check-circle text-green-500 text-xs ml-1" title="Sudah dilamar"></i>
-                                                    @endif
-                                                </li>
-                                            @endforeach
-                                        </ul>
-                                    @else
-                                        {{ $allPositions[0] }}
-                                    @endif
-                                </div>
-                            </td>
-                            <td>{{ $row->unit->name ?? '-' }}</td>
-                            <td>
-                                @if($row->is_published)
-                                    <span class="u-badge u-badge--success">
-                                        <i class="fas fa-check-circle u-mr-xs"></i> Dibuka
-                                    </span>
-                                @else
-                                    <span class="u-badge u-badge--danger">
-                                        <i class="fas fa-ban u-mr-xs"></i> Ditutup
-                                    </span>
-                                @endif
-                            </td>
-                            @if(!$isPelamar)
-                                <td>{{ $row->headcount }} Orang</td>
-                                <td>
-                                    <span class="u-badge u-badge--info">
-                                        <i class="fas fa-users u-mr-xs"></i> {{ $row->applicants->count() }}
-                                    </span>
-                                </td>
-                            @endif
-                            <td class="cell-actions" style="text-align: right; vertical-align: top;">
-                                <div class="flex flex-col gap-2 items-end">
-                                    @if($isDHC)
-                                        <button class="u-btn u-btn--sm u-btn--primary u-btn--outline" onclick="openManageModal({{ $row->id }}, '{{ $row->ticket_number }}')">
-                                            <i class="fas fa-users-cog u-mr-xs"></i> Kelola Pelamar
-                                        </button>
-                                        <button class="u-btn u-btn--sm u-btn--warning u-btn--outline" 
-                                            onclick='openEditVacancyModal({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!})'>
-                                            <i class="fas fa-edit u-mr-xs"></i> Edit/Buka/Tutup
-                                        </button>
-                                    @elseif($isPelamar)
-                                        @if(count($availableJson) > 0)
-                                            <button class="u-btn u-btn--sm u-btn--info u-btn--outline" 
-                                                onclick='openVacancyDetail({{ $row->id }}, {!! htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') !!}, {!! htmlspecialchars(json_encode($availableJson), ENT_QUOTES, 'UTF-8') !!})'>
-                                                <i class="fas fa-file-alt u-mr-xs"></i> Lihat Deskripsi
-                                            </button>
-                                        @endif
-                                        @foreach($userApps as $app)
-                                            <button class="u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs" type="button" onclick="openMyStatusModal(this)" data-status="{{ $app->status }}" data-date="{{ $app->interview_schedule }}" data-note="{{ $app->hr_notes }}">
-                                                <i class="fas fa-info-circle u-mr-xs"></i> 
-                                                Status
-                                            </button>
-                                        @endforeach
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
+                    
                 </tbody>
             </table>
         </div>
@@ -231,12 +135,12 @@
             <button class="u-btn u-btn--ghost u-btn--sm" onclick="closeModal('manageModal')"><i class="fas fa-times"></i></button>
         </div>
         <div class="u-modal__body u-p-md">
-            <table class="u-table">
+            <table class="u-table nowrap" id="applicant_table" style="width:100%" data-dt>
                 <thead>
                     <tr><th>Nama Pelamar</th><th>Pendidikan</th><th>CV</th><th>Status</th><th>Jadwal Interview</th><th>Aksi</th></tr>
                 </thead>
                 <tbody id="applicant_tbody">
-                    <tr><td colspan="6" class="u-text-center">Loading...</td></tr>
+                    
                 </tbody>
             </table>
         </div>
@@ -383,74 +287,159 @@
 <script>
     let editVacancyEditor = null;
     document.addEventListener('DOMContentLoaded', function() {
-        const table = $('#ext-table').DataTable({
-            processing: true, 
-            responsive: {
-                details: {
-                    renderer: function (api, rowIdx, columns) {
-                        let data = $.map(columns, function (col, i) {
-                            return col.hidden ?
-                                `<li class="u-dt-child-item" data-dtr-index="${col.columnIndex}">
-                                    <span class="u-dt-child-title">${col.title}</span>
-                                    <span class="u-dt-child-data">${col.data}</span>
-                                 </li>` : '';
-                        }).join('');
-                        return data ? `<ul class="u-dt-child-row">${data}</ul>` : false;
-                    }
-                }
-            },
-            // Custom Layout DOM
-            dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
-            language: {
-                search: "",
-                searchPlaceholder: "Search records...",
-                lengthMenu: "_MENU_ per page",
-                info: "Showing _START_ s/d _END_ from _TOTAL_ entries",
-                infoEmpty: "Showing 0 s/d 0 from 0 data",
-                infoFiltered: "(filtered from _MAX_ total data)",
-                zeroRecords: "No matching records found",
-                emptyTable: "Belum ada lowongan dibuka.",
-                processing: '<div class="u-dt-loader-container"><div class="u-dt-liquid-spinner"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div><div class="u-dt-loading-text">Loading...</div></div>',
-                paginate: { first: "«", last: "»", next: "›", previous: "‹" }
-            },
-            drawCallback: function() {
-                const wrapper = $(this.api().table().container());
-                
-                // Style Inputs
-                wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
-                wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
-                
-                // Style Pagination
-                const p = wrapper.find('.dataTables_paginate .paginate_button');
-                p.addClass('u-btn u-btn--sm u-btn--ghost');
-                p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
-                p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
-            }
-        });
+        
+        // 1. Inisialisasi DataTable UTAMA (Lowongan)
+        const isPelamar = {{ $isPelamar ? 'true' : 'false' }};
+        
+        // Definisi Kolom
+        let columns = [];
+        if(isPelamar) {
+            columns = [
+                { data: 0 }, // Posisi
+                { data: 1 }, // Unit
+                { data: 2 }, // Status
+                { data: 3, className: "text-right" }  // Aksi
+            ];
+        } else {
+            columns = [
+                { data: 0 }, // Ticket
+                { data: 1 }, // Posisi
+                { data: 2 }, // Unit
+                { data: 3 }, // Status
+                { data: 4 }, // Kuota
+                { data: 5 }, // Pelamar
+                { data: 6, className: "text-right" }  // Aksi
+            ];
+        }
 
-        // Init CKEditor (Existing code)
+        // Panggil initDataTables dari helper global (datatables.js)
+        if(window.initDataTables) {
+            window.initDataTables('#ext-table', {
+                serverSide: true, // PENTING: Aktifkan Server Side AJAX
+                processing: true,
+                ajax: {
+                    url: "{{ route('recruitment.external.index') }}", // URL ke Controller index()
+                },
+                columns: columns,
+                order: [[0, 'desc']], // Default sort kolom pertama (Ticket / Posisi)
+                columnDefs: [
+                    { orderable: false, targets: -1 } // Disable sort kolom aksi
+                ],
+                drawCallback: function() {
+                    // Styling tambahan setelah tabel dirender
+                    const wrapper = $(this.api().table().container());
+                    wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
+                    wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
+                    const p = wrapper.find('.dataTables_paginate .paginate_button');
+                    p.addClass('u-btn u-btn--sm u-btn--ghost');
+                    p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
+                    p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
+                }
+            });
+        } else {
+            console.error("Helper window.initDataTables tidak ditemukan. Pastikan datatables.js diload.");
+        }
+
+        // Init CKEditor (Tetap sama)
         if (document.querySelector('#editEditorContent')) {
             ClassicEditor
                 .create(document.querySelector('#editEditorContent'), {
                     toolbar: ['heading', '|', 'bold', 'italic', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
-                    placeholder: 'Edit deskripsi pekerjaan, kualifikasi, dll...'
+                    placeholder: 'Edit deskripsi pekerjaan...'
                 })
-                .then(editor => {
-                    editVacancyEditor = editor;
-                })
-                .catch(error => {
-                    console.error(error);
-                });
+                .then(editor => { editVacancyEditor = editor; })
+                .catch(error => { console.error(error); });
         }
     });
-    function openEditVacancyModal(id, rowData) {
+    let applicantTable = null;
+    window.openManageModal = function(requestId, ticket) {
+        const modal = document.getElementById('manageModal');
+        const ticketDisplay = document.getElementById('manage_ticket_display');
+        
+        // 1. Reset & Buka Modal
+        if(ticketDisplay) ticketDisplay.textContent = ticket;
+        
+        // Buka modal
+        openModal('manageModal');
+        
+        // Tampilkan loading sementara di dalam tabel (opsional, DataTables punya loading sendiri tapi ini UX)
+        // Jika tabel sudah ada isinya dari sesi sebelumnya, kita biarkan atau clear dulu
+        if ($.fn.DataTable.isDataTable('#applicant_table')) {
+            $('#applicant_table').DataTable().clear().draw();
+        }
+
+        // 2. Fetch Data
+        fetch(`/recruitment/external/${requestId}/applicants`)
+            .then(res => res.json())
+            .then(res => {
+                const rawData = res.data; // Data JSON dari controller
+
+                // Transform data agar sesuai format array of objects yang diinginkan DataTables
+                // Controller Anda sudah mengembalikan format: { name_info:..., edu_info:..., cv:..., status:..., schedule:..., actions:... }
+                // Jadi kita bisa langsung pakai.
+
+                // 3. Inisialisasi / Re-inisialisasi DataTables
+                if (applicantTable) {
+                    applicantTable.destroy(); // Hancurkan instance lama
+                }
+
+                applicantTable = $('#applicant_table').DataTable({
+                    data: rawData,
+                    columns: [
+                        { data: 'name_info' },
+                        { data: 'edu_info' },
+                        { data: 'cv', orderable: false, searchable: false },
+                        { data: 'status' },
+                        { data: 'schedule' },
+                        { data: 'actions', className: 'text-right', orderable: false, searchable: false }
+                    ],
+                    // Konfigurasi Tampilan (Dom, Language, dll)
+                    dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
+                    language: {
+                        search: "",
+                        searchPlaceholder: "Cari pelamar...",
+                        lengthMenu: "_MENU_",
+                        info: "Menampilkan _START_ s/d _END_ dari _TOTAL_ pelamar",
+                        infoEmpty: "0 pelamar",
+                        infoFiltered: "(difilter dari _MAX_ total)",
+                        zeroRecords: "Tidak ada pelamar yang cocok",
+                        emptyTable: "Belum ada pelamar masuk untuk posisi ini.",
+                        paginate: { first: "«", last: "»", next: "›", previous: "‹" }
+                    },
+                    pageLength: 5, // Default 5 baris per halaman di modal agar tidak terlalu panjang
+                    lengthMenu: [5, 10, 25, 50],
+                    order: [[3, 'asc']], // Default sort berdasarkan Status (Kolom index 3)
+                    drawCallback: function() {
+                         const wrapper = $(this.api().table().container());
+                         wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
+                         wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
+                         const p = wrapper.find('.dataTables_paginate .paginate_button');
+                         p.addClass('u-btn u-btn--sm u-btn--ghost');
+                         p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
+                         p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
+                    }
+                });
+
+            })
+            .catch(err => {
+                console.error(err);
+                // Fallback error di dalam tabel body jika fetch gagal
+                const tbody = document.querySelector('#applicant_table tbody');
+                if(tbody) tbody.innerHTML = '<tr><td colspan="6" class="u-text-danger u-text-center">Gagal memuat data.</td></tr>';
+            });
+    }
+    window.openEditVacancyModal = function(id, rowData) {
         document.getElementById('edit_req_id').value = id;
+        
         const startDate = rowData.publish_start_date ? rowData.publish_start_date.substring(0, 10) : '';
         const endDate = rowData.publish_end_date ? rowData.publish_end_date.substring(0, 10) : '';
+        
         document.getElementById('edit_start_date').value = startDate;
         document.getElementById('edit_end_date').value = endDate;
         const locationInput = document.getElementById('edit_location');
+        
         let finalLocation = rowData.publish_location;
+        // Fallback ke data meta jika publish_location kosong
         if (!finalLocation && rowData.meta && rowData.meta.recruitment_details && rowData.meta.recruitment_details.length > 0) {
             finalLocation = rowData.meta.recruitment_details[0].location;
         }
@@ -459,11 +448,14 @@
         if (editVacancyEditor) {
             editVacancyEditor.setData(rowData.description || '');
         } else {
-            document.getElementById('editEditorContent').value = rowData.description || '';
+            const editorEl = document.getElementById('editEditorContent');
+            if(editorEl) editorEl.value = rowData.description || '';
         }
+
         const sectionUnpublish = document.getElementById('sectionToUnpublish');
         const sectionPublish = document.getElementById('sectionToPublish');
         const container = document.getElementById('actionStatusContainer');
+        
         if(rowData.is_published == 1) {
             sectionUnpublish.style.display = 'flex';
             sectionPublish.style.display = 'none';
@@ -473,6 +465,7 @@
             sectionPublish.style.display = 'flex';
             container.style.borderLeftColor = '#10b981';
         }
+        
         openModal('editVacancyModal');
     }
     const btnSaveDesc = document.getElementById('btnSaveDescription');
@@ -676,61 +669,7 @@
         noteEl.textContent = (note && note !== 'null') ? note : '-';
         openModal('myStatusModal');
     }
-    function openManageModal(requestId, ticket) {
-        document.getElementById('manage_ticket_display').textContent = ticket;
-        const tbody = document.getElementById('applicant_tbody');
-        tbody.innerHTML = '<tr><td colspan="6" class="u-text-center"><i class="fas fa-circle-notch fa-spin"></i> Loading data...</td></tr>';
-        openModal('manageModal');
-        fetch(`/recruitment/external/${requestId}/applicants`)
-            .then(res => res.json())
-            .then(data => {
-                tbody.innerHTML = '';
-                if(data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="u-text-center u-muted">Belum ada pelamar masuk.</td></tr>';
-                    return;
-                }
-                data.data.forEach(app => {
-                    let badgeClass = 'st-screening';
-                    if(app.status.includes('Interview')) badgeClass = 'st-interview';
-                    if(app.status === 'Passed') badgeClass = 'st-passed';
-                    if(app.status === 'Rejected') badgeClass = 'st-rejected';
-                    let cvBtn = app.cv_path 
-                        ? `<a href="/storage/${app.cv_path}" target="_blank" class="u-text-brand u-font-bold hover:u-underline"><i class="fas fa-file-pdf"></i> PDF</a>` 
-                        : '-';
-                    let dateShow = app.interview_schedule ? new Date(app.interview_schedule).toLocaleString('id-ID') : '-';
-                    let row = `
-                        <tr>
-                            <td>
-                                <div class="u-font-bold">${app.name}</div>
-                                <div class="u-text-xs u-muted">${app.email}</div>
-                                <div class="u-text-xs u-muted">${app.phone}</div>
-                            </td>
-                            <td>
-                                <div class="u-text-sm u-font-medium">${app.major}</div>
-                                <div class="u-text-xs u-muted">${app.university}</div>
-                            </td>
-                            <td>${cvBtn}</td>
-                            <td><span class="status-badge ${badgeClass}">${app.status}</span></td>
-                            <td><div class="u-text-xs">${dateShow}</div></td>
-                            <td>
-                                <div class="u-flex u-gap-xs u-justify-end">
-                                    <button class="u-btn u-btn--xs u-btn--info u-btn--outline" onclick="openBiodataModal(${app.id})" title="Lihat Biodata Lengkap">
-                                        <i class="fas fa-id-card"></i> Bio
-                                    </button>
-                                    <button class="u-btn u-btn--xs u-btn--outline" onclick="openUpdateStatus(${app.id}, '${app.status}')" title="Update Status">  
-                                        <i class="fas fa-edit"></i> Proses
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
-                });
-            })
-            .catch(err => {
-                tbody.innerHTML = '<tr><td colspan="6" class="u-text-danger u-text-center">Gagal memuat data.</td></tr>';
-            });
-    }
+    
     function openUpdateStatus(applicantId, currentStatus) {
         const modal = document.getElementById('updateStatusModal');
         const form = document.getElementById('formUpdateStatus');
@@ -761,10 +700,21 @@
             if(input) input.value = '';
         }
     }
-    function openModal(id) { document.getElementById(id).hidden = false; document.body.classList.add('modal-open'); }
-    function closeModal(id) { 
-        document.getElementById(id).hidden = true; 
-        if(document.querySelectorAll('.u-modal:not([hidden])').length === 0) {
+    window.openModal = function(id) {
+        const el = document.getElementById(id);
+        if(el) {
+            el.hidden = false;
+            // Gunakan style flex agar centering bekerja jika menggunakan CSS framework Anda
+            el.style.display = 'flex'; 
+            document.body.classList.add('modal-open');
+        }
+    }
+
+    window.closeModal = function(id) {
+        const el = document.getElementById(id);
+        if(el) {
+            el.hidden = true;
+            el.style.display = 'none';
             document.body.classList.remove('modal-open');
         }
     }
