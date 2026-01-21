@@ -24,9 +24,3 @@ Schedule::command($sitmsCmd)
         Artisan::call('users:sync');
         Log::info('[Scheduler] Users & Roles synced successfully after SITMS data pull.');
     });
-
-Schedule::command("sync:project-codes --all")
-    ->hourly()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/scheduler-crm-projects.log'));
