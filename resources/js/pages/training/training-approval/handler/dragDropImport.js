@@ -4,7 +4,8 @@ import { initImportHandler } from "./importHandler";
  * @param {string} modalSelector
  * @param {Function} reloadCallback
  */
-export function initDragDropUpload(modalSelector) {
+export function initDragDropUpload(modal) {
+    if (!modal) return;
     const area = document.getElementById("drag-drop-area");
     const input = document.getElementById("drag-drop-input");
     const fileInfo = document.getElementById("selected-file-info");
@@ -13,8 +14,6 @@ export function initDragDropUpload(modalSelector) {
 
     if (!uploadForm || uploadForm.dataset.initialized === "true") return;
     uploadForm.dataset.initialized = "true";
-
-    const modal = document.querySelector(modalSelector);
 
     let selectedFile = null;
 

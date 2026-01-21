@@ -1,32 +1,15 @@
 <div class="flex gap-4 justify-between u-mb-lg u-py-sm">
-    <div class="flex u-gap-md">
-        <button
-            type="button"
-            class="u-btn u-btn--brand u-hover-lift"
-            data-modal-target="lna-import-modal"
-        >
-            Import Data
-        </button>
-    
-        <button
-            type="button"
-            class="u-btn u-btn--brand u-hover-lift"
-            data-modal-target="lna-input-modal"
-        >
-            Input LNA
-        </button>
-    </div>
-    
     <button
         type="button"
-        class="btn-download-template u-btn u-btn--outline u-hover-lift"
+        class="u-btn u-btn--brand u-hover-lift"
+        data-modal-target="lna-pengajuan-modal"
     >
-        Download Template Excel
+        Ajukan LNA Baru
     </button>
 </div>
 
-<table id="data-lna-table"
-    class="u-table u-table-mobile training-table training-table-lna" data-dt>
+<table id="pengajuan-data-lna-table"
+    class="u-table u-table-mobile training-table" data-dt>
     <thead>
         <tr>
             <th>No</th>
@@ -50,6 +33,7 @@
 <div class="u-dt-pagination" id="pagination"></div>
 
 <script>
-    window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
+    window.currentUserRoles = @json(Auth::user()->getRoleNames());
     window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+    window.currentUnitName = "{{ optional(Auth::user()->employee->unit)->nama_unit ?? '' }}";
 </script>

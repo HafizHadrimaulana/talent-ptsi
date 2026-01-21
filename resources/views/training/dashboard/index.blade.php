@@ -144,6 +144,3 @@
 
 @endsection
 
-@push('scripts')
-  @vite('resources/js/pages/dashboard/index.js')
-@endpush

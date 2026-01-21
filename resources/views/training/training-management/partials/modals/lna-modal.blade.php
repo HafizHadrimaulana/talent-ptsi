@@ -101,7 +101,7 @@
                               Biaya Pelatihan
                           </label>
                           
-                          <div class="view-mode u-text-lg u-font-bold text-green-700 detail-biaya-pelatihan u-flex u-items-center u-h-10">
+                          <div class="view-mode u-text-lg u-font-bold text-green-700 detail-biaya_pelatihan u-flex u-items-center u-h-10">
                               Rp 0
                           </div>
 

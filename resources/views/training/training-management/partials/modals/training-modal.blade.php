@@ -48,11 +48,11 @@
               <div class="grid grid-cols-2 gap-md">
                 <div class="u-space-y-xs">
                   <label class="u-text-xs u-muted u-uppercase font-semibold">Waktu Pelaksanaan</label>
-                  <div class="u-font-semibold detail-waktu text-gray-700">-</div>
+                  <div class="u-font-semibold detail-waktu_pelaksanaan text-gray-700">-</div>
                 </div>
                 <div class="u-space-y-xs">
                   <label class="u-text-xs u-muted u-uppercase font-semibold">Durasi (Jam)</label>
-                  <div class="u-font-semibold detail-jam text-gray-700">-</div>
+                  <div class="u-font-semibold detail-jumlah_jam text-gray-700">-</div>
                 </div>
               </div>
             </div>
@@ -92,7 +92,7 @@
           <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
             <div class="u-p-sm">
               <label class="u-text-xs u-muted u-uppercase font-semibold">Biaya Pelatihan</label>
-              <div class="u-font-bold detail-biaya-pelatihan">Rp 0</div>
+              <div class="u-font-bold detail-biaya_pelatihan">Rp 0</div>
             </div>
           </div>
         </div>

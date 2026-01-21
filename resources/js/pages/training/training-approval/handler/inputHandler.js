@@ -1,7 +1,8 @@
 import { postFormData, getJSON } from "@/utils/fetch";
 
-export function initInputHandler(modalSelector) {
-    const modal = document.querySelector(modalSelector);
+export function initInputHandler(modal) {
+    console.log("Initializing input handler", modal);
+    if (!modal) return;
     const inputForm = document.querySelector("#add-form");
     if (!inputForm) return;
 

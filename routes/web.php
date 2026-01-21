@@ -82,6 +82,10 @@ Route::middleware('web')->group(function () {
                 Route::post('training-management/{id}/approve-training-reference', [TrainingManagementController::class,'approveTrainingReference'])->name('training-management.approve-training-reference');
                 Route::post('training-management/{id}/reject-training-pengajuan', [TrainingManagementController::class,'rejectTrainingReference'])->name('training-management.reject-training-pengajuan');
                 Route::post('training-management/import-lna', [TrainingImportController::class, 'importLna'])->name('training-management.import-lna');
+                Route::get('training-management/get-data-pengajuan-lna', [TrainingManagementController::class, 'getDataPengajuanLna'])
+                    ->name('training-management.get-data-pengajuan-lna');
+                Route::get('training-management/{unitId}/get-pengajuan-training-peserta', [TrainingManagementController::class, 'getPengajuanTrainingPeserta'])
+                    ->name('training-management.get-pengajuan-training-peserta');
             });
     
             Route::get('self-learning', fn () => view('training.self-learning.index'))
