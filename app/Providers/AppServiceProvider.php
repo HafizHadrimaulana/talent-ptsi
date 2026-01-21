@@ -44,16 +44,16 @@ class AppServiceProvider extends ServiceProvider
                     }
                     
                     // --- NOTIFIKASI IZIN PRINSIP ---
-                    $approverRoles = ['Kepala Proyek (MP)', 'SDM Unit','Kepala Unit', 'DHC', 'AVP', 'VP Human Capital', 'Dir SDM', 'Superadmin'];
+                    $cleanJobTitle = $myJobTitle ? trim(strtoupper($myJobTitle)) : '';
+                    $approverRoles = ['Kepala Proyek (MP)', 'SDM Unit','Kepala Unit', 'DHC', 'AVP', 'Dir SDM', 'Superadmin'];
                     
-                    if ($me->hasAnyRole($approverRoles)) {
+                    if ($me->hasAnyRole($approverRoles) || $cleanJobTitle === 'VP HUMAN CAPITAL') {
                         $query = RecruitmentRequest::with(['approvals', 'unit'])
                             ->whereIn('status', ['submitted', 'in_review']);
 
-                        if (!$me->hasRole('Superadmin') && 
-                           ($me->hasRole('Kepala Unit') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Proyek (MP)'))) {
-                            $query->where('unit_id', $me->unit_id);
-                        }
+                        if (!$me->hasRole('Superadmin') && !$me->hasRole('DHC') && !$me->hasRole('Dir SDM') && $cleanJobTitle !== 'VP HUMAN CAPITAL' && ($me->hasRole('Kepala Unit') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Proyek (MP)'))) {
+                        $query->where('unit_id', $me->unit_id);
+                    }
 
                         $requests = $query->get();
                         foreach ($requests as $req) {
@@ -71,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
                                 else if ($stageKey === 'kepala_unit' && $me->hasRole('Kepala Unit') && $isSameUnit) {$shouldShow = true;}
                                 else if ($stageKey === 'dhc_checker' && $me->hasRole('DHC')) {$shouldShow = true;}
                                 else if ($stageKey === 'avp_hc_ops' && ($me->hasRole('AVP') && $myJobTitle === 'AVP Human Capital Operation')) {$shouldShow = true;}
-                                else if ($stageKey === 'vp_hc' && ($me->hasRole('VP Human Capital') && $myJobTitle === 'VP Human Capital')) {$shouldShow = true;}
+                                else if ($stageKey === 'vp_hc' && $cleanJobTitle === 'VP HUMAN CAPITAL') { $shouldShow = true; }
                                 else if ($stageKey === 'dir_sdm' && $me->hasRole('Dir SDM')) {$shouldShow = true;}
                                 if ($shouldShow) {
                                     $slaTime = $req->created_at;

@@ -29,7 +29,6 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
 
    public function query()
     {
-        // Pastikan approvals di-load dan diurutkan agar logika foreach mengambil yang terakhir
         return $this->query->with(['approvals' => function($q) {
             $q->orderBy('id', 'asc');
         }]);
@@ -55,37 +54,27 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
         $status = $row->status ?? 'draft';
         $slaText = '-';
         $kaUnitApp = null;
-        
-        // Cari approval dari Kepala Unit yang statusnya approved
         if ($row->approvals) {
             foreach($row->approvals as $ap) { 
                 if(strpos($ap->note, 'stage=kepala_unit') !== false && $ap->status == 'approved') {
                     $kaUnitApp = $ap; 
-                    // break; <--- BARIS INI DIHAPUS
                 }
             }
         }
-
-        // Hitung durasi jika status masih berjalan
         if (in_array($status, ['submitted', 'in_review']) && $kaUnitApp && $kaUnitApp->decided_at) {
             try {
                 $slaTimeBase = Carbon::parse($kaUnitApp->decided_at);
-                
-                // Menggunakan diffForHumans
                 $rawText = $slaTimeBase->locale('id')->diffForHumans([
                     'parts' => 2,
                     'join' => true,
                     'syntax' => CarbonInterface::DIFF_RELATIVE_TO_NOW
                 ]);
-                
-                // Bersihkan teks agar lebih rapi di Excel
                 $cleanText = str_replace(['yang ', 'setelahnya', 'sebelumnya', ' dan '], ['', '', '', ', '], $rawText);
                 $slaText = trim($cleanText);
             } catch (\Exception $e) {
                 $slaText = 'Error Date';
             }
         }
-
         return $slaText;
     }
 
@@ -111,7 +100,6 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
         $this->currentRow += $count;
         $slaValue = $this->calculateSla($row);
 
-        // --- GENERATE ROWS ---
         if ($count > 1) {
             foreach ($details as $detail) {
                 $posRaw = $detail['position'] ?? '-';
@@ -149,7 +137,6 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
                 $row->created_at ? $row->created_at->format('d-m-Y H:i') : '-',
             ];
         }
-
         return $rows;
     }
 
@@ -166,12 +153,9 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-
                 foreach ($this->mergeData as $range) {
                     $start = $range['start'];
                     $end   = $range['end'];
-
-                    // setting merge
                     $columnsToMerge = ['A', 'C', 'D', 'H', 'I', 'J']; 
 
                     foreach ($columnsToMerge as $col) {

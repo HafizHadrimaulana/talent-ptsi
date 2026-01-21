@@ -39,7 +39,7 @@ class PrincipalApprovalController extends Controller
             ['key' => 'kepala_unit',  'roles' => ['Kepala Unit']],
             ['key' => 'dhc_checker',  'roles' => ['DHC']],
             ['key' => 'avp_hc_ops',   'roles' => ['AVP']], 
-            ['key' => 'vp_hc',        'roles' => ['VP Human Capital']],
+            ['key' => 'vp_hc',        'title' => 'VP Human Capital'],
             ['key' => 'dir_sdm',      'roles' => ['Dir SDM']],
         ];
     }
@@ -48,7 +48,14 @@ class PrincipalApprovalController extends Controller
     {
         if (!$user) return false;
         $jobTitle = $this->getUserJobTitle($user->id);
-        return $user->hasRole('Superadmin') || $user->hasRole('DHC') || $user->hasRole('Dir SDM') || $user->hasRole('VP Human Capital') || $jobTitle === 'AVP Human Capital Operation' || $jobTitle === 'VP Human Capital';}
+        $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
+
+        return $user->hasRole('Superadmin') || 
+               $user->hasRole('DHC') ||
+               $user->hasRole('Dir SDM') ||
+               $cleanTitle === 'AVP HUMAN CAPITAL OPERATION'||
+               $cleanTitle === 'VP HUMAN CAPITAL';
+    }
 
     protected function dhcUnitId(): ?int
     {
@@ -285,21 +292,20 @@ class PrincipalApprovalController extends Controller
     }
 
     private function renderActionColumn($r, $me) {
-        // [FIXED] Menambahkan semua data attributes yang dibutuhkan modal
         $meUnit = $me->unit_id;
         $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
         $jobTitle = $this->getUserJobTitle($me->id);
-        $clnTitle = strtoupper($jobTitle ?? '');
+        $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
         
         $meRoles = [
             'Superadmin' => $me->hasRole('Superadmin'),
-            'Admin Ops'  => $me->hasRole('Admin Operasi Unit') || str_contains($clnTitle, 'STAF ADMINISTRASI OPERASI'),
-            'Kepala MP'  => $me->hasRole('Kepala Proyek (MP)') || str_contains($clnTitle, 'KEPALA PROYEK (MP)'),
+            'Admin Ops'  => $me->hasRole('Admin Operasi Unit') || str_contains($cleanTitle, 'STAF ADMINISTRASI OPERASI'),
+            'Kepala MP'  => $me->hasRole('Kepala Proyek (MP)') || str_contains($cleanTitle, 'KEPALA PROYEK (MP)'),
             'SDM Unit'   => $me->hasRole('SDM Unit'),
             'Kepala Unit'=> $me->hasRole('Kepala Unit'),
             'DHC'        => $me->hasRole('DHC'),
-            'AVP HC Ops' => ($me->hasRole('AVP') && $clnTitle == 'AVP HUMAN CAPITAL OPERATION'),
-            'VP HC'      => $me->hasRole('VP Human Capital') || $clnTitle == 'VP HUMAN CAPITAL',
+            'AVP HC Ops' => ($me->hasRole('AVP') && $cleanTitle === 'AVP HUMAN CAPITAL OPERATION'),
+            'VP HC'      => ($cleanTitle === 'VP HUMAN CAPITAL'),
             'Dir SDM'    => $me->hasRole('Dir SDM')
         ];
 
@@ -312,7 +318,6 @@ class PrincipalApprovalController extends Controller
                 preg_match('/\[stage=([^\]]+)\]/', $app->note, $m);
                 $currentStage = $m[1] ?? '';
              }
-             // Label History
              $rawNote = $app->note;
              preg_match('/\[stage=([^\]]+)\]/', $rawNote, $matches);
              $histKey = $matches[1] ?? '';
@@ -331,12 +336,9 @@ class PrincipalApprovalController extends Controller
                  'note' => $cleanNote
              ];
         }
-
-        // Logic Can Approve
         $canStage = false;
         $isKaUnitDHC = $meRoles['Kepala Unit'] && $this->dhcUnitId() && ((string)$meUnit === (string)$this->dhcUnitId());
         $status = $r->status ?? 'draft';
-
         if (in_array($status, ['in_review','submitted'])) {
             if ($meRoles['Superadmin']) {
                 $canStage = true;
@@ -351,21 +353,16 @@ class PrincipalApprovalController extends Controller
                 elseif ($currentStage === 'dir_sdm' && $meRoles['Dir SDM']) $canStage = true;
             }
         }
-
         $isPublished = $r->is_published ? '1' : '0';
         $canPublish = ($me->hasRole('DHC') || $me->hasRole('Superadmin') || $me->hasRole('SDM Unit') || $me->hasRole('Kepala Unit')) ? 'true' : 'false';
         $canViewNotes = ($me->id === $r->created_by || $me->id === $r->requested_by || in_array(true, $meRoles, true)) ? 'true' : 'false';
         $canApproveStr = $canStage ? 'true' : 'false';
-
-        // Prepare JSON Safe Strings
         $historyJson = htmlspecialchars(json_encode($approvalHistory), ENT_QUOTES, 'UTF-8');
         $metaJson    = htmlspecialchars(json_encode($r->meta['recruitment_details'] ?? []), ENT_QUOTES, 'UTF-8');
-        
-        // Prepare Simple Data Strings
         $reqType = e($r->request_type ?? $r->type ?? 'Rekrutmen');
         $title = e($r->title);
         $unitName = e($r->unit->name ?? '-');
-        $posName = e($this->renderPositionColumn($r)); // Use HTML free version if needed, but here simple
+        $posName = e($this->renderPositionColumn($r));
         $posNameSimple = strip_tags($posName);
         $headcount = (int) $r->headcount;
         $empType = e($r->employment_type ?? '');
@@ -374,13 +371,9 @@ class PrincipalApprovalController extends Controller
         $budgetRef = e($r->budget_ref ?? '');
         $justif = e($r->justification ?? '');
         $statStr = e(ucfirst($status));
-
         $approveUrl = route('recruitment.principal-approval.approve',$r->id);
         $rejectUrl = route('recruitment.principal-approval.reject',$r->id);
-
         $btns = '<div class="flex flex-col gap-2 items-end">';
-        
-        // Tombol Edit/Submit (Hanya Draft)
         $canCreate = Gate::allows('recruitment.create') || Gate::allows('recruitment.update') || $meRoles['SDM Unit'] || $meRoles['Superadmin'];
         if ($status === 'draft' && ($sameUnit || $meRoles['Superadmin'])) {
              if ($canCreate) {
@@ -388,59 +381,18 @@ class PrincipalApprovalController extends Controller
                  $urlDelete = route('recruitment.principal-approval.destroy', ['req' => $r->id]);
                  $urlSubmit = route('recruitment.principal-approval.submit', $r->id);
                  $csrf = csrf_field();
-
-                 $btns .= "<button type='button' class='u-btn u-btn--outline u-btn--sm u-hover-lift' 
-                            data-modal-open='createApprovalModal' 
-                            data-mode='edit'
-                            data-update-url='{$urlUpdate}'
-                            data-delete-url='{$urlDelete}'
-                            data-request-type='{$reqType}'
-                            data-title='{$title}'
-                            data-position='{$posNameSimple}'
-                            data-headcount='{$headcount}'
-                            data-employment-type='{$empType}'
-                            data-target-start='{$r->target_start_date}'
-                            data-budget-source-type='{$budgetSrc}'
-                            data-budget-ref='{$budgetRef}'
-                            data-justification='{$justif}'
-                            data-meta-json='{$metaJson}'>
+                 $btns .= "<button type='button' class='u-btn u-btn--outline u-btn--sm u-hover-lift' data-modal-open='createApprovalModal' data-mode='edit'data-update-url='{$urlUpdate}'data-delete-url='{$urlDelete}'data-request-type='{$reqType}'data-title='{$title}'data-position='{$posNameSimple}'data-headcount='{$headcount}'data-employment-type='{$empType}'data-target-start='{$r->target_start_date}'data-budget-source-type='{$budgetSrc}'data-budget-ref='{$budgetRef}'data-justification='{$justif}'data-meta-json='{$metaJson}'>
                             <i class='fas fa-edit u-mr-xs'></i> Edit
                            </button>";
-                 
                  $btns .= "<form method='POST' action='{$urlSubmit}' class='u-inline js-confirm'>
                             {$csrf}
                             <button class='u-btn u-btn--outline u-btn--sm u-hover-lift'><i class='fas fa-paper-plane u-mr-xs'></i> Submit</button>
                            </form>";
              }
         }
-
-        // Tombol Detail (Selalu muncul, lengkap dengan semua atribut)
-        $btns .= "<button type='button' class='u-btn u-btn--outline u-btn--sm u-hover-lift js-open-detail'
-                    data-modal-open='detailApprovalModal'
-                    data-id='{$r->id}'
-                    data-ticket-number='{$r->ticket_number}'
-                    data-title='{$title}'
-                    data-unit='{$unitName}'
-                    data-request-type='{$reqType}'
-                    data-position='{$posNameSimple}'
-                    data-headcount='{$headcount}'
-                    data-employment-type='{$empType}'
-                    data-target-start='{$tgtStart}'
-                    data-budget-source='{$budgetSrc}'
-                    data-budget-ref='{$budgetRef}'
-                    data-justification='{$justif}'
-                    data-status='{$statStr}'
-                    data-history='{$historyJson}'
-                    data-can-view-notes='{$canViewNotes}'
-                    data-can-approve='{$canApproveStr}'
-                    data-approve-url='{$approveUrl}'
-                    data-reject-url='{$rejectUrl}'
-                    data-meta-json='{$metaJson}'
-                    data-is-published='{$isPublished}'
-                    data-can-publish='{$canPublish}'>
+        $btns .= "<button type='button' class='u-btn u-btn--outline u-btn--sm u-hover-lift js-open-detail'data-modal-open='detailApprovalModal'data-id='{$r->id}'data-ticket-number='{$r->ticket_number}'data-title='{$title}'data-unit='{$unitName}'data-request-type='{$reqType}'data-position='{$posNameSimple}'data-headcount='{$headcount}'data-employment-type='{$empType}'data-target-start='{$tgtStart}'data-budget-source='{$budgetSrc}'data-budget-ref='{$budgetRef}'data-justification='{$justif}'data-status='{$statStr}'data-history='{$historyJson}'data-can-view-notes='{$canViewNotes}'data-can-approve='{$canApproveStr}'data-approve-url='{$approveUrl}'data-reject-url='{$rejectUrl}'data-meta-json='{$metaJson}'data-is-published='{$isPublished}'data-can-publish='{$canPublish}'>
                     <i class='fas fa-info-circle u-mr-xs'></i> Detail
                   </button>";
-
         $btns .= '</div>';
         return $btns;
     }
@@ -744,26 +696,30 @@ class PrincipalApprovalController extends Controller
     {
         if (!$user) return false;
         if ($user->hasRole('Superadmin')) return true;        
+        
         $stage = $this->stages()[$stageIdx] ?? null;
         if (!$stage) return false;
+        
         $jobTitle = $this->getUserJobTitle($user->id);
-        $cleanJobTitle = trim(strtoupper($jobTitle));
+        $cleanJobTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
+        
         $allowed = false;
-        foreach ($stage['roles'] as $r) {
-            if ($user->hasRole($r)) {
-                $allowed = true;
-                break;
+        if (isset($stage['roles'])) {
+            foreach ($stage['roles'] as $r) {
+                if ($user->hasRole($r)) {
+                    $allowed = true;
+                    break;
+                }
             }
         }
+
+        // Logic Spesifik
         if ($stage['key'] === 'kepala_mp') {
              $isTitleMatch = str_contains($cleanJobTitle, 'KEPALA PROYEK (MP)');
              return ($allowed || $isTitleMatch) && ((string) $user->unit_id === (string) $reqUnitId);
         }
-        if ($stage['key'] === 'sdm_unit') {
+        if ($stage['key'] === 'sdm_unit' || $stage['key'] === 'kepala_unit') {
              return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
-        }
-        if ($stage['key'] === 'kepala_unit') {
-            return $allowed && ((string) $user->unit_id === (string) $reqUnitId);
         }
         if ($stage['key'] === 'dhc_checker') {
             if ($allowed) return true;
@@ -773,9 +729,12 @@ class PrincipalApprovalController extends Controller
         if ($stage['key'] === 'avp_hc_ops') {
             return $allowed && ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
         }
+        
+        // KHUSUS VP HC: Cek Jabatan Langsung (Case Insensitive)
         if ($stage['key'] === 'vp_hc') {
-            return $allowed || ($cleanJobTitle === 'VP HUMAN CAPITAL');
+            return ($cleanJobTitle === 'VP HUMAN CAPITAL');
         }
+        
         return $allowed;
     }
 
@@ -783,16 +742,32 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         if (!$me) abort(401);
+
         $jobTitle = $this->getUserJobTitle($me->id);
-        if ($me->hasRole('Superadmin') || $me->hasRole('DHC') || $me->hasRole('Dir SDM') || $me->hasRole('VP Human Capital') || $jobTitle === 'AVP Human Capital Operation' || $jobTitle === 'VP Human Capital') {
-            return;
+        $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
+
+        // LEVEL 1: BYPASS (Superadmin, DHC, Dir SDM, AVP Ops, VP HC)
+        // Orang-orang ini BOLEH mengakses unit manapun.
+        if ($me->hasRole('Superadmin') || 
+            $me->hasRole('DHC') || 
+            $me->hasRole('Dir SDM') || 
+            $cleanTitle === 'AVP HUMAN CAPITAL OPERATION' || 
+            $cleanTitle === 'VP HUMAN CAPITAL') { 
+            return; // Access Granted Immediate
         }
+
+        // LEVEL 2: PENGECEKAN UNIT (Untuk Admin Ops, SDM Unit, Kepala Unit)
+        // Jika user bukan "Dewa" (Level 1), dia HANYA boleh submit untuk unitnya sendiri.
         if ($me->unit_id && $unitId && (string) $me->unit_id !== (string) $unitId) {
-            abort(403);
+            abort(403, 'Akses Unit Ditolak. Anda tidak berhak mengakses unit ini.');
         }
-        if ($me->hasRole('AVP') && $jobTitle !== 'AVP Human Capital Operation') {
+
+        // LEVEL 3: PEMBATASAN KHUSUS ROLE (Jika lolos unit, cek role spesifik jika perlu)
+        if ($me->hasRole('AVP') && $cleanTitle !== 'AVP HUMAN CAPITAL OPERATION') {
              abort(403, 'Akses ditolak. Khusus AVP Human Capital Operation.');
         }
+        
+        // Jika sampai sini (misal Admin Ops di unit yg sama), berarti Lolos.
     }
 
     public function previewUraianPdf(Request $request)
