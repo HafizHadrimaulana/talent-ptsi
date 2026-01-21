@@ -71,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
                                 else if ($stageKey === 'kepala_unit' && $me->hasRole('Kepala Unit') && $isSameUnit) {$shouldShow = true;}
                                 else if ($stageKey === 'dhc_checker' && $me->hasRole('DHC')) {$shouldShow = true;}
                                 else if ($stageKey === 'avp_hc_ops' && ($me->hasRole('AVP') && $myJobTitle === 'AVP Human Capital Operation')) {$shouldShow = true;}
-                                else if ($stageKey === 'vp_hc' && ($me->hasRole('VP Human Capital') || $myJobTitle === 'VP Human Capital')) {$shouldShow = true;}
+                                else if ($stageKey === 'vp_hc' && ($me->hasRole('VP Human Capital') && $myJobTitle === 'VP Human Capital')) {$shouldShow = true;}
                                 else if ($stageKey === 'dir_sdm' && $me->hasRole('Dir SDM')) {$shouldShow = true;}
                                 if ($shouldShow) {
                                     $slaTime = $req->created_at;

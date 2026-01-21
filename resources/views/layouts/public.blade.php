@@ -10,14 +10,14 @@
     <style>
       html { scroll-padding-top: 90px; }
       body { background-color: #ffffff; color: #111827; }
-      header { background-color: #008b84 !important; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+      header { background-color: rgba(0, 63, 164, 0.19) !important; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
       nav a { color: #ffffff; transition: color 0.3s ease; }
       nav a:hover,
       nav a.active { color: #A4F5DD; }
       nav a.active::after { content: ""; position: absolute; left: 0; bottom: -4px; width: 100%; height: 2px; background: #A4F5DD; border-radius: 2px; }
       #navbar { transition: background-color 1.0s ease, box-shadow 1.0s ease, opacity 1.0s ease; }
       #navbar.transparent { background-color: transparent !important; box-shadow: none !important; opacity: 1; }
-      #navbar.visible {background-color: rgba(3, 147, 140, 0.85) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); opacity: 1; }
+      #navbar.visible {background-color: rgba(0, 63, 164, 0.19) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); opacity: 1; }
       .fade-section { opacity: 0; transform: translateY(30px); transition: all 1.5s ease-out; }
       .fade-section.visible { opacity: 1; transform: translateY(0); }
       .hero-slideshow { position: relative; width: 100%; height: 100%; overflow: hidden; }
@@ -39,11 +39,11 @@
     </style>
   </head>
   <body class="min-h-screen bg-white text-gray-900">
-    <header id="navbar" class="fixed top-0 w-full h-20 z-50 bg-[#00A29A] transition-all duration-300 shadow-md">
-        <div class="container mx-auto px-4 md:px-6 h-full flex items-center justify-end md:justify-between relative">
+    <header id="navbar" class="fixed top-0 w-full h-20 z-50 transition-all duration-300 shadow-md" style="background-color: #000000;">
+        <div class="w-full px-6 md:px-12 h-full flex items-center justify-end md:justify-between relative">
             <a href="{{ route('recruitment.external.index') }}" class="hidden md:flex items-center gap-2 md:gap-4 overflow-hidden">
-                <img src="/images/Danantara_Indonesia.svg.png" alt="Danantara" class="h-8 md:h-10 w-auto object-contain">
-                <img src="/images/logo.png" alt="Logo IDSurvey" class="h-8 md:h-10 w-auto object-contain">
+                <img src="/images/logo-danantara.png" alt="Danantara" class="h-8 md:h-10 w-auto object-contain">
+                <img src="/images/logo-IDS.png" alt="Logo IDSurvey" class="h-8 md:h-10 w-auto object-contain">
                 <img src="/images/logo_SI.png" alt="SI Logo" class="h-6 md:h-9 w-auto object-contain">    
             </a>
             <div class="hidden md:flex items-center gap-6 text-white font-medium">
@@ -64,32 +64,40 @@
                 </div>
             </div>
 
-            <button id="mobileMenuBtn" onclick="toggleMobileMenu()" class="md:hidden text-white p-2 focus:outline-none cursor-pointer z-50 rounded hover:bg-white/10 transition">
-                <svg id="iconOpen" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+            <button id="mobileMenuBtn" onclick="toggleMobileMenu()" class="md:hidden text-white p-3 focus:outline-none cursor-pointer z-50 rounded-xl shadow-lg transition-all border border-white/20 mr-1">
+            
+                <svg id="iconOpen" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
                 </svg>
-                <svg id="iconClose" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8 hidden">
+                
+                <svg id="iconClose" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7 hidden">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
-            <div id="mobileMenu" class="absolute top-20 right-0 left-0 bg-white border-t border-gray-100 shadow-xl transform origin-top scale-y-0 opacity-0 transition-all duration-300 ease-in-out md:hidden z-40">
-                <div class="flex flex-col p-4 gap-4">
-                    <a href="#about" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Tentang Kami</a>
-                    <a href="#jobs" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Lowongan</a>
-                    <a href="#contact" onclick="toggleMobileMenu()" class="text-gray-700 font-medium hover:text-[#00A29A] px-2 py-1">Kontak</a>
-                    <hr class="border-gray-200">
-                    <button onclick="toggleMobileMenu(); setTimeout(openLoginModal, 200);" class="w-full text-left font-bold text-[#00A29A] flex items-center gap-3 py-3 px-3 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-                        </svg>
-                        Login
-                    </button>
-                    <button onclick="toggleMobileMenu(); setTimeout(openRegisterModal, 200);" class="w-full text-left font-bold text-white bg-[#1D4388] flex items-center gap-3 py-3 px-3 rounded-lg hover:bg-[#15346b] transition shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3.75 17.25a4.875 4.875 0 009.75 0" />
-                        </svg>
-                        Register
-                    </button>
+
+            <div id="mobileMenu" class="absolute top-20 left-0 right-0 mx-auto w-[90%] max-w-[320px] bg-white border border-gray-100 shadow-xl rounded-2xl transform origin-top scale-y-0 opacity-0 transition-all duration-300 ease-in-out md:hidden z-40 overflow-hidden">
+                <div class="flex flex-col p-4 gap-2">
+                    <a href="#about" onclick="toggleMobileMenu()" class="text-gray-600 font-medium text-sm hover:text-[#00A29A] hover:bg-gray-50 px-4 py-2.5 rounded-lg transition-colors flex items-center gap-3">
+                        <i class="fas fa-info-circle text-gray-400 w-5"></i> Tentang Kami
+                    </a>
+                    <a href="#jobs" onclick="toggleMobileMenu()" class="text-gray-600 font-medium text-sm hover:text-[#00A29A] hover:bg-gray-50 px-4 py-2.5 rounded-lg transition-colors flex items-center gap-3">
+                        <i class="fas fa-briefcase text-gray-400 w-5"></i> Lowongan
+                    </a>
+                    <a href="#contact" onclick="toggleMobileMenu()" class="text-gray-600 font-medium text-sm hover:text-[#00A29A] hover:bg-gray-50 px-4 py-2.5 rounded-lg transition-colors flex items-center gap-3">
+                        <i class="fas fa-phone text-gray-400 w-5"></i> Kontak
+                    </a>
+                    
+                    <div class="h-px bg-gray-100 my-1"></div>
+
+                    <div class="grid grid-cols-2 gap-3 mt-1">
+                        <button onclick="toggleMobileMenu(); setTimeout(openLoginModal, 200);" class="flex justify-center items-center gap-2 py-2.5 px-3 bg-white border border-[#00A29A] text-[#00A29A] hover:bg-[#e6fbf7] rounded-xl text-sm font-semibold transition shadow-sm">
+                            Login
+                        </button>
+                        
+                        <button onclick="toggleMobileMenu(); setTimeout(openRegisterModal, 200);" class="flex justify-center items-center gap-2 py-2.5 px-3 bg-[#00A29A] text-white hover:bg-[#008f87] rounded-xl text-sm font-semibold transition shadow-md shadow-[#00A29A]/30">
+                            Register
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -326,12 +334,13 @@
 
       <div class="relative mt-10 border-t border-gray-700 pt-6 w-full flex flex-col items-center justify-center">
         <p class="text-xs text-gray-400 text-center">
-            &copy; {{ date('Y') }} HCIS. All Rights Reserved.
+            &copy; {{ date('Y') }} Human Capital Information System. <br>
+            All rights reserved.
         </p>
       </div>
     </footer>
-    <div id="registerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
-        <div id="registerCard" class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
+    <div id="registerModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm">
+        <div id="registerCard" class="bg-white w-[90%] sm:w-full max-w-[380px] rounded-2xl p-5 sm:p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto scroll-smooth">
             <button type="button" onclick="closeRegisterModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10">
                 ✕
             </button>
@@ -360,6 +369,7 @@
                     <label class="block font-medium text-gray-700 mb-1 text-sm">Password</label>
                     <input type="password" name="password" placeholder="Password..." class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#00A29A] focus:outline-none text-sm" required>
                     @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+
                 </div>
                 <div class="mb-3">
                     <label class="block font-medium text-gray-700 mb-1 text-sm">Confirm Password</label>
@@ -375,7 +385,7 @@
                     </label>
                 </div>
                 <div class="text-sm text-[#667085] mt-4" style="text-align: right;">
-                    Sudah punya akun? 
+                    Sudah punya akun?
                     <a href="#" onclick="event.preventDefault(); openLoginModal(); closeRegisterModal();" class="font-semibold text-brand underline-offset-2 hover:underline" style="color: #00A29A;">
                         Masuk
                     </a>
@@ -391,8 +401,8 @@
             </form>
         </div>
     </div>
-    <div id="loginModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative">
+    <div id="loginModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm">
+        <div class="bg-white w-[90%] sm:w-full max-w-[350px] rounded-2xl p-5 sm:p-6 shadow-2xl relative transform transition-all">
             <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-5">
             <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">
                 Login
