@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             ContractTemplateSeeder::class,
             AdminUserSeeder::class,
             EmployeeUserSeeder::class,
+            QuestionEvaluationSeeder::class
         ]);
     }
 }

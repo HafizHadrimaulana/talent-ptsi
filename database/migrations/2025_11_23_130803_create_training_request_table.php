@@ -27,6 +27,8 @@ return new class extends Migration
             $table->string('lampiran_penawaran')->nullable();
             $table->string('dokumen_sertifikat')->nullable();
             
+            $table->boolean('is_evaluated')->default(false);
+            
             $table->foreign('training_reference_id')->references('id')->on('training_references')->onDelete('cascade');
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
             

@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('training_evaluation_questions', function (Blueprint $table) {
             $table->id();
             $table->string('category');
+            $table->string('question_type');
             $table->text('question_text');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
