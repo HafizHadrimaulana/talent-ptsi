@@ -168,7 +168,7 @@ class PrincipalApprovalController extends Controller
                     $row->headcount . ' Orang', 
                     $row->employment_type ?? '-', 
                     $this->renderProgressColumn($row), 
-                    $this->renderSlaColumn($row), // Fixed SLA
+                    $this->renderSlaColumn($row),
                     $this->renderActionColumn($row, $me) // Fixed Actions & Attributes
                 ];
             });
@@ -257,7 +257,6 @@ class PrincipalApprovalController extends Controller
     }
 
     private function renderSlaColumn($r) {
-        // [FIXED] Mengembalikan logika SLA
         $status = $r->status ?? 'draft';
         $slaBadgeClass = ''; $slaText = '-';
         $kaUnitApp = null;
@@ -269,7 +268,6 @@ class PrincipalApprovalController extends Controller
         if (in_array($status, ['submitted', 'in_review']) && $kaUnitApp) {
             $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
             $daysDiff = $slaTimeBase->diffInDays(now());
-            // Format diffForHumans
             $rawText = $slaTimeBase->locale('id')->diffForHumans(['parts'=>2,'join'=>true,'syntax'=>\Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW]);
             $cleanText = str_replace(['yang ', 'setelahnya', 'sebelumnya', ' dan '], ['', '', '', ', '], $rawText);
             $slaText = trim($cleanText);

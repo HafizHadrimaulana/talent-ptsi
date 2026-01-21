@@ -11,12 +11,13 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 
 class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, ShouldAutoSize, WithStyles, WithEvents
 {
     protected $query;
     protected $positionsMap;
-    
     protected $mergeData = [];
     protected $currentRow = 2;
 
@@ -26,9 +27,12 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
         $this->positionsMap = $positionsMap;
     }
 
-    public function query()
+   public function query()
     {
-        return $this->query;
+        // Pastikan approvals di-load dan diurutkan agar logika foreach mengambil yang terakhir
+        return $this->query->with(['approvals' => function($q) {
+            $q->orderBy('id', 'asc');
+        }]);
     }
 
     public function headings(): array
@@ -42,8 +46,47 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
             'Headcount', 
             'Jenis Kontrak', 
             'Status', 
+            'SLA',
             'Tanggal Request'
         ];
+    }
+    protected function calculateSla($row)
+    {
+        $status = $row->status ?? 'draft';
+        $slaText = '-';
+        $kaUnitApp = null;
+        
+        // Cari approval dari Kepala Unit yang statusnya approved
+        if ($row->approvals) {
+            foreach($row->approvals as $ap) { 
+                if(strpos($ap->note, 'stage=kepala_unit') !== false && $ap->status == 'approved') {
+                    $kaUnitApp = $ap; 
+                    // break; <--- BARIS INI DIHAPUS
+                }
+            }
+        }
+
+        // Hitung durasi jika status masih berjalan
+        if (in_array($status, ['submitted', 'in_review']) && $kaUnitApp && $kaUnitApp->decided_at) {
+            try {
+                $slaTimeBase = Carbon::parse($kaUnitApp->decided_at);
+                
+                // Menggunakan diffForHumans
+                $rawText = $slaTimeBase->locale('id')->diffForHumans([
+                    'parts' => 2,
+                    'join' => true,
+                    'syntax' => CarbonInterface::DIFF_RELATIVE_TO_NOW
+                ]);
+                
+                // Bersihkan teks agar lebih rapi di Excel
+                $cleanText = str_replace(['yang ', 'setelahnya', 'sebelumnya', ' dan '], ['', '', '', ', '], $rawText);
+                $slaText = trim($cleanText);
+            } catch (\Exception $e) {
+                $slaText = 'Error Date';
+            }
+        }
+
+        return $slaText;
     }
 
     public function map($row): array
@@ -65,8 +108,8 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
                 'end'   => $this->currentRow + $count - 1
             ];
         }
-
         $this->currentRow += $count;
+        $slaValue = $this->calculateSla($row);
 
         // --- GENERATE ROWS ---
         if ($count > 1) {
@@ -84,6 +127,7 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
                     $detail['headcount'] ?? $row->headcount, 
                     $detail['employment_type'] ?? $row->employment_type, 
                     strtoupper($row->status),
+                    $slaValue,
                     $row->created_at ? $row->created_at->format('d-m-Y H:i') : '-',
                 ];
             }
@@ -101,6 +145,7 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
                 $row->headcount,
                 $row->employment_type,
                 strtoupper($row->status),
+                $slaValue,
                 $row->created_at ? $row->created_at->format('d-m-Y H:i') : '-',
             ];
         }
@@ -127,7 +172,7 @@ class RecruitmentRequestExport implements FromQuery, WithHeadings, WithMapping, 
                     $end   = $range['end'];
 
                     // setting merge
-                    $columnsToMerge = ['A', 'C', 'D', 'H', 'I']; 
+                    $columnsToMerge = ['A', 'C', 'D', 'H', 'I', 'J']; 
 
                     foreach ($columnsToMerge as $col) {
                         $sheet->mergeCells("{$col}{$start}:{$col}{$end}");
