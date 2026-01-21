@@ -36,6 +36,7 @@
                     <th>Judul Pelatihan</th>
                     <th>Periode</th>
                     <th>Status</th>
+                    <th>Evaluasi</th>
                     <th>Hasil/Sertifikat</th>
                     <th class="text-center">Aksi</th>
                 </tr>
@@ -47,7 +48,6 @@
                         <div class="u-font-bold text-gray-800">
                             {{ $item->trainingReference->judul_sertifikasi ?? 'Custom Training' }}
                         </div>
-                        <div class="u-text-xxs u-muted">{{ str_pad($item->id, 5, '0', STR_PAD_LEFT) }}</div>
                     </td>
                     <td>
                         <span class="u-text-xs">
@@ -69,7 +69,14 @@
                         </span>
                     </td>
                     <td>
-                        @if($item->lampiran_sertifikat) {{-- Asumsi ada kolom ini --}}
+                        @if($item->is_evaluated == 1)
+                            <span class="u-font-bold text-gray-800 u-text-xs">Sudah mengisi evaluasi</span>
+                        @else
+                            <span class="u-muted italic u-text-xs">Belum mengisi evaluasi</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($item->dokumen_sertifikat)
                             <a href="{{ asset('storage/'.$item->lampiran_sertifikat) }}" class="u-text-xs text-brand u-font-bold">
                                 <i class="fas fa-download u-mr-xs"></i>Sertifikat.pdf
                             </a>
@@ -78,9 +85,12 @@
                         @endif
                     </td>
                     <td class="text-center u-flex u-gap-sm">
+                        @if($item->is_evaluated == 0)
                         <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-training-karyawan" data-id="{{ $item->id }}">
-                            <i class="fas fa-eye"></i> Detail
+                            <i class="fas fa-eye"></i> Evaluasi
                         </button>
+                        @endif
+
                         <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
                             <i class="fas fa-users"></i> Ikatan Dinas
                         </button>
@@ -160,19 +170,45 @@
 
         $(document).on('submit', '#evaluasi-form', function(e) {
             e.preventDefault();
-            console.log('form submitted');
             
             const $form = $(this);
-            const $btn = $form.closest('.u-modal__card').find('button[type="submit"]');
-            const formData = $form.serialize(); // Mengambil semua input radio dan textarea
+            const $btn  = $('#btn-submit');
 
-            // Loading state
-            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
+            const totalQuestions = new Set(
+                $form.find('[name^="answers"]').map(function () {
+                    return this.name;
+                }).get()
+            ).size;
+            const answered = new Set(
+                $form.find('[name^="answers"]:checked, textarea[name^="answers"]').map(function () {
+                    return this.name;
+                }).get()
+            ).size;
+
+            if (answered < totalQuestions) {
+                alert('Harap mengisi seluruh pertanyaan evaluasi terlebih dahulu.');
+                return;
+            }
+
+            const fileInput = document.getElementById('dokumen_sertifikat');
+            if (!fileInput || fileInput.files.length === 0) {
+                alert('Harap upload sertifikat terlebih dahulu.');
+                currentStep = 2;
+                updateStepUI();
+                return;
+            }
+
+            const formData = new FormData(this);
+
+            $btn.prop('disabled', true)
+                .html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
 
             $.ajax({
                 url: "/training/training-request/submit-evaluasi-training",
                 method: "POST",
                 data: formData,
+                processData: false,
+                contentType: false,
                 success: function(response) {
                     if (response.status === 'success') {
                         alert('Evaluasi berhasil disimpan!');
@@ -209,9 +245,26 @@
 
         // Event Listeners Navigasi
         $(document).on('click', '#btn-next', function() {
-            if (currentStep < totalSteps) {
-                currentStep++;
-                updateStepUI();
+            const unanswered = $('#evaluasi-form')
+                .find('input[type="radio"][required]')
+                .filter(function () {
+                    return !$(`[name="${this.name}"]:checked`).length;
+                });
+
+            if (unanswered.length > 0) {
+                alert('Harap isi seluruh evaluasi sebelum melanjutkan.');
+                return;
+            }
+
+            currentStep++;
+            updateStepUI();
+        });
+
+        $('#dokumen_sertifikat').on('change', function () {
+            if (this.files.length > 0) {
+                $('#btn-submit').prop('disabled', false);
+            } else {
+                $('#btn-submit').prop('disabled', true);
             }
         });
 

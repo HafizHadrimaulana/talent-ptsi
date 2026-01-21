@@ -74,9 +74,9 @@
                     </div>
                 </div>
 
-                <div id="step-content-1" class="step-content">
-                    <div style="max-height: 40vh; overflow-y: auto; padding-right: 8px;">
-                        <form id="evaluasi-form" method="POST" action="">
+                <form id="evaluasi-form" method="POST" enctype="multipart/form-data">
+                    <div id="step-content-1" class="step-content">
+                        <div style="max-height: 40vh; overflow-y: auto; padding-right: 8px;">
                             @csrf
                             <input type="hidden" name="training_request_id">
 
@@ -110,17 +110,22 @@
                                     <div id="questions-dampak" class="u-space-y-md"></div>
                                 </div>
                             </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
 
-                <div id="step-content-2" class="step-content hidden">
-                    <div class="u-card u-p-md u-text-center">
-                        <i class="fas fa-cloud-upload-alt fa-3x u-muted u-mb-md"></i>
-                        <p class="u-font-semibold">Upload Sertifikat</p>
-                        <input type="file" class="u-input u-mt-md" id="file-sertifikat">
+                    <div id="step-content-2" class="step-content hidden">
+                        <div class="u-card u-p-md u-text-center">
+                            <i class="fas fa-cloud-upload-alt fa-3x u-muted u-mb-md"></i>
+                            <p class="u-font-semibold">Upload Sertifikat</p>
+                            <input type="file"
+                                class="u-input u-mt-md"
+                                id="dokumen_sertifikat"
+                                name="dokumen_sertifikat"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                required>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
 
             {{-- Modal Footer --}}
@@ -129,7 +134,11 @@
                 <div class="u-flex u-gap-md">
                     <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
                     <button type="button" id="btn-next" class="u-btn u-btn--brand">Lanjut <i class="fas fa-arrow-right u-ml-xs"></i></button>
-                    <button type="submit" form="evaluasi-form" id="btn-submit" class="u-btn u-btn--brand is-hidden">
+                    <button type="submit"
+                        form="evaluasi-form"
+                        id="btn-submit"
+                        class="u-btn u-btn--brand is-hidden"
+                        disabled>
                         <i class="fas fa-save u-mr-xs"></i> Simpan Selesai
                     </button>
                 </div>

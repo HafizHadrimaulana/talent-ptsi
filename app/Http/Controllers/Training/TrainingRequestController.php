@@ -95,46 +95,74 @@ class TrainingRequestController extends Controller
         ]);
     }
 
-    public function submitEvaluasiTraining(Request $request) 
+    public function submitEvaluasiTraining(Request $request)
     {
         $request->validate([
             'training_request_id' => 'required|exists:training_request,id',
-            'answers' => 'required|array', 
+            'answers' => 'required|array',
+            'dokumen_sertifikat' => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
 
-        $userId = auth()->user()->id;
+        Log::info('request evaluation', ['request' => $request->all()]);
+
+        $userId     = auth()->id();
         $trainingId = $request->training_request_id;
 
         try {
             DB::beginTransaction();
 
-            foreach ($request->answers as $questionId => $score) {
-                if ($score) {
-                    TrainingEvaluationAnswer::updateOrCreate(
-                        [
-                            'training_request_id' => $trainingId,
-                            'question_id'         => $questionId,
-                            'user_id'             => $userId,
-                        ],
-                        [
-                            'score' => $score,
-                            'text_answer' => null
-                        ]
-                    );
+            foreach ($request->answers as $questionId => $answer) {
+
+                if ($answer === null || $answer === '') {
+                    continue;
                 }
+
+                $isNumeric = is_numeric($answer);
+
+                TrainingEvaluationAnswer::updateOrCreate(
+                    [
+                        'training_request_id' => $trainingId,
+                        'question_id'         => $questionId,
+                        'user_id'             => $userId,
+                    ],
+                    [
+                        'score'       => $isNumeric ? (int) $answer : null,
+                        'text_answer' => !$isNumeric ? trim($answer) : null,
+                    ]
+                );
             }
 
-            $trainingRequest = TrainingRequest::find($trainingId);
-            // $trainingRequest->update([
-            //     'evaluation_comments' => $request->komentar // Pastikan kolom ini sudah ada
-            // ]);
+            $trainingRequest = TrainingRequest::findOrFail($trainingId);
+
+            if ($request->hasFile('dokumen_sertifikat')) {
+
+                $path = $request->file('dokumen_sertifikat')
+                    ->store('sertifikat_training', 'public');
+
+                $trainingRequest->dokumen_sertifikat = $path;
+            }
+
+            $trainingRequest->is_evaluated = true;
+            $trainingRequest->save();
 
             DB::commit();
-            return response()->json(['status' => 'success', 'message' => 'Evaluasi berhasil disimpan']);
 
-        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Evaluasi & sertifikat berhasil disimpan',
+            ]);
+
+        } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['status' => 'error', 'message' => 'Gagal: ' . $e->getMessage()], 500);
+
+            Log::error('submitEvaluasiTraining error', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal menyimpan evaluasi',
+            ], 500);
         }
     }
 

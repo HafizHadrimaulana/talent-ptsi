@@ -31,6 +31,6 @@ class TrainingEvaluationAnswer extends Model
 
     public function evaluator()
     {
-        return $this->belongsTo(User::class, 'evaluator_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
