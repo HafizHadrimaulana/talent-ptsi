@@ -12,6 +12,8 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\TrainingEvaluationQuestion;
 use App\Models\TrainingEvaluationAnswer;
+use App\Models\Document;
+use Carbon\Carbon;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -93,6 +95,132 @@ class TrainingRequestController extends Controller
             'data' => $data,
             'questions' => $questions
         ]);
+    }
+
+    public function getDetailTrainingIkdin($id)
+    {
+        $user = auth()->user();
+
+        $item = TrainingRequest::with([
+            'employee.person',
+            'trainingReference',
+        ])
+        ->where('id', $id)
+        ->where('employee_id', $user->employee->id)
+        ->first();
+
+        Log::info('item', ['item' => $item]);
+
+        if (!$item) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Data tidak ditemukan',
+            ], 404);
+        }
+
+        $employee = $item->employee;
+
+        $data = [
+            'id'            => $item->id,
+            // === DATA PEGAWAI ===
+            'nama'          => $employee?->person?->full_name ?? '-',
+            'nik'           => $employee?->employee_id ?? '-',
+            'jabatan'       => $employee?->latest_jobs_title ?? '-',
+            'unit_kerja'    => $employee?->latest_jobs_unit ?? '-',
+            // === DATA PROGRAM ===
+            'nama_program'  => $item->trainingReference?->judul_sertifikasi ?? 'Custom Training',
+            'tanggal'       => Carbon::parse($item->start_date)->format('d M Y')
+                                .' - '.
+                                Carbon::parse($item->end_date)->format('d M Y'),
+            'biaya'         => $item->realisasi_biaya_pelatihan ?? 0,
+        ];
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $data,
+        ]);
+    }
+
+    public function updateDokumenIkdin(Request $request)
+    {
+        Log::info('Proses Update Dokumen Ikdin:', $request->all());
+
+        try {
+            DB::beginTransaction();
+
+            $trainingId = $request->training_request_id;
+            $training = TrainingRequest::findOrFail($trainingId);
+
+            // Update data pada tabel Training Request (opsional jika data berubah)
+            $training->update([
+                'judul_sertifikasi' => $request->judul_sertifikasi,
+                'tanggal_pelaksanaan' => $request->tanggal_pelaksanaan,
+                'tempat_pelaksanaan' => $request->tempat_pelaksanaan,
+            ]);
+
+            // Simpan record ke tabel documents
+            // Catatan: Karena ini tahap sebelum tanda tangan, path mungkin masih kosong 
+            // atau diisi dengan placeholder sampai PDF digenerate.
+            $document = Document::create([
+                'employee_id'   => $training->employee_id,
+                'doc_type'      => 'IKATAN_DINAS',
+                'storage_disk'  => 'public',
+                'path'          => 'documents/ikdin/' . $trainingId . '_draft.pdf', 
+                'mime'          => 'application/pdf',
+                'size_bytes'    => 0,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'      => 'success',
+                'message'     => 'Data berhasil disimpan.',
+                'training_id' => $trainingId,
+                'document_id' => $document->id
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updateDokumenIkdin: ' . $e->getMessage());
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteDokumenIkdin(Request $request)
+    {
+        Log::info('Proses Delete Dokumen Ikdin:', $request->all());
+
+        try {
+            DB::beginTransaction();
+
+            $document = Document::find($request->document_id);
+
+            if ($document) {
+                // Hapus file fisik jika ada
+                if (Storage::disk($document->storage_disk)->exists($document->path)) {
+                    Storage::disk($document->storage_disk)->delete($document->path);
+                }
+
+                // Hapus record database
+                $document->delete();
+                
+                DB::commit();
+                return response()->json(['status' => 'success', 'message' => 'Draft berhasil dihapus berdasarkan ID.']);
+            }
+
+            return response()->json(['status' => 'info', 'message' => 'Dokumen sudah tidak ada.']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleteDokumenIkdin: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
     }
 
     public function submitEvaluasiTraining(Request $request)

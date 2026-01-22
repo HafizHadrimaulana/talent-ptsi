@@ -57,7 +57,14 @@ Route::middleware('web')->group(function () {
 
             Route::middleware('permission:training.view')->group(function () {
                 Route::get('training-request', [TrainingRequestController::class, 'index'])->name('training-request');
-                Route::get('training-request/detail-training-request/{id}', [TrainingRequestController::class, 'getDetailTrainingRequest'])->name('training-request/detail-training-request');
+
+                Route::get('training-request/detail-training-evaluasi/{id}', [TrainingRequestController::class, 'getDetailTrainingRequest'])->name('training-request/detail-training-evaluasi');
+                Route::post('training-request/submit-evaluasi-training', [TrainingRequestController::class, 'submitEvaluasiTraining'])->name('training-request/submit-evaluasi-training');
+                
+                Route::get('training-request/detail-training-ikdin/{id}', [TrainingRequestController::class, 'getDetailTrainingIkdin'])->name('training-request.detail-training-ikdin');
+                Route::post('training-request/update-dokumen-ikdin', [TrainingRequestController::class, 'updateDokumenIkdin'])->name('training-request.update-dokumen-ikdin');
+                Route::post('training-request/delete-dokumen-ikdin', [TrainingRequestController::class, 'deleteDokumenIkdin'])->name('training-request.delete-dokumen-ikdin');
+
                 Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])->name('training-request.get-data-lna');
                 Route::get('training-request/get-data-units', [TrainingRequestController::class, 'getDataUnits'])->name('training-request.get-data-units');
                 Route::get('training-request/get-approval-pengajuan-training', [TrainingRequestController::class, 'getApprovalPengajuanTraining'])->name('training-request.get-approval-pengajuan-training');
@@ -65,7 +72,6 @@ Route::middleware('web')->group(function () {
                 Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])->name('training-request.get-employee-by-unit');
                 Route::get('training-request/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])->name('training-request.get-training-request-list');
 
-                Route::post('training-request/submit-evaluasi-training', [TrainingRequestController::class, 'submitEvaluasiTraining'])->name('training-request/submit-evaluasi-training');
                 Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'destroyLna'])->name('training-request.delete-lna');
                 Route::delete('training-request/{id}/delete-training-request', [TrainingRequestController::class, 'destroyTrainingRequest'])->name('training-request.delete-training-request');
                 Route::post('training-request/input-training-request', [TrainingRequestController::class, 'inputTrainingRequest'])->name('training-request.input-training-request');
