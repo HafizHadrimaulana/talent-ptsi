@@ -669,10 +669,9 @@
 
         function togglePasswordVisibility(inputId, triggerBtn) {
             const input = document.getElementById(inputId);
-            // Mencari elemen SVG di dalam tombol yang diklik
             const svgs = triggerBtn.getElementsByTagName('svg');
-            const eyeIcon = svgs[0];      // Icon Mata Terbuka
-            const eyeSlashIcon = svgs[1]; // Icon Mata Tercoret
+            const eyeIcon = svgs[0];
+            const eyeSlashIcon = svgs[1];
 
             if (input.type === "password") {
                 input.type = "text";
@@ -829,9 +828,7 @@
                         loginSubmitBtn.classList.add("bg-[#98A4B8]", "cursor-not-allowed");
                     }
                 };
-                
                 loginTermsCheckbox.addEventListener("change", updateLoginBtn);
-                // Jalankan saat load juga
                 updateLoginBtn();
             }
             const boxes = document.querySelectorAll(".akh-box");

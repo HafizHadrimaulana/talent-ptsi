@@ -129,8 +129,7 @@
                             <b>{{ $org['name'] ?? '-' }}</b> <br>
                             <span style="color: #666; font-size: 9px;">{{ $org['position'] ?? '-' }} ({{ $org['start_year'] ?? '' }} - {{ $org['end_year'] ?? '' }})</span>
                             <div style="font-style: italic; color: #444; margin-top: 4px;">{{ $org['desc'] ?? '-' }}</div>
-                        </li>
-                        
+                        </li>   
                     @endforeach
                 </ul>
             @else

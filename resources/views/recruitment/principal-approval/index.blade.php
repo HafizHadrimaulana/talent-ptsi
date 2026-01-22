@@ -89,7 +89,7 @@
     <div class="u-scroll-x">
       <table id="ip-table" class="u-table nowrap" style="width:100%" data-dt>
         <thead>
-          <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progres</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
+          <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>Jumlah</th><th>Jenis Kontrak</th><th>Progres</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
         </thead>
         <tbody>
           
@@ -921,59 +921,40 @@
                         e.preventDefault();
                         const btnSave = document.getElementById('btnSaveProject');
                         const originalText = btnSave.innerHTML;
-                        
                         btnSave.disabled = true;
                         btnSave.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Menyimpan...';
-                        
                         const formData = new FormData(this);
-                        
                         fetch("{{ route('recruitment.project.store') }}", {
                             method: 'POST',
                             body: formData,
                             headers: {
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                'Accept': 'application/json' // Penting agar return JSON
+                                'Accept': 'application/json'
                             }
                         })
                         .then(response => response.json())
                         .then(data => {
                             if (data.status === 'success') {
-                                // 1. Tutup Modal
                                 const projectModal = document.getElementById('createProjectModal');
                                 if(projectModal) projectModal.style.display = 'none';
-
-                                // 2. UPDATE UI (PERBAIKAN DISINI)
-                                // Kita update Input Search & Hidden Input, bukan Select Option
                                 const searchInput = document.getElementById('kodeProjectSearchInput');
                                 const hiddenInput = document.getElementById('kodeProjectInput');
                                 const namaInput   = document.getElementById('namaProjectInput');
-
                                 if (data.data) {
                                     const newCode = data.data.project_code;
                                     const newName = data.data.project_name;
-
-                                    // Isi kolom search dengan format "KODE - NAMA"
                                     if (searchInput) searchInput.value = newCode + ' - ' + newName;
-                                    
-                                    // Isi input hidden agar form utama bisa dikirim
                                     if (hiddenInput) hiddenInput.value = newCode;
-                                    
-                                    // Isi nama project readonly
                                     if (namaInput) namaInput.value = newName;
                                 }
-
                                 alert('Project berhasil dibuat dan dipilih!');
-                                
-                                // Reset form project untuk penggunaan berikutnya
                                 this.reset();
-                                
                             } else {
                                 alert('Gagal menyimpan: ' + data.message);
                             }
                         })
                         .catch(error => {
                             console.error('Error:', error);
-                            // Alert ini hanya muncul jika benar-benar error koneksi atau server crash (500)
                             alert('Terjadi kesalahan sistem atau validasi.');
                         })
                         .finally(() => {
@@ -1613,17 +1594,12 @@
                         e.preventDefault();
                         const m = document.getElementById('createApprovalModal');
                         const deleteForm = document.getElementById('deleteDraftForm');
-                        
                         if(m) { 
-                            // PERBAIKAN: Set display flex agar tampil
                             m.hidden = false; 
                             m.style.display = 'flex'; 
                             document.body.classList.add('modal-open'); 
-                            
                             const mode = btnCreate.getAttribute('data-mode');
                             multiDataStore = {}; activeDataIndex = 1; totalDataCount = 1;            
-                            
-                            // Logic Create/Edit bawaan Anda tetap sama di bawah ini
                             if(mode === 'create') {
                                 form.reset(); 
                                 setBudgetLock(false, ''); 
@@ -1633,8 +1609,6 @@
                                 if(deleteForm) deleteForm.style.display = 'none';
                                 let methodField = form.querySelector('input[name="_method"]');
                                 if (methodField) methodField.remove();
-                                
-                                // Reset manual inputs
                                 [positionSearchInput, positionInput, positionOrganikSearchInput, positionOrganikInput, 
                                 picProjectSearchInput, picProjectInput, picOrganikSearchInput, picOrganikInput].forEach(el => { if(el) el.value = ''; });
                                 resetDynamicInputs();
@@ -2083,19 +2057,13 @@
                     }
                 }, 800);
                 this.dt = window.initDataTables('#ip-table', {
-                    // AKTIFKAN Server Side AJAX
                     serverSide: true,
                     processing: true,
-                    
-                    // URL endpoint (ke method index controller yg sama)
                     ajax: {
                         url: "{{ route('recruitment.principal-approval.index') }}",
                         data: function(d) {
-                            // Kirim parameter filter tambahan ke controller
-                            // Pastikan input select filter di HTML punya ID yang sesuai
                             const unitSelect = document.querySelector('select[name="unit_id"]');
                             const tabActive = new URLSearchParams(window.location.search).get('tab');
-                            
                             d.unit_id = unitSelect ? unitSelect.value : '';
                             d.tab = tabActive || 'berjalan';
                         }
@@ -2128,21 +2096,13 @@
                         p.addClass('u-btn u-btn--sm u-btn--ghost');
                         p.filter('.current').removeClass('u-btn--ghost').addClass('u-btn--brand');
                         p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
-
-                        // Re-bind event listener untuk tombol yang baru dirender AJAX
-                        // (Misalnya tombol detail atau edit yang ada di dalam tabel)
-                        // Karena konten baru muncul, event onclick global document sudah aman,
-                        // tapi kalau ada inisialisasi spesifik (tooltip, dll), lakukan di sini.
                     }
                 });
-
-                // Event Listener agar saat Filter Unit berubah, tabel reload AJAX
                 const unitSelect = document.querySelector('select[name="unit_id"]');
                 if(unitSelect) {
                     unitSelect.addEventListener('change', () => {
-                        this.dt.draw(); // Refresh tabel via AJAX
+                        this.dt.draw();
                     });
-                    // Hapus attribute onchange="this.form.submit()" dari HTML select agar tidak reload page
                     unitSelect.removeAttribute('onchange');
                 }
             },
