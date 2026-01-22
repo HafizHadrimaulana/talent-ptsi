@@ -236,7 +236,7 @@
             e.preventDefault();
 
             const $form = $(this);
-            const $btn = $form.find('button[type="submit"]'); // Targetkan button submit di dalam form
+            const $btn = $form.find('button[type="submit"]');
             const formData = $form.serialize();
             
             // Set Loading
@@ -317,6 +317,29 @@
                     $modalIkatanDinas.removeClass('hidden').fadeIn(200);
                 });
             }
+        });
+
+        $(document).on('click', '#btn-preview-ikatan-dinas', function () {
+            console.log('clicked');
+            const $btn = $(this);
+            const documentId = $('#signature-document-id').val();
+
+            if (!documentId) {
+                alert('Dokumen belum tersedia untuk dipratinjau.');
+                return;
+            }
+
+            $btn.prop('disabled', true)
+                .html('<i class="fas fa-spinner fa-spin"></i> Membuka...');
+
+            const previewUrl = `/training/training-request/${documentId}/preview-ikatan-dinas`;
+
+            window.open(previewUrl, '_blank');
+
+            setTimeout(() => {
+                $btn.prop('disabled', false)
+                    .html('<i class="fas fa-file-pdf u-mr-xs"></i> Preview Dokumen');
+            }, 800);
         });
         /// END IKATAN DINAS ///
 
@@ -418,11 +441,26 @@
             $modal.find('.detail-jabatan').text(d.jabatan || '-');
             $modal.find('.detail-unit_kerja').text(d.unit_kerja || '-');
 
+            $modal.find('input[name="nama"]').val(d.nama ?? '');
+            $modal.find('input[name="nik"]').val(d.nik ?? '');
+            $modal.find('input[name="jabatan"]').val(d.jabatan ?? '');
+            $modal.find('input[name="unit_kerja"]').val(d.unit_kerja ?? '');
+
             $modal.find('.detail-judul_sertifikasi').val(d.nama_program || '-');
-            $modal.find('.detail-tanggal_pelaksanaan').val(d.tanggal || '-');
+            $modal.find('.detail-start_date').val(d.start_date || '-');
+            $modal.find('.detail-end_date').val(d.end_date || '-');
             $modal.find('.detail-tempat_pelaksanaan').val(d.tempat || '-');
 
+            if (d.jenis_program) {
+                $modal
+                    .find(`input[name="jenis_program"][value="${d.jenis_program}"]`)
+                    .prop('checked', true);
+            }
+
             const biaya = Number(d.biaya || 0);
+
+            $modal.find('input[name="biaya_pelatihan"]').val(biaya);
+
             const formattedBiaya = biaya > 0
                 ? 'Rp ' + biaya.toLocaleString('id-ID')
                 : 'Rp -';

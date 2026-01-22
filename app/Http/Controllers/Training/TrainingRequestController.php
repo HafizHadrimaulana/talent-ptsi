@@ -12,8 +12,9 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\TrainingEvaluationQuestion;
 use App\Models\TrainingEvaluationAnswer;
-use App\Models\Document;
+use App\Models\TrainingDocument;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -129,9 +130,8 @@ class TrainingRequestController extends Controller
             'unit_kerja'    => $employee?->latest_jobs_unit ?? '-',
             // === DATA PROGRAM ===
             'nama_program'  => $item->trainingReference?->judul_sertifikasi ?? 'Custom Training',
-            'tanggal'       => Carbon::parse($item->start_date)->format('d M Y')
-                                .' - '.
-                                Carbon::parse($item->end_date)->format('d M Y'),
+            'start_date'       => $item->start_date,
+            'end_date'       => $item->end_date,
             'biaya'         => $item->realisasi_biaya_pelatihan ?? 0,
         ];
 
@@ -148,37 +148,44 @@ class TrainingRequestController extends Controller
         try {
             DB::beginTransaction();
 
-            $trainingId = $request->training_request_id;
-            $training = TrainingRequest::findOrFail($trainingId);
+            $training = TrainingRequest::findOrFail($request->training_request_id);
 
-            // Update data pada tabel Training Request (opsional jika data berubah)
-            $training->update([
-                'judul_sertifikasi' => $request->judul_sertifikasi,
-                'tanggal_pelaksanaan' => $request->tanggal_pelaksanaan,
-                'tempat_pelaksanaan' => $request->tempat_pelaksanaan,
-            ]);
+            $payload = [
+                'employee' => [
+                    'nama'       => $request->nama,
+                    'nik'        => $request->nik,
+                    'jabatan'    => $request->jabatan,
+                    'unit_kerja' => $request->unit_kerja,
+                ],
+                'program' => [
+                    'jenis' => [
+                        'formal'       => (bool) $request->is_formal,
+                        'sertifikasi'  => (bool) $request->is_sertifikasi,
+                    ],
+                    'nama'            => $request->judul_sertifikasi,
+                    'start_date'      => $request->start_date,
+                    'end_date'        => $request->end_date,
+                    'tempat'          => $request->tempat_pelaksanaan,
+                ],
+                'biaya' => (int) $request->biaya_pelatihan,
+            ];
 
-            // Simpan record ke tabel documents
-            // Catatan: Karena ini tahap sebelum tanda tangan, path mungkin masih kosong 
-            // atau diisi dengan placeholder sampai PDF digenerate.
-            $document = Document::create([
-                'employee_id'   => $training->employee_id,
-                'doc_type'      => 'IKATAN_DINAS',
-                'storage_disk'  => 'public',
-                'path'          => 'documents/ikdin/' . $trainingId . '_draft.pdf', 
-                'mime'          => 'application/pdf',
-                'size_bytes'    => 0,
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
+            $document = TrainingDocument::updateOrCreate(
+                [
+                    'training_request_id' => $training->id,
+                    'template_code'       => 'IKATAN_DINAS',
+                    'payload'             => $payload,
+                    'status'              => 'draft',
+                ],
+            );
 
             DB::commit();
 
             return response()->json([
                 'status'      => 'success',
-                'message'     => 'Data berhasil disimpan.',
-                'training_id' => $trainingId,
-                'document_id' => $document->id
+                'message'     => 'Dokumen Ikatan Dinas berhasil disimpan.',
+                'training_id' => $training->id,
+                'document_id' => $document->id,
             ]);
 
         } catch (\Exception $e) {
@@ -187,7 +194,7 @@ class TrainingRequestController extends Controller
 
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan saat menyimpan dokumen.',
             ], 500);
         }
     }
@@ -199,28 +206,74 @@ class TrainingRequestController extends Controller
         try {
             DB::beginTransaction();
 
-            $document = Document::find($request->document_id);
+            $document = TrainingDocument::find($request->document_id);
 
-            if ($document) {
-                // Hapus file fisik jika ada
-                if (Storage::disk($document->storage_disk)->exists($document->path)) {
-                    Storage::disk($document->storage_disk)->delete($document->path);
-                }
-
-                // Hapus record database
-                $document->delete();
-                
-                DB::commit();
-                return response()->json(['status' => 'success', 'message' => 'Draft berhasil dihapus berdasarkan ID.']);
+            if (!$document) {
+                return response()->json([
+                    'status'  => 'info',
+                    'message' => 'Dokumen sudah tidak ditemukan.'
+                ]);
             }
 
-            return response()->json(['status' => 'info', 'message' => 'Dokumen sudah tidak ada.']);
+            // OPTIONAL: Cegah hapus jika sudah signed
+            if ($document->status === 'signed') {
+                return response()->json([
+                    'status'  => 'warning',
+                    'message' => 'Dokumen sudah ditandatangani dan tidak dapat dihapus.'
+                ], 422);
+            }
+
+            // Hapus file draft jika ada
+            if ($document->draft_path && Storage::disk('public')->exists($document->draft_path)) {
+                Storage::disk('public')->delete($document->draft_path);
+            }
+
+            // (Opsional) hapus signed file kalau memang kebijakan mengizinkan
+            if ($document->signed_path && Storage::disk('public')->exists($document->signed_path)) {
+                Storage::disk('public')->delete($document->signed_path);
+            }
+
+            // Hapus record database
+            $document->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Dokumen Ikatan Dinas berhasil dihapus.'
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleteDokumenIkdin: ' . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan saat menghapus dokumen.'
+            ], 500);
         }
+    }
+
+    public function previewDokumenIkdin(TrainingDocument $document)
+    {
+        abort_if($document->template_code !== 'IKATAN_DINAS', 404);
+
+        $payload = $document->payload;
+
+        abort_if(empty($payload), 404, 'Payload dokumen tidak tersedia');
+
+        $pdf = Pdf::loadView(
+            'training.training-management.pdf.ikatan-dinas',
+            [
+                'payload'  => $payload,
+                'document' => $document,
+            ]
+        )
+        ->setPaper('A4')
+        ->setOption('isHtml5ParserEnabled', true)
+        ->setOption('isRemoteEnabled', true);
+
+        return $pdf->stream('ikatan-dinas-preview.pdf');
     }
 
     public function submitEvaluasiTraining(Request $request)

@@ -64,6 +64,7 @@ Route::middleware('web')->group(function () {
                 Route::get('training-request/detail-training-ikdin/{id}', [TrainingRequestController::class, 'getDetailTrainingIkdin'])->name('training-request.detail-training-ikdin');
                 Route::post('training-request/update-dokumen-ikdin', [TrainingRequestController::class, 'updateDokumenIkdin'])->name('training-request.update-dokumen-ikdin');
                 Route::post('training-request/delete-dokumen-ikdin', [TrainingRequestController::class, 'deleteDokumenIkdin'])->name('training-request.delete-dokumen-ikdin');
+                Route::get('training-request/{document}/preview-ikatan-dinas', [TrainingRequestController::class, 'previewDokumenIkdin'])->name('training-request.preview-dokumen-ikdin');
 
                 Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])->name('training-request.get-data-lna');
                 Route::get('training-request/get-data-units', [TrainingRequestController::class, 'getDataUnits'])->name('training-request.get-data-units');

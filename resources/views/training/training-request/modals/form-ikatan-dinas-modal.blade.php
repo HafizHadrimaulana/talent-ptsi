@@ -5,6 +5,7 @@
             @csrf
             <input type="hidden" name="training_request_id" id="modal-training-id">
             <input type="hidden" name="employee_id" id="modal-employee-id">
+
             {{-- Modal Header --}}
             <div class="u-modal__head u-mb-sm">
                 <div class="u-flex u-items-center u-gap-md">
@@ -27,6 +28,13 @@
                     <div class="u-mb-md border-b u-pb-xs">
                         <h3 class="u-text-sm u-font-bold u-uppercase text-brand">Data Peserta & Program</h3>
                     </div>
+
+                    <input type="hidden" name="nama" id="payload-nama">
+                    <input type="hidden" name="nik" id="payload-nik">
+                    <input type="hidden" name="jabatan" id="payload-jabatan">
+                    <input type="hidden" name="unit_kerja" id="payload-unit-kerja">
+                    <input type="hidden" name="biaya_pelatihan" id="payload-biaya-pelatihan">
+
                     <div class="grid grid-cols-2 u-gap-md u-mb-lg">
                         <div>
                             <label class="u-text-xs u-muted u-uppercase font-semibold">Nama</label>
@@ -64,12 +72,21 @@
                                         <div class="grid grid-cols-1 sm:u-flex sm:u-gap-md sm:u-items-center u-mb-md">
                                             <span class="u-text-xs u-muted font-semibold uppercase" style="width: 130px; flex-shrink: 0;">Jenis Program</span>
                                             <div class="u-flex u-flex-wrap u-gap-md u-text-sm u-py-xs sm:u-py-0">
-                                                <label class="u-flex u-items-center u-gap-xs cursor-default">
-                                                    <input type="checkbox" disabled class="detail-is_formal u-rounded"> 
+                                                <label class="u-flex u-items-center u-gap-xs">
+                                                    <input type="radio"
+                                                        name="jenis_program"
+                                                        value="FORMAL"
+                                                        class="u-rounded"
+                                                        required>
                                                     <span class="text-gray-700">Pendidikan Formal</span>
                                                 </label>
-                                                <label class="u-flex u-items-center u-gap-md cursor-default">
-                                                    <input type="checkbox" disabled class="detail-is_sertifikasi u-rounded"> 
+
+                                                <label class="u-flex u-items-center u-gap-xs">
+                                                    <input type="radio"
+                                                        name="jenis_program"
+                                                        value="SERTIFIKASI"
+                                                        class="u-rounded"
+                                                        required>
                                                     <span class="text-gray-700">Pelatihan / Sertifikasi</span>
                                                 </label>
                                             </div>
@@ -80,15 +97,29 @@
                                             <input type="text" 
                                                 name="judul_sertifikasi" 
                                                 class="u-input u-flex-1 u-text-sm u-font-semibold detail-judul_sertifikasi text-gray-800" 
-                                                value="-" readonly>
+                                                value="-">
                                         </div>
 
                                         <div class="grid grid-cols-1 sm:u-flex sm:u-gap-md sm:u-items-center u-pt-sm sm:u-pt-0 sm:u-p-sm">
-                                            <label class="u-text-xs u-muted font-semibold uppercase" style="width: 130px; flex-shrink: 0;">Tanggal</label>
-                                            <input type="text" 
-                                                name="tanggal_pelaksanaan" 
-                                                class="u-input u-flex-1 u-text-sm detail-tanggal_pelaksanaan text-gray-700" 
-                                                value="-" readonly>
+                                            <label class="u-text-xs u-muted font-semibold uppercase"
+                                                style="width: 130px; flex-shrink: 0;">
+                                                Tanggal Mulai
+                                            </label>
+                                            <input type="date"
+                                                name="start_date"
+                                                class="u-input u-flex-1 u-text-sm detail-start_date"
+                                                required>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 sm:u-flex sm:u-gap-md sm:u-items-center u-pt-sm sm:u-pt-0 sm:u-p-sm">
+                                            <label class="u-text-xs u-muted font-semibold uppercase"
+                                                style="width: 130px; flex-shrink: 0;">
+                                                Tanggal Berakhir
+                                            </label>
+                                            <input type="date"
+                                                name="end_date"
+                                                class="u-input u-flex-1 u-text-sm detail-end_date"
+                                                required>
                                         </div>
 
                                         <div class="grid grid-cols-1 sm:u-flex sm:u-gap-md sm:u-items-center u-pt-sm sm:u-pt-0 sm:u-p-sm">
@@ -96,7 +127,7 @@
                                             <input type="text" 
                                                 name="tempat_pelaksanaan" 
                                                 class="u-input u-flex-1 u-text-sm detail-tempat_pelaksanaan text-gray-700" 
-                                                value="-" readonly>
+                                                value="-">
                                         </div>
                                     </div>
                                 </div>
