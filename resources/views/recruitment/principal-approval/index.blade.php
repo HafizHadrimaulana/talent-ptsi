@@ -790,9 +790,8 @@
                     return;
                 }
                 const reqId = document.getElementById('publish_req_id').value;
-                const row = document.querySelector(`tr[data-recruitment-id="${reqId}"]`);
-                const detailBtn = row ? row.querySelector('.js-open-detail') : null;
-                const positionName = detailBtn ? detailBtn.getAttribute('data-position') : 'Posisi';
+                const viewPosEl = document.getElementById('view-position');
+                const positionName = viewPosEl ? viewPosEl.textContent.trim() : 'Posisi';
                 document.getElementById('previewTitle').textContent = positionName;
                 const d1 = new Date(startDate).toLocaleDateString('id-ID');
                 const d2 = new Date(endDate).toLocaleDateString('id-ID');

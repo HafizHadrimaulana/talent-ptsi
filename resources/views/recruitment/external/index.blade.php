@@ -92,6 +92,15 @@
                     <input type="file" name="cv_file" class="u-input" accept=".pdf" required>
                     <div class="u-text-xs u-muted u-mt-xs">Format PDF only.</div>
                 </div>
+                <div>
+                    <label class="flex items-start gap-2 font-medium text-gray-700 text-xs cursor-pointer">
+                        <input type="checkbox" id="agreement" class="mt-0.5" required>
+                        <span>
+                            Saya menyatakan bahwa biodata yang saya isi adalah benar dan saya bertanggung jawab atas kebenaran informasi yang saya berikan.
+                        </span>
+                        <span class="text-red-500">*</span>
+                    </label>
+                </div>
             </div>
             <div class="u-modal__foot u-flex u-justify-end">
                 <button type="submit" class="u-btn u-btn--brand">Kirim Lamaran</button>
