@@ -13,21 +13,36 @@ class EmployeeUserSeeder extends Seeder
 {
     public function run(): void
     {
+        $allowedStatuses = [
+            'Tetap',
+            'Kontrak Organik',
+            'Kontrak-Project Based',
+            'Kontrak-MPS',
+            'Kontrak-Tenaga Ahli',
+            'Kontrak-On Call'
+        ];
+
+        $invalidEmployeeIds = Employee::query()
+            ->whereNotIn('employee_status', $allowedStatuses)
+            ->orWhereNull('unit_id')
+            ->pluck('employee_id')
+            ->toArray();
+
+        User::where('email', '!=', 'admin@ptsi.co.id')
+            ->where('employee_id', 'NOT LIKE', 'ADM-%')
+            ->whereIn('employee_id', $invalidEmployeeIds)
+            ->delete();
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $password = Hash::make('password');
-
-        $dhcUnitId = Unit::where('name', 'like', '%Human Capital%')
-            ->orWhere('code', 'DHC')
-            ->value('id');
-
-        $validUnitIds = Unit::pluck('id')->flip()->all();
+        $dhcUnitId = Unit::where('code', 'DHC')->value('id');
 
         $query = Employee::with('person')
             ->whereNotNull('unit_id')
-            ->where('employee_status', '!=', 'Pelamar')
-            ->where('employee_id', 'NOT LIKE', 'PL-%');
+            ->where('employee_id', 'NOT LIKE', 'PL-%')
+            ->whereIn('employee_status', $allowedStatuses);
 
-        $query->chunk(200, function ($employees) use ($password, $dhcUnitId, $validUnitIds) {
+        $query->chunk(200, function ($employees) use ($password, $dhcUnitId) {
             foreach ($employees as $emp) {
                 $rawEmail = trim($emp->email);
                 $empId = $emp->employee_id;
@@ -43,7 +58,6 @@ class EmployeeUserSeeder extends Seeder
                     $finalEmail = $isDuplicate ? $empId . '.' . $rawEmail : $rawEmail;
                 }
 
-                $safeUnitId = isset($validUnitIds[$emp->unit_id]) ? $emp->unit_id : null;
                 $fullName = $emp->person->full_name ?? $empId;
 
                 $user = User::updateOrCreate(
@@ -52,7 +66,7 @@ class EmployeeUserSeeder extends Seeder
                         'name' => $fullName,
                         'email' => $finalEmail,
                         'person_id' => $emp->person_id,
-                        'unit_id' => $safeUnitId,
+                        'unit_id' => $emp->unit_id,
                         'password' => $password,
                     ]
                 );
@@ -68,7 +82,7 @@ class EmployeeUserSeeder extends Seeder
                     $isKepala = true;
                 }
 
-                $shouldHaveDhc = ($safeUnitId && $isKepala && $dhcUnitId && $safeUnitId == $dhcUnitId);
+                $shouldHaveDhc = ($emp->unit_id && $isKepala && $dhcUnitId && $emp->unit_id == $dhcUnitId);
 
                 app(PermissionRegistrar::class)->setPermissionsTeamId(0);
                 if ($shouldHaveDhc) {
@@ -81,7 +95,7 @@ class EmployeeUserSeeder extends Seeder
                     }
                 }
 
-                $teamId = $safeUnitId ?? 0;
+                $teamId = $emp->unit_id ?? 0;
                 app(PermissionRegistrar::class)->setPermissionsTeamId($teamId);
 
                 $user->syncRoles($roles);

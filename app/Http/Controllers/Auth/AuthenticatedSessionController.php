@@ -35,40 +35,44 @@ class AuthenticatedSessionController extends Controller
 
         $login    = trim($cred['login']);
         $password = $cred['password'];
-        $newlyProvisioned = false;
 
         $user = User::query()->where('email', $login)->first();
 
         if (!$user) {
+            $user = User::query()->where('employee_id', $login)->first();
+        }
+
+        if (!$user) {
             $normalized = preg_replace('/\D+/', '', $login);
             if ($normalized !== '') {
-                $emp = Employee::query()
-                    ->where('employee_id', $normalized)
-                    ->orWhere('id_sitms', $normalized)
-                    ->first();
-
-                if ($emp) {
-                    $user = User::query()->where('employee_id', $emp->employee_id)->first();
-
-                    if (!$user) {
-                        $user = new User();
-                        $user->person_id   = $emp->person_id ?? null;
-                        $user->employee_id = $emp->employee_id;
-                        $user->unit_id     = $emp->unit_id;
-                        $user->name        = $this->resolveDisplayNameFromEmployee($emp);
-                        $user->email       = $emp->email;
-                        $user->password    = Hash::make('password');
-                        $user->save();
-
-                        $newlyProvisioned = true;
-                    }
-                }
+                $user = User::query()->where('employee_id', $normalized)->first();
             }
         }
 
         $loggedIn = false;
 
         if ($user) {
+            if ($user->employee_id) {
+                $empStatus = DB::table('employees')
+                    ->where('employee_id', $user->employee_id)
+                    ->value('employee_status');
+                
+                $allowedStatuses = [
+                    'Tetap',
+                    'Kontrak Organik',
+                    'Kontrak-Project Based',
+                    'Kontrak-MPS',
+                    'Kontrak-Tenaga Ahli',
+                    'Kontrak-On Call'
+                ];
+                
+                if ($empStatus && !in_array($empStatus, $allowedStatuses)) {
+                    throw ValidationException::withMessages([
+                        'login' => 'Status kepegawaian Anda tidak diizinkan untuk login.', 
+                    ]);
+                }
+            }
+
             if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
                 if (Auth::attempt(['email' => $login, 'password' => $password], $request->boolean('remember'))) {
                     $request->session()->regenerate();
@@ -85,7 +89,7 @@ class AuthenticatedSessionController extends Controller
 
         if (!$loggedIn) {
             throw ValidationException::withMessages([
-                'login' => 'Kredensial Salah.', 
+                'login' => 'Kredensial Salah atau Akun tidak ditemukan.', 
             ]);
         }
 
@@ -93,10 +97,6 @@ class AuthenticatedSessionController extends Controller
         $registrar->setPermissionsTeamId($user->unit_id);
 
         $this->syncDisplayNameFromHR($user);
-
-        if ($newlyProvisioned) {
-            $this->provisionInitialRoles($user);
-        }
 
         if ($user->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit', 'Admin Operasi Unit'])) {
             return redirect()->route('admin.dashboard');
@@ -158,87 +158,5 @@ class AuthenticatedSessionController extends Controller
                 $user->save();
             }
         }
-    }
-
-    private function provisionInitialRoles(User $user): void
-    {
-        $emp = Employee::query()->where('employee_id', $user->employee_id)->first();
-        $job = $emp?->latest_jobs_title ?: $emp?->job_title ?: '';
-
-        $targets = $this->decideRoleNames($job);
-
-        if (!in_array('Karyawan', $targets, true)) {
-            array_unshift($targets, 'Karyawan');
-        }
-        $targets = array_values(array_unique($targets));
-
-        $registrar = app(PermissionRegistrar::class);
-        $currentUnitId = $user->unit_id ?: 0;
-        $guard = $this->resolveGuardName($user);
-
-        foreach ($targets as $roleName) {
-            $registrar->setPermissionsTeamId($currentUnitId);
-
-            $role = Role::query()
-                ->where(function ($q) use ($currentUnitId) {
-                    $q->whereNull('unit_id')->orWhere('unit_id', $currentUnitId);
-                })
-                ->where('name', $roleName)
-                ->where('guard_name', $guard)
-                ->orderByRaw('CASE WHEN unit_id = ? THEN 0 ELSE 1 END', [$currentUnitId])
-                ->first();
-
-            if (!$role) {
-                $role = new Role();
-                $role->name = $roleName;
-                $role->guard_name = $guard;
-                if (Schema::hasColumn($role->getTable(), 'unit_id')) {
-                    $role->unit_id = $currentUnitId;
-                }
-                $role->save();
-            }
-
-            $already = DB::table('model_has_roles')
-                ->where('model_type', User::class)
-                ->where('model_id', $user->id)
-                ->where('role_id', $role->id)
-                ->where(function($w) use ($currentUnitId){
-                    $w->where('unit_id', $currentUnitId)->orWhereNull('unit_id');
-                })
-                ->exists();
-
-            if (!$already) {
-                $user->assignRole($role);
-            }
-        }
-    }
-
-    private function resolveGuardName(User $user): string
-    {
-        if (property_exists($user, 'guard_name') && !empty($user->guard_name)) {
-            return (string) $user->guard_name;
-        }
-        $cfg = (string) config('auth.defaults.guard', 'web');
-        return $cfg ?: 'web';
-    }
-
-    private function decideRoleNames(?string $title): array
-    {
-        $t = mb_strtolower($title ?? '');
-        if ($t === '') return ['Karyawan'];
-
-        $roles = ['Karyawan'];
-
-        if (preg_match('/(?:(?:general)\s*manager|\bgm\b)/u', $t)) {
-            $roles[] = 'Kepala Unit';
-        }
-        if (preg_match('/(?:vice\s*president|\bvp\b|v\.p\.|vp\s*\/\s*gm|wakil\s*presiden)/u', $t)) {
-            $roles[] = 'Kepala Unit';
-        }
-        if (preg_match('/kepala\s*unit|unit\s*head|head\s*of\s*unit/u', $t)) {
-            $roles[] = 'Kepala Unit';
-        }
-
-        return $roles;
     }
 }

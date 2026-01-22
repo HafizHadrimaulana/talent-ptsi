@@ -393,7 +393,7 @@ class SyncSitmsMasterJob implements ShouldQueue
                 'Cabang Makassar' => 'SIMAK', 'Cabang Batam' => 'SIBAT', 'Cabang Balikpapan' => 'SIBPP',
                 'Cabang Medan' => 'SIMED', 'Cabang Palembang' => 'SIPAL', 'Cabang Pekanbaru' => 'SIPKU',
                 'Cabang Semarang' => 'SISMA', 'Cabang Singapura' => 'SISG', 'Sekretariat Perusahaan' => 'SP',
-                'Satuan Pengawasan Intern' => 'SPI', 'Divisi Riset, Pemasaran dan Pengembangan Bisnis' => 'DRP2B',
+                'Satuan Pengawasan Intern' => 'SPI', 'Divisi Riset, Pemasaran dan Pengembangan Bisnis' => 'DRPPB',
                 'Divisi Operasi' => 'DOP', 'Divisi Keuangan dan Akuntansi' => 'DKA',
                 'Divisi Perencanaan Korporat dan Manajemen Risiko' => 'DPKMR', 'Divisi Manajemen Aset' => 'DMA',
                 'Divisi Human Capital' => 'DHC', 'Divisi Teknologi Informasi' => 'DTI',

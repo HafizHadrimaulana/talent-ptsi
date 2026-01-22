@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             UnitsSeeder::class,
             RolesPermissionsSeeder::class,
             ContractTemplateSeeder::class,
+            PrincipalApprovalTemplateSeeder::class,
             AdminUserSeeder::class,
             EmployeeUserSeeder::class,
         ]);
