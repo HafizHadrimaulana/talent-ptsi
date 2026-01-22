@@ -4,9 +4,10 @@
     $roleNames = $user ? $user->getRoleNames() : collect([]);
     
     $isPelamar = $user && $user->hasRole('Pelamar');
+    
     $isAdminSystem = $user->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit', 'Admin Operasi Unit']);
+    
     $isSuper = $roleNames->contains(fn($r)=> in_array(strtolower($r), ['superadmin','super-admin','admin','administrator']));
-    $isDHC = $user && $user->hasRole('DHC');
 
     $targetDashboardRoute = route('employee.dashboard');
     $dashboardLabel = 'Dashboard';
@@ -18,10 +19,14 @@
     }
 
     $showMain = true;
-    $showRecruitment = $isAdminSystem || $isPelamar || $user?->hasAnyPermission(['recruitment.view','contract.view']);
-    $showTraining = !$isPelamar && ($isAdminSystem || $user?->hasAnyPermission(['training.view']));
-    $showSettings = !$isPelamar && ($user && ($user->can('users.view') || $user->can('rbac.view')));
-    $showMaster = !$isPelamar && ($isAdminSystem || ($user && $user->can('org.view')));
+    
+    $showRecruitment = $isSuper || $isPelamar || $user?->hasAnyPermission(['recruitment.view','contract.view']);
+    
+    $showTraining = !$isPelamar && ($isSuper || $user?->hasAnyPermission(['training.view', 'training.dashboard.view', 'training.management.view']));
+    
+    $showSettings = !$isPelamar && ($isSuper || ($user && ($user->can('users.view') || $user->can('rbac.view'))));
+    
+    $showMaster = !$isPelamar && ($isSuper || ($user && $user->can('org.view')));
 
     $printedAnySection = false;
 
@@ -98,12 +103,12 @@
                 </a>
                 @endif
 
-                @can('recruitment.external.view')
+                @if($isSuper || $user->can('recruitment.external.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}" href="{{ route('recruitment.external.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
                     <span class="label">Careers</span>
                 </a>
-                @endcan
+                @endif
 
                 @if( ($isSuper || $user?->can('recruitment.view')) && !$hideMenuForNonHcAvp )
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.monitoring')?'active':'' }}" href="{{ \Illuminate\Support\Facades\Route::has('recruitment.monitoring') ? route('recruitment.monitoring') : '#' }}">
@@ -177,20 +182,20 @@
     <nav class="nav-section">
         <div class="nav-title">Settings</div>
         <div class="nav">
-            @canany(['users.view','rbac.view'])
             <button type="button" class="nav-item js-accordion {{ $acOpen ? 'open' : '' }} {{ $isSetActive ? 'active' : '' }}" data-accordion="nav-access" aria-expanded="{{ $acOpen ? 'true' : 'false' }}">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
                 <span class="label">Configuration</span>
                 <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
             </button>
             <div id="nav-access" class="nav-children {{ $acOpen ? 'open' : '' }}" data-accordion-panel="nav-access">
-                @can('users.view')
+                @if($isSuper || $user->can('users.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                     <span class="label">User Management</span>
                 </a>
-                @endcan
-                @can('rbac.view')
+                @endif
+                
+                @if($isSuper || $user->can('rbac.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('admin.roles.*') ? 'active' : '' }}" href="{{ route('admin.roles.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></svg>
                     <span class="label">Role Management</span>
@@ -199,9 +204,8 @@
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5" /><path d="m21 2-9.6 9.6" /><path d="m15.5 7.5 3 3L22 7l-3-3" /></svg>
                     <span class="label">Permissions</span>
                 </a>
-                @endcan
+                @endif
             </div>
-            @endcanany
         </div>
     </nav>
     @php $printedAnySection = true; @endphp
@@ -221,11 +225,14 @@
                 <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
             </button>
             <div id="nav-masterdata" class="nav-children {{ $mdOpen ? 'open' : '' }}" data-accordion-panel="nav-masterdata">
+                @if($isSuper || $user->can('org.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('admin.org.index') ? 'active' : '' }}" href="{{ route('admin.org.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M8 10h.01" /><path d="M16 10h.01" /><path d="M8 14h.01" /><path d="M16 14h.01" /></svg>
                     <span class="label">Directorates & Units</span>
                 </a>
-                @if($isSuper || $isDHC)
+                @endif
+                
+                @if($isSuper || $user->can('contract.template.view'))
                 <a class="nav-item nav-child {{ request()->routeIs('admin.contract-templates.*') ? 'active' : '' }}" href="{{ route('admin.contract-templates.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><path d="M9 3v18" /><path d="m14 9 3 3-3 3" /><path d="M9 12h8" /></svg>
                     <span class="label">Document Templates</span>

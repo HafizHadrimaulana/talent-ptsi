@@ -17,7 +17,6 @@
             </div>
 
             {{-- Modal Body --}}
-            {{-- HAPUS overflow-y dari sini agar Card 1 tetap diam --}}
             <div class="u-modal__body u-p-md u-space-y-lg">
                 
                 {{-- Card 1: Informasi Pelatihan (Sekarang akan diam/fixed) --}}
@@ -53,23 +52,11 @@
                     <div style="position: relative; display: flex; align-items: center; justify-content: space-between;">
                         
                         <div style="position: absolute; top: 16px; left: 16.66%; right: 16.66%; height: 2px; z-index: 1;">
-                            {{-- 1. Garis Dasar (Background) --}}
                             <div style="position: absolute; inset: 0; background: var(--border);"></div>
-
-                            {{-- 2. Garis Progress (Sekarang aman menggunakan width %) --}}
                             <div id="progress-line" style="position: absolute; top: 0; left: 0; width: 0%; height: 100%; background: var(--accent); transition: width 0.4s ease;"></div>
                         </div>
 
-                        {{-- Step Items (Tetap sama) --}}
                         <div class="step-item u-flex u-flex-col u-items-center" data-step="1" style="position: relative; z-index: 3; width: 33.33%;">
-                            <div class="step-circle u-flex u-items-center justify-center" 
-                                style="width: 32px; height: 32px; border-radius: 999px; background: #ffffff !important; border: 2px solid var(--border); transition: all 0.3s ease;">
-                                <i class="fas fa-check is-hidden" style="color: #fff; font-size: 10px;"></i>
-                            </div>
-                            <span class="u-text-xs u-font-medium u-mt-sm step-label u-muted">Ikatan Dinas</span>
-                        </div>
-
-                        <div class="step-item u-flex u-flex-col u-items-center" data-step="2" style="position: relative; z-index: 3; width: 33.33%;">
                             <div class="step-circle u-flex u-items-center justify-center" 
                                 style="width: 32px; height: 32px; border-radius: 999px; background: #ffffff !important; border: 2px solid var(--border); transition: all 0.3s ease;">
                                 <i class="fas fa-check is-hidden" style="color: #fff; font-size: 10px;"></i>
@@ -77,7 +64,7 @@
                             <span class="u-text-xs u-font-medium u-mt-sm step-label u-muted">Evaluasi</span>
                         </div>
 
-                        <div class="step-item u-flex u-flex-col u-items-center" data-step="3" style="position: relative; z-index: 3; width: 33.33%;">
+                        <div class="step-item u-flex u-flex-col u-items-center" data-step="2" style="position: relative; z-index: 3; width: 33.33%;">
                             <div class="step-circle u-flex u-items-center justify-center" 
                                 style="width: 32px; height: 32px; border-radius: 999px; background: #ffffff !important; border: 2px solid var(--border); transition: all 0.3s ease;">
                                 <i class="fas fa-check is-hidden" style="color: #fff; font-size: 10px;"></i>
@@ -87,62 +74,74 @@
                     </div>
                 </div>
 
-                {{-- Area Form yang bisa di-scroll --}}
-                <div style="max-height: 40vh; overflow-y: auto; padding-right: 8px;">
-                    <form id="evaluasi-form" method="POST" action="">
-                        @csrf
-                        <input type="hidden" name="training_request_id">
+                <form id="evaluasi-form" method="POST" enctype="multipart/form-data">
+                    <div id="step-content-1" class="step-content">
+                        <div style="max-height: 40vh; overflow-y: auto; padding-right: 8px;">
+                            @csrf
+                            <input type="hidden" name="training_request_id">
 
-                        <div class="u-space-y-lg">
-                            {{-- Card 2: Penilaian Penyelenggaraan --}}
-                            <div class="u-card u-p-md border-t-4 border-brand">
-                                <div class="u-mb-md border-b u-pb-xs">
-                                    <h3 class="u-text-sm u-font-bold u-uppercase text-gray-700">1. Penilaian Penyelenggaraan</h3>
-                                </div>
-                                
-                                <div class="u-p-sm bg-blue-50 border border-blue-100 u-rounded-md u-flex u-justify-between u-text-xs u-font-medium text-blue-800 u-mb-md">
-                                    <span>1 = Buruk</span>
-                                    <span>5 = Sangat Baik</span>
-                                </div>
-
-                                <div id="questions-penyelenggaraan" class="u-space-y-md"></div>
-
-                                <div class="u-space-y-xs u-mt-md">
-                                    <label class="u-text-xs u-muted u-uppercase font-semibold">Komentar & Saran Penyelenggaraan</label>
-                                    <textarea name="komentar" class="u-input w-full min-h-[80px]" placeholder="Feedback untuk penyelenggara..."></textarea>
-                                </div>
-                            </div>
-
-                            {{-- Card 3: Evaluasi Dampak (Mandiri) --}}
-                            <div class="u-card u-p-md border-t-4 border-blue-500">
-                                <div class="u-mb-md border-b u-pb-xs">
-                                    <h3 class="u-text-sm u-font-bold u-uppercase text-gray-700">2. Evaluasi Dampak (Mandiri)</h3>
-                                </div>
-
-                                <div class="u-p-sm bg-blue-50 border border-blue-100 u-rounded-md u-flex u-justify-between u-text-xs u-font-medium text-blue-800 u-mb-md">
-                                    <span>1 = Buruk</span>
-                                    <span>5 = Sangat Baik</span>
-                                </div>
-                                
-                                <div class="u-space-y-md">
-                                    <div id="questions-dampak" class="u-space-y-md"></div>
-                                    <div class="u-space-y-xs">
-                                        <label class="u-text-xs u-muted u-uppercase font-semibold">Saran Pengembangan Mandiri</label>
-                                        <textarea name="saran_mandiri" class="u-input w-full min-h-[80px]" placeholder="Saran saudara..."></textarea>
+                            <div class="u-space-y-lg">
+                                {{-- Card 2: Penilaian Penyelenggaraan --}}
+                                <div class="u-card u-p-md border-t-4 border-brand">
+                                    <div class="u-mb-md border-b u-pb-xs">
+                                        <h3 class="u-text-sm u-font-bold u-uppercase text-gray-700">1. Penilaian Penyelenggaraan</h3>
                                     </div>
+                                    
+                                    <div class="u-p-sm bg-blue-50 border border-blue-100 u-rounded-md u-flex u-justify-between u-text-xs u-font-medium text-blue-800 u-mb-md">
+                                        <span>1 = Buruk</span>
+                                        <span>5 = Sangat Baik</span>
+                                    </div>
+
+                                    <div id="questions-penyelenggaraan" class="u-space-y-md"></div>
+
+                                </div>
+
+                                {{-- Card 3: Evaluasi Dampak (Mandiri) --}}
+                                <div class="u-card u-p-md border-t-4 border-blue-500">
+                                    <div class="u-mb-md border-b u-pb-xs">
+                                        <h3 class="u-text-sm u-font-bold u-uppercase text-gray-700">2. Evaluasi Dampak (Mandiri)</h3>
+                                    </div>
+
+                                    <div class="u-p-sm bg-blue-50 border border-blue-100 u-rounded-md u-flex u-justify-between u-text-xs u-font-medium text-blue-800 u-mb-md">
+                                        <span>1 = Buruk</span>
+                                        <span>5 = Sangat Baik</span>
+                                    </div>
+                                    
+                                    <div id="questions-dampak" class="u-space-y-md"></div>
                                 </div>
                             </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+
+                    <div id="step-content-2" class="step-content hidden">
+                        <div class="u-card u-p-md u-text-center">
+                            <i class="fas fa-cloud-upload-alt fa-3x u-muted u-mb-md"></i>
+                            <p class="u-font-semibold">Upload Sertifikat</p>
+                            <input type="file"
+                                class="u-input u-mt-md"
+                                id="dokumen_sertifikat"
+                                name="dokumen_sertifikat"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                required>
+                        </div>
+                    </div>
+                </form>
             </div>
 
             {{-- Modal Footer --}}
-            <div class="u-modal__foot">
-                <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
-                <button type="submit" form="evaluasi-form" class="u-btn u-btn--brand">
-                    <i class="fas fa-save u-mr-xs"></i> Simpan Semua Evaluasi
-                </button>
+            <div class="u-modal__foot u-flex u-justify-between">
+                <button type="button" id="btn-back" class="u-btn u-btn--ghost is-hidden">Kembali</button>
+                <div class="u-flex u-gap-md">
+                    <button type="button" class="u-btn u-btn--ghost" data-modal-close>Batal</button>
+                    <button type="button" id="btn-next" class="u-btn u-btn--brand">Lanjut <i class="fas fa-arrow-right u-ml-xs"></i></button>
+                    <button type="submit"
+                        form="evaluasi-form"
+                        id="btn-submit"
+                        class="u-btn u-btn--brand is-hidden"
+                        disabled>
+                        <i class="fas fa-save u-mr-xs"></i> Simpan Selesai
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -32,7 +32,7 @@ class UnitsSeeder extends Seeder
             17 => ['code' => 'SISG', 'name' => 'Cabang Singapura', 'category' => 'cabang'],
             26 => ['code' => 'SP', 'name' => 'Sekretariat Perusahaan', 'category' => 'enabler'],
             27 => ['code' => 'SPI', 'name' => 'Satuan Pengawasan Intern', 'category' => 'enabler'],
-            28 => ['code' => 'DRP2B', 'name' => 'Divisi Riset, Pemasaran dan Pengembangan Bisnis', 'category' => 'enabler'],
+            28 => ['code' => 'DRPPB', 'name' => 'Divisi Riset, Pemasaran dan Pengembangan Bisnis', 'category' => 'enabler'],
             29 => ['code' => 'DOP', 'name' => 'Divisi Operasi', 'category' => 'enabler'],
             30 => ['code' => 'DKA', 'name' => 'Divisi Keuangan dan Akuntansi', 'category' => 'enabler'],
             31 => ['code' => 'DPKMR', 'name' => 'Divisi Perencanaan Korporat dan Manajemen Risiko', 'category' => 'enabler'],

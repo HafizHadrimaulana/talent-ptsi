@@ -36,6 +36,7 @@
                     <th>Judul Pelatihan</th>
                     <th>Periode</th>
                     <th>Status</th>
+                    <th>Evaluasi</th>
                     <th>Hasil/Sertifikat</th>
                     <th class="text-center">Aksi</th>
                 </tr>
@@ -47,7 +48,6 @@
                         <div class="u-font-bold text-gray-800">
                             {{ $item->trainingReference->judul_sertifikasi ?? 'Custom Training' }}
                         </div>
-                        <div class="u-text-xxs u-muted">{{ str_pad($item->id, 5, '0', STR_PAD_LEFT) }}</div>
                     </td>
                     <td>
                         <span class="u-text-xs">
@@ -69,7 +69,14 @@
                         </span>
                     </td>
                     <td>
-                        @if($item->lampiran_sertifikat) {{-- Asumsi ada kolom ini --}}
+                        @if($item->is_evaluated == 1)
+                            <span class="u-font-bold text-gray-800 u-text-xs">Sudah mengisi evaluasi</span>
+                        @else
+                            <span class="u-muted italic u-text-xs">Belum mengisi evaluasi</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($item->dokumen_sertifikat)
                             <a href="{{ asset('storage/'.$item->lampiran_sertifikat) }}" class="u-text-xs text-brand u-font-bold">
                                 <i class="fas fa-download u-mr-xs"></i>Sertifikat.pdf
                             </a>
@@ -77,9 +84,15 @@
                             <span class="u-muted italic u-text-xs">Belum Tersedia</span>
                         @endif
                     </td>
-                    <td class="text-center">
+                    <td class="text-center u-flex u-gap-sm">
+                        @if($item->is_evaluated == 0)
                         <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-training-karyawan" data-id="{{ $item->id }}">
-                            <i class="fas fa-eye"></i> Detail
+                            <i class="fas fa-eye"></i> Evaluasi
+                        </button>
+                        @endif
+
+                        <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
+                            <i class="fas fa-users"></i> Ikatan Dinas
                         </button>
                     </td>
                 </tr>
@@ -94,6 +107,7 @@
 </div>
 
 @include('training.training-request.modals.form-evaluasi-modal')
+@include('training.training-request.modals.form-ikatan-dinas-modal')
 
 @endsection
 
@@ -101,9 +115,13 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const $modal = $('#form-evaluasi-modal');
-
+        const $modalIkatanDinas = $('#form-ikatan-dinas-modal');
+        
         $(document).on('click', '.btn-detail-training-karyawan', function() {
             const trainingId = $(this).data('id');
+
+            currentStep = 1;
+            updateStepUI();
             
             $modal.find('form')[0].reset();
             $modal.removeClass('hidden').fadeIn(200);
@@ -124,21 +142,73 @@
             });
         });
 
+        $(document).on('click', '.btn-detail-ikatan-dinas', function() {
+            const trainingId = $(this).data('id');
+
+            const $form = $modalIkatanDinas.find('form');
+            if($form.length > 0) $form[0].reset();
+
+            $modalIkatanDinas.removeClass('hidden').fadeIn(200);
+
+            if (trainingId) {
+                $.ajax({
+                    url: `/training/training-request/detail-training-request/${trainingId}`,
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            fillManualModal($modalIkatanDinas, response);
+                        }
+                    },
+                    error: function() {
+                        alert('Gagal mengambil data detail.');
+                        closeAllModals();
+                    }
+                });
+            }
+
+        });
+
         $(document).on('submit', '#evaluasi-form', function(e) {
             e.preventDefault();
-            console.log('form submitted');
             
             const $form = $(this);
-            const $btn = $form.closest('.u-modal__card').find('button[type="submit"]');
-            const formData = $form.serialize(); // Mengambil semua input radio dan textarea
+            const $btn  = $('#btn-submit');
 
-            // Loading state
-            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
+            const totalQuestions = new Set(
+                $form.find('[name^="answers"]').map(function () {
+                    return this.name;
+                }).get()
+            ).size;
+            const answered = new Set(
+                $form.find('[name^="answers"]:checked, textarea[name^="answers"]').map(function () {
+                    return this.name;
+                }).get()
+            ).size;
+
+            if (answered < totalQuestions) {
+                alert('Harap mengisi seluruh pertanyaan evaluasi terlebih dahulu.');
+                return;
+            }
+
+            const fileInput = document.getElementById('dokumen_sertifikat');
+            if (!fileInput || fileInput.files.length === 0) {
+                alert('Harap upload sertifikat terlebih dahulu.');
+                currentStep = 2;
+                updateStepUI();
+                return;
+            }
+
+            const formData = new FormData(this);
+
+            $btn.prop('disabled', true)
+                .html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
 
             $.ajax({
                 url: "/training/training-request/submit-evaluasi-training",
                 method: "POST",
                 data: formData,
+                processData: false,
+                contentType: false,
                 success: function(response) {
                     if (response.status === 'success') {
                         alert('Evaluasi berhasil disimpan!');
@@ -158,23 +228,55 @@
         // CLOSE MODAL HANDLER
         $(document).on('click', '[data-modal-close], #form-evaluasi-close-modal', function(e) {
             e.preventDefault();
-            closeModal();
+            closeAllModals();
         });
 
-        $modal.on('click', function(e) {
-            if ($(e.target).is($modal)) {
-                closeModal();
+        $('.u-modal').on('click', function(e) {
+            if ($(e.target).hasClass('u-modal')) {
+                closeAllModals();
             }
         });
 
         $(document).on('keydown', function(e) {
-            if (e.key === "Escape" && !$modal.hasClass('hidden')) {
-                closeModal();
+            if (e.key === "Escape") {
+                closeAllModals();
             }
         });
 
-        function closeModal() {
-            $modal.fadeOut(150, function() {
+        // Event Listeners Navigasi
+        $(document).on('click', '#btn-next', function() {
+            const unanswered = $('#evaluasi-form')
+                .find('input[type="radio"][required]')
+                .filter(function () {
+                    return !$(`[name="${this.name}"]:checked`).length;
+                });
+
+            if (unanswered.length > 0) {
+                alert('Harap isi seluruh evaluasi sebelum melanjutkan.');
+                return;
+            }
+
+            currentStep++;
+            updateStepUI();
+        });
+
+        $('#dokumen_sertifikat').on('change', function () {
+            if (this.files.length > 0) {
+                $('#btn-submit').prop('disabled', false);
+            } else {
+                $('#btn-submit').prop('disabled', true);
+            }
+        });
+
+        $(document).on('click', '#btn-back', function() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepUI();
+            }
+        });
+
+        function closeAllModals() {
+            $('.u-modal').fadeOut(150, function() {
                 $(this).addClass('hidden');
             });
         }
@@ -207,8 +309,6 @@
             );
         }
 
-        updateStepUI();
-
     });
 
     function renderQuestions(containerId, questions, emptyMessage) {
@@ -225,6 +325,36 @@
         }
 
         questions.forEach((q, index) => {
+
+            if (q.question_type === 'text') {
+                container.innerHTML += `
+                    <div style="
+                        padding: var(--space-md);
+                        border: 1px solid var(--border);
+                        border-radius: 12px;
+                        background: #ffffff;
+                        margin-bottom: var(--space-md);
+                    ">
+                        <label style="
+                            display: block;
+                            font-size: 14px;
+                            font-weight: 600;
+                            margin-bottom: 8px;
+                        ">
+                            ${index + 1}. ${q.question_text}
+                        </label>
+
+                        <textarea
+                            name="answers[${q.id}]"
+                            class="u-input w-full min-h-[90px]"
+                            placeholder="Tuliskan saran / komentar Anda..."
+                            required
+                        ></textarea>
+                    </div>
+                `;
+                return;
+            }
+
             let radios = '';
             for (let i = 1; i <= 5; i++) {
                 radios += `
@@ -270,65 +400,52 @@
 
     }
 
-    let currentStep = 2;
-    const totalSteps = 3;
+    let currentStep = 1;
+    const totalSteps = 2;
 
     // 2. Ambil elemen-elemen yang dibutuhkan
-    const btnNext = document.getElementById('btn-next'); // Pastikan ID ini ada di tombol footer
-    const btnBack = document.getElementById('btn-back'); // Pastikan ID ini ada di tombol footer
+    const btnNext = document.getElementById('btn-next'); 
+    const btnBack = document.getElementById('btn-back'); 
     const progressLine = document.getElementById('progress-line');
 
     function updateStepUI() {
-        const steps = document.querySelectorAll('.step-item');
+        // 1. Update Progress Line & Circles
         const progressLine = document.getElementById('progress-line');
-        
-        const totalSteps = steps.length;
-        // Persentase sekarang akan relatif terhadap lebar pembungkus garis (tengah 1 ke tengah 3)
-        const progressPercent = ((currentStep - 1) / (totalSteps - 1)) * 100;
-        
-        if (progressLine) {
-            progressLine.style.width = progressPercent + '%';
-        }
+        const steps = document.querySelectorAll('.step-item');
+        const percent = ((currentStep - 1) / (totalSteps - 1)) * 100;
+        if (progressLine) progressLine.style.width = percent + '%';
 
         steps.forEach((el, idx) => {
             const stepNum = idx + 1;
             const circle = el.querySelector('.step-circle');
-            const label = el.querySelector('.step-label');
-            const numText = el.querySelector('.step-num');
             const icon = el.querySelector('.fa-check');
-
-            // Pastikan background putih solid untuk menutupi garis di bawahnya
+            
             if (stepNum < currentStep) {
-                circle.style.setProperty('background-color', 'var(--accent)', 'important');
+                circle.style.backgroundColor = 'var(--accent)';
                 circle.style.borderColor = 'var(--accent)';
-                circle.style.borderWidth = '2px';
-                label.style.color = 'var(--accent)';
-                label.classList.remove('u-muted');
-                if (numText) numText.style.display = 'none';
-                if (icon) icon.classList.remove('is-hidden');
-            } 
-            else if (stepNum === currentStep) {
-                circle.style.setProperty('background-color', '#ffffff', 'important');
-                circle.style.borderColor = 'var(--accent)';
-                circle.style.borderWidth = '6px';
-                label.style.color = 'var(--accent)';
-                label.classList.remove('u-muted');
-                if (numText) numText.style.display = 'none';
-                if (icon) icon.classList.add('is-hidden');
-            } 
-            else {
-                circle.style.setProperty('background-color', '#ffffff', 'important');
-                circle.style.borderColor = 'var(--border)';
-                circle.style.borderWidth = '2px';
-                label.style.color = 'var(--muted)';
-                label.classList.add('u-muted');
-                if (numText) {
-                    numText.style.display = 'block';
-                    numText.style.color = 'var(--muted)';
-                }
-                if (icon) icon.classList.add('is-hidden');
+                icon.classList.remove('is-hidden');
+            } else {
+                circle.style.backgroundColor = '#ffffff';
+                circle.style.borderColor = stepNum === currentStep ? 'var(--accent)' : 'var(--border)';
+                circle.style.borderWidth = stepNum === currentStep ? '4px' : '2px';
+                icon.classList.add('is-hidden');
             }
         });
+
+        // 2. Toggle Content Visibility
+        document.querySelectorAll('.step-content').forEach(content => content.classList.add('hidden'));
+        document.getElementById(`step-content-${currentStep}`).classList.remove('hidden');
+
+        // 3. Control Buttons
+        if (currentStep === 1) {
+            $('#btn-back').addClass('is-hidden');
+            $('#btn-next').removeClass('is-hidden');
+            $('#btn-submit').addClass('is-hidden');
+        } else {
+            $('#btn-back').removeClass('is-hidden');
+            $('#btn-next').addClass('is-hidden');
+            $('#btn-submit').removeClass('is-hidden');
+        }
     }
 
 </script>

@@ -30,25 +30,37 @@ class AdminUserSeeder extends Seeder
         }
 
         $units = Unit::all();
+        
         foreach ($units as $unit) {
             if ($unit->code === 'SIHO') continue;
             if (str_contains(strtolower($unit->name), 'pelamar')) continue;
 
-            $cleanCode = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $unit->code ?? 'unit' . $unit->id));
-            $email = "admin.{$cleanCode}@ptsi.co.id";
+            $shouldCreate = false;
 
-            $adminUnit = User::updateOrCreate(
-                ['email' => $email],
-                [
-                    'name' => 'Admin ' . ($unit->code ?? $unit->name),
-                    'password' => $password,
-                    'employee_id' => 'ADM-' . $unit->id,
-                    'unit_id' => $unit->id,
-                ]
-            );
+            if (in_array($unit->category, ['cabang', 'operasi'])) {
+                $shouldCreate = true;
+            } elseif ($unit->category === 'enabler' && $unit->code === 'DHC') {
+                $shouldCreate = true;
+            }
 
-            app(PermissionRegistrar::class)->setPermissionsTeamId($unit->id);
-            $adminUnit->assignRole('SDM Unit');
+            if ($shouldCreate) {
+                $cleanCode = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $unit->code));
+                $email = "admin.{$cleanCode}@ptsi.co.id";
+                $empId = "ADM-{$unit->code}";
+
+                $adminUnit = User::updateOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => 'Admin ' . ($unit->code ?? $unit->name),
+                        'password' => $password,
+                        'employee_id' => $empId,
+                        'unit_id' => $unit->id,
+                    ]
+                );
+
+                app(PermissionRegistrar::class)->setPermissionsTeamId($unit->id);
+                $adminUnit->assignRole('SDM Unit');
+            }
         }
     }
 }

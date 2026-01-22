@@ -30,6 +30,10 @@ return new class extends Migration
             $table->foreign('question_id')
                 ->references('id')->on('training_evaluation_questions')
                 ->cascadeOnDelete();
+
+            $table->foreign('user_id')
+                ->references('id')->on('users')
+                ->cascadeOnDelete();
         });
     }
 

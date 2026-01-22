@@ -7,7 +7,6 @@
   $unitsOptions = $units ?? collect();
   $user = auth()->user();
   
-  // RAW CHECK: Bypass scope also in View
   $isSuper = DB::table('model_has_roles')
             ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
             ->where('model_has_roles.model_id', $user->id)

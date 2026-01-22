@@ -265,7 +265,7 @@ class OrgController extends Controller
         $enablerCodes = [
             'SP',
             'SPI',
-            'DRP2B',
+            'DRPPB',
             'DKA',
             'DPKMR',
             'DMA',
