@@ -34,7 +34,11 @@ class UserController extends Controller
         $isSuper = $this->checkGlobalRole($user, 'SuperAdmin');
         $isDhc   = $this->checkGlobalRole($user, 'DHC');
 
-        $unitsQuery = DB::table('units')->select('id', 'name')->orderBy('name', 'asc');
+        $unitsQuery = DB::table('units')
+            ->select('id', 'name', 'category')
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->orderBy('name', 'asc');
         
         if (!$isSuper) {
             if ($isDhc) {
