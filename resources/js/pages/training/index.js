@@ -4,6 +4,7 @@ import { initInputHandler } from "./training-approval/handler/inputHandler";
 import { initInputLnaHandler } from "./training-approval/handler/inputLnaHandler";
 import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
 import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
+import { initPengajuanLnaHandler } from "./training-approval/handler/pengajuanLnaHandler";
 
 const TRAINING_CONFIG = {
     tables: {
@@ -19,23 +20,6 @@ const TRAINING_CONFIG = {
         activeClass: "is-active",
         hiddenClass: "hidden",
     },
-    modals: {
-        trainingInput: {
-            openBtn: "#training-input-btn",
-            modal: "#input-training-modal",
-            closeBtn: "#training-close-modal",
-        },
-        lnaImport: {
-            openBtn: "#lna-import-btn",
-            modal: "#lna-import-modal",
-            closeBtn: ".lna-close-modal",
-        },
-        lnaInput: {
-            openBtn: "#lna-input-btn",
-            modal: "#lna-input-modal",
-            closeBtn: ".lna-input-close-modal",
-        }, 
-    },
     buttons: {
         downloadTemplate: ".btn-download-template",
         bulkApprove: "#btn-bulk-approve",
@@ -48,7 +32,7 @@ const getGlobalVariable = (variableName, defaultValue = null) => {
     if (value === undefined || value === null) {
         console.warn(
             `Global variable '${variableName}' is not defined, using default:`,
-            defaultValue
+            defaultValue,
         );
         return defaultValue;
     }
@@ -56,18 +40,16 @@ const getGlobalVariable = (variableName, defaultValue = null) => {
 };
 
 const initializeTrainingTables = () => {
-    const tables = document.querySelectorAll(TRAINING_CONFIG.tables.selector);
+    const activePanel = document.querySelector(".u-tabs__panel:not(.hidden)");
+    if (!activePanel) return;
 
-    tables.forEach((table) => {
-        const tableId = table.id;
-
-        try {
-            initGetDataTable(tableId, { unitId: window.currentUnitId });
-
-        } catch (error) {
-            console.error(`Gagal inisialisasi tabel ${tableId}:`, error);
-        }
-    });
+    activePanel
+        .querySelectorAll(TRAINING_CONFIG.tables.selector)
+        .forEach((table) => {
+            initGetDataTable(`#${table.id}`, {
+                unitId: window.currentUnitId,
+            });
+        });
 };
 
 const initializeTabs = () => {
@@ -83,46 +65,72 @@ const initializeTabs = () => {
             if (!target) return;
 
             buttons.forEach((b) => {
-                b.classList.remove("border-blue-600", "text-slate-900", "u-font-semibold");
+                b.classList.remove(
+                    "border-blue-600",
+                    "text-slate-900",
+                    "u-font-semibold",
+                );
                 b.classList.add("border-transparent", "text-slate-400");
             });
-            
+
             btn.classList.remove("border-transparent", "text-slate-400");
-            btn.classList.add("border-blue-600", "text-slate-900", "u-font-semibold");
+            btn.classList.add(
+                "border-blue-600",
+                "text-slate-900",
+                "u-font-semibold",
+            );
 
             // Toggle Panel
             panels.forEach((p) => {
                 p.classList.toggle("hidden", p.id !== `tab-${target}`);
             });
+
+            setTimeout(() => {
+                const panel = document.getElementById(`tab-${target}`);
+                if (!panel) return;
+
+                panel
+                    .querySelectorAll(TRAINING_CONFIG.tables.selector)
+                    .forEach((table) => {
+                        initGetDataTable(`#${table.id}`, {
+                            unitId: window.currentUnitId,
+                        });
+                    });
+            }, 50);
         });
     });
 };
 
-const initializeModals = () => {
-    // Training Input Modal
-    if (document.querySelector(TRAINING_CONFIG.modals.trainingInput.openBtn)) {
-        console.log("Initializing training input modal");
-        const { openBtn, modal, closeBtn } =
-            TRAINING_CONFIG.modals.trainingInput;
-        initModalHandler(openBtn, modal, closeBtn);
-        initInputHandler(modal);
-    }
+function initModalFeatures() {
+    const modalHandlers = [
+        {
+            id: "#input-training-modal",
+            init: initInputHandler,
+        },
+        {
+            id: "#lna-import-modal",
+            init: initDragDropUpload,
+        },
+        {
+            id: "#lna-input-modal",
+            init: initInputLnaHandler,
+        },
+        {
+            id: "#lna-pengajuan-modal",
+            init: initPengajuanLnaHandler,
+        },
+    ];
 
-    // LNA Import Modal
-    if (document.querySelector(TRAINING_CONFIG.modals.lnaImport.modal)) {
-        console.log("Initializing LNA import modal");
-        const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.lnaImport;
-        initModalHandler(openBtn, modal, closeBtn);
-        initDragDropUpload(modal);
-    }
+    modalHandlers.forEach(({ id, init }) => {
+        const modal = document.querySelector(id);
+        if (!modal) return;
 
-    if (document.querySelector(TRAINING_CONFIG.modals.lnaInput.modal)) {
-        console.log("Initializing LNA input modal");
-        const { openBtn, modal, closeBtn } = TRAINING_CONFIG.modals.lnaInput;
-        initModalHandler(openBtn, modal, closeBtn);
-        initInputLnaHandler(modal);
-    }
-};
+        if (modal.dataset.initialized) return;
+
+        init(modal); 
+        modal.dataset.initialized = "true";
+    });
+}
 
 const initializeButtonHandlers = () => {
     // Download Template
@@ -184,20 +192,18 @@ const validateEnvironment = () => {
 };
 
 const initializeTrainingPage = () => {
-    console.log("Training page initialization started");
-    
     try {
         const currentUserRole = getGlobalVariable("currentUserRole");
 
         if (!currentUserRole) {
             console.warn(
-                "window.currentUserRole is not defined. Tables must have data-role attribute."
+                "window.currentUserRole is not defined. Tables must have data-role attribute.",
             );
         }
         // Initialize core components in order
         initializeTabs();
         initializeTrainingTables();
-        initializeModals();
+        initModalFeatures();
         initializeButtonHandlers();
         initializeGlobalEventHandlers();
 
@@ -219,6 +225,7 @@ export const TrainingPage = {
 
 // Auto-initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("Training page initialized");
     TrainingPage.init();
 });
 

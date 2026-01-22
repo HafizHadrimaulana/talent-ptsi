@@ -1,10 +1,13 @@
 import { postFormData, getJSON } from "@/utils/fetch";
 
-export function initInputLnaHandler(modal) {
+export function initPengajuanLnaHandler(modal) {
     if (!modal) return;
-    const inputForm = document.querySelector("#lna-input-form");
+    const inputForm = document.querySelector("#lna-pengajuan-form");
+    const unitSelect = modal.querySelector(".js-select-unit");
 
-    loadUnits();
+    if (!inputForm || !unitSelect) return;
+
+    autoSetUnit(unitSelect);
     initBiayaHandler(inputForm);
 
     // ==== HANDLE SUBMIT ====
@@ -92,34 +95,19 @@ export function initInputLnaHandler(modal) {
     }
 }
 
-async function loadUnits() {
-    const select = document.getElementById("select-unit");
-    if (!select) return
+function autoSetUnit(select) {
+    const userUnitId = window.currentUnitId;
+    const userUnitName = window.currentUnitName;
 
-    try {
-        const response = await getJSON(
-            "/training/training-request/get-data-units"
-        );
-        console.log("units", response);
-
-        if (response.status === "success") {
-            renderUnitOptions(select, response.data);
-        } else {
-            console.warn("Gagal mendapatkan data unit");
-        }
-    } catch (error) {
-        console.error("Error fetch units:", error);
+    if (!userUnitId) {
+        console.warn("User tidak memiliki unit");
+        return;
     }
-}
 
-function renderUnitOptions(selectElement, units) {
-    // Hapus semua option kecuali "-- Pilih Unit --"
-    selectElement.innerHTML = `<option value="">-- Pilih Unit --</option>`;
-
-    units.forEach((unit) => {
-        const opt = document.createElement("option");
-        opt.value = unit.id;
-        opt.textContent = unit.name;
-        selectElement.appendChild(opt);
-    });
+    select.innerHTML = `
+        <option value="${userUnitId}" selected>
+            ${userUnitName || "Unit tidak ditemukan"}
+        </option>
+    `;
+    select.disabled = true;
 }

@@ -82,7 +82,41 @@ class PrincipalApprovalController extends Controller
     {
         $query = RecruitmentRequest::query();
         $tbl = (new RecruitmentRequest())->getTable();
-        if (!$canSeeAll && $me) {
+
+        // --- START REVISI: Filter Smart untuk Approver Level Atas ---
+        // 1. Identifikasi Jabatan
+        $jobTitle = $this->getUserJobTitle($me->id);
+        $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
+
+        $isAvpHcOps = ($me->hasRole('AVP') && $cleanTitle === 'AVP HUMAN CAPITAL OPERATION');
+        $isVpHc     = ($cleanTitle === 'VP HUMAN CAPITAL');
+        $isDirSdm   = $me->hasRole('Dir SDM');
+        
+        // 2. Jika user adalah salah satu role tersebut (dan bukan Superadmin)
+        if (($isAvpHcOps || $isVpHc || $isDirSdm) && !$me->hasRole('Superadmin')) {
+            
+            $stageKey = '';
+            if ($isDirSdm) {
+                $stageKey = 'dir_sdm';
+            } elseif ($isVpHc) {
+                $stageKey = 'vp_hc';
+            } elseif ($isAvpHcOps) {
+                $stageKey = 'avp_hc_ops';
+            }
+
+            if ($stageKey) {
+                $query->whereHas('approvals', function ($q) use ($stageKey, $me) {
+                    $q->where(function ($subQ) use ($stageKey) {
+                        $subQ->where('status', 'pending')
+                             ->where('note', 'like', "%[stage={$stageKey}]%");
+                    })
+                    ->orWhere(function ($subQ) use ($me) {
+                        $subQ->where('approver_user_id', $me->id);
+                    });
+                });
+            }
+        }
+        elseif (!$canSeeAll && $me) {
             $isKepalaUnit = $me->hasRole('Kepala Unit');
             $query->where(function ($q) use ($me, $tbl, $isKepalaUnit) {
                 $q->where('unit_id', $me->unit_id);
@@ -106,9 +140,12 @@ class PrincipalApprovalController extends Controller
                 });
             });
         }
+
+        // Filter Unit Tambahan (jika ada dropdown unit yang dipilih)
         if ($selectedUnitId && $this->has($tbl, 'unit_id')) {
             $query->where('unit_id', $selectedUnitId);
         }
+
         return $query;
     }
 
@@ -253,10 +290,10 @@ class PrincipalApprovalController extends Controller
         elseif ($status === 'approved') { $progressText = 'Selesai'; $badgeClass = 'u-badge--success'; }
         else {
              $map = [
-                 'admin_ops' => 'Menunggu Admin Ops', 'kepala_mp' => 'Menunggu Kepala MP',
-                 'sdm_unit' => 'Menunggu SDM Unit', 'kepala_unit' => 'Menunggu Ka. Unit',
-                 'dhc_checker' => 'Menunggu DHC', 'avp_hc_ops' => 'Menunggu AVP DHC',
-                 'vp_hc' => 'Menunggu VP DHC', 'dir_sdm' => 'Menunggu Dir TSDU'
+                 'admin_ops' => 'Admin Ops', 'kepala_mp' => 'Kepala MP',
+                 'sdm_unit' => 'SDM Unit', 'kepala_unit' => 'Ka. Unit',
+                 'dhc_checker' => 'DHC', 'avp_hc_ops' => 'AVP DHC',
+                 'vp_hc' => 'VP DHC', 'dir_sdm' => 'Dir TSDU'
              ];
              $progressText = $map[$currentStage] ?? 'In Review';
         }
@@ -324,8 +361,8 @@ class PrincipalApprovalController extends Controller
              $lbl = 'Approver';
              $mapLbl = [
                 'admin_ops'=>'Admin Ops', 'kepala_mp'=>'Kepala MP', 'sdm_unit'=>'SDM Unit', 
-                'kepala_unit'=>'Kepala Unit', 'dhc_checker'=>'DHC', 'avp_hc_ops'=>'AVP DHC', 
-                'vp_hc'=>'VP DHC', 'dir_sdm'=>'Dir SDM'
+                'kepala_unit'=>'Kepala Unit', 'dhc_checker'=>'DHC', 'avp_hc_ops'=>'AVP DHC Ops', 
+                'vp_hc'=>'VP DHC', 'dir_sdm'=>'Dir TSDU'
              ];
              $lbl = $mapLbl[$histKey] ?? 'Approver';
              $cleanNote = trim(preg_replace('/\[stage=[^\]]+\]/', '', $rawNote));

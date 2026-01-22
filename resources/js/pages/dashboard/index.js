@@ -1,6 +1,3 @@
-import { initModalHandler } from "@/utils/modal";
-import { initGetDataEvaluationTable } from "./handler/getDataEvaluationHandler";
-import { initUpdateRealisasiDateHandler } from "./handler/updateRealisasiDate";
 import { getJSON } from "../../utils/fetch";
 
 document.addEventListener("DOMContentLoaded", () => {

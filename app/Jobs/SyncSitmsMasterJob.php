@@ -329,7 +329,7 @@ class SyncSitmsMasterJob implements ShouldQueue
 
         $nikRaw = preg_replace('/\D+/', '', (string)($row['nik_number'] ?? ''));
         if (!empty($nikRaw)) {
-            $pid = DB::table('persons')->where('nik_hash', $nikRaw)->value('id');
+            $pid = DB::table('persons')->where('nik_hash', hash('sha256', $nikRaw))->value('id');
             if ($pid) return (string)$pid;
         }
 
@@ -358,7 +358,8 @@ class SyncSitmsMasterJob implements ShouldQueue
             'email' => $this->cut($row['email'] ?? null, 150),
             'address' => $this->cut($row['address'] ?? null),
             'city' => $this->cut($row['city'] ?? null, 120),
-            'nik_hash' => $nikRaw ?: null,
+            'nik' => $nikRaw ?: null,
+            'nik_hash' => $nikRaw ? hash('sha256', $nikRaw) : null,
             'nik_last4' => substr($nikRaw, -4) ?: null,
             'updated_at' => $now
         ];
@@ -542,7 +543,6 @@ class SyncSitmsMasterJob implements ShouldQueue
             ]);
         }
         
-        // FIX: SIMPAN SEBAGAI KATEGORI 'brevet' (BUKAN 'certification')
         foreach (Arr::get($row, 'brevet_list.brevet_data', []) as $b) {
              $this->sitmsInsertPortfolio($pid, 'brevet', [
                 'title' => $b['brevet_name'] ?? null,

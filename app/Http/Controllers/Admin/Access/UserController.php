@@ -14,24 +14,58 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    // Helper to check role ignoring team/unit scope
+    private function checkGlobalRole($user, $roleName)
+    {
+        return DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', $user->id)
+            ->where('model_has_roles.model_type', get_class($user))
+            ->where('roles.name', $roleName)
+            ->exists();
+    }
+
     public function index(Request $req)
     {
         if ($req->ajax()) {
             return $this->getDataTable($req);
         }
 
-        $unitId = auth()->user()?->unit_id;
-        $units = DB::table('units')->select('id', 'name')->orderBy('name', 'asc')->get();
-        $roles = Role::query()->where('guard_name', 'web')
-            ->where(function ($w) use ($unitId) {
-                $w->whereNull('unit_id')->orWhere('unit_id', $unitId);
-            })->orderBy('name', 'asc')->get(['id', 'name']);
+        $user = auth()->user();
+        // FORCE CHECK DB: Ignore current unit scope
+        $isSuper = $this->checkGlobalRole($user, 'SuperAdmin');
+        $isDhc   = $this->checkGlobalRole($user, 'DHC');
+
+        // 1. Units Logic
+        $unitsQuery = DB::table('units')->select('id', 'name')->orderBy('name', 'asc');
+        
+        if (!$isSuper && !$isDhc) {
+            $unitsQuery->where('id', $user->unit_id);
+        }
+
+        $units = $unitsQuery->get();
+
+        // 2. Roles Logic
+        $rolesQuery = Role::query()->where('guard_name', 'web')->orderBy('name', 'asc');
+
+        if (!$isSuper && !$isDhc) {
+            $rolesQuery->where(function ($w) use ($user) {
+                $w->whereNull('unit_id')->orWhere('unit_id', $user->unit_id);
+            });
+        }
+
+        $roles = $rolesQuery->get(['id', 'name']);
 
         return view('admin.users.index', compact('roles', 'units'));
     }
 
     protected function getDataTable(Request $req)
     {
+        $user = auth()->user();
+        // FORCE CHECK DB
+        $isSuper = $this->checkGlobalRole($user, 'SuperAdmin');
+        $isDhc   = $this->checkGlobalRole($user, 'DHC');
+
         $start = $req->get('start', 0);
         $length = $req->get('length', 10);
         $search = $req->get('search')['value'] ?? '';
@@ -46,6 +80,7 @@ class UserController extends Controller
         ];
         $orderBy = $colMap[$colIdx] ?? 'full_name';
 
+        // Employee Query
         $empQuery = DB::table('employees as e')
             ->leftJoin('persons as p', 'p.id', '=', 'e.person_id')
             ->leftJoin('units as u', 'u.id', '=', 'e.unit_id')
@@ -59,6 +94,7 @@ class UserController extends Controller
                 COALESCE(p.full_name, e.employee_id) as full_name,
                 COALESCE(pos.name, e.latest_jobs_title) as job_title,
                 COALESCE(u.name, e.latest_jobs_unit) as unit_name,
+                COALESCE(u.id, e.unit_id) as filter_unit_id,
                 COALESCE(e.email, p.email) as employee_email,
                 us.email as user_email,
                 us.name as user_name,
@@ -76,6 +112,7 @@ class UserController extends Controller
 
         $this->applyStrictFilters($empQuery);
 
+        // User Query
         $userQuery = DB::table('users as us')
             ->leftJoin('employees as e', 'e.employee_id', '=', 'us.employee_id')
             ->leftJoin('units as u', 'u.id', '=', 'us.unit_id')
@@ -87,6 +124,7 @@ class UserController extends Controller
                 us.name as full_name,
                 NULL as job_title,
                 COALESCE(u.name, '-') as unit_name,
+                us.unit_id as filter_unit_id,
                 NULL as employee_email,
                 us.email as user_email,
                 us.name as user_name,
@@ -109,6 +147,11 @@ class UserController extends Controller
             ->mergeBindings($empQuery)
             ->mergeBindings($userQuery);
 
+        // FILTER: Only restrict if NOT SuperAdmin AND NOT DHC
+        if (!$isSuper && !$isDhc) {
+            $wrapper->where('filter_unit_id', $user->unit_id);
+        }
+
         if (!empty($search)) {
             $like = '%' . $search . '%';
             $wrapper->where(function($w) use ($like) {
@@ -120,7 +163,8 @@ class UserController extends Controller
         }
 
         $recordsFiltered = $wrapper->count();
-        $recordsTotal = DB::table('employees')->count() + DB::table('users')->whereNull('employee_id')->count();
+        $totalBase = DB::table('employees')->count() + DB::table('users')->whereNull('employee_id')->count();
+        $recordsTotal = (!$isSuper && !$isDhc) ? $recordsFiltered : $totalBase;
 
         $data = $wrapper->orderBy($orderBy, $dir)
             ->skip($start)
@@ -157,6 +201,10 @@ class UserController extends Controller
 
     public function show($id)
     {
+        $user = auth()->user();
+        $isSuper = $this->checkGlobalRole($user, 'SuperAdmin');
+        $isDhc   = $this->checkGlobalRole($user, 'DHC');
+
         $e = DB::table('employees as e')
             ->leftJoin('persons as p', 'p.id', '=', 'e.person_id')
             ->leftJoin('units as u', 'u.id', '=', 'e.unit_id')
@@ -164,7 +212,7 @@ class UserController extends Controller
             ->leftJoin('directorates as dir', 'dir.id', '=', 'e.directorate_id')
             ->where('e.id', $id)
             ->selectRaw("
-                e.id, e.person_id, e.employee_id, e.id_sitms,
+                e.id, e.person_id, e.employee_id, e.id_sitms, e.unit_id,
                 COALESCE(p.full_name, e.employee_id) as full_name,
                 COALESCE(pos.name, e.latest_jobs_title) as job_title,
                 COALESCE(u.name,  e.latest_jobs_unit) as unit_name,
@@ -181,6 +229,10 @@ class UserController extends Controller
             ->first();
 
         if (!$e) return response()->json(['error' => 'Not found'], 404);
+
+        if (!$isSuper && !$isDhc && $e->unit_id != $user->unit_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
 
         $port = function (array $cats) use ($e) {
             $qb = DB::table('portfolio_histories')
@@ -255,6 +307,14 @@ class UserController extends Controller
 
     public function store(Request $req)
     {
+        $user = auth()->user();
+        $isSuper = $this->checkGlobalRole($user, 'SuperAdmin');
+        $isDhc   = $this->checkGlobalRole($user, 'DHC');
+
+        if (!$isSuper && !$user->can('users.create')) {
+            abort(403, 'Unauthorized.');
+        }
+
         $data = $req->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
@@ -264,24 +324,39 @@ class UserController extends Controller
             'roles' => ['array'],
         ]);
 
-        $user = new User();
-        $user->name = $data['name'];
-        $user->email = $data['email'];
-        $user->password = Hash::make($data['password'] ?? 'password');
-        $user->unit_id = $data['unit_id'];
-        if (!empty($data['employee_id'])) $user->employee_id = $data['employee_id'];
-        $user->save();
+        if (!$isSuper && !$isDhc && $data['unit_id'] != $user->unit_id) {
+            abort(403, 'You can only assign users to your own unit.');
+        }
 
-        $this->withTeamContext(function () use ($user, $data) {
-            $assignables = $this->resolveAssignableRoles($data['roles'] ?? [], (int) $data['unit_id'], 'web');
-            $user->syncRoles($assignables);
-        }, $data['unit_id']);
+        $newUser = new User();
+        $newUser->name = $data['name'];
+        $newUser->email = $data['email'];
+        $newUser->password = Hash::make($data['password'] ?? 'password');
+        $newUser->unit_id = $data['unit_id'];
+        if (!empty($data['employee_id'])) $newUser->employee_id = $data['employee_id'];
+        $newUser->save();
+
+        if (array_key_exists('roles', $data)) {
+            $this->syncUserRolesSplitContext($newUser, $data['roles'] ?? [], (int) $data['unit_id']);
+        }
 
         return back()->with('ok', 'User created successfully.');
     }
 
     public function update(Request $req, User $user)
     {
+        $authUser = auth()->user();
+        $isSuper = $this->checkGlobalRole($authUser, 'SuperAdmin');
+        $isDhc   = $this->checkGlobalRole($authUser, 'DHC');
+
+        if (!$isSuper && !$authUser->can('users.update')) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if (!$isSuper && !$isDhc && $user->unit_id != $authUser->unit_id) {
+            abort(403, 'Unauthorized scope');
+        }
+
         $data = $req->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
@@ -290,20 +365,65 @@ class UserController extends Controller
             'roles' => ['array'],
         ]);
 
+        if (!$isSuper && !$isDhc && $data['unit_id'] != $authUser->unit_id) {
+            abort(403, 'You cannot change unit to outside your scope.');
+        }
+
         $user->name = $data['name'];
         $user->email = $data['email'];
         if (!empty($data['password'])) $user->password = Hash::make($data['password']);
         $user->unit_id = $data['unit_id'];
         $user->save();
 
-        $this->withTeamContext(function () use ($user, $data) {
-            if (array_key_exists('roles', $data)) {
-                $assignables = $this->resolveAssignableRoles($data['roles'] ?? [], (int) $data['unit_id'], 'web');
-                $user->syncRoles($assignables);
-            }
-        }, $data['unit_id']);
+        if (array_key_exists('roles', $data)) {
+            $this->syncUserRolesSplitContext($user, $data['roles'] ?? [], (int) $data['unit_id']);
+        }
 
         return back()->with('ok', 'User updated successfully.');
+    }
+
+    public function destroy(User $user)
+    {
+        $authUser = auth()->user();
+        $isSuper = $this->checkGlobalRole($authUser, 'SuperAdmin');
+        $isDhc   = $this->checkGlobalRole($authUser, 'DHC');
+
+        if (!$isSuper && !$authUser->can('users.delete')) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if (!$isSuper && !$isDhc && $user->unit_id != $authUser->unit_id) {
+            abort(403, 'Cannot delete user outside your unit.');
+        }
+
+        if ($user->id === $authUser->id) {
+            return response()->json(['error' => 'Cannot delete yourself.'], 422);
+        }
+
+        $user->delete();
+        return response()->json(['success' => true]);
+    }
+
+    protected function syncUserRolesSplitContext(User $user, array $inputRoleIds, int $unitId)
+    {
+        $dhcRoleIds = Role::where('name', 'DHC')->pluck('id')->toArray();
+        $shouldHaveDhc = !empty(array_intersect($inputRoleIds, $dhcRoleIds));
+        $unitRoleIds = array_diff($inputRoleIds, $dhcRoleIds);
+
+        $this->withTeamContext(function () use ($user, $shouldHaveDhc) {
+            $user->unsetRelation('roles');
+            if ($shouldHaveDhc) {
+                if (!$user->hasRole('DHC')) $user->assignRole('DHC');
+            } else {
+                if ($user->hasRole('DHC')) $user->removeRole('DHC');
+            }
+        }, 0);
+
+        $this->withTeamContext(function () use ($user, $unitRoleIds, $unitId) {
+            $user->unsetRelation('roles');
+            $assignables = $this->resolveAssignableRoles($unitRoleIds, $unitId, 'web');
+            $user->syncRoles($assignables);
+        }, $unitId);
     }
 
     public function roleOptions(Request $req) { return response()->json([]); }

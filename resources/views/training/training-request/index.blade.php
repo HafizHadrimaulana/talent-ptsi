@@ -270,7 +270,7 @@
 
     }
 
-    let currentStep = 3;
+    let currentStep = 2;
     const totalSteps = 3;
 
     // 2. Ambil elemen-elemen yang dibutuhkan

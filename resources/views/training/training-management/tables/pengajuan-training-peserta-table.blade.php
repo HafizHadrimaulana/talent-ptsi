@@ -1,4 +1,14 @@
-<table id="approval-training-request-table"
+<div class="flex gap-4 justify-between u-mb-lg u-py-sm">
+    <button 
+        type="button"
+        class="u-btn u-btn--brand u-hover-lift"
+        data-modal-target="input-training-modal"
+    >
+        Input Training
+    </button>
+</div>
+
+<table id="pengajuan-training-peserta-table"
     class="u-table u-table-mobile training-table" data-dt>
     <thead>
         <tr>

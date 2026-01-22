@@ -221,69 +221,54 @@ class TrainingRequestController extends Controller
     {
         try {
             $user  = auth()->user();
-            $role  = $user->getRoleNames()->first();
+            $roles = $user->getRoleNames()->toArray();
 
             $unitId = optional($user->employee)->unit_id
                 ?? optional($user->person)->unit_id;
 
-            Log::info('getDataLna', [
+            Log::info('getApprovalPengajuanTraining', [
                 'user_id' => $user->id,
-                'role'    => $role,
+                'roles'   => $roles,
                 'unit_id' => $unitId,
             ]);
 
             $perPage = $request->input('per_page', 12);
 
             $query = TrainingReference::with('unit')
-                ->orderBy('created_at', 'desc');
+                ->orderByDesc('created_at');
 
-
-            /**
-             * ======================================
-             * FILTER UNIT
-             * ======================================
-             */
-            if ($role !== 'DHC') {
-                // selain DHC → hanya unit sendiri
-                if (!$unitId) {
-                    return response()->json([
-                        'status'  => 'error',
-                        'message' => 'Unit user tidak ditemukan'
-                    ], 422);
-                }
-
-                $query->where('unit_id', $unitId);
-            }
-
-            /**
-             * ======================================
-             * FILTER STATUS BERDASARKAN ROLE
-             * ======================================
-             */
-            switch ($role) {
-
-                case 'DBS Unit':
-                    // hanya pending
-                    $query->where('status_training_reference', 'pending');
-                    break;
-
-                case 'DHC':
-                    // hanya in_review_dhc
-                    $query->where('status_training_reference', 'in_review_dhc');
-                    break;
-
-                default:
-                    // role lain → hanya active
-                    $query->where('status_training_reference', 'active');
-                    break;
+            if (in_array('DHC', $roles)) {
+                $query->where('status_training_reference', 'pending');
             }
 
             $data = $query->paginate($perPage);
 
+            Log::info("Jumlah data mentah: " . count($data->items()));
+            Log::info("Isi data mentah pengajuan traininig: ", $data->items());
+
+            $mappedData = collect($data->items())->map(function ($item) {
+                return [
+                    'id'                => $item->id,
+                    'judul_sertifikasi' => $item->judul_sertifikasi ?? '-',
+                    'unit_id'           => $item->unit_id,
+                    'unit_kerja'        => optional($item->unit)->name ?? '-',
+                    'penyelenggara'     => $item->penyelenggara ?? '-',
+                    'jumlah_jam'        => $item->jumlah_jam ?? 0,
+                    'waktu_pelaksanaan' => $item->waktu_pelaksanaan,
+                    'biaya_pelatihan'   => $item->biaya_pelatihan ?? 0,
+                    'nama_proyek'       => $item->nama_proyek ?? '-',
+                    'jenis_portofolio'  => $item->jenis_portofolio ?? '-',
+                    'fungsi'            => $item->fungsi ?? '-',
+                    'status_training_reference' => $item->status_training_reference,
+                    'created_at'        => optional($item->created_at)
+                                            ? $item->created_at->format('Y-m-d H:i:s')
+                                            : null,
+                ];
+            });
 
             return response()->json([
                 'status' => 'success',
-                'data'   => $data->items(),
+                'data'   => $mappedData,
                 'pagination' => [
                     'current_page' => $data->currentPage(),
                     'last_page'    => $data->lastPage(),
@@ -292,11 +277,18 @@ class TrainingRequestController extends Controller
                 ]
             ]);
 
-
         } catch (\Exception $e) {
-            Log::error("Error fetch data: " . $e->getMessage());
+            Log::error("Error fetch approval pengajuan training", [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan server'
+            ], 500);
         }
     }
+
 
     public function getDataTrainingReferences($unitId)
     {
@@ -516,11 +508,6 @@ class TrainingRequestController extends Controller
                     'employee.person:id,full_name',
                 ]);
 
-            /**
-             * ==================================================
-             * RULE AKSES UNIT
-             * ==================================================
-             */
             $isDHC         = $user->hasRole('DHC');
             $isAVP         = $user->hasRole('AVP');
             $isKepalaUnit  = $user->hasRole('Kepala Unit');
@@ -529,23 +516,17 @@ class TrainingRequestController extends Controller
             $canSeeAllUnit = $isDHC || (($isAVP || $isKepalaUnit) && $isHumanCapital);
 
             if (!$canSeeAllUnit) {
-                // 🔐 SDM / Kepala Unit non-HC → unit sendiri
                 $query->whereHas('employee', function ($q) use ($userUnitId) {
                     $q->where('unit_id', $userUnitId);
                 });
             } elseif ($unitId) {
-                // 🔎 Filter unit dari parameter (optional)
                 $query->whereHas('employee', function ($q) use ($unitId) {
                     $q->where('unit_id', $unitId);
                 });
             }
-
-            /**
-             * ==================================================
-             * RULE AKSES STATUS (FLOW APPROVAL)
-             * ==================================================
-             */
+            
             $allowedStatuses = [];
+            // $DHC_UNIT_ID = 'Divisi Human Capital';
 
             if ($user->hasRole('Kepala Unit') && !$isHumanCapital) {
                 $allowedStatuses = ['in_review_gmvp'];
@@ -558,6 +539,10 @@ class TrainingRequestController extends Controller
             }
             elseif ($user->hasRole('Kepala Unit') && $isHumanCapital) {
                 $allowedStatuses = ['in_review_vpdhc'];
+
+                // $query->whereHas('employee', function ($q) use ($DHC_UNIT_ID) {
+                //     $q->where('unit_id', $DHC_UNIT_ID);
+                // });
             }
 
             if (!empty($allowedStatuses)) {
@@ -622,7 +607,6 @@ class TrainingRequestController extends Controller
             ], 500);
         }
     }
-
 
     // pengajuan LNA DHC dan SDM
 

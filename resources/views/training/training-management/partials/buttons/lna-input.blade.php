@@ -1,8 +1,7 @@
 <button 
     type="button" 
-    id="lna-input-btn" 
-    data-role="lna" 
     class="u-btn u-btn--brand u-hover-lift"
+    data-modal-target="lna-input-modal"
 >
     Input LNA
 </button> 
