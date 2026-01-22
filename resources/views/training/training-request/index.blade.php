@@ -108,6 +108,7 @@
 
 @include('training.training-request.modals.form-evaluasi-modal')
 @include('training.training-request.modals.form-ikatan-dinas-modal')
+@include('training.training-request.modals.signature-ikatan-dinas-modal')
 
 @endsection
 
@@ -127,7 +128,7 @@
             $modal.removeClass('hidden').fadeIn(200);
 
             $.ajax({
-                url: `/training/training-request/detail-training-request/${trainingId}`,
+                url: `/training/training-request/detail-training-evaluasi/${trainingId}`,
                 method: 'GET',
                 success: function(response) {
                     if (response.status === 'success') {
@@ -140,32 +141,6 @@
                     closeModal();
                 }
             });
-        });
-
-        $(document).on('click', '.btn-detail-ikatan-dinas', function() {
-            const trainingId = $(this).data('id');
-
-            const $form = $modalIkatanDinas.find('form');
-            if($form.length > 0) $form[0].reset();
-
-            $modalIkatanDinas.removeClass('hidden').fadeIn(200);
-
-            if (trainingId) {
-                $.ajax({
-                    url: `/training/training-request/detail-training-request/${trainingId}`,
-                    method: 'GET',
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            fillManualModal($modalIkatanDinas, response);
-                        }
-                    },
-                    error: function() {
-                        alert('Gagal mengambil data detail.');
-                        closeAllModals();
-                    }
-                });
-            }
-
         });
 
         $(document).on('submit', '#evaluasi-form', function(e) {
@@ -225,8 +200,132 @@
             });
         });
 
+        /// IKATAN DINAS ///
+        $(document).on('click', '.btn-detail-ikatan-dinas', function() {
+            const trainingId = $(this).data('id');
+
+            const $form = $modalIkatanDinas.find('form');
+            if($form.length > 0) $form[0].reset();
+
+            $modalIkatanDinas.removeClass('hidden').fadeIn(200);
+
+            if (trainingId) {
+                $.ajax({
+                    url: `/training/training-request/detail-training-ikdin/${trainingId}`,
+                    method: 'GET',
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            fillIkatanDinasModal($modalIkatanDinas, response);
+
+                            if($modalIkatanDinas.find('input[name="training_request_id"]').length === 0) {
+                                $form.append(`<input type="hidden" name="training_request_id" value="${trainingId}">`);
+                            } else {
+                                $modalIkatanDinas.find('input[name="training_request_id"]').val(trainingId);
+                            }
+                        }
+                    },
+                    error: function() {
+                        alert('Gagal mengambil data detail.');
+                        closeAllModals();
+                    }
+                });
+            }
+        });
+
+        $(document).on('submit', '#form-ikdin-data', function(e) {
+            e.preventDefault();
+
+            const $form = $(this);
+            const $btn = $form.find('button[type="submit"]'); // Targetkan button submit di dalam form
+            const formData = $form.serialize();
+            
+            // Set Loading
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...');
+
+            $.ajax({
+                url: "/training/training-request/update-dokumen-ikdin",
+                method: "POST",
+                data: formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $modalIkatanDinas.fadeOut(150, function() {
+                            $(this).addClass('hidden');
+                            
+                            const $modalSignature = $('#signature-ikatan-dinas-modal');
+                            // Set ID ke modal signature
+                            $modalSignature.find('input[name="training_request_id"]').val(response.training_id);
+                            if($modalSignature.find('input[name="document_id"]').length === 0) {
+                                $modalSignature.append(`<input type="hidden" name="document_id" value="${response.document_id}">`);
+                            } else {
+                                $modalSignature.find('input[name="document_id"]').val(response.document_id);
+                            }
+                            $modalSignature.removeClass('hidden').fadeIn(200);
+                            console.log('kirim trainingId', response.training_id);
+                            console.log('kirim documentId', response.document_id);
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    // Jika error, kembalikan tombol ke semula
+                    $btn.prop('disabled', false).html('<i class="fas fa-download u-mr-xs"></i> Tanda tangan');
+                    alert('Gagal menyimpan data ikatan dinas.');
+                }
+            });
+        });
+
+        $(document).on('click', '#btn-cancel-signature', function() {
+            const $modalSignature = $('#signature-ikatan-dinas-modal');
+            const $modalIkatanDinas = $('#form-ikatan-dinas-modal');
+            
+            // Ambil ID dari input hidden di modal signature
+            const documentId = $modalSignature.find('input[name="document_id"]').val();
+            
+            console.log('documentId', documentId);
+            
+            if (confirm('Batal tanda tangan? Data dokumen yang baru dibuat akan dihapus.')) {
+                
+                // Jalankan Fungsi Hapus Data di Backend
+                if (documentId) {
+                    $.ajax({
+                        url: "/training/training-request/delete-dokumen-ikdin",
+                        method: "POST",
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            document_id: documentId,
+                        },
+                        success: function(response) {
+                            console.log("Dokumen sementara berhasil dihapus.");
+                        },
+                        error: function(xhr) {
+                            console.error("Gagal menghapus dokumen sementara.");
+                        }
+                    });
+                }
+
+                // Kembalikan state tombol "Tanda Tangan" di modal sebelumnya ke normal
+                const $btnSubmitIkdin = $('#form-ikdin-data').find('button[type="submit"]');
+                $btnSubmitIkdin.prop('disabled', false).html('<i class="fas fa-download u-mr-xs"></i> Tanda tangan');
+
+                // Transisi Modal: Tutup Signature, Buka Ikatan Dinas
+                $modalSignature.fadeOut(150, function() {
+                    $(this).addClass('hidden');
+                    
+                    // Munculkan kembali modal ikatan dinas tanpa reset form (agar data input user tetap ada)
+                    $modalIkatanDinas.removeClass('hidden').fadeIn(200);
+                });
+            }
+        });
+        /// END IKATAN DINAS ///
+
+        /////////////////
+        /// PARTIALS ///
+        ///////////////
+
         // CLOSE MODAL HANDLER
-        $(document).on('click', '[data-modal-close], #form-evaluasi-close-modal', function(e) {
+        $(document).on('click', '[data-modal-close]', function (e) {
             e.preventDefault();
             closeAllModals();
         });
@@ -307,6 +406,28 @@
                 data.questions?.dampak,
                 'Pertanyaan evaluasi dampak belum tersedia.'
             );
+        }
+
+        function fillIkatanDinasModal($modal, response) {
+            if (!response || response.status !== 'success') return;
+
+            const d = response.data || {};
+
+            $modal.find('.detail-nama').text(d.nama || '-');
+            $modal.find('.detail-nik').text(d.nik || '-');
+            $modal.find('.detail-jabatan').text(d.jabatan || '-');
+            $modal.find('.detail-unit_kerja').text(d.unit_kerja || '-');
+
+            $modal.find('.detail-judul_sertifikasi').val(d.nama_program || '-');
+            $modal.find('.detail-tanggal_pelaksanaan').val(d.tanggal || '-');
+            $modal.find('.detail-tempat_pelaksanaan').val(d.tempat || '-');
+
+            const biaya = Number(d.biaya || 0);
+            const formattedBiaya = biaya > 0
+                ? 'Rp ' + biaya.toLocaleString('id-ID')
+                : 'Rp -';
+
+            $modal.find('.detail-biaya_pelatihan').text(formattedBiaya);
         }
 
     });
