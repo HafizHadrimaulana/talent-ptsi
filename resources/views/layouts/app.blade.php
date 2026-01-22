@@ -11,8 +11,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
-
-  {{-- VITE ASSETS: Harus Match dengan vite.config.js --}}
   @vite([
     'resources/css/app.css', 
     'resources/css/app-layout.css', 
@@ -39,8 +37,8 @@
   $employeeCode = $user?->employee_id ?: ($emp?->employee_id ?? '-');
   $jobTitle     = $emp?->latest_jobs_title ?: ($emp?->job_title ?: ($user?->job_title ?? '-'));
   $unitName     = $emp?->latest_jobs_unit ?: ($emp?->unit_name ?? optional($user?->unit)->name ?? '-');
-  $roleNames   = collect($user?->getRoleNames() ?? [])->values();
-  $roleBadge   = $roleNames->isEmpty() ? '-' : e($roleNames->implode(', '));
+  $roleNames    = collect($user?->getRoleNames() ?? [])->values();
+  $roleBadge    = $roleNames->isEmpty() ? '-' : e($roleNames->implode(', '));
   $isPelamar    = $roleNames->contains('Pelamar');
 
   $initials = function(string $name) {
@@ -129,7 +127,7 @@
             @endif
           </button>
 
-          <div id="globalNotifDropdown" class="dropdown" hidden style="width: 340px; right: 0; left: auto;">
+          <div id="globalNotifDropdown" class="dropdown" hidden>
             <div class="dropdown-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f3f4f6; padding: 12px 16px;">
                <span style="font-weight: 600;">Notifikasi</span>
                <button class="close-btn" type="button" style="background:none; border:none; cursor:pointer;" onclick="document.getElementById('globalNotifDropdown').hidden=true">✖</button>
@@ -262,7 +260,7 @@
           <form id="logoutForm" method="POST" action="{{ route('logout') }}" class="mt-2">
             @csrf
             <div id="poweroff" class="poweroff"
-                 data-threshold="0.6"
+                 data-threshold="0.9"
                  role="slider"
                  aria-label="Swipe To Signout"
                  aria-valuemin="0" aria-valuemax="100"
@@ -395,6 +393,70 @@
         let j={};try{j=await resp.json();}catch(_){} throw new Error(j.message||'Gagal memperbarui password.');
       }catch(err){ toastErr('Gagal',err?.message||'Terjadi kesalahan.'); }finally{ btn.disabled=false; }
     });
+
+    (function(){
+        const slider = document.getElementById('poweroff');
+        const knob = document.getElementById('powerKnob');
+        const form = document.getElementById('logoutForm');
+        if(!slider || !knob || !form) return;
+
+        let isDragging = false;
+        let startX = 0;
+        let maxDist = 0;
+        let currentX = 0;
+
+        function initDrag(e) {
+            isDragging = true;
+            startX = (e.pageX || e.touches[0].pageX);
+            maxDist = slider.offsetWidth - knob.offsetWidth - 6; 
+            slider.classList.add('active');
+        }
+
+        function onDrag(e) {
+            if(!isDragging) return;
+            const x = (e.pageX || e.touches[0].pageX);
+            let moveX = x - startX;
+            if(moveX < 0) moveX = 0;
+            if(moveX > maxDist) moveX = maxDist;
+            
+            knob.style.transform = `translateX(${moveX}px)`;
+            
+            const opacity = 1 - (moveX / maxDist);
+            const text = slider.querySelector('.power-text');
+            if(text) text.style.opacity = Math.max(0, opacity);
+
+            if(moveX > maxDist * 0.9) {
+                isDragging = false;
+                knob.style.transform = `translateX(${maxDist}px)`;
+                form.submit();
+            }
+        }
+
+        function endDrag() {
+            if(!isDragging) return;
+            isDragging = false;
+            slider.classList.remove('active');
+            knob.style.transform = 'translateX(0)';
+            const text = slider.querySelector('.power-text');
+            if(text) text.style.opacity = 1;
+        }
+
+        knob.addEventListener('mousedown', initDrag);
+        document.addEventListener('mousemove', onDrag);
+        document.addEventListener('mouseup', endDrag);
+
+        knob.addEventListener('touchstart', function(e){
+            initDrag(e);
+            e.preventDefault(); 
+        }, {passive: false});
+        
+        document.addEventListener('touchmove', function(e){
+            if(isDragging) e.preventDefault(); 
+            onDrag(e);
+        }, {passive: false});
+        
+        document.addEventListener('touchend', endDrag);
+    })();
   })();
   </script>
   @stack('swal')
