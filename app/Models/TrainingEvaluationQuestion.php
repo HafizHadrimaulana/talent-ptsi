@@ -11,6 +11,7 @@ class TrainingEvaluationQuestion extends Model
 
     protected $fillable = [
         'category',
+        'question_type',
         'question_text',
         'is_active',
     ];

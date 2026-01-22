@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             PrincipalApprovalTemplateSeeder::class,
             AdminUserSeeder::class,
             EmployeeUserSeeder::class,
+            QuestionEvaluationSeeder::class
         ]);
     }
 }
