@@ -114,9 +114,11 @@ Route::middleware('web')->group(function () {
                 Route::get('/', [ExternalRecruitmentController::class, 'index'])
                     ->middleware('permission:recruitment.external.view')
                     ->name('index');
+                Route::post('/apply', [ExternalRecruitmentController::class, 'apply'])
+                    ->middleware('permission:recruitment.external.apply') 
+                    ->name('apply');
 
                 Route::middleware('permission:recruitment.external.manage')->group(function () {
-                    Route::post('/apply', [ExternalRecruitmentController::class, 'apply'])->name('apply');
                     Route::post('/applicant/{id}/update', [ExternalRecruitmentController::class, 'updateApplicantStatus'])->name('updateApplicantStatus');
                     Route::post('/{id}/update-description', [ExternalRecruitmentController::class, 'updateDescription'])->name('updateDescription');
                     Route::post('/{id}/unpublish', [ExternalRecruitmentController::class, 'unpublish'])->name('unpublish');
