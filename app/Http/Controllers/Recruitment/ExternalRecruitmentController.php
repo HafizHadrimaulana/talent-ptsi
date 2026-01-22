@@ -218,14 +218,14 @@ class ExternalRecruitmentController extends Controller
 
     public function apply(Request $request)
     {
-        $request->validate(['recruitment_request_id' => 'required|exists:recruitment_requests,id', 'name' => 'required|string', 'email' => 'required|email', 'phone' => 'required|string', 'university' => 'required|string', 'major' => 'required|string', 'cv_file' => 'required|mimes:pdf|max:2048']);
+        $request->validate(['recruitment_request_id' => 'required|exists:recruitment_requests,id', 'position_applied' => 'required|string', 'name' => 'required|string', 'email' => 'required|email', 'phone' => 'required|string', 'university' => 'required|string', 'major' => 'required|string', 'cv_file' => 'required|mimes:pdf|max:2048']);
         $path = null;
         if ($request->hasFile('cv_file')) {
             $file = $request->file('cv_file');
             $filename = time() . '_' . preg_replace('/\s+/', '_', $file->getClientOriginalName());
             $path = $file->storeAs('cv_uploads', $filename, 'public');
         }
-        RecruitmentApplicant::create(['recruitment_request_id' => $request->recruitment_request_id, 'user_id' => Auth::id(), 'name' => $request->name, 'email' => $request->email, 'phone' => $request->phone, 'university' => $request->university, 'major' => $request->major, 'cv_path' => $path, 'status' => 'Screening CV']);
+        RecruitmentApplicant::create(['recruitment_request_id' => $request->recruitment_request_id, 'user_id' => Auth::id(), 'name' => $request->name, 'position_applied' => $request->position_applied, 'email' => $request->email, 'phone' => $request->phone, 'university' => $request->university, 'major' => $request->major, 'cv_path' => $path, 'status' => 'Screening CV']);
         return redirect()->back()->with('ok', 'Lamaran berhasil dikirim! Silakan pantau status Anda.');
     }
 
