@@ -69,7 +69,7 @@
 
   if (!$photoUrl && $displayEmail && $displayEmail !== '-') {
       $hash = md5(strtolower(trim($displayEmail)));
-      $photoUrl = "https://www.gravatar.com/avatar/{$hash}?s=160&d=404";
+      $photoUrl = "https://www.gravatar.com/avatar/{$hash}?s=160&d=mp";
   }
 @endphp
 
