@@ -576,3 +576,22 @@ body.sidebar-collapsed .main{margin-left:calc(var(--sbw-collapsed) + var(--side-
   height:3px;border-radius:999px;
 }
 
+    #globalNotifDropdown {
+      width: 340px;
+      right: 0;
+      left: auto;
+      transform: none;
+    }
+    @media (max-width: 640px) {
+      #globalNotifDropdown {
+        position: fixed;
+        top: 70px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        width: 94%;
+        max-width: 400px;
+        z-index: 9999;
+      }
+    }
+

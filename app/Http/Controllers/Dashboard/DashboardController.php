@@ -60,9 +60,7 @@ class DashboardController extends Controller
             $recruitmentQuery = RecruitmentRequest::query();
             
             if (!$user->hasRole(['Superadmin', 'DHC'])) {
-                $recruitmentQuery->whereHas('employee', function ($q) use ($employee) {
-                    $q->where('unit_id', $employee->unit_id);
-                });
+                $recruitmentQuery->where('unit_id', $employee->unit_id);
             }
 
             $recruitmentApproved = (clone $recruitmentQuery)->where('status', 'approved')->count();
@@ -95,4 +93,4 @@ class DashboardController extends Controller
             'recruitmentInReview' => null,
         ]);
     }
-}   
+}

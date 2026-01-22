@@ -13,7 +13,6 @@ use App\Http\Controllers\Recruitment\ExternalRecruitmentController;
 use App\Http\Controllers\Recruitment\PrincipalApprovalController as RecruitmentApprovalController;
 use App\Http\Controllers\Recruitment\PublishingController;
 use App\Http\Controllers\Recruitment\ApplicantDataController;
-use App\Http\Controllers\Public\CareerController;
 use App\Http\Controllers\Training\{
     DashboardController as TrainingDashboardController,
     TrainingRequestController,
@@ -45,7 +44,8 @@ Route::middleware('web')->group(function () {
 
         Route::post('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
         Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
-        Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+        
+        Route::any('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
         Route::prefix('training')->name('training.')->group(function () {
 
@@ -60,7 +60,7 @@ Route::middleware('web')->group(function () {
 
                 Route::get('training-request/detail-training-evaluasi/{id}', [TrainingRequestController::class, 'getDetailTrainingRequest'])->name('training-request/detail-training-evaluasi');
                 Route::post('training-request/submit-evaluasi-training', [TrainingRequestController::class, 'submitEvaluasiTraining'])->name('training-request/submit-evaluasi-training');
-                
+
                 Route::get('training-request/detail-training-ikdin/{id}', [TrainingRequestController::class, 'getDetailTrainingIkdin'])->name('training-request.detail-training-ikdin');
                 Route::post('training-request/update-dokumen-ikdin', [TrainingRequestController::class, 'updateDokumenIkdin'])->name('training-request.update-dokumen-ikdin');
                 Route::post('training-request/delete-dokumen-ikdin', [TrainingRequestController::class, 'deleteDokumenIkdin'])->name('training-request.delete-dokumen-ikdin');
@@ -122,7 +122,7 @@ Route::middleware('web')->group(function () {
                     ->middleware('permission:recruitment.external.view')
                     ->name('index');
                 Route::post('/apply', [ExternalRecruitmentController::class, 'apply'])
-                    ->middleware('permission:recruitment.external.apply') 
+                    ->middleware('permission:recruitment.external.apply')
                     ->name('apply');
 
                 Route::middleware('permission:recruitment.external.manage')->group(function () {
