@@ -17,11 +17,7 @@ class ExternalRecruitmentController extends Controller
         $isCentralHR = $me->hasAnyRole(['Superadmin', 'DHC', 'VP Human Capital']);
         $isPelamar = $me->hasRole('Pelamar');
         $isUnitHR = !$isCentralHR && !$isPelamar && $me->unit_id;
-        
-        // Definisikan variabel $isDHC agar bisa dipakai di closure
         $isDHC = ($isCentralHR || $isUnitHR);
-
-        // --- BAGIAN AJAX REQUEST (DATATABLES LOWONGAN) ---
         if ($request->ajax()) {
             $query = RecruitmentRequest::with(['unit', 'applicants', 'positionObj'])
                 ->where('type', 'Rekrutmen')
@@ -30,16 +26,12 @@ class ExternalRecruitmentController extends Controller
                         ->orWhere('status', 'like', '%Selesai%')
                         ->orWhere('status', 'Final');
                 });
-
             if ($isPelamar) {
                 $query->where('is_published', 1);
             }
-
             if ($isUnitHR) {
                 $query->where('unit_id', $me->unit_id);
             }
-
-            // 1. Searching Global
             if ($request->has('search') && !empty($request->input('search.value'))) {
                 $search = $request->input('search.value');
                 $query->where(function ($q) use ($search) {
@@ -53,17 +45,11 @@ class ExternalRecruitmentController extends Controller
                         });
                 });
             }
-
-            // 2. Sorting
             if ($request->has('order')) {
                 $order = $request->input('order')[0];
                 $colIdx = $order['column'];
                 $dir = $order['dir'];
-                // Mapping index kolom (sesuaikan dengan urutan kolom di JS)
-                // Default (DHC): 0:Ticket, 1:Posisi, 2:Unit, 3:Status, 4:Kuota, 5:Pelamar, 6:Aksi
                 $cols = ['ticket_number', 'position', 'unit_id', 'is_published', 'headcount', null, null];
-                
-                // Jika Pelamar: 0:Posisi, 1:Unit, 2:Status, 3:Aksi
                 if ($isPelamar) {
                     $cols = ['position', 'unit_id', 'is_published', null];
                 }
@@ -81,22 +67,16 @@ class ExternalRecruitmentController extends Controller
             } else {
                 $query->orderBy('updated_at', 'desc');
             }
-
-            // 3. Pagination & Data
             $countTotal = $query->count();
             $start = $request->input('start', 0);
             $length = $request->input('length', 10);
             $data = $query->skip($start)->take($length)->get();
-
-            // Prepare helper data for User Applications
             $myApplications = collect([]);
             if ($isPelamar) {
                 $myApplications = RecruitmentApplicant::where('user_id', $me->id)
                     ->get()
                     ->groupBy('recruitment_request_id');
             }
-
-            // 4. Formatting Data
             $formattedData = $data->map(function ($row) use ($isDHC, $isPelamar, $myApplications) {
                 return $this->formatVacancyRow($row, $isDHC, $isPelamar, $myApplications);
             });
@@ -108,18 +88,13 @@ class ExternalRecruitmentController extends Controller
                 'data' => $formattedData
             ]);
         }
-
-        // --- VIEW HTML UTAMA ---
         return view('recruitment.external.index', [
             'isDHC'      => $isDHC,
             'isPelamar'  => $isPelamar,
         ]);
     }
-
-    // Helper: Format Baris Tabel Lowongan
     private function formatVacancyRow($row, $isDHC, $isPelamar, $myApplications)
     {
-        // Logic Posisi (Multi/Single)
         $allPositions = [];
         $details = $row->meta['recruitment_details'] ?? [];
         if (!empty($details) && is_array($details) && count($details) > 0) {
@@ -129,8 +104,6 @@ class ExternalRecruitmentController extends Controller
         } else {
             $allPositions[] = $row->positionObj->name ?? $row->position ?? '-';
         }
-
-        // Logic Aplikasi User (untuk Pelamar)
         $userApps = $myApplications->get($row->id) ?? collect([]);
         $appliedPositions = $userApps->pluck('position_applied')->filter()->toArray();
         if ($userApps->count() > 0 && count($appliedPositions) === 0) {
@@ -141,13 +114,7 @@ class ExternalRecruitmentController extends Controller
         foreach ($availablePositions as $p) {
             $availableJson[] = ['name' => $p, 'id' => $p];
         }
-
-        // --- RENDER HTML KOLOM ---
-        
-        // 1. No Ticket
         $colTicket = $row->ticket_number ? '<span class="u-badge u-badge--glass">' . $row->ticket_number . '</span>' : '-';
-
-        // 2. Posisi
         $colPosisi = '<div class="u-font-bold text-sm">';
         if (count($allPositions) > 1) {
             $colPosisi .= '<ul class="list-disc list-inside text-gray-700">';
@@ -166,24 +133,14 @@ class ExternalRecruitmentController extends Controller
             }
         }
         $colPosisi .= '</div>';
-
-        // 3. Unit
         $colUnit = $row->unit->name ?? '-';
-
-        // 4. Status
         if ($row->is_published) {
             $colStatus = '<span class="u-badge u-badge--success"><i class="fas fa-check-circle u-mr-xs"></i> Dibuka</span>';
         } else {
             $colStatus = '<span class="u-badge u-badge--danger"><i class="fas fa-ban u-mr-xs"></i> Ditutup</span>';
         }
-
-        // 5. Kuota
         $colKuota = $row->headcount . ' Orang';
-
-        // 6. Pelamar Masuk
         $colPelamar = '<span class="u-badge u-badge--info"><i class="fas fa-users u-mr-xs"></i> ' . $row->applicants->count() . '</span>';
-
-        // 7. Aksi
         $colAksi = '<div class="flex flex-col gap-2 items-end">';
         if ($isDHC) {
             $colAksi .= '<button class="u-btn u-btn--sm u-btn--primary u-btn--outline" onclick="openManageModal(' . $row->id . ', \'' . $row->ticket_number . '\')">
@@ -202,7 +159,6 @@ class ExternalRecruitmentController extends Controller
                              </button>";
             }
             foreach ($userApps as $app) {
-                // Pastikan null safe untuk property object
                 $status = $app->status ?? '-';
                 $date = $app->interview_schedule ?? '';
                 $note = htmlspecialchars($app->hr_notes ?? '', ENT_QUOTES);
@@ -217,8 +173,6 @@ class ExternalRecruitmentController extends Controller
             }
         }
         $colAksi .= '</div>';
-
-        // Return array sesuai urutan kolom
         if ($isPelamar) {
             return [$colPosisi, $colUnit, $colStatus, $colAksi];
         } else {
@@ -231,16 +185,11 @@ class ExternalRecruitmentController extends Controller
         $applicants = RecruitmentApplicant::where('recruitment_request_id', $requestId)
             ->orderBy('created_at', 'desc')
             ->get();
-        
-        // Format data untuk DataTables Client-side (atau Server-side simple) di dalam modal
         $data = $applicants->map(function($app) {
              $cvBtn = $app->cv_path 
                 ? "<a href='/storage/{$app->cv_path}' target='_blank' class='u-text-brand u-font-bold hover:u-underline'><i class='fas fa-file-pdf'></i> PDF</a>" 
                 : '-';
-             
-             // Badge Logic Status Pelamar
-             $badgeClass = 'st-screening'; // default CSS class
-             // Sesuaikan class badge Anda (contoh sederhana)
+             $badgeClass = 'st-screening';
              if(str_contains($app->status, 'Interview') || str_contains($app->status, 'Psikotes')) $badgeClass = 'st-interview';
              if($app->status === 'Passed' || $app->status === 'Hired') $badgeClass = 'st-passed';
              if(in_array($app->status, ['Rejected', 'Failed', 'Ditolak'])) $badgeClass = 'st-rejected';
@@ -365,22 +314,16 @@ class ExternalRecruitmentController extends Controller
     public function updateDescription(Request $request, $id)
     {
         $req = RecruitmentRequest::findOrFail($id);
-        
-        // Validasi hak akses
         $me = Auth::user();
         if (!$me->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit']) && $me->unit_id != $req->unit_id) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
-
-        // Validasi Input
         $request->validate([
             'description' => 'required|string',
             'publish_start_date' => 'required|date',
             'publish_end_date' => 'required|date|after_or_equal:publish_start_date',
             'publish_location' => 'required|string|max:255',
         ]);
-
-        // Simpan Perubahan
         $req->update([
             'description' => $request->description,
             'publish_start_date' => $request->publish_start_date,

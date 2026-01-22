@@ -49,12 +49,7 @@ class PrincipalApprovalController extends Controller
         if (!$user) return false;
         $jobTitle = $this->getUserJobTitle($user->id);
         $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
-
-        return $user->hasRole('Superadmin') || 
-               $user->hasRole('DHC') ||
-               $user->hasRole('Dir SDM') ||
-               $cleanTitle === 'AVP HUMAN CAPITAL OPERATION'||
-               $cleanTitle === 'VP HUMAN CAPITAL';
+        return $user->hasRole('Superadmin') || $user->hasRole('DHC') || $user->hasRole('Dir SDM') || $cleanTitle === 'AVP HUMAN CAPITAL OPERATION'|| $cleanTitle === 'VP HUMAN CAPITAL';
     }
 
     protected function dhcUnitId(): ?int
@@ -82,17 +77,11 @@ class PrincipalApprovalController extends Controller
     {
         $query = RecruitmentRequest::query();
         $tbl = (new RecruitmentRequest())->getTable();
-
-        // --- START REVISI: Filter Smart untuk Approver Level Atas ---
-        // 1. Identifikasi Jabatan
         $jobTitle = $this->getUserJobTitle($me->id);
         $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
-
         $isAvpHcOps = ($me->hasRole('AVP') && $cleanTitle === 'AVP HUMAN CAPITAL OPERATION');
         $isVpHc     = ($cleanTitle === 'VP HUMAN CAPITAL');
         $isDirSdm   = $me->hasRole('Dir SDM');
-        
-        // 2. Jika user adalah salah satu role tersebut (dan bukan Superadmin)
         if (($isAvpHcOps || $isVpHc || $isDirSdm) && !$me->hasRole('Superadmin')) {
             
             $stageKey = '';
@@ -140,15 +129,11 @@ class PrincipalApprovalController extends Controller
                 });
             });
         }
-
-        // Filter Unit Tambahan (jika ada dropdown unit yang dipilih)
         if ($selectedUnitId && $this->has($tbl, 'unit_id')) {
             $query->where('unit_id', $selectedUnitId);
         }
-
         return $query;
     }
-
     public function index(Request $r)
     {
         $me = Auth::user();
@@ -156,7 +141,6 @@ class PrincipalApprovalController extends Controller
         $selectedUnitId = $canSeeAll
             ? ($r->filled('unit_id') ? (int) $r->integer('unit_id') : null)
             : (int) ($me?->unit_id);
-
         if ($r->ajax()) {
             $query = $this->getBaseQuery($me, $canSeeAll, $selectedUnitId);
             $query->with(['approvals' => fn($q) => $q->orderBy('id', 'asc'), 'unit']);
@@ -177,8 +161,6 @@ class PrincipalApprovalController extends Controller
                     $q->where('status', '!=', 'approved')->orWhereNull('status');
                 });
             }
-
-            // 3. Sorting
             if ($r->has('order')) {
                 $order = $r->input('order')[0];
                 $colIdx = $order['column'];
@@ -195,13 +177,10 @@ class PrincipalApprovalController extends Controller
             } else {
                 $query->latest();
             }
-
             $countTotal = $query->count(); 
             $start = $r->input('start', 0);
             $length = $r->input('length', 10);
             $data = $query->skip($start)->take($length)->get();
-
-            // 5. Formatting Data
             $formattedData = $data->map(function($row) use ($me) {
                 return [
                     $row->ticket_number ?? '-', 
@@ -213,10 +192,9 @@ class PrincipalApprovalController extends Controller
                     $row->employment_type ?? '-', 
                     $this->renderProgressColumn($row), 
                     $this->renderSlaColumn($row),
-                    $this->renderActionColumn($row, $me) // Fixed Actions & Attributes
+                    $this->renderActionColumn($row, $me)
                 ];
             });
-
             return response()->json([
                 'draw' => intval($r->input('draw')),
                 'recordsTotal' => RecruitmentRequest::count(), 
@@ -224,13 +202,10 @@ class PrincipalApprovalController extends Controller
                 'data' => $formattedData
             ]);
         }
-
-        // View non-AJAX
         $units = $canSeeAll
             ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
             : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
         $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
-
         return view('recruitment.principal-approval.index', [
             'units'          => $units,
             'canSeeAll'      => $canSeeAll,
@@ -239,7 +214,6 @@ class PrincipalApprovalController extends Controller
             'currentTab'     => $r->input('tab', 'berjalan'),
         ]);
     }
-
     private function renderTitleColumn($r) {
         $date = optional($r->created_at)->format('d M Y') ?? '-';
         $details = $r->meta['recruitment_details'] ?? [];
@@ -308,23 +282,19 @@ class PrincipalApprovalController extends Controller
         foreach($r->approvals as $ap) { 
             if(strpos($ap->note, 'stage=kepala_unit')!==false && $ap->status=='approved') $kaUnitApp = $ap; 
         }
-
         if (in_array($status, ['submitted', 'in_review']) && $kaUnitApp) {
             $slaTimeBase = \Carbon\Carbon::parse($kaUnitApp->decided_at);
             $daysDiff = $slaTimeBase->diffInDays(now());
             $rawText = $slaTimeBase->locale('id')->diffForHumans(['parts'=>2,'join'=>true,'syntax'=>\Carbon\CarbonInterface::DIFF_RELATIVE_TO_NOW]);
             $cleanText = str_replace(['yang ', 'setelahnya', 'sebelumnya', ' dan '], ['', '', '', ', '], $rawText);
             $slaText = trim($cleanText);
-
             if ($daysDiff >= 5) { $slaBadgeClass = 'u-badge--danger'; } 
             elseif ($daysDiff >= 3) { $slaBadgeClass = 'u-badge--warning'; } 
             else { $slaBadgeClass = 'u-badge--info'; }
-
             return "<span class='u-badge {$slaBadgeClass} u-text-2xs' title='Dihitung sejak approval Kepala Unit'>
                         <i class='far fa-clock u-mr-xs'></i> {$slaText}
                     </span>";
         }
-
         return '<span class="u-text-muted u-text-2xs" title="Menunggu approval Kepala Unit">-</span>'; 
     }
 
@@ -333,7 +303,6 @@ class PrincipalApprovalController extends Controller
         $sameUnit = $meUnit && (string)$meUnit === (string)$r->unit_id;
         $jobTitle = $this->getUserJobTitle($me->id);
         $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
-        
         $meRoles = [
             'Superadmin' => $me->hasRole('Superadmin'),
             'Admin Ops'  => $me->hasRole('Admin Operasi Unit') || str_contains($cleanTitle, 'STAF ADMINISTRASI OPERASI'),
@@ -345,7 +314,6 @@ class PrincipalApprovalController extends Controller
             'VP HC'      => ($cleanTitle === 'VP HUMAN CAPITAL'),
             'Dir SDM'    => $me->hasRole('Dir SDM')
         ];
-
         $approvalHistory = [];
         $activeApp = null;
         $currentStage = '';
@@ -733,13 +701,10 @@ class PrincipalApprovalController extends Controller
     {
         if (!$user) return false;
         if ($user->hasRole('Superadmin')) return true;        
-        
         $stage = $this->stages()[$stageIdx] ?? null;
         if (!$stage) return false;
-        
         $jobTitle = $this->getUserJobTitle($user->id);
         $cleanJobTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
-        
         $allowed = false;
         if (isset($stage['roles'])) {
             foreach ($stage['roles'] as $r) {
@@ -749,8 +714,6 @@ class PrincipalApprovalController extends Controller
                 }
             }
         }
-
-        // Logic Spesifik
         if ($stage['key'] === 'kepala_mp') {
              $isTitleMatch = str_contains($cleanJobTitle, 'KEPALA PROYEK (MP)');
              return ($allowed || $isTitleMatch) && ((string) $user->unit_id === (string) $reqUnitId);
@@ -766,12 +729,9 @@ class PrincipalApprovalController extends Controller
         if ($stage['key'] === 'avp_hc_ops') {
             return $allowed && ($cleanJobTitle === 'AVP HUMAN CAPITAL OPERATION');
         }
-        
-        // KHUSUS VP HC: Cek Jabatan Langsung (Case Insensitive)
         if ($stage['key'] === 'vp_hc') {
             return ($cleanJobTitle === 'VP HUMAN CAPITAL');
         }
-        
         return $allowed;
     }
 
@@ -779,32 +739,21 @@ class PrincipalApprovalController extends Controller
     {
         $me = Auth::user();
         if (!$me) abort(401);
-
         $jobTitle = $this->getUserJobTitle($me->id);
         $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
-
-        // LEVEL 1: BYPASS (Superadmin, DHC, Dir SDM, AVP Ops, VP HC)
-        // Orang-orang ini BOLEH mengakses unit manapun.
         if ($me->hasRole('Superadmin') || 
             $me->hasRole('DHC') || 
             $me->hasRole('Dir SDM') || 
             $cleanTitle === 'AVP HUMAN CAPITAL OPERATION' || 
             $cleanTitle === 'VP HUMAN CAPITAL') { 
-            return; // Access Granted Immediate
+            return;
         }
-
-        // LEVEL 2: PENGECEKAN UNIT (Untuk Admin Ops, SDM Unit, Kepala Unit)
-        // Jika user bukan "Dewa" (Level 1), dia HANYA boleh submit untuk unitnya sendiri.
         if ($me->unit_id && $unitId && (string) $me->unit_id !== (string) $unitId) {
             abort(403, 'Akses Unit Ditolak. Anda tidak berhak mengakses unit ini.');
         }
-
-        // LEVEL 3: PEMBATASAN KHUSUS ROLE (Jika lolos unit, cek role spesifik jika perlu)
         if ($me->hasRole('AVP') && $cleanTitle !== 'AVP HUMAN CAPITAL OPERATION') {
              abort(403, 'Akses ditolak. Khusus AVP Human Capital Operation.');
         }
-        
-        // Jika sampai sini (misal Admin Ops di unit yg sama), berarti Lolos.
     }
 
     public function previewUraianPdf(Request $request)

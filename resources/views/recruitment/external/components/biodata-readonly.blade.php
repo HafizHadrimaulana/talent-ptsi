@@ -1,5 +1,4 @@
 <div class="u-card u-card--glass u-hover-lift u-flex u-flex-col" style="height: 80vh; max-height: 800px; overflow: hidden;"> 
-    {{-- Header Section --}}
     <div class="u-flex u-items-start u-gap-md u-p-lg u-border-b shrink-0" style="background-color: var(--surface-0);">
         <div class="u-avatar u-avatar--lg u-avatar--brand shrink-0" style="width: 80px; height: 100px; border-radius: 8px;">
             @if($person->photo_path)
@@ -30,8 +29,6 @@
             </a>
         </div>
     </div>
-
-    {{-- Tabs Navigation --}}
     <div class="u-tabs-wrap u-px-md u-pt-sm u-pb-0" style="background-color: var(--surface-0);">
         <div class="u-tabs no-scrollbar">
             <button type="button" onclick="showBioTab('pribadi', this)" class="u-tab is-active bio-tab-btn">Data Pribadi</button>
@@ -43,11 +40,7 @@
             <button type="button" onclick="showBioTab('dokumen', this)" class="u-tab bio-tab-btn">Dokumen</button>
         </div>
     </div>
-
-    {{-- Content Area --}}
     <div class="u-flex-grow u-overflow-y-auto u-p-lg" style="background-color: var(--surface-1);">
-        
-        {{-- TAB: DATA PRIBADI --}}
         <div id="tab-pribadi" class="bio-content block">
             <div class="u-card u-p-md">
                 <h3 class="uj-section-title" style="margin-top:0;">Informasi Dasar</h3>
@@ -63,8 +56,6 @@
                 </div>
             </div>
         </div>
-
-        {{-- TAB: ALAMAT --}}
         <div id="tab-alamat" class="bio-content hidden">
             <div class="u-space-y-md">
                 <div class="u-card u-p-md">
@@ -85,8 +76,6 @@
                 </div>
             </div>
         </div>
-
-        {{-- TAB: PENDIDIKAN --}}
         <div id="tab-pendidikan" class="bio-content hidden">
             <div class="u-card u-p-0 u-overflow-hidden">
                 <table class="u-table w-full">
@@ -109,8 +98,6 @@
                 </table>
             </div>
         </div>
-
-        {{-- TAB: KELUARGA --}}
         <div id="tab-keluarga" class="bio-content hidden">
             <div class="u-card u-p-0 u-overflow-hidden">
                 <table class="u-table w-full">
@@ -131,8 +118,6 @@
                 </table>
             </div>
         </div>
-
-        {{-- TAB: PENGALAMAN --}}
         <div id="tab-pengalaman" class="bio-content hidden">
             <div class="u-space-y-sm">
                 @forelse($person->work_experience ?? [] as $work)
@@ -153,8 +138,6 @@
                 @endforelse
             </div>
         </div>
-
-        {{-- TAB: SKILL & ORG --}}
         <div id="tab-skill" class="bio-content hidden">
             <div class="u-grid-2 u-gap-md u-stack-mobile">
                 <div class="u-card u-p-md">
@@ -183,8 +166,6 @@
                 </div>
             </div>
         </div>
-
-        {{-- TAB: DOKUMEN --}}
         <div id="tab-dokumen" class="bio-content hidden">
             <div class="u-card u-p-md">
                 <h3 class="uj-section-title" style="margin-top:0;">Berkas Lamaran</h3>

@@ -287,46 +287,39 @@
 <script>
     let editVacancyEditor = null;
     document.addEventListener('DOMContentLoaded', function() {
-        
-        // 1. Inisialisasi DataTable UTAMA (Lowongan)
         const isPelamar = {{ $isPelamar ? 'true' : 'false' }};
-        
-        // Definisi Kolom
         let columns = [];
         if(isPelamar) {
             columns = [
-                { data: 0 }, // Posisi
-                { data: 1 }, // Unit
-                { data: 2 }, // Status
-                { data: 3, className: "text-right" }  // Aksi
+                { data: 0 },
+                { data: 1 },
+                { data: 2 },
+                { data: 3, className: "text-right" }
             ];
         } else {
             columns = [
-                { data: 0 }, // Ticket
-                { data: 1 }, // Posisi
-                { data: 2 }, // Unit
-                { data: 3 }, // Status
-                { data: 4 }, // Kuota
-                { data: 5 }, // Pelamar
-                { data: 6, className: "text-right" }  // Aksi
+                { data: 0 },
+                { data: 1 },
+                { data: 2 },
+                { data: 3 },
+                { data: 4 },
+                { data: 5 },
+                { data: 6, className: "text-right" }
             ];
         }
-
-        // Panggil initDataTables dari helper global (datatables.js)
         if(window.initDataTables) {
             window.initDataTables('#ext-table', {
-                serverSide: true, // PENTING: Aktifkan Server Side AJAX
+                serverSide: true,
                 processing: true,
                 ajax: {
-                    url: "{{ route('recruitment.external.index') }}", // URL ke Controller index()
+                    url: "{{ route('recruitment.external.index') }}",
                 },
                 columns: columns,
-                order: [[0, 'desc']], // Default sort kolom pertama (Ticket / Posisi)
+                order: [[0, 'desc']],
                 columnDefs: [
-                    { orderable: false, targets: -1 } // Disable sort kolom aksi
+                    { orderable: false, targets: -1 }
                 ],
                 drawCallback: function() {
-                    // Styling tambahan setelah tabel dirender
                     const wrapper = $(this.api().table().container());
                     wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
                     wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
@@ -339,8 +332,6 @@
         } else {
             console.error("Helper window.initDataTables tidak ditemukan. Pastikan datatables.js diload.");
         }
-
-        // Init CKEditor (Tetap sama)
         if (document.querySelector('#editEditorContent')) {
             ClassicEditor
                 .create(document.querySelector('#editEditorContent'), {
@@ -355,32 +346,18 @@
     window.openManageModal = function(requestId, ticket) {
         const modal = document.getElementById('manageModal');
         const ticketDisplay = document.getElementById('manage_ticket_display');
-        
-        // 1. Reset & Buka Modal
+
         if(ticketDisplay) ticketDisplay.textContent = ticket;
-        
-        // Buka modal
         openModal('manageModal');
-        
-        // Tampilkan loading sementara di dalam tabel (opsional, DataTables punya loading sendiri tapi ini UX)
-        // Jika tabel sudah ada isinya dari sesi sebelumnya, kita biarkan atau clear dulu
         if ($.fn.DataTable.isDataTable('#applicant_table')) {
             $('#applicant_table').DataTable().clear().draw();
         }
-
-        // 2. Fetch Data
         fetch(`/recruitment/external/${requestId}/applicants`)
             .then(res => res.json())
             .then(res => {
-                const rawData = res.data; // Data JSON dari controller
-
-                // Transform data agar sesuai format array of objects yang diinginkan DataTables
-                // Controller Anda sudah mengembalikan format: { name_info:..., edu_info:..., cv:..., status:..., schedule:..., actions:... }
-                // Jadi kita bisa langsung pakai.
-
-                // 3. Inisialisasi / Re-inisialisasi DataTables
+                const rawData = res.data;
                 if (applicantTable) {
-                    applicantTable.destroy(); // Hancurkan instance lama
+                    applicantTable.destroy(); 
                 }
 
                 applicantTable = $('#applicant_table').DataTable({
@@ -393,7 +370,6 @@
                         { data: 'schedule' },
                         { data: 'actions', className: 'text-right', orderable: false, searchable: false }
                     ],
-                    // Konfigurasi Tampilan (Dom, Language, dll)
                     dom: "<'u-dt-wrapper'<'u-dt-header'<'u-dt-len'l><'u-dt-search'f>><'u-dt-tbl'tr><'u-dt-footer'<'u-dt-info'i><'u-dt-pg'p>>>",
                     language: {
                         search: "",
@@ -406,9 +382,9 @@
                         emptyTable: "Belum ada pelamar masuk untuk posisi ini.",
                         paginate: { first: "«", last: "»", next: "›", previous: "‹" }
                     },
-                    pageLength: 5, // Default 5 baris per halaman di modal agar tidak terlalu panjang
+                    pageLength: 5,
                     lengthMenu: [5, 10, 25, 50],
-                    order: [[3, 'asc']], // Default sort berdasarkan Status (Kolom index 3)
+                    order: [[3, 'asc']],
                     drawCallback: function() {
                          const wrapper = $(this.api().table().container());
                          wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
@@ -419,11 +395,9 @@
                          p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
                     }
                 });
-
             })
             .catch(err => {
                 console.error(err);
-                // Fallback error di dalam tabel body jika fetch gagal
                 const tbody = document.querySelector('#applicant_table tbody');
                 if(tbody) tbody.innerHTML = '<tr><td colspan="6" class="u-text-danger u-text-center">Gagal memuat data.</td></tr>';
             });
@@ -439,7 +413,6 @@
         const locationInput = document.getElementById('edit_location');
         
         let finalLocation = rowData.publish_location;
-        // Fallback ke data meta jika publish_location kosong
         if (!finalLocation && rowData.meta && rowData.meta.recruitment_details && rowData.meta.recruitment_details.length > 0) {
             finalLocation = rowData.meta.recruitment_details[0].location;
         }
@@ -704,7 +677,6 @@
         const el = document.getElementById(id);
         if(el) {
             el.hidden = false;
-            // Gunakan style flex agar centering bekerja jika menggunakan CSS framework Anda
             el.style.display = 'flex'; 
             document.body.classList.add('modal-open');
         }
