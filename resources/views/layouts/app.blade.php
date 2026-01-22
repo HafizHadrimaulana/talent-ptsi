@@ -92,11 +92,6 @@
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </button>
 
-    <!-- <div class="search">
-      <span class="search-icon">🔎</span>
-      <input type="search" name="q" id="globalSearch" placeholder="Search Everything…" aria-label="Search Everything">
-    </div> -->
-
     <div class="top-actions">
       <div class="dropdown-wrap">
         @auth
@@ -157,16 +152,6 @@
                        } else {
                            $borderLeft = '4px solid #9ca3af';
                        }
-                       $daysDiff = $notif->time ? $notif->time->diffInDays(now()) : 0;
-                       $timeColor = '#2563eb';
-                       $extraLabel = '';
-                       if ($daysDiff >= 5) {
-                           $timeColor = '#dc2626';
-                           $extraLabel = '🔺';
-                       } elseif ($daysDiff >= 3) {
-                           $timeColor = '#d97706';
-                           $extraLabel = '⚠️';
-                       }
                    @endphp
 
                    <li class="notif-item" style="padding: 0;">
@@ -179,10 +164,6 @@
                                  {{ str_replace('_', ' ', $notif->type) }}
                                </span>
                            </div>
-                           <span style="font-size: 0.7rem; font-weight: 700; color: {{ $timeColor }};">
-                             {{ $notif->time ? str_replace('yang ', '', $notif->time->locale('id')->diffForHumans()) : '' }}
-                             @if($extraLabel) <span style="margin-left: 2px;">{{ $extraLabel }}</span> @endif
-                           </span>
                         </div>
                         <div style="font-size: 0.9rem; font-weight: 600; color: #1f2937; margin-bottom: 4px; line-height: 1.3;">
                           {{ $notif->title }}
@@ -274,7 +255,7 @@
             <button id="changePwBtn" type="button" class="menu-item"
                     data-open="pwModal"
                     onclick="window.__openModal && window.__openModal('pwModal')">
-              <!-- <span>Change Password</span> -->
+              <span>Change Password</span>
             </button>
           </div>
 

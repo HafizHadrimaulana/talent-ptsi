@@ -65,7 +65,7 @@
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'disetujui', 'page' => null]) }}" 
            class="u-btn {{ $currentTab === 'disetujui' ? 'u-btn--brand' : 'u-btn--ghost' }}"
            style="border-radius: 999px; min-width: 120px; justify-content: center; {{ $currentTab !== 'disetujui' ? 'color: var(--muted);' : '' }}">
-           <i class="fas fa-check-circle u-mr-xs"></i> Disetujui
+           <i class="fas fa-check-circle u-mr-xs"></i> Selesai
         </a>
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'berjalan', 'page' => null]) }}" 
            class="u-btn {{ $currentTab === 'berjalan' ? 'u-btn--brand' : 'u-btn--ghost' }}"
@@ -89,7 +89,7 @@
     <div class="u-scroll-x">
       <table id="ip-table" class="u-table nowrap" style="width:100%" data-dt>
         <thead>
-          <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progress</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
+          <tr><th>No Ticket</th><th>Judul</th><th>Unit</th><th>Jenis Permintaan</th><th>Posisi</th><th>HC</th><th>Jenis Kontrak</th><th>Progres</th><th>SLA</th><th class="cell-actions">Aksi</th></tr>
         </thead>
         <tbody>
           
@@ -918,41 +918,68 @@
                 });
                 if (projectForm) {
                     projectForm.addEventListener('submit', function(e) {
-                        e.preventDefault();     
+                        e.preventDefault();
                         const btnSave = document.getElementById('btnSaveProject');
                         const originalText = btnSave.innerHTML;
+                        
                         btnSave.disabled = true;
                         btnSave.innerHTML = '<i class="fas fa-circle-notch fa-spin u-mr-xs"></i> Menyimpan...';
+                        
                         const formData = new FormData(this);
+                        
                         fetch("{{ route('recruitment.project.store') }}", {
                             method: 'POST',
                             body: formData,
                             headers: {
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json' // Penting agar return JSON
                             }
                         })
                         .then(response => response.json())
                         .then(data => {
                             if (data.status === 'success') {
-                                projectModal.style.display = 'none';
-                                const newOption = document.createElement('option');
-                                newOption.value = data.data.project_code;
-                                newOption.text = data.data.project_code + ' - ' + data.data.project_name;
-                                newOption.setAttribute('data-nama', data.data.project_name);
-                                newOption.selected = true;
-                                const newIdx = 2; 
-                                if(projectSelect.options.length >= 2) {
-                                    projectSelect.add(newOption, 2);
-                                } else {
-                                    projectSelect.add(newOption);
+                                // 1. Tutup Modal
+                                const projectModal = document.getElementById('createProjectModal');
+                                if(projectModal) projectModal.style.display = 'none';
+
+                                // 2. UPDATE UI (PERBAIKAN DISINI)
+                                // Kita update Input Search & Hidden Input, bukan Select Option
+                                const searchInput = document.getElementById('kodeProjectSearchInput');
+                                const hiddenInput = document.getElementById('kodeProjectInput');
+                                const namaInput   = document.getElementById('namaProjectInput');
+
+                                if (data.data) {
+                                    const newCode = data.data.project_code;
+                                    const newName = data.data.project_name;
+
+                                    // Isi kolom search dengan format "KODE - NAMA"
+                                    if (searchInput) searchInput.value = newCode + ' - ' + newName;
+                                    
+                                    // Isi input hidden agar form utama bisa dikirim
+                                    if (hiddenInput) hiddenInput.value = newCode;
+                                    
+                                    // Isi nama project readonly
+                                    if (namaInput) namaInput.value = newName;
                                 }
-                                projectSelect.value = data.data.project_code;
-                                if(projectNameInput) projectNameInput.value = data.data.project_name;
-                                alert('Project berhasil dibuat!'); 
-                            } else {alert('Gagal menyimpan: ' + data.message);}
+
+                                alert('Project berhasil dibuat dan dipilih!');
+                                
+                                // Reset form project untuk penggunaan berikutnya
+                                this.reset();
+                                
+                            } else {
+                                alert('Gagal menyimpan: ' + data.message);
+                            }
                         })
-                        .catch(error => {console.error('Error:', error); alert('Terjadi kesalahan saat menyimpan project.');})
-                        .finally(() => {btnSave.disabled = false; btnSave.innerHTML = originalText;});
+                        .catch(error => {
+                            console.error('Error:', error);
+                            // Alert ini hanya muncul jika benar-benar error koneksi atau server crash (500)
+                            alert('Terjadi kesalahan sistem atau validasi.');
+                        })
+                        .finally(() => {
+                            btnSave.disabled = false;
+                            btnSave.innerHTML = originalText;
+                        });
                     });
                 }
             },
@@ -2073,31 +2100,27 @@
                             d.tab = tabActive || 'berjalan';
                         }
                     },
-                    
-                    // Mapping data JSON dari controller ke kolom tabel
-                    // Urutan harus sama persis dengan return $formattedData di Controller
                     columns: [
-                        { data: 0 }, // No Ticket
-                        { data: 1 }, // Judul
-                        { data: 2 }, // Unit
-                        { data: 3 }, // Jenis
-                        { data: 4 }, // Posisi
-                        { data: 5 }, // HC
-                        { data: 6 }, // Kontrak
-                        { data: 7 }, // Progress
-                        { data: 8 }, // SLA
-                        { data: 9, className: "text-right" }  // Aksi
+                        { data: 0 }, 
+                        { data: 1 }, 
+                        { data: 2 }, 
+                        { data: 3 }, 
+                        { data: 4 }, 
+                        { data: 5 }, 
+                        { data: 6 }, 
+                        { data: 7 }, 
+                        { data: 8 }, 
+                        { data: 9, className: "text-right" }
                     ],
 
                     order: [[0, 'desc']], 
                     columnDefs: [
-                        { orderable: false, targets: -1 }, // Aksi gak bisa disort
-                        { orderable: false, targets: 1 }, // Judul html sulit disort, matikan dulu
-                        { orderable: false, targets: 4 }, // Posisi html
+                        { orderable: false, targets: -1 },
+                        { orderable: false, targets: 1 },
+                        { orderable: false, targets: 4 },
                     ],
                     
                     drawCallback: function() {
-                        // Styling script (Sama seperti sebelumnya)
                         const wrapper = $(this.api().table().container());
                         wrapper.find('.dataTables_length select').addClass('u-input u-input--sm');
                         wrapper.find('.dataTables_filter input').addClass('u-input u-input--sm');
