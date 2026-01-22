@@ -659,8 +659,9 @@ class TrainingRequestController extends Controller
                     'lampiran_penawaran',
                 ])
                 ->with([
-                    'trainingReference:id,judul_sertifikasi,biaya_pelatihan',
-                    'employee:id,person_id,employee_id',
+                    'trainingReference:id,judul_sertifikasi,biaya_pelatihan,unit_id',
+                    'trainingReference.unit:id,name',
+                    'employee:id,person_id,employee_id,unit_id',
                     'employee.person:id,full_name',
                 ]);
 
@@ -682,23 +683,31 @@ class TrainingRequestController extends Controller
             }
             
             $allowedStatuses = [];
-            // $DHC_UNIT_ID = 'Divisi Human Capital';
+            $DHC_UNIT_NAME = 'Divisi Human Capital';
 
-            if ($user->hasRole('Kepala Unit') && !$isHumanCapital) {
-                $allowedStatuses = ['in_review_gmvp'];
-            }
-            elseif ($user->hasRole('DHC')) {
-                $allowedStatuses = ['in_review_dhc'];
-            }
-            elseif ($user->hasRole('AVP') && $isHumanCapital) {
-                $allowedStatuses = ['in_review_avpdhc'];
-            }
-            elseif ($user->hasRole('Kepala Unit') && $isHumanCapital) {
-                $allowedStatuses = ['in_review_vpdhc'];
+            if ($isKepalaUnit && $isHumanCapital) {
+                $query->where(function ($q) use ($DHC_UNIT_NAME) {
 
-                // $query->whereHas('employee', function ($q) use ($DHC_UNIT_ID) {
-                //     $q->where('unit_id', $DHC_UNIT_ID);
-                // });
+                    $q->where('status_approval_training', 'in_review_vpdhc')
+
+                    ->orWhere(function ($sub) use ($DHC_UNIT_NAME) {
+                        $sub->where('status_approval_training', 'in_review_gmvp')
+                            ->whereHas('trainingReference.unit', function ($u) use ($DHC_UNIT_NAME) {
+                                $u->where('name', $DHC_UNIT_NAME);
+                            });
+                    });
+
+                });
+
+            }
+            elseif ($isDHC) {
+                $query->where('status_approval_training', 'in_review_dhc');
+            }
+            elseif ($isAVP && $isHumanCapital) {
+                $query->where('status_approval_training', 'in_review_avpdhc');
+            }
+            elseif ($isKepalaUnit && !$isHumanCapital) {
+                $query->where('status_approval_training', 'in_review_gmvp');
             }
 
             if (!empty($allowedStatuses)) {
