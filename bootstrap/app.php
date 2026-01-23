@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->validateCsrfTokens(except: [
+            'logout',
+            'logout/*',
+            '*/logout', 
+        ]);
+
         $middleware->alias([
             'guest' => RedirectIfAuthenticated::class,
             'role' => RoleMiddleware::class,
