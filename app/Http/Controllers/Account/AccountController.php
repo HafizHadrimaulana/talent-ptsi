@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Account;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class AccountController extends Controller
 {
@@ -31,8 +32,14 @@ class AccountController extends Controller
 
         $validated = $request->validate([
             'current_password'      => ['required','string'],
-            'password'              => ['required','string','min:8','confirmed'],
-            'password_confirmation' => ['required','string','min:8'],
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)
+                    ->letters()
+                    ->numbers()
+                    ->symbols(), 
+            ],
         ]);
 
         if (!Hash::check($validated['current_password'], $user->password)) {
@@ -40,13 +47,13 @@ class AccountController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'message' => 'The given data was invalid.',
-                    'errors'  => ['current_password' => ['Current password is incorrect']],
+                    'errors'  => ['current_password' => ['Password lama anda salah.']],
                 ], 422);
             }
 
             // Non-AJAX fallback
             return back()
-                ->withErrors(['current_password' => 'Current password is incorrect'])
+                ->withErrors(['current_password' => 'Password lama anda salah.'])
                 ->with('modal','changePassword');
         }
 

@@ -18,6 +18,11 @@
     'resources/js/app-layout.js', 
     'resources/js/app.js'
   ])
+  <style>
+    div:where(.swal2-container) {
+      z-index: 99999 !important;
+    }
+  </style>
 </head>
 @php
   $user = auth()->user();
@@ -301,16 +306,43 @@
         <div class="u-modal__body u-p-lg u-flex u-flex-col u-gap-md">
           <div>
             <label class="u-text-sm u-font-medium">Current Password</label>
-            <input name="current_password" type="password" class="u-input" required minlength="8" autocomplete="current-password">
+            <div style="position: relative;">
+              <input id="pw_current" name="current_password" type="password" class="u-input" 
+                     style="padding-right: 2.5rem;" required minlength="8" autocomplete="current-password">
+              <button type="button" onclick="togglePw('pw_current', this)" 
+                      style="position: absolute; right: 0; top: 0; height: 100%; padding: 0 0.8rem; background: none; border: none; cursor: pointer; color: #6b7280;"
+                      tabindex="-1" title="Toggle password visibility">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
           </div>
+
           <div>
             <label class="u-text-sm u-font-medium">New Password</label>
-            <input name="password" type="password" class="u-input" required minlength="8" autocomplete="new-password">
+            <div style="position: relative;">
+              <input id="pw_new" name="password" type="password" class="u-input" 
+                     style="padding-right: 2.5rem;" required minlength="8" autocomplete="new-password">
+              <button type="button" onclick="togglePw('pw_new', this)" 
+                      style="position: absolute; right: 0; top: 0; height: 100%; padding: 0 0.8rem; background: none; border: none; cursor: pointer; color: #6b7280;"
+                      tabindex="-1" title="Toggle password visibility">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
           </div>
+
           <div>
             <label class="u-text-sm u-font-medium">Confirm New Password</label>
-            <input name="password_confirmation" type="password" class="u-input" required minlength="8" autocomplete="new-password">
+            <div style="position: relative;">
+              <input id="pw_confirm" name="password_confirmation" type="password" class="u-input" 
+                     style="padding-right: 2.5rem;" required minlength="8" autocomplete="new-password">
+              <button type="button" onclick="togglePw('pw_confirm', this)" 
+                      style="position: absolute; right: 0; top: 0; height: 100%; padding: 0 0.8rem; background: none; border: none; cursor: pointer; color: #6b7280;"
+                      tabindex="-1" title="Toggle password visibility">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
           </div>
+
           <p class="u-text-xs u-muted">Minimal 8 karakter. Gunakan kombinasi huruf, angka, dan simbol.</p>
         </div>
 
@@ -323,6 +355,20 @@
   </div>
 
   <script>
+    window.togglePw = function(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const icon = btn.querySelector('i');
+      
+      if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+      } else {
+        input.type = "password";
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+      }
+    };
   (function () {
     var root = document.getElementById('appLoader');
     if (!root) return;
@@ -365,33 +411,71 @@
     const SHOULD_OPEN_PW = @json(session('modal')==='changePassword' || $errors->has('current_password') || $errors->has('password'));
     if (SHOULD_OPEN_PW) { document.addEventListener('DOMContentLoaded',()=>window.__openModal('pwModal')); }
 
-    const pwForm=document.getElementById('pwForm');
-    pwForm?.addEventListener('submit',async function(e){
-      if(pwForm.getAttribute('action'))return;
+    const pwForm = document.getElementById('pwForm');
+    pwForm?.addEventListener('submit', async function(e) {
+      if (pwForm.getAttribute('action')) return;
       e.preventDefault();
-      const btn=document.getElementById('pwSubmitBtn'); btn.disabled=true;
-      const fd=new FormData(pwForm);
-      const payload={
-        current_password:String(fd.get('current_password')||''),
-        password:String(fd.get('password')||''),
-        password_confirmation:String(fd.get('password_confirmation')||'')
+      const btn = document.getElementById('pwSubmitBtn'); 
+      btn.disabled = true;
+      const fd = new FormData(pwForm);
+      const payload = {
+        current_password: String(fd.get('current_password') || ''),
+        password: String(fd.get('password') || ''),
+        password_confirmation: String(fd.get('password_confirmation') || '')
       };
-      try{
-        if(!payload.current_password||!payload.password||!payload.password_confirmation) throw new Error('Lengkapi semua kolom.');
-        if(payload.password.length<8) throw new Error('Password minimal 8 karakter.');
-        if(payload.password!==payload.password_confirmation) throw new Error('Konfirmasi tidak cocok.');
-        const csrf=document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')||'';
-        const resp=await fetch("{{ url('/account/password') }}",{
-          method:'PUT',
-          headers:{ 'Accept':'application/json', 'Content-Type':'application/json', 'X-CSRF-TOKEN':csrf },
-          body:JSON.stringify(payload),
-          credentials:'same-origin'
+
+      try {
+        if (!payload.current_password || !payload.password || !payload.password_confirmation) {
+            throw new Error('Harap lengkapi semua kolom.');
+        }
+        if (payload.password !== payload.password_confirmation) {
+            throw new Error('Konfirmasi password baru tidak cocok.');
+        }
+        if (payload.password.length < 8) {
+            throw new Error('Password baru minimal 8 karakter.');
+        }
+        const isComplex = /[a-zA-Z]/.test(payload.password) && 
+                          /\d/.test(payload.password) && 
+                          /[\W_]/.test(payload.password);
+
+        if (!isComplex) {
+            throw new Error('Password baru harus mengandung kombinasi Huruf, Angka, dan Simbol.');
+        }
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const resp = await fetch("{{ url('/account/password') }}", {
+          method: 'POST', 
+          headers: { 
+            'Accept': 'application/json', 
+            'Content-Type': 'application/json', 
+            'X-CSRF-TOKEN': csrf 
+          },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
         });
-        if(resp.status===204){ toastOk('Berhasil','Password diperbarui.'); window.__closeModal('pwModal'); return; }
-        if(resp.ok){ let j={};try{j=await resp.json();}catch(_){} toastOk('Berhasil',j.message||'Password diperbarui.'); window.__closeModal('pwModal'); return; }
-        if(resp.status===422){ let j={};try{j=await resp.json();}catch(_){} throw new Error((j.errors&&(j.errors.current_password?.[0]||j.errors.password?.[0])) || j.message || 'Validasi gagal'); }
-        let j={};try{j=await resp.json();}catch(_){} throw new Error(j.message||'Gagal memperbarui password.');
-      }catch(err){ toastErr('Gagal',err?.message||'Terjadi kesalahan.'); }finally{ btn.disabled=false; }
+        if (resp.status === 204 || resp.ok) { 
+            let msg = 'Password berhasil diperbarui.';
+            if (resp.status !== 204) {
+                try { const j = await resp.json(); msg = j.message || msg; } catch (_) {}
+            }
+            toastOk('Berhasil', msg); 
+            window.__closeModal('pwModal');
+            pwForm.reset();
+            return; 
+        }
+        if (resp.status === 422) { 
+            let j = {}; try { j = await resp.json(); } catch (_) {} 
+            const errorMsg = (j.errors && (j.errors.current_password?.[0] || j.errors.password?.[0])) 
+                             || j.message 
+                             || 'Validasi data gagal.';
+            throw new Error(errorMsg); 
+        }
+        let j = {}; try { j = await resp.json(); } catch (_) {} 
+        throw new Error(j.message || 'Gagal memperbarui password. Silakan coba lagi.');
+      } catch (err) {
+        toastErr('Gagal', err?.message || 'Terjadi kesalahan sistem.');
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     (function(){

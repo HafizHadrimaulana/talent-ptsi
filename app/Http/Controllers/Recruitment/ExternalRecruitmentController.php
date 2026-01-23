@@ -53,7 +53,6 @@ class ExternalRecruitmentController extends Controller
                 if ($isPelamar) {
                     $cols = ['position', 'unit_id', 'is_published', null];
                 }
-
                 if (isset($cols[$colIdx]) && $cols[$colIdx]) {
                     if ($cols[$colIdx] === 'unit_id') {
                         $query->join('units', 'recruitment_requests.unit_id', '=', 'units.id')
@@ -80,7 +79,6 @@ class ExternalRecruitmentController extends Controller
             $formattedData = $data->map(function ($row) use ($isDHC, $isPelamar, $myApplications) {
                 return $this->formatVacancyRow($row, $isDHC, $isPelamar, $myApplications);
             });
-
             return response()->json([
                 'draw' => intval($request->input('draw')),
                 'recordsTotal' => RecruitmentRequest::where('type', 'Rekrutmen')->count(),
@@ -162,7 +160,6 @@ class ExternalRecruitmentController extends Controller
                 $status = $app->status ?? '-';
                 $date = $app->interview_schedule ?? '';
                 $note = htmlspecialchars($app->hr_notes ?? '', ENT_QUOTES);
-                
                 $colAksi .= "<button class='u-btn u-btn--sm u-btn--ghost u-text-brand border border-blue-200 u-mt-xs' type='button' 
                                 onclick='openMyStatusModal(this)' 
                                 data-status='{$status}' 
@@ -193,16 +190,12 @@ class ExternalRecruitmentController extends Controller
              if(str_contains($app->status, 'Interview') || str_contains($app->status, 'Psikotes')) $badgeClass = 'st-interview';
              if($app->status === 'Passed' || $app->status === 'Hired') $badgeClass = 'st-passed';
              if(in_array($app->status, ['Rejected', 'Failed', 'Ditolak'])) $badgeClass = 'st-rejected';
-             
              $statusHtml = "<span class='status-badge {$badgeClass}'>{$app->status}</span>";
-             
              $dateShow = $app->interview_schedule ? \Carbon\Carbon::parse($app->interview_schedule)->format('d M Y H:i') : '-';
-             
              $actions = "<div class='u-flex u-gap-xs u-justify-end'>
                             <button class='u-btn u-btn--xs u-btn--info u-btn--outline' onclick='openBiodataModal({$app->id})' title='Lihat Biodata Lengkap'><i class='fas fa-id-card'></i> Bio</button>
                             <button class='u-btn u-btn--xs u-btn--outline' onclick='openUpdateStatus({$app->id}, \"{$app->status}\")' title='Update Status'><i class='fas fa-edit'></i> Proses</button>
                          </div>";
-
              return [
                  'name_info' => "<div class='u-font-bold'>{$app->name}</div><div class='u-text-xs u-muted'>{$app->email}</div><div class='u-text-xs u-muted'>{$app->phone}</div>",
                  'edu_info' => "<div class='u-text-sm u-font-medium'>{$app->major}</div><div class='u-text-xs u-muted'>{$app->university}</div>",
@@ -212,10 +205,8 @@ class ExternalRecruitmentController extends Controller
                  'actions' => $actions
              ];
         });
-
         return response()->json(['data' => $data]);
     }
-
     public function apply(Request $request)
     {
         $request->validate(['recruitment_request_id' => 'required|exists:recruitment_requests,id', 'position_applied' => 'required|string', 'name' => 'required|string', 'email' => 'required|email', 'phone' => 'required|string', 'university' => 'required|string', 'major' => 'required|string', 'cv_file' => 'required|mimes:pdf|max:2048']);
@@ -228,7 +219,6 @@ class ExternalRecruitmentController extends Controller
         RecruitmentApplicant::create(['recruitment_request_id' => $request->recruitment_request_id, 'user_id' => Auth::id(), 'name' => $request->name, 'position_applied' => $request->position_applied, 'email' => $request->email, 'phone' => $request->phone, 'university' => $request->university, 'major' => $request->major, 'cv_path' => $path, 'status' => 'Screening CV']);
         return redirect()->back()->with('ok', 'Lamaran berhasil dikirim! Silakan pantau status Anda.');
     }
-
     public function updateApplicantStatus(Request $request, $applicantId)
     {
         $app = RecruitmentApplicant::findOrFail($applicantId);
@@ -243,7 +233,6 @@ class ExternalRecruitmentController extends Controller
         $app->save();
         return redirect()->back()->with('ok', 'Status pelamar berhasil diperbarui.');
     }
-
     public function showApplicantBiodata($applicantId)
     {
         $applicant = RecruitmentApplicant::with('user.person')->findOrFail($applicantId);
@@ -253,7 +242,6 @@ class ExternalRecruitmentController extends Controller
         }
         return view('recruitment.external.components.biodata-readonly', compact('person', 'applicant'));
     }
-
     public function downloadBiodataPdf($applicantId)
     {
         $applicant = RecruitmentApplicant::with('user.person')->findOrFail($applicantId);
@@ -286,7 +274,6 @@ class ExternalRecruitmentController extends Controller
         $fileName = 'CV_' . str_replace(' ', '_', $person->full_name) . '.pdf';
         return $pdf->download($fileName);
     }
-
     protected function pdfDataUri($disk, $path)
     {
         $cleanPath = ltrim($path, '/');
@@ -333,7 +320,6 @@ class ExternalRecruitmentController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Data lowongan berhasil diperbarui!']);
     }
-
     public function unpublish($id)
     {
         $req = RecruitmentRequest::findOrFail($id);

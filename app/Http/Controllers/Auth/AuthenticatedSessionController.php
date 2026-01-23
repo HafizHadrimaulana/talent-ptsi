@@ -89,7 +89,7 @@ class AuthenticatedSessionController extends Controller
 
         if (!$loggedIn) {
             throw ValidationException::withMessages([
-                'login' => 'Kredensial Salah atau Akun tidak ditemukan.', 
+                'login' => 'Kredensial Salah', 
             ]);
         }
 
