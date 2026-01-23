@@ -150,6 +150,8 @@ class TrainingRequestController extends Controller
 
             $training = TrainingRequest::findOrFail($request->training_request_id);
 
+            $jenisProgram = $request->jenis_program;
+
             $payload = [
                 'employee' => [
                     'nama'       => $request->nama,
@@ -159,8 +161,9 @@ class TrainingRequestController extends Controller
                 ],
                 'program' => [
                     'jenis' => [
-                        'formal'       => (bool) $request->is_formal,
-                        'sertifikasi'  => (bool) $request->is_sertifikasi,
+                        'value'        => $jenisProgram,
+                        'formal'       => $jenisProgram === 'FORMAL',
+                        'sertifikasi'  => $jenisProgram === 'SERTIFIKASI',
                     ],
                     'nama'            => $request->judul_sertifikasi,
                     'start_date'      => $request->start_date,
@@ -258,15 +261,64 @@ class TrainingRequestController extends Controller
     {
         abort_if($document->template_code !== 'IKATAN_DINAS', 404);
 
-        $payload = $document->payload;
+        $rawPayload = $document->payload;
+        abort_if(empty($rawPayload), 404, 'Payload dokumen tidak tersedia');
 
-        abort_if(empty($payload), 404, 'Payload dokumen tidak tersedia');
+        Carbon::setLocale('id');
+        $today = Carbon::now();
+
+        $startDate = data_get($rawPayload, 'program.start_date');
+        $endDate   = data_get($rawPayload, 'program.end_date');
+
+        $formattedTrainingDate = '-';
+        if ($startDate && $endDate) {
+            $formattedTrainingDate =
+                Carbon::parse($startDate)->translatedFormat('d F Y')
+                . ' s/d ' .
+                Carbon::parse($endDate)->translatedFormat('d F Y');
+        }
+
+        $jenis = data_get($rawPayload, 'program.jenis', []);
+        
+        $payload = [
+            'tanggal_surat' => [
+                'hari'    => $today->translatedFormat('l'),
+                'tanggal' => $today->translatedFormat('d'),
+                'bulan'   => $today->translatedFormat('F'),
+                'tahun'   => $today->translatedFormat('Y'),
+                'full'    => $today->translatedFormat('l, d F Y'),
+            ],
+
+            'employee' => data_get($rawPayload, 'employee'),
+
+            'training' => [
+                'judul'         => data_get($rawPayload, 'program.nama', '-'),
+                'jenis_program' => [
+                    'formal'       => (bool) data_get($jenis, 'formal', false),
+                    'sertifikasi'  => (bool) data_get($jenis, 'sertifikasi', false),
+                    'label'        => strtoupper(data_get($jenis, 'value', '-')),
+                ],
+                'tanggal'    => $formattedTrainingDate,
+                'tempat'        => data_get($rawPayload, 'program.tempat', '-'),
+                'biaya'         => data_get($rawPayload, 'biaya', 0),
+            ],
+        ];
+
+        Log::info('Preview dokumen ikatan dinas', ['payload' => $payload]);
+
+        $path = public_path('templates/template-bg-surat.jpg');
+        abort_if(!file_exists($path), 404, 'Template background tidak ditemukan');
+        
+        $type = pathinfo($path, PATHINFO_EXTENSION);
+        $data = file_get_contents($path);
+        $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
 
         $pdf = Pdf::loadView(
             'training.training-management.pdf.ikatan-dinas',
             [
                 'payload'  => $payload,
                 'document' => $document,
+                'bg_image' => $base64,
             ]
         )
         ->setPaper('A4')
