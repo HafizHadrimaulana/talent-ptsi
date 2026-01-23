@@ -252,7 +252,7 @@ class ContractController extends Controller
             $meta['new_unit_name'] = Unit::find($v['unit_id'])?->name;
             $meta['new_unit_id'] = (int) $v['unit_id'];
 
-            if (!in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+            if (!in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN'])) {
                 unset($meta['work_location']);
             }
 
@@ -327,7 +327,7 @@ class ContractController extends Controller
             'requires_geolocation' => 'nullable'
         ];
 
-        if (!in_array($request->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+        if (!in_array($request->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN'])) {
             unset($rules['work_location']);
         }
 
@@ -1092,7 +1092,7 @@ class ContractController extends Controller
             'pb_date' => isset($meta['pb_effective_end']) ? Carbon::parse($meta['pb_effective_end'])->translatedFormat('d F Y') : '-',
             'pb_amount' => $fmt($meta['pb_compensation_amount'] ?? 0),
             'pb_words' => ucwords($meta['pb_compensation_amount_words'] ?? ''),
-            'work_location' => in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN']) ? ($meta['work_location'] ?? 'Jakarta') : ''
+            'work_location' => in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN']) ? ($meta['work_location'] ?? '') : ''
         ];
     }
 

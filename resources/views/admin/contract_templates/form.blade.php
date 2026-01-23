@@ -53,19 +53,19 @@
                 <div class="u-grid-4 u-gap-sm">
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Atas (cm)</label>
-                        <input type="number" step="0.1" id="marginTop" class="u-input u-input--sm page-setting" value="3.5">
+                        <input type="number" step="0.01" id="marginTop" class="u-input u-input--sm page-setting" value="3.5">
                     </div>
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Bawah (cm)</label>
-                        <input type="number" step="0.1" id="marginBottom" class="u-input u-input--sm page-setting" value="2.54">
+                        <input type="number" step="0.01" id="marginBottom" class="u-input u-input--sm page-setting" value="3.25">
                     </div>
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Kiri (cm)</label>
-                        <input type="number" step="0.1" id="marginLeft" class="u-input u-input--sm page-setting" value="2.54">
+                        <input type="number" step="0.01" id="marginLeft" class="u-input u-input--sm page-setting" value="2.54">
                     </div>
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Kanan (cm)</label>
-                        <input type="number" step="0.1" id="marginRight" class="u-input u-input--sm page-setting" value="2.54">
+                        <input type="number" step="0.01" id="marginRight" class="u-input u-input--sm page-setting" value="2.54">
                     </div>
                 </div>
                 <div class="u-grid-2 u-gap-sm u-mt-sm">
