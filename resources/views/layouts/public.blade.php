@@ -10,7 +10,7 @@
     <style>
       html { scroll-padding-top: 90px; }
       body { background-color: #ffffff; color: #111827; }
-      header { background-color: rgba(0, 63, 164, 0.19) !important; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+      header { background-color: rgba(2, 67, 170, 0) !important; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
       nav a { color: #ffffff; transition: color 0.3s ease; }
       nav a:hover,
       nav a.active { color: #A4F5DD; }
@@ -102,12 +102,26 @@
             </div>
         </div>
     </header>
-    <section class="relative min-h-[90vh] flex flex-col justify-center items-center text-center text-white px-6 overflow-hidden">
+    <section class="relative h-screen flex flex-col justify-center items-center text-center text-white px-6 overflow-hidden">
       <div class="absolute inset-0">
         <div class="hero-slideshow absolute inset-0">
-          <div class="slide bg-[rgba(0,162,154,0.5)] bg-blend-multiply brightness-75" style="background-image: url('/images/1.jpg');"></div>
-          <div class="slide bg-[rgba(0,162,154,0.5)] bg-blend-multiply brightness-75" style="background-image: url('/images/2.jpg');"></div>
-          <div class="slide bg-[rgba(0,162,154,0.5)] bg-blend-multiply brightness-75" style="background-image: url('/images/3.jpg');"></div>
+            <div class="slide relative bg-cover bg-center 
+                        after:content-[''] after:absolute after:inset-0 
+                        after:bg-gradient-to-t after:from-black/50 after:via-black/50 after:to-black/50 after:opacity-90" 
+                style="background-image: url('/images/1.jpg');">
+            </div>
+
+            <div class="slide relative bg-cover bg-center 
+                        after:content-[''] after:absolute after:inset-0 
+                        after:bg-gradient-to-t after:from-black/50 after:via-black/50 after:to-black/50 after:opacity-90" 
+                style="background-image: url('/images/2.jpg');">
+            </div>
+
+            <div class="slide relative bg-cover bg-center 
+                        after:content-[''] after:absolute after:inset-0 
+                        after:bg-gradient-to-t after:from-black/50 after:via-black/50 after:to-black/50 after:opacity-90" 
+                style="background-image: url('/images/3.jpg');">
+            </div>
         </div>
       </div>
       <div id="heroTextContainer" class="relative z-10 max-w-3xl space-y-6 transition-all duration-700">
@@ -275,7 +289,7 @@
                     </div>
                 @empty
                     <div class="col-span-full text-center py-12 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20">
-                        <div class="text-6xl mb-4">📭</div>
+                        <div class="text-6xl mb-4">📫</div>
                         <h3 class="text-2xl font-bold text-white mb-2">Belum ada lowongan dibuka</h3>
                         <p class="text-white/80">Silakan cek kembali secara berkala.</p>
                     </div>
@@ -285,9 +299,7 @@
     </section>
     <footer id="contact" class="bg-[#0b132b] text-gray-200 py-12 relative overflow-hidden fade-section">
       <div class="absolute inset-0 opacity-5 bg-[url('/images/pattern-lines.svg')] bg-center bg-cover"></div>
-      
       <div class="relative container mx-auto px-6 grid md:grid-cols-3 gap-10 text-sm">
-        
         <div>
           <h3 class="text-xl font-semibold text-[#49D4A9] mb-3">PT Surveyor Indonesia</h3>
           <p class="leading-relaxed mb-4">
@@ -314,7 +326,6 @@
             Back to Top
           </button>
         </div>
-
         <div>
           <h4 class="font-semibold text-lg mb-3 text-white">Site Map</h4>
           <ul class="space-y-2">
@@ -323,7 +334,6 @@
             <li><a href="#contact" class="hover:text-[#49D4A9] transition">Kontak</a></li>
           </ul>
         </div>
-
         <div>
           <h4 class="font-semibold text-lg mb-3 text-white">Legal</h4>
           <ul class="space-y-2">
@@ -331,7 +341,6 @@
           </ul>
         </div>
       </div>
-
       <div class="relative mt-10 border-t border-gray-700 pt-6 w-full flex flex-col items-center justify-center">
         <p class="text-xs text-gray-400 text-center">
             &copy; {{ date('Y') }} Human Capital Information System. <br>
@@ -381,7 +390,6 @@
                     </div>
                     @error('password') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                 </div>
-
                 <div class="mb-3">
                     <label class="block font-medium text-gray-700 mb-1 text-sm">Confirm Password</label>
                     <div class="relative">
@@ -486,7 +494,6 @@
             </button>
         </div>
     </div>
-
     <div id="publicJobModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm">
         <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl relative transform transition-all duration-300 scale-95 flex flex-col max-h-[85vh]">
             <div class="p-6 border-b border-gray-100 flex justify-between items-start bg-gray-50 rounded-t-2xl">
@@ -508,12 +515,10 @@
                       <div class="text-xs text-gray-500 uppercase font-bold tracking-wider">Lowongan Dibuka</div>
                       <div id="modalJobStart" class="text-gray-800 font-medium">-</div>
                   </div>
-
                   <div>
                       <div class="text-xs text-gray-500 uppercase font-bold tracking-wider">Lowongan Ditutup</div>
                       <div id="modalJobEnd" class="text-gray-800 font-medium">-</div> 
                   </div>
-
                   <div>
                       <div class="text-xs text-gray-500 uppercase font-bold tracking-wider mt-2">Lokasi Penempatan</div>
                       <div id="modalJobLocation" class="text-gray-800 font-medium">-</div>
@@ -524,7 +529,6 @@
                     <div id="modalJobDesc" class="prose prose-sm max-w-none text-gray-600 ck-content"></div>
                 </div>
             </div>
-
             <div class="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-2xl">
                 <button onclick="closePublicJobModal()" class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-600 font-medium hover:bg-gray-100 transition text-sm">
                     Tutup
@@ -556,17 +560,14 @@
             if (!displayTitle) displayTitle = jobData.title;
             document.getElementById('modalJobTitle').textContent = displayTitle;
             document.getElementById('modalJobUnit').textContent = jobData.unit ? jobData.unit.name : '-';
-
             const startDate = jobData.publish_start_date || jobData.target_start_date;
             const endDate   = jobData.publish_end_date   || jobData.target_end_date;
-
             if (startDate) {
                 const d = new Date(startDate);
                 document.getElementById('modalJobStart').textContent = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
             } else {
                 document.getElementById('modalJobStart').textContent = '-';
             }
-
             if (endDate) {
                 const d = new Date(endDate);
                 document.getElementById('modalJobEnd').textContent = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -598,7 +599,6 @@
         function closePublicJobModal() {
             const modal = document.getElementById('publicJobModal');
             if (!modal) return;
-            
             modal.classList.add('opacity-0', 'pointer-events-none');
             const card = modal.querySelector('div');
             if(card) {
@@ -614,7 +614,6 @@
                 modal.classList.add("opacity-100", "pointer-events-auto"); 
             }
         }
-
         function closeLoginModal() {
             const modal = document.getElementById("loginModal");
             if(modal) { 
@@ -636,12 +635,10 @@
                 modal.classList.remove("opacity-100", "pointer-events-auto"); 
             }
         }
-        
         function triggerLoginForApply() {
             closePublicJobModal();
             setTimeout(() => { openLoginModal(); }, 300);
         }
-
         function toggleMobileMenu() {
             const menu = document.getElementById('mobileMenu');
             const iconOpen = document.getElementById('iconOpen');
@@ -661,18 +658,15 @@
         document.addEventListener('click', function(event) {
             const menu = document.getElementById('mobileMenu');
             const btn = document.getElementById('mobileMenuBtn');
-            
             if (menu && btn && !menu.contains(event.target) && !btn.contains(event.target) && !menu.classList.contains('scale-y-0')) {
                 toggleMobileMenu();
             }
         });
-
         function togglePasswordVisibility(inputId, triggerBtn) {
             const input = document.getElementById(inputId);
             const svgs = triggerBtn.getElementsByTagName('svg');
             const eyeIcon = svgs[0];
             const eyeSlashIcon = svgs[1];
-
             if (input.type === "password") {
                 input.type = "text";
                 eyeIcon.classList.add('hidden');
@@ -692,7 +686,6 @@
                     }
                 });
             }
-
             const registerModal = document.getElementById('registerModal');
             if (registerModal) {
                 registerModal.addEventListener('click', function(e) {
@@ -746,7 +739,7 @@
             const nextBtn = document.getElementById("nextBtn");
             const slideTexts = [
                 {
-                    title: `<span class="font-montserrat text-5xl font-light leading-tight">Selamat Datang di</span><br><span class="font-montserrat text-8xl font-semibold block">SAPA HC</span><span class="font-montserrat text-5xl font-bold text-[#A4F5DD]">PT Surveyor Indonesia</span>`,
+                    title: `<span class="font-montserrat text-3xl md:text-3xl font-light leading-snug">Selamat Datang di</span><br><span class="font-montserrat text-4xl md:text-6xl font-semibold block">SAPA HC</span><span class="text-[#A4F5DD] font-semibold">PT Surveyor Indonesia</span>`,
                     desc: `<span class="font-montserrat text-base md:text-lg font-light">Your Trusted Partner for Assurance.</span>`,
                 },
                 {
@@ -798,7 +791,6 @@
             }
             const termsCheckbox = document.getElementById('termsCheckbox');
             const regSubmitBtn = document.getElementById('submitBtn');
-
             if(termsCheckbox && regSubmitBtn){
                 const updateSubmitBtn = () => {
                     regSubmitBtn.disabled = !termsCheckbox.checked;
@@ -813,10 +805,8 @@
                 termsCheckbox.addEventListener('change', updateSubmitBtn);
                 updateSubmitBtn();
             }
-
             const loginTermsCheckbox = document.getElementById("loginTermsCheckbox");
-            const loginSubmitBtn = document.getElementById("loginSubmitBtn");
-            
+            const loginSubmitBtn = document.getElementById("loginSubmitBtn");            
             if (loginTermsCheckbox && loginSubmitBtn) {
                 const updateLoginBtn = () => {
                     loginSubmitBtn.disabled = !loginTermsCheckbox.checked;

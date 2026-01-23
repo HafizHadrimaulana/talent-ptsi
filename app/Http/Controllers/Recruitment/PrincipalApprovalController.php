@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers\Recruitment;
-
 use App\Models\Project; 
 use App\Models\ContractTemplate;
 use Illuminate\Support\Facades\Storage;
@@ -43,7 +42,6 @@ class PrincipalApprovalController extends Controller
             ['key' => 'dir_sdm',      'roles' => ['Dir SDM']],
         ];
     }
-
     protected function canSeeAll($user): bool
     {
         if (!$user) return false;
@@ -51,7 +49,6 @@ class PrincipalApprovalController extends Controller
         $cleanTitle = $jobTitle ? trim(strtoupper($jobTitle)) : '';
         return $user->hasRole('Superadmin') || $user->hasRole('DHC') || $user->hasRole('Dir SDM') || $cleanTitle === 'AVP HUMAN CAPITAL OPERATION'|| $cleanTitle === 'VP HUMAN CAPITAL';
     }
-
     protected function dhcUnitId(): ?int
     {
         static $cache = null;
@@ -63,7 +60,6 @@ class PrincipalApprovalController extends Controller
         })->value('id');
         return $cache ? (int) $cache : null;
     }
-
     protected function has(string $table, string $col): bool
     {
         try {
@@ -72,7 +68,6 @@ class PrincipalApprovalController extends Controller
             return false;
         }
     }
-
     protected function getBaseQuery($me, $canSeeAll, $selectedUnitId)
     {
         $query = RecruitmentRequest::query();
@@ -92,7 +87,6 @@ class PrincipalApprovalController extends Controller
             } elseif ($isAvpHcOps) {
                 $stageKey = 'avp_hc_ops';
             }
-
             if ($stageKey) {
                 $query->whereHas('approvals', function ($q) use ($stageKey, $me) {
                     $q->where(function ($subQ) use ($stageKey) {
@@ -230,7 +224,6 @@ class PrincipalApprovalController extends Controller
         }
         return $html;
     }
-
     private function renderPositionColumn($r) {
         $details = $r->meta['recruitment_details'] ?? [];
         if (count($details) > 1) {
@@ -248,7 +241,6 @@ class PrincipalApprovalController extends Controller
         }
         return $posName;
     }
-
     private function renderProgressColumn($r) {
         $status = $r->status ?? 'draft';
         $progressText = 'In Review';
@@ -273,12 +265,10 @@ class PrincipalApprovalController extends Controller
         }
         return "<div class='u-text-2xs'><span class='u-badge {$badgeClass}'>{$progressText}</span></div>";
     }
-
     private function renderSlaColumn($r) {
         $status = $r->status ?? 'draft';
         $slaBadgeClass = ''; $slaText = '-';
         $kaUnitApp = null;
-        
         foreach($r->approvals as $ap) { 
             if(strpos($ap->note, 'stage=kepala_unit')!==false && $ap->status=='approved') $kaUnitApp = $ap; 
         }
@@ -401,7 +391,6 @@ class PrincipalApprovalController extends Controller
         $btns .= '</div>';
         return $btns;
     }
-
     public function storeProject(Request $request)
     {
         $request->validate([
@@ -430,7 +419,6 @@ class PrincipalApprovalController extends Controller
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
-
     public function exportExcel(Request $r)
     {
         $me = Auth::user();
@@ -446,7 +434,6 @@ class PrincipalApprovalController extends Controller
             'Daftar_Izin_Prinsip_' . date('Y-m-d_H-i') . '.xlsx'
         );
     }
-
     public function store(Request $r)
     {
         $data = $r->validate([
@@ -462,7 +449,6 @@ class PrincipalApprovalController extends Controller
             'publish_vacancy_pref' => 'nullable|string|max:10',
             'details_json'         => 'nullable|string', 
         ]);
-
         $me   = Auth::user();
         $meId = Auth::id();
         $model = new RecruitmentRequest();
@@ -509,7 +495,6 @@ class PrincipalApprovalController extends Controller
         $model->forceFill($insert)->save();
         return back()->with('ok', 'Draft Izin Prinsip berhasil dibuat.');
     }
-
     public function destroy(RecruitmentRequest $req)
     {
         $this->authorizeUnit($req->unit_id);
@@ -586,7 +571,6 @@ class PrincipalApprovalController extends Controller
     {
         $this->authorizeUnit($req->unit_id);
         $user = Auth::user();
-
         if (($req->status ?? null) !== 'draft') {
             return back()->withErrors('Hanya permintaan dengan status DRAFT yang dapat disubmit.');
         }
@@ -599,7 +583,6 @@ class PrincipalApprovalController extends Controller
         } 
         else {
             $hasKepalaMP = $this->checkUnitHasPosition($req->unit_id, 'KEPALA PROYEK (MP)');
-            
             if (!$hasKepalaMP) {
                 $startStage = 1;
             }
@@ -639,7 +622,6 @@ class PrincipalApprovalController extends Controller
         $this->createPendingApproval($req, $nextStage);
         return back()->with('ok', 'Disetujui dan diteruskan ke approver berikutnya.');
     }
-
     public function reject(RecruitmentRequest $req, Request $r)
     {
         $stageIdx = $this->currentStageIndex($req);
@@ -772,7 +754,6 @@ class PrincipalApprovalController extends Controller
             if (file_exists($fontRegular)) {
                 $fReg = base64_encode(file_get_contents($fontRegular));
                 $fBld = file_exists($fontBold) ? base64_encode(file_get_contents($fontBold)) : $fReg;
-                
                 $fontCss = "
                     @font-face {font-family: 'Tahoma'; font-style: normal; font-weight: normal; src: url(data:font/truetype;charset=utf-8;base64,{$fReg}) format('truetype');}
                     @font-face {font-family: 'Tahoma'; font-style: normal; font-weight: bold; src: url(data:font/truetype;charset=utf-8;base64,{$fBld}) format('truetype');}";
