@@ -12,6 +12,12 @@ use Illuminate\Support\Str;
 
 class ContractController extends Controller
 {
+    /**
+     * Display a listing of contracts with DataTables support.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse|\Illuminate\View\View
+     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -524,6 +530,12 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Display the specified contract with signatures and approval logs.
+     *
+     * @param  \App\Models\Contract  $contract
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show(Contract $contract)
     {
         $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
@@ -1023,7 +1035,8 @@ class ContractController extends Controller
         if (!$path || !Storage::disk($disk)->exists($path))
             return null;
         $bin = Storage::disk($disk)->get($path);
-        $mime = Storage::disk($disk)->mimeType($path) ?: 'image/jpeg';
+        $fullPath = Storage::disk($disk)->path($path);
+        $mime = file_exists($fullPath) ? mime_content_type($fullPath) : 'image/jpeg';
         return "data:{$mime};base64," . base64_encode($bin);
     }
 
@@ -1041,8 +1054,8 @@ class ContractController extends Controller
 
         $duration = '-';
         if ($c->start_date && $c->end_date) {
-            $startDate = $c->start_date->copy()->startOfDay();
-            $endDatePlusOne = $c->end_date->copy()->startOfDay()->addDay();
+            $startDate = Carbon::parse($c->start_date)->startOfDay();
+            $endDatePlusOne = Carbon::parse($c->end_date)->startOfDay()->addDay();
             $diff = $startDate->diff($endDatePlusOne);
             
             $parts = [];
@@ -1092,8 +1105,8 @@ class ContractController extends Controller
             'unit_head_position' => $unitHeadTitle,
             'employment_type' => $c->employment_type,
             'duration' => $duration,
-            'start_date' => $c->start_date?->translatedFormat('d F Y'),
-            'end_date' => $c->end_date?->translatedFormat('d F Y'),
+            'start_date' => $c->start_date ? Carbon::parse($c->start_date)->translatedFormat('d F Y') : '-',
+            'end_date' => $c->end_date ? Carbon::parse($c->end_date)->translatedFormat('d F Y') : '-',
             'salary' => $fmt($meta['salary_amount'] ?? 0),
             'salary_words' => ucwords($meta['salary_amount_words'] ?? ''),
             'meal_allowance' => $fmt($meta['lunch_allowance_daily'] ?? 0),
