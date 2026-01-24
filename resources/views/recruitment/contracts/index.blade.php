@@ -2,6 +2,7 @@
 @section('title', 'Manajemen Dokumen Kontrak')
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+@vite('resources/css/map.css')
 @endpush
 
 @section('content')
@@ -12,19 +13,17 @@
     $statusOptions = config('recruitment.contract_statuses', []);
     $currentUnitId = $canSeeAll ? ($selectedUnitId ?? '') : $meUnit;
 @endphp
-
 @if ($errors->any())
     <div class="u-card u-p-md u-mb-lg u-error u-flex u-gap-md u-items-start">
         <div class="u-text-danger u-text-xl"><i class="fas fa-exclamation-triangle"></i></div>
         <div>
-            <div class="u-font-bold u-mb-xs">Gagal Menyimpan Data</div>
+            <div class="u-font-bold u-mb-xs">Data Save Failed</div>
             <ul class="u-text-sm u-ml-md" style="list-style-type: disc;">
                 @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
             </ul>
         </div>
     </div>
 @endif
-
 <div class="u-card u-card--glass u-p-0 u-overflow-hidden u-mb-xl">
     <div class="u-p-lg u-border-b u-flex u-justify-between u-items-center u-stack-mobile u-gap-md u-bg-surface">
         <div>
@@ -37,7 +36,6 @@
         </button>
         @endcan
     </div>
-
     <div class="u-p-md u-bg-light u-border-b">
         <div class="u-grid-2 u-stack-mobile u-gap-lg">
             <div>
@@ -69,7 +67,6 @@
             </div>
         </div>
     </div>
-
     <div class="dt-wrapper">
         <div class="u-scroll-x">
             <table id="contracts-table" class="u-table nowrap" style="width: 100%; margin: 0 !important; border: none;">
@@ -83,7 +80,6 @@
         </div>
     </div>
 </div>
-
 @can('contract.create')
 <div id="createContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
@@ -102,7 +98,6 @@
             <input type="hidden" name="source_contract_id" id="createSourceIdInput">
             <input type="hidden" name="employee_id" id="createEmployeeIdInput">
             <input type="hidden" name="person_id" id="createPersonIdInput">
-
             <div class="u-bg-section">
                 <div class="section-divider"><i class="fas fa-layer-group"></i> 1. Jenis Dokumen</div>
                 <div class="u-grid-2 u-stack-mobile">
@@ -125,7 +120,6 @@
                     </div>
                 </div>
             </div>
-
             <div id="createMainSection" class="is-hidden float-in">
                 <div class="u-grid-2 u-stack-mobile u-gap-lg">
                     <div class="u-space-y-lg">
@@ -289,7 +283,6 @@
     </div>
 </div>
 @endcan
-
 <div id="editContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -404,7 +397,6 @@
         </form>
     </div>
 </div>
-
 <div id="detailContractModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
@@ -422,51 +414,50 @@
             </div>
             <div class="u-grid-2 u-stack-mobile">
                 <div class="u-bg-section u-p-lg">
-                    <div class="section-divider">Info Dokumen</div>
+                    <div class="section-divider">Document Information</div>
                     <div class="u-space-y-md">
-                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nomor</span><span id="detNo" class="u-font-mono u-font-bold u-text-md">-</span></div>
-                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Tipe</span><span id="detType" class="u-badge u-badge--glass">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Number</span><span id="detNo" class="u-font-mono u-font-bold u-text-md">-</span></div>
+                         <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Type</span><span id="detType" class="u-badge u-badge--glass">-</span></div>
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Status</span><span id="detStatus" class="u-badge">-</span></div>
                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Unit</span><span id="detUnit" class="u-font-medium">-</span></div>
                          <div class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Ticket</span><span id="detTicket" class="u-badge u-badge--info u-text-sm">-</span></div>
                     </div>
                 </div>
                 <div class="u-bg-section u-p-lg">
-                      <div class="section-divider">Personil</div>
+                      <div class="section-divider">Personnel</div>
                       <div class="u-space-y-md">
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Nama</span><span id="detName" class="u-font-bold u-text-xl text-ellipsis" style="max-width: 200px;">-</span></div>
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK</span><span id="detNik" class="u-font-medium">-</span></div>
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK (KTP)</span><span id="detNikReal" class="u-font-medium">-</span></div>
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Jabatan</span><span id="detPos" class="u-font-medium">-</span></div>
-                          <div id="detLocationRow" class="u-flex u-justify-between u-items-center u-py-xs u-border-b is-hidden"><span class="u-text-sm u-muted">Lokasi</span><span id="detLocation" class="u-font-medium">-</span></div>
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Hubungan</span><span id="detEmpType" class="u-font-medium">-</span></div>
-                          <div id="detPeriodRow" class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Periode</span><span id="detPeriod" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Name</span><span id="detName" class="u-font-bold u-text-xl text-ellipsis" style="max-width: 200px;">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Employee ID</span><span id="detNik" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">National ID</span><span id="detNikReal" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Position</span><span id="detPos" class="u-font-medium">-</span></div>
+                          <div id="detLocationRow" class="u-flex u-justify-between u-items-center u-py-xs u-border-b is-hidden"><span class="u-text-sm u-muted">Location</span><span id="detLocation" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Employment Type</span><span id="detEmpType" class="u-font-medium">-</span></div>
+                          <div id="detPeriodRow" class="u-flex u-justify-between u-items-center u-py-xs"><span class="u-text-sm u-muted">Period</span><span id="detPeriod" class="u-font-medium">-</span></div>
                       </div>
                 </div>
             </div>
-
             <div class="u-card u-card--glass u-p-md" id="detNewUnitBox" hidden>
-                  <div class="u-text-sm u-flex u-items-center"><i class="fas fa-exchange-alt u-mr-sm u-text-brand"></i> Pindah ke: <strong id="detNewUnit" class="u-ml-xs u-text-md">-</strong></div>
+                  <div class="u-text-sm u-flex u-items-center"><i class="fas fa-exchange-alt u-mr-sm u-text-brand"></i> Transfer to: <strong id="detNewUnit" class="u-ml-xs u-text-md">-</strong></div>
             </div>
 
             <div id="detRemunBox" class="u-bg-section u-p-lg is-hidden">
-                  <div class="section-divider">Rincian Remunerasi</div>
+                  <div class="section-divider">Remuneration Details</div>
                   <div class="u-grid-2 u-stack-mobile">
                     <div class="u-space-y-md">
-                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Gaji Pokok</span><strong id="detSalary" class="u-text-md">-</strong></div>
-                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Uang Makan</span><strong id="detLunch" class="u-text-md">-</strong></div>
-                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Hari Kerja</span><strong id="detWorkDays" class="u-text-md">-</strong></div>
-                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Jam Kerja</span><strong id="detWorkHours" class="u-text-md">-</strong></div>
+                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Base Salary</span><strong id="detSalary" class="u-text-md">-</strong></div>
+                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Meal Allowance</span><strong id="detLunch" class="u-text-md">-</strong></div>
+                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Working Days</span><strong id="detWorkDays" class="u-text-md">-</strong></div>
+                        <div class="u-flex u-justify-between u-py-sm u-border-b"><span class="u-text-sm u-muted">Working Hours</span><strong id="detWorkHours" class="u-text-md">-</strong></div>
                     </div>
                     <div id="detAllowances" class="u-space-y-sm u-text-sm"></div>
                   </div>
             </div>
 
             <div id="detPbBox" class="u-bg-section u-p-lg is-hidden" style="border-left: 4px solid #ef4444;">
-                  <div class="section-divider u-text-danger">Kompensasi Pengakhiran</div>
+                  <div class="section-divider u-text-danger">Termination Compensation</div>
                   <div class="u-grid-2">
-                      <div><div class="u-text-sm u-muted u-mb-xs">Efektif Berakhir</div><div id="detPbEff" class="u-font-bold u-text-xl">-</div></div>
-                      <div><div class="u-text-sm u-muted u-mb-xs">Nilai Kompensasi</div><div id="detPbVal" class="u-font-bold u-text-xl u-text-brand">-</div><div class="u-text-sm u-muted u-mt-xs" id="detPbValW"></div></div>
+                      <div><div class="u-text-sm u-muted u-mb-xs">Effective Date</div><div id="detPbEff" class="u-font-bold u-text-xl">-</div></div>
+                      <div><div class="u-text-sm u-muted u-mb-xs">Compensation Amount</div><div id="detPbVal" class="u-font-bold u-text-xl u-text-brand">-</div><div class="u-text-sm u-muted u-mt-xs" id="detPbValW"></div></div>
                   </div>
             </div>
 
@@ -549,7 +540,6 @@
         </div>
     </div>
 </div>
-
 <div id="rejectModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--md">
@@ -573,7 +563,6 @@
         </form>
     </div>
 </div>
-
 <div id="signModal" class="u-modal" hidden>
     <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--md">
@@ -585,8 +574,8 @@
             <div id="cameraSection" class="u-mb-md is-hidden">
                 <label class="u-text-sm u-font-bold u-muted u-uppercase u-mb-xs">Verifikasi Wajah</label>
                 <div id="wrapperCamera" class="u-card u-card--border u-overflow-hidden u-bg-black u-flex u-items-center u-justify-center" style="height: 360px; position:relative;">
-                    <video id="cameraStream" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                    <img id="snapshotPreview" style="width: 100%; height: 100%; object-fit: cover; display:none;">
+                    <video id="cameraStream" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+                    <img id="snapshotPreview" style="width: 100%; height: 100%; object-fit: cover; display:none; transform: scaleX(-1);">
                     <div id="cameraPlaceholder" class="u-text-white u-text-sm" style="position:absolute;">Menghubungkan Kamera...</div>
                 </div>
                 <div class="u-flex u-justify-center u-gap-md u-mt-md">
@@ -605,13 +594,18 @@
             </div>
             <div class="u-card u-p-sm u-bg-light u-mb-lg u-flex u-flex-col u-gap-sm">
                 <div class="u-flex u-items-center u-gap-sm">
-                    <i class="fas fa-map-marker-alt u-text-muted" id="geoIcon"></i>
+                    <i id="geoIcon" class="fas fa-satellite-dish u-text-muted" style="font-size:1.2rem;"></i>
                     <div class="u-flex-1">
-                        <div class="u-text-sm u-font-bold u-muted">Lokasi Saat Ini</div>
-                        <div id="geoStatus" class="u-text-sm u-font-medium">Menunggu Izin Lokasi...</div>
+                        <div id="geoStatus" class="u-text-sm u-font-bold u-muted">Mendeteksi lokasi...</div>
+                        <div class="geo-precision-bar u-mt-xs">
+                            <div id="geoProgress" class="geo-precision-fill low"></div>
+                        </div>
                     </div>
                 </div>
-                <div id="map-sign" class="map-container" style="height: 150px; width: 100%; border-radius: 8px; margin-top: 5px; display: none;"></div>
+                <div class="map-rounded-wrap" style="display:none;" id="map-sign-wrapper">
+                    <div id="map-sign" class="map-container" style="height: 180px;"></div>
+                </div>
+                <button type="button" id="btnForceLoc" class="u-btn u-btn--xs u-btn--ghost u-text-brand u-w-full is-hidden">Gunakan Lokasi Saat Ini</button>
             </div>
             <input type="hidden" name="signature_image">
             <input type="hidden" name="snapshot_image">
@@ -637,7 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
         iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
-
     const table = window.initDataTables('#contracts-table', {
         ajax: {
             url: "{{ route('recruitment.contracts.index') }}",
@@ -666,9 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
             p.filter('.disabled').addClass('u-disabled').css('opacity', '0.5');
         }
     });
-
     $('#filterUnit, #filterStatus').on('change', () => table.draw());
-
     const doc = document;
     const select = (sel, parent=doc) => parent.querySelector(sel);
     const selectAll = (sel, parent=doc) => [...parent.querySelectorAll(sel)];
@@ -682,7 +673,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const addDays = (dateStr, days) => { if (!dateStr) return ''; const d = new Date(dateStr); d.setDate(d.getDate() + parseInt(days)); return d.toISOString().split('T')[0]; };
     let maps = {};
     let rejectCtx = { url: '', meta: '' };
-
     const bindCalc = (root) => {
         selectAll('input[data-rupiah="true"]', root).forEach(el => {
             const tgtId = el.dataset.terbilangTarget;
@@ -693,7 +683,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     };
-
     const openReject = (url, meta) => {
         rejectCtx.url = url || '';
         rejectCtx.meta = meta || '';
@@ -706,7 +695,6 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal('rejectModal');
         setTimeout(() => { if(noteEl) noteEl.focus(); }, 80);
     };
-
     window.triggerEdit = function(encodedRow) {
         const row = JSON.parse(decodeURIComponent(encodedRow));
         const btnEdit = document.createElement('button');
@@ -717,7 +705,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnEdit.click();
         document.body.removeChild(btnEdit);
     };
-
     window.triggerDetail = function(encodedRow) {
         const row = JSON.parse(decodeURIComponent(encodedRow));
         const btnDet = document.createElement('button');
@@ -727,7 +714,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnDet.click();
         document.body.removeChild(btnDet);
     };
-
     const handleLocationAutofill = () => {
         const selects = selectAll('.js-location-autofill');
         selects.forEach(sel => {
@@ -757,7 +743,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     handleLocationAutofill();
-
     const initCreateModal = () => {
         const btnCreate = select('#btnOpenCreate');
         const formCreate = select('#createContractForm');
@@ -779,12 +764,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const secExist = select('[data-mode-section="existing"]');
         const prevTicket = select('#prevTicket');
         let existingSource = null;
-
         const toggleInputs = (container, enable) => {
             if(!container) return;
             container.querySelectorAll('input, select, textarea').forEach(el => el.disabled = !enable);
         };
-
         const resetCreateUI = () => {
             try {
                 formCreate.reset();
@@ -799,9 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(typeof handleLocationAutofill === 'function') handleLocationAutofill();
             } catch(e) { console.error(e); }
         };
-
         btnCreate.addEventListener('click', (e) => { e.preventDefault(); resetCreateUI(); openModal('createContractModal'); });
-
         const applyAutoFill = () => {
             const type = inpType.value;
             if (!existingSource) return;
@@ -821,7 +802,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 inpUnitExisting.dispatchEvent(new Event('change'));
             }
         };
-
         const updateUI = () => {
             const mode = inpMode.value;
             const isNew = (mode === 'new');
@@ -845,13 +825,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const isPb = (type === 'PB_PENGAKHIRAN');
             if (isPb) { hide(secPkwtSpk); hide(secRemun); showBlock(secPb); }
             else { showBlock(secPkwtSpk); showBlock(secRemun); hide(secPb); }
-
             const isPKWT = type && type.includes('PKWT');
             const locSection = select('#createLocationSection');
             if (locSection) { if (isPKWT) showBlock(locSection); else hide(locSection); }
             applyAutoFill();
         };
-
         if(famSel) {
             famSel.addEventListener('change', () => {
                 const val = famSel.value;
@@ -867,7 +845,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-
         if(subSel) {
             subSel.addEventListener('change', () => {
                 const val = subSel.value;
@@ -877,7 +854,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateUI();
             });
         }
-
         if(appSel) {
             appSel.addEventListener('change', () => {
                 const o = appSel.options[appSel.selectedIndex];
@@ -900,7 +876,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else { hide(select('#createPersonPreview')); }
             });
         }
-
         if(filterUnit && srcSel) {
             filterUnit.addEventListener('change', () => {
                 const uId = filterUnit.value;
@@ -911,7 +886,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 srcSel.value = ""; existingSource = null; hide(select('#createPersonPreview'));
             });
-
             srcSel.addEventListener('change', () => {
                 const o = srcSel.options[srcSel.selectedIndex];
                 const hidSrc = select('#createSourceIdInput');
@@ -945,7 +919,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 applyAutoFill();
             });
         }
-
         @if($errors->any() && old('contract_type'))
             openModal('createContractModal');
             inpType.value = "{{ old('contract_type') }}";
@@ -960,7 +933,6 @@ document.addEventListener('DOMContentLoaded', () => {
         @endif
     };
     initCreateModal();
-
     const initEditModal = () => {
         $(document).on('click', '.js-btn-edit', async function(e) {
             e.preventDefault();
@@ -973,7 +945,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const form = select('#editContractForm');
                 bindCalc(form);
                 form.action = btnEdit.dataset.updateUrl;
-
                 select('#editTypeInput').value = d.contract_type;
                 select('#editSourceIdInput').value = d.parent_contract_id || '';
                 select('#editEmployeeId').value = d.employee_id || '';
@@ -983,21 +954,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 select('#editDisplayType').textContent = d.contract_type_label;
                 select('#editPos').value = d.position_name || '';
                 select('#editRemarks').value = d.remarks || '';
-
                 const isPKWT = d.contract_type.includes('PKWT');
                 const editLocSection = select('#editLocationSection');
                 if (editLocSection) {
                     if (isPKWT) { showBlock(editLocSection); select('#editLocation').value = m.work_location || ''; }
                     else { hide(editLocSection); }
                 }
-
                 if(select('#editUnitSelect')) {
                     select('#editUnitSelect').value = d.unit_id;
                 } else if(select('#editUnitIdHidden')) {
                     select('#editUnitIdHidden').value = d.unit_id;
                     select('#editUnitDisplay').value = d.unit?.name || '';
                 }
-
                 const isPb = (d.contract_type === 'PB_PENGAKHIRAN');
                 if(isPb) {
                     hide(select('#editSectionPkwtSpk')); showBlock(select('#editSectionPb'));
@@ -1027,242 +995,485 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     initEditModal();
-
-    const initMap = (divId, lat, lng) => {
-        if (!lat || !lng) return;
-        const el = document.getElementById(divId);
-        if (!el) return;
-        if (maps[divId]) { maps[divId].off(); maps[divId].remove(); delete maps[divId]; }
-
-        setTimeout(() => {
-            if (el.offsetParent === null) return;
-            const map = L.map(divId, { 
-                attributionControl: false, 
-                zoomControl: true, 
-                preferCanvas: false,
-                dragging: true,
-                touchZoom: true,
-                scrollWheelZoom: false
-            }).setView([lat, lng], 16);
-            
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-                attribution: '', 
-                maxZoom: 19, 
-                minZoom: 10, 
-                crossOrigin: true 
-            }).addTo(map);
-            
-            L.circle([lat, lng], { 
-                color: '#3e6bbb', 
-                fillColor: '#3e6bbb', 
-                fillOpacity: 0.12, 
-                radius: 50, 
-                weight: 1.5,
-                dashArray: '4,2'
-            }).addTo(map);
-            
-            const marker = L.marker([lat, lng], {
-                icon: L.icon({
-                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                    iconSize: [24, 40],
-                    iconAnchor: [12, 40],
-                    popupAnchor: [0, -40],
-                    shadowSize: [40, 40],
-                    shadowAnchor: [12, 40]
-                }),
-                title: 'Location'
-            }).addTo(map);
-            
-            const accuracy = Math.round(Math.random() * 50) + 10;
-            marker.bindPopup(`<strong>Lokasi</strong><br>Akurasi: ${accuracy}m`, {
-                closeButton: false,
-                autoClose: true,
-                className: 'leaflet-popup-custom'
-            });
-            
-            maps[divId] = map;
-            setTimeout(() => { if (map && typeof map.invalidateSize === 'function') map.invalidateSize(true); }, 100);
-        }, 150);
+    
+const initMap = (divId, lat, lng, acc = 0, options = {}) => {
+    if (!lat || !lng || !L) return;
+    const el = document.getElementById(divId);
+    if (!el) return;
+    if (maps[divId]) {
+        try { maps[divId].remove(); } catch(e) {}
+        delete maps[divId];
+    }
+    const config = {
+        isRealTime: options.isRealTime ?? false,
+        initialZoom: options.initialZoom ?? 19,
+        maxZoom: 20,
+        minZoom: 12,
+        circleVisible: true,
+        ...options
     };
-
-    const handleSign = (url) => {
-        const m = select('#signModal');
-        const f = select('#signForm');
-        const cvs = select('#signCanvas');
-        const vid = select('#cameraStream');
-        const camSec = select('#cameraSection');
-        const btnSubmit = select('#btnSubmitSign');
-        const geoStat = select('#geoStatus');
-        const btnCap = select('#btnCapture');
-        const btnRet = select('#btnRetake');
-        const snapPrev = select('#snapshotPreview');
-        const mapSignDiv = select('#map-sign');
-        let captured = false;
-
-        f.reset();
-        select('[name="signature_image"]').value = '';
-        select('[name="geo_lat"]').value = '';
-        select('[name="geo_lng"]').value = '';
-        select('[name="snapshot_image"]').value = '';
-        captured = false;
-        snapPrev.style.display = 'none';
-        vid.style.display = 'block';
-        hide(btnRet);
-        if(btnCap) { showBlock(btnCap); btnCap.disabled = false; }
-        if(mapSignDiv) { mapSignDiv.style.display = 'none'; mapSignDiv.innerHTML = ''; }
-        btnSubmit.disabled = true;
-        openModal('signModal');
-
+    const accuracyTier = (val) => val <= 15 ? 'EXCELLENT' : val <= 50 ? 'GOOD' : val <= 150 ? 'FAIR' : 'ACCEPTABLE';
+    const tierColor = { EXCELLENT: '#10b981', GOOD: '#3b82f6', FAIR: '#f59e0b', ACCEPTABLE: '#8b5cf6' };
+    const tierLabel = { EXCELLENT: 'Excellent', GOOD: 'Good', FAIR: 'Fair', ACCEPTABLE: 'Acceptable' };
+    const circleColor = tierColor[accuracyTier(acc)];
+    const map = L.map(divId, {
+        zoomControl: true,
+        scrollWheelZoom: true,
+        dragging: true,
+        zoomAnimation: true,
+        fadeAnimation: true,
+        markerZoomAnimation: true,
+        attributionControl: false
+    }).setView([lat, lng], config.initialZoom);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        maxNativeZoom: 19,
+        minZoom: 10,
+        className: 'map-tiles',
+        updateWhenIdle: true,
+        keepBuffer: 2,
+        attribution: ''
+    }).addTo(map);
+    const createDynamicIcon = (zoom) => {
+        const scale = Math.max(0.4, Math.min(1.0, (zoom - 10) / 8));
+        const iconWidth = Math.round(25 * scale);
+        const iconHeight = Math.round(41 * scale);
+        const shadowWidth = Math.round(41 * scale);
+        const shadowHeight = Math.round(41 * scale);
+        
+        return L.icon({
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            iconSize: [iconWidth, iconHeight],
+            iconAnchor: [Math.round(iconWidth/2), iconHeight],
+            popupAnchor: [0, -iconHeight],
+            shadowSize: [shadowWidth, shadowHeight],
+            shadowAnchor: [Math.round(shadowWidth/3), shadowHeight]
+        });
+    };
+    const marker = L.marker([lat, lng], { 
+        icon: createDynamicIcon(config.initialZoom),
+        zIndexOffset: 3000,
+        draggable: false,
+        keyboard: false,
+        riseOnHover: true,
+        riseOffset: 250,
+        interactive: true,
+        bubblingMouseEvents: true
+    }).addTo(map);
+    setTimeout(() => {
+        const markerElement = marker.getElement();
+        if (markerElement) {
+            markerElement.style.pointerEvents = 'auto';
+            markerElement.style.cursor = 'pointer';
+        }
+    }, 100);
+    
+    map._marker = marker;
+    map._createDynamicIcon = createDynamicIcon;
+    let circle = null;
+    let isAnimating = false;
+    let currentState = { lat, lng, acc };
+    const drawCircle = (circleLat = currentState.lat, circleLng = currentState.lng, circleAcc = currentState.acc) => {
+        const zoom = map.getZoom();
+        if (circle) {
+            try { 
+                map.removeLayer(circle);
+            } catch(e) {
+                console.error('Error removing circle:', e);
+            }
+            circle = null;
+        }
+        if (zoom < 17 || !config.circleVisible || circleAcc <= 0 || circleAcc > 500) {
+            return;
+        }
+        const color = tierColor[accuracyTier(circleAcc)];
+        const baseOpacity = Math.min(0.95, 0.7 + (zoom - 12) * 0.05);
+        const zoomFactor = Math.max(0.2, Math.min(0.3, 0.5 - (zoom * 0.015)));
+        const displayRadius = Math.round(circleAcc * zoomFactor);
+        circle = L.circle([circleLat, circleLng], {
+            radius: displayRadius,
+            color: color,
+            weight: 2.5,
+            opacity: Math.min(0.9, baseOpacity + 0.05),
+            fill: true,
+            fillColor: color,
+            fillOpacity: Math.min(0.25, 0.15 + (zoom - 12) * 0.015),
+            interactive: false,
+            bubblingMouseEvents: false,
+            className: 'geo-accuracy-circle',
+            pane: 'overlayPane'
+        }).addTo(map);
         setTimeout(() => {
-            cvs.width = cvs.offsetWidth;
-            cvs.height = 200;
-            const ctx = cvs.getContext('2d');
-            ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
-            ctx.clearRect(0, 0, cvs.width, cvs.height);
-        }, 150);
+            const circleElement = circle.getElement();
+            const overlayPane = map.getPane('overlayPane');
+            const markerPane = map.getPane('markerPane');
+            const tooltipPane = map.getPane('tooltipPane');
+            const popupPane = map.getPane('popupPane');
+            if (overlayPane) {
+                overlayPane.style.zIndex = '2';
+                overlayPane.style.pointerEvents = 'none';
+            }
+            if (markerPane) {
+                markerPane.style.zIndex = '4';
+                markerPane.style.pointerEvents = 'auto';
+            }
+            if (tooltipPane) {
+                tooltipPane.style.zIndex = '9999';
+                tooltipPane.style.pointerEvents = 'none';
+            }
+            if (popupPane) {
+                popupPane.style.zIndex = '9998';
+            }
+            if (circleElement) {
+                circleElement.style.pointerEvents = 'none';
+            }
+        }, 50);
+    };
+    map._updatePosition = (newLat, newLng, newAcc) => {
+        currentState = { lat: newLat, lng: newLng, acc: newAcc };
+        marker.setLatLng([newLat, newLng]);
+        if (config.isRealTime) {
+            map.setView([newLat, newLng], map.getZoom(), { animate: false });
+        }
+        drawCircle(newLat, newLng, newAcc);
+    };
+    setTimeout(() => {
+        map.invalidateSize();
+        drawCircle();
+    }, 80);
+    const tier = accuracyTier(acc);
+    const tierText = tierLabel[tier];
+    const tooltipContent = 
+        `<div style="padding:12px 16px;border-radius:10px;background:linear-gradient(135deg,rgba(255,255,255,0.98) 0%,rgba(248,250,252,0.98) 100%);border:1px solid rgba(0,0,0,0.08);box-shadow:0 8px 20px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.06);backdrop-filter:blur(12px);min-width:220px;max-width:280px">` +
+        `<div style="text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif">` +
+        `<div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:8px">` +
+        `<span style="font-size:1.2rem;line-height:1">📍</span>` +
+        `<strong style="color:${circleColor};font-size:0.95rem;font-weight:700;letter-spacing:-0.01em">${tierText} Signal</strong>` +
+        `</div>` +
+        `<div style="background:linear-gradient(135deg,rgba(0,0,0,0.04) 0%,rgba(0,0,0,0.02) 100%);padding:8px 12px;border-radius:6px;margin:6px 0">` +
+        `<div style="color:#64748b;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">GPS Accuracy</div>` +
+        `<span style="color:#1e293b;font-size:1rem;font-weight:700;display:block">±${Math.round(acc)} meters</span>` +
+        `</div>` +
+        `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;gap:5px">` +
+        `<span style="font-size:0.85rem">✨</span>` +
+        `<small style="color:#64748b;font-size:0.75rem;font-weight:500">Click marker to zoom in</small>` +
+        `</div>` +
+        `</div></div>`;
+    
+    marker.bindTooltip(tooltipContent, {
+        permanent: false,
+        direction: 'top',
+        offset: [0, -35],
+        opacity: 1,
+        className: 'custom-marker-tooltip',
+        sticky: true
+    });
+    marker.on('click', () => {
+        if (isAnimating) return;
+        isAnimating = true;
+        const currentZoom = map.getZoom();
+        const targetZoom = Math.max(currentZoom, 20);
+        if (targetZoom > currentZoom) {
+            map.flyTo([currentState.lat, currentState.lng], targetZoom, {
+                animate: true,
+                duration: 0.8,
+                easeLinearity: 0.25
+            });
+        }
+        setTimeout(() => {
+            isAnimating = false;
+        }, 850);
+    });
+    let zoomTimeout;
+    map.on('zoomend', () => {
+        clearTimeout(zoomTimeout);
+        zoomTimeout = setTimeout(() => {
+            const zoom = map.getZoom();
+            if (map._createDynamicIcon && marker) {
+                marker.setIcon(map._createDynamicIcon(zoom));
+            }
+            drawCircle();
+        }, 50);
+    });
+    
+    map.on('moveend', () => {
+        if (config.isRealTime && !isAnimating) {
+            drawCircle();
+        }
+    });
+    
+    maps[divId] = map;
+    return map;
+};
 
-        const getGeo = () => {
-            if (!window.isSecureContext && location.hostname !== 'localhost') {
-                geoStat.innerHTML = '<span class="u-text-danger"><i class="fas fa-lock"></i> Wajib HTTPS!</span>';
+const handleSign = (url) => {
+    const m = select('#signModal');
+    const f = select('#signForm');
+    const cvs = select('#signCanvas');
+    const vid = select('#cameraStream');
+    const camSec = select('#cameraSection');
+    const btnSubmit = select('#btnSubmitSign');
+    const geoStat = select('#geoStatus');
+    const btnCap = select('#btnCapture');
+    const btnRet = select('#btnRetake');
+    const snapPrev = select('#snapshotPreview');
+    const mapSignDiv = select('#map-sign');
+    let captured = false;
+
+    f.reset();
+    select('[name="signature_image"]').value = '';
+    select('[name="geo_lat"]').value = '';
+    select('[name="geo_lng"]').value = '';
+    select('[name="snapshot_image"]').value = '';
+    captured = false;
+    snapPrev.style.display = 'none';
+    vid.style.display = 'block';
+    hide(btnRet);
+    if(btnCap) { showBlock(btnCap); btnCap.disabled = false; }
+    if(mapSignDiv) { mapSignDiv.style.display = 'none'; mapSignDiv.innerHTML = ''; }
+    btnSubmit.disabled = true;
+    openModal('signModal');
+
+    setTimeout(() => {
+        cvs.width = cvs.offsetWidth;
+        cvs.height = 200;
+        const ctx = cvs.getContext('2d');
+        ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+    }, 150);
+    
+    const getGeo = () => {
+        const geoStat = select('#geoStatus');
+        const geoProg = select('#geoProgress');
+        const geoIcon = select('#geoIcon');
+        const mapWrap = select('#map-sign-wrapper');
+        const mapSignDiv = select('#map-sign');
+        const btnForce = select('#btnForceLoc');
+        let watchId = null, firstLock = false, positionHistory = [];
+        
+        if(btnForce) hide(btnForce);
+        select('[name="geo_lat"]').value = '';
+        if (!window.isSecureContext && location.hostname !== 'localhost') {
+            geoStat.innerHTML = '<span class="u-text-danger">HTTPS required for geolocation</span>';
+            return;
+        }
+        
+        geoStat.textContent = 'Locating position...';
+        geoIcon.className = 'fas fa-spinner fa-spin u-text-warning';
+        if(mapWrap) mapWrap.style.display = 'block';
+        if(mapSignDiv) mapSignDiv.style.display = 'block';
+        const isLocationSpoofed = () => {
+            if(positionHistory.length < 2) return false;
+            const [prev, curr] = positionHistory.slice(-2);
+            const R = 6371000;
+            const dLat = (curr.lat - prev.lat) * Math.PI / 180;
+            const dLon = (curr.lon - prev.lon) * Math.PI / 180;
+            const a = Math.sin(dLat/2) ** 2 + 
+                      Math.cos(prev.lat * Math.PI / 180) * Math.cos(curr.lat * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return (R * c) > 200;
+        };
+        
+        const updateLocation = (pos) => {
+            if(!pos?.coords || pos.coords.latitude === 0 || pos.coords.longitude === 0) {
+                geoStat.innerHTML = '<span class="u-text-danger">Invalid location data</span>';
                 return;
             }
-            geoStat.textContent = "Mencari titik presisi...";
-            geoStat.className = "u-text-sm u-font-medium u-text-info u-animate-pulse";
-
-            const geoOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-            navigator.geolocation.getCurrentPosition((pos) => {
-                select('[name="geo_lat"]').value = pos.coords.latitude;
-                select('[name="geo_lng"]').value = pos.coords.longitude;
-                select('[name="geo_accuracy"]').value = pos.coords.accuracy;
-                const acc = Math.round(pos.coords.accuracy);
-                let accClass = "u-text-success", accIcon = "fas fa-satellite-dish";
-                if(acc > 100) { accClass = "u-text-warning"; accIcon = "fas fa-wifi"; }
-                geoStat.innerHTML = `<i class="${accIcon}"></i> Akurasi: <strong>${acc} meter</strong>`;
-                geoStat.className = `u-text-sm u-font-medium ${accClass}`;
-                select('#geoIcon').className = `fas fa-map-marker-alt ${accClass}`;
-                if (mapSignDiv) {
-                    mapSignDiv.style.display = 'block';
-                    initMap('map-sign', pos.coords.latitude, pos.coords.longitude);
+            const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
+            select('[name="geo_lat"]').value = lat;
+            select('[name="geo_lng"]').value = lng;
+            select('[name="geo_accuracy"]').value = acc;
+            const tierThresholds = { 15: [100, 'high'], 50: [85, 'high'], 150: [60, 'med'], 300: [40, 'low'], 500: [25, 'low'] };
+            let [pct, cls] = [20, 'low'];
+            for(const [threshold, [p, c]] of Object.entries(tierThresholds)) {
+                if(acc <= threshold) { [pct, cls] = [p, c]; break; }
+            }
+            
+            geoProg.style.width = `${pct}%`;
+            geoProg.className = `geo-precision-fill ${cls}`;
+            if(!firstLock) {
+                firstLock = true;
+                const getAccText = (a) => {
+                    if(a <= 15) return { text: 'Excellent precision', icon: 'success' };
+                    if(a <= 50) return { text: 'Good precision', icon: 'success' };
+                    if(a <= 150) return { text: 'Fair precision', icon: 'success' };
+                    if(a <= 300) return { text: 'Acceptable precision', icon: 'success' };
+                    return { text: 'GPS locked', icon: 'success' };
+                };
+                const { text: accText, icon: accIcon } = getAccText(acc);
+                geoStat.innerHTML = `<span class="u-text-success">📍 ${accText} • ±${Math.round(acc)}m</span>`;
+                geoIcon.className = `fas fa-location-dot u-text-success`;
+                initMap('map-sign', lat, lng, acc, { isRealTime: true, initialZoom: 19 });
+                if(btnForce) hide(btnForce);
+                checkReady();
+            } else {
+                if(maps['map-sign']?._updatePosition) {
+                    maps['map-sign']._updatePosition(lat, lng, acc);
                 }
-                checkReady();
-            }, (err) => {
-                let msg = "Gagal Deteksi Lokasi";
-                if(err.code === 1) msg = "Izin Lokasi Ditolak";
-                else if(err.code === 2) msg = "Sinyal GPS Lemah";
-                else if(err.code === 3) msg = "Waktu Habis (Timeout)";
-                geoStat.textContent = msg;
-                geoStat.className = "u-text-sm u-font-medium u-text-danger";
-            }, geoOptions);
-        };
-        getGeo();
-
-        let streamObj = null;
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === 'localhost')) {
-            showBlock(camSec);
-            select('#cameraPlaceholder').hidden = false;
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then((stream) => {
-                streamObj = stream;
-                vid.srcObject = stream;
-                select('#cameraPlaceholder').hidden = true;
-            }).catch(() => { select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Tidak Ada"; });
-        } else { hide(camSec); }
-
-        if(btnCap) btnCap.onclick = () => {
-            if (vid.videoWidth > 0) {
-                const snapCanvas = doc.createElement('canvas');
-                snapCanvas.width = 640; snapCanvas.height = 480;
-                snapCanvas.getContext('2d').drawImage(vid, 0, 0, snapCanvas.width, snapCanvas.height);
-                const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.8);
-                select('[name="snapshot_image"]').value = dataUrl;
-                snapPrev.src = dataUrl;
-                vid.style.display = 'none';
-                snapPrev.style.display = 'block';
-                hide(btnCap); showBlock(btnRet);
-                captured = true;
-                checkReady();
+                geoStat.innerHTML = `<span class="u-text-success">📍 Live tracking • ±${Math.round(acc)}m</span>`;
+                geoIcon.className = 'fas fa-location-dot u-text-success';
             }
         };
-
-        if(btnRet) btnRet.onclick = () => {
-            select('[name="snapshot_image"]').value = '';
-            snapPrev.style.display = 'none'; vid.style.display = 'block';
-            showBlock(btnCap); hide(btnRet);
-            captured = false;
-            checkReady();
+        
+        const onSuccess = (pos) => {
+            const acc = pos.coords.accuracy;
+            positionHistory.push({
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+                acc: acc,
+                ts: Date.now()
+            });
+            if(positionHistory.length > 3) positionHistory.shift();
+            
+            if(isLocationSpoofed()) {
+                geoStat.innerHTML = `<span class="u-text-danger">⚠️ Anomaly detected in location signal</span>`;
+                geoIcon.className = 'fas fa-exclamation-triangle u-text-danger';
+                return;
+            }
+            
+            updateLocation(pos);
         };
-
-        let isDown = false, hasSigned = false;
-        const ctx = cvs.getContext('2d');
-        let rect = cvs.getBoundingClientRect();
-        const updateRect = () => { rect = cvs.getBoundingClientRect(); };
-        window.addEventListener('scroll', updateRect); window.addEventListener('resize', updateRect);
-
-        const getXY = (e) => {
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            rect = cvs.getBoundingClientRect();
-            return { x: clientX - rect.left, y: clientY - rect.top };
+        
+        const onError = (err) => {
+            const errorMessages = {
+                1: 'Location access denied',
+                2: 'GPS signal not available',
+                3: 'Location request timeout'
+            };
+            const message = errorMessages[err.code] || 'Unable to get location';
+            geoStat.innerHTML = `<span class="u-text-danger">⚠️ ${message}</span>`;
+            geoProg.className = 'geo-precision-fill low';
+            geoProg.style.width = '0%';
+            geoIcon.className = 'fas fa-exclamation-circle u-text-danger';
         };
-        const drawMove = (e) => { if (!isDown) return; e.preventDefault(); const p = getXY(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-        cvs.onmousedown = (e) => { isDown = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
-        cvs.onmousemove = drawMove;
-        window.addEventListener('mouseup', () => { if(isDown) { isDown = false; hasSigned = true; checkReady(); } });
-        cvs.ontouchstart = (e) => { isDown = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
-        cvs.ontouchmove = drawMove;
-        window.addEventListener('touchend', () => { if(isDown) { isDown = false; hasSigned = true; checkReady(); } });
-        select('#clearSign').onclick = () => { ctx.clearRect(0, 0, cvs.width, cvs.height); hasSigned = false; btnSubmit.disabled = true; };
-
-        function checkReady() {
-            const locOk = select('[name="geo_lat"]').value !== "";
-            const camOk = !camSec.classList.contains('is-hidden') ? captured : true;
-            btnSubmit.disabled = !(locOk && hasSigned && camOk);
-        }
-
-        f.onsubmit = async (e) => {
-            e.preventDefault();
-            select('[name="signature_image"]').value = cvs.toDataURL('image/png');
-            const fd = new FormData(f);
-            if (streamObj) streamObj.getTracks().forEach(track => track.stop());
-            try {
-                btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
-                const r = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, body: fd });
-                const j = await r.json().catch(() => ({}));
-                if (r.ok && (j.success ?? true)) {
-                    alert('Berhasil!'); closeModal(m); setTimeout(() => location.reload(), 900);
-                } else throw new Error(j.message || 'Gagal memproses tanda tangan.');
-            } catch (err) { alert(err.message); btnSubmit.disabled = false; btnSubmit.innerHTML = 'Simpan & Tanda Tangan'; }
+        const geoOptions = { 
+            enableHighAccuracy: true, 
+            timeout: 8000,
+            maximumAge: 1000
         };
-        const cleanup = () => { if (streamObj) streamObj.getTracks().forEach(track => track.stop()); };
-        m.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', cleanup));
+        watchId = navigator.geolocation.watchPosition(onSuccess, onError, geoOptions);
+        setTimeout(() => {
+            if(!firstLock && watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                geoStat.innerHTML = `<span class="u-text-success">📍 Position acquired • Using available signal</span>`;
+                geoIcon.className = 'fas fa-location-dot u-text-success';
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { if(!firstLock) onSuccess(pos); },
+                    () => {},
+                    { enableHighAccuracy: false, timeout: 5000, maximumAge: 5000 }
+                );
+            }
+        }, 12000);
     };
+    getGeo();
+    
+    let streamObj = null;
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === 'localhost')) {
+        showBlock(camSec);
+        select('#cameraPlaceholder').hidden = false;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then((stream) => {
+            streamObj = stream;
+            vid.srcObject = stream;
+            select('#cameraPlaceholder').hidden = true;
+        }).catch(() => { select('#cameraPlaceholder').textContent = "Izin Kamera Ditolak / Tidak Ada"; });
+    } else { hide(camSec); }
+    
+    if(btnCap) btnCap.onclick = () => {
+        if (vid.videoWidth > 0) {
+            const snapCanvas = doc.createElement('canvas');
+            snapCanvas.width = 640; snapCanvas.height = 480;
+            snapCanvas.getContext('2d').drawImage(vid, 0, 0, snapCanvas.width, snapCanvas.height);
+            const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.8);
+            select('[name="snapshot_image"]').value = dataUrl;
+            snapPrev.src = dataUrl;
+            vid.style.display = 'none';
+            snapPrev.style.display = 'block';
+            hide(btnCap); showBlock(btnRet);
+            captured = true;
+            checkReady();
+        }
+    };
+    
+    if(btnRet) btnRet.onclick = () => {
+        select('[name="snapshot_image"]').value = '';
+        snapPrev.style.display = 'none'; vid.style.display = 'block';
+        showBlock(btnCap); hide(btnRet);
+        captured = false;
+        checkReady();
+    };
+    
+    let isDown = false, hasSigned = false;
+    const ctx = cvs.getContext('2d');
+    let rect = cvs.getBoundingClientRect();
+    const updateRect = () => { rect = cvs.getBoundingClientRect(); };
+    window.addEventListener('scroll', updateRect); 
+    window.addEventListener('resize', updateRect);
+    
+    const getXY = (e) => {
+        const cX = e.touches ? e.touches[0].clientX : e.clientX;
+        const cY = e.touches ? e.touches[0].clientY : e.clientY;
+        rect = cvs.getBoundingClientRect();
+        return { x: cX - rect.left, y: cY - rect.top };
+    };
+    
+    const drawMove = (e) => { if (!isDown) return; e.preventDefault(); const p = getXY(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+    cvs.onmousedown = (e) => { isDown = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
+    cvs.onmousemove = drawMove;
+    cvs.ontouchstart = (e) => { isDown = true; ctx.beginPath(); const p = getXY(e); ctx.moveTo(p.x, p.y); };
+    cvs.ontouchmove = drawMove;
+    window.addEventListener('mouseup', () => { if(isDown) { isDown = false; hasSigned = true; checkReady(); } });
+    window.addEventListener('touchend', () => { if(isDown) { isDown = false; hasSigned = true; checkReady(); } });
+    
+    select('#clearSign').onclick = () => { ctx.clearRect(0, 0, cvs.width, cvs.height); hasSigned = false; btnSubmit.disabled = true; };
+    
+    const checkReady = () => {
+        const locOk = select('[name="geo_lat"]').value !== '';
+        const camOk = !camSec.classList.contains('is-hidden') ? captured : true;
+        btnSubmit.disabled = !(locOk && hasSigned && camOk);
+    };
+    
+    f.onsubmit = async (e) => {
+        e.preventDefault();
+        select('[name="signature_image"]').value = cvs.toDataURL('image/png');
+        const fd = new FormData(f);
+        if (streamObj) streamObj.getTracks().forEach(track => track.stop());
+        try {
+            btnSubmit.disabled = true; 
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+            const r = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, body: fd });
+            const j = await r.json().catch(() => ({}));
+            if (r.ok && (j.success ?? true)) {
+                alert('Berhasil'); closeModal(m); setTimeout(() => location.reload(), 900);
+            } else throw new Error(j.message || 'Gagal memproses tanda tangan');
+        } catch (err) { alert(err.message); btnSubmit.disabled = false; btnSubmit.innerHTML = 'Simpan & Tanda Tangan'; }
+    };
+    
+    m.querySelectorAll('.js-close-modal').forEach(b => b.addEventListener('click', () => { if (streamObj) streamObj.getTracks().forEach(track => track.stop()); }));
+};
 
-    const rejectForm = select('#rejectForm');
-    if(rejectForm) {
-        rejectForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const noteEl = select('#rejectNote');
-            const btn = select('#btnSubmitReject');
-            const note = (noteEl?.value || '').trim();
-            if(!rejectCtx.url) return alert('URL reject tidak ditemukan.');
-            if(note.length < 5) return alert('Alasan penolakan wajib diisi (min 5 karakter).');
-            if(btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
-            try {
-                const r = await fetch(rejectCtx.url, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                    body: JSON.stringify({ rejection_note: note })
-                });
-                const j = await r.json().catch(() => ({}));
-                if (r.ok && (j.success ?? true)) {
-                    alert('Berhasil Ditolak'); closeModal(select('#rejectModal')); closeModal(select('#detailContractModal')); setTimeout(() => location.reload(), 900);
-                } else throw new Error(j.message || 'Gagal menolak dokumen.');
-            } catch(err) {
-                alert(err.message); if(btn) { btn.disabled = false; btn.textContent = 'Tolak Dokumen'; }
-            }
-        });
-    }
+const rejectForm = select('#rejectForm');
+if(rejectForm) {
+    rejectForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const noteEl = select('#rejectNote');
+        const btn = select('#btnSubmitReject');
+        const note = (noteEl?.value || '').trim();
+        if(!rejectCtx.url) return alert('URL tidak ditemukan');
+        if(note.length < 5) return alert('Alasan wajib minimal 5 karakter');
+        btn.disabled = true; btn.textContent = 'Memproses...';
+        try {
+            const r = await fetch(rejectCtx.url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, body: JSON.stringify({ rejection_note: note }) });
+            const j = await r.json().catch(() => ({}));
+            if (r.ok && (j.success ?? true)) {
+                alert('Berhasil ditolak'); closeModal(select('#rejectModal')); closeModal(select('#detailContractModal')); setTimeout(() => location.reload(), 900);
+            } else throw new Error(j.message || 'Gagal menolak dokumen');
+        } catch(err) { alert(err.message); btn.disabled = false; btn.textContent = 'Tolak Dokumen'; }
+    });
+}
 
-    $(document).on('click', '.js-btn-detail', async function(e) {
+$(document).on('click', '.js-btn-detail', async function(e) {
         e.preventDefault();
         const btnDet = this;
         try {
@@ -1329,17 +1540,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const niHead = select('#no-img-head'); if(niHead) niHead.style.display='none';
             const iCand = select('#img-cand'); if(iCand) iCand.style.display='none';
             const niCand = select('#no-img-cand'); if(niCand) niCand.style.display='none';
-
             if (geo.head || geo.candidate) showBlock(mapSec); else hide(mapSec);
             if (geo.head) {
-                showBlock(wHead); setText('#ts-head', `Ditandatangani: ${geo.head.ts}`);
-                initMap('map-head', geo.head.lat, geo.head.lng);
+                showBlock(wHead); setText('#ts-head', `Signed: ${geo.head.ts}`);
+                initMap('map-head', geo.head.lat, geo.head.lng, geo.head.acc || 0, { initialZoom: 19, circleVisible: true });
                 if(geo.head.image_url) { if(iHead) { iHead.src = geo.head.image_url; showBlock(iHead); } }
                 else showBlock(niHead);
             } else hide(wHead);
             if (geo.candidate) {
-                showBlock(wCand); setText('#ts-cand', `Ditandatangani: ${geo.candidate.ts}`);
-                initMap('map-cand', geo.candidate.lat, geo.candidate.lng);
+                showBlock(wCand); setText('#ts-cand', `Signed: ${geo.candidate.ts}`);
+                initMap('map-cand', geo.candidate.lat, geo.candidate.lng, geo.candidate.acc || 0, { initialZoom: 19, circleVisible: true });
                 if(geo.candidate.image_url) { if(iCand) { iCand.src = geo.candidate.image_url; showBlock(iCand); } }
                 else showBlock(niCand);
             } else hide(wCand);
@@ -1372,13 +1582,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if(d.contract_type === 'PKWT_PERPANJANGAN' && prevId && newId && prevId !== newId) {
                 showBlock(boxNew); setText('#detNewUnit', m.new_unit_name || '-');
             } else hide(boxNew);
-
             const bPrev = select('#btnPreviewDoc'); d.doc_url ? (show(bPrev), bPrev.style.display='inline-flex', bPrev.href=d.doc_url) : hide(bPrev);
             const bApp = select('#btnApprove'); d.can_approve ? (show(bApp), bApp.onclick=()=>handleSign(d.approve_url)) : hide(bApp);
             const bSign = select('#btnSign'); d.can_sign ? (show(bSign), bSign.onclick=()=>handleSign(d.sign_url)) : hide(bSign);
             const bRej = select('#btnReject');
             if(d.can_approve && d.reject_url) { show(bRej); bRej.onclick = () => openReject(d.reject_url, `${d.contract_no || '-'} • ${d.person_name || '-'}`); } else hide(bRej);
-
             const logSection = select('#detLogSection');
             const logList = select('#detLogList');
             if (d.can_see_logs && d.approval_logs) {
@@ -1410,7 +1618,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
                 logList.innerHTML = logs + createdLog;
             } else hide(logSection);
-
             openModal('detailContractModal');
             setTimeout(() => {
                 ['map-head','map-cand'].forEach(id => {
@@ -1419,7 +1626,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 250);
         } catch(err) { alert(err.message); }
     });
-
     $(document).on('click', '.js-btn-delete', function(e) {
         e.preventDefault();
         const btnDelete = this;

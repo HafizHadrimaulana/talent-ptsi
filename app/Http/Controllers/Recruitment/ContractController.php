@@ -384,6 +384,21 @@ class ContractController extends Controller
             'snapshot_image' => 'nullable|string',
         ]);
 
+        // GPS VALIDATION - Ultra Presisi Check
+        $geoLat = !empty($data['geo_lat']) ? floatval($data['geo_lat']) : null;
+        $geoLng = !empty($data['geo_lng']) ? floatval($data['geo_lng']) : null;
+        $geoAccuracy = !empty($data['geo_accuracy']) ? floatval($data['geo_accuracy']) : 999;
+        
+        // Validasi: GPS coordinates harus valid
+        if ($geoLat && $geoLng) {
+            if ($geoLat < -90 || $geoLat > 90 || $geoLng < -180 || $geoLng > 180) {
+                return response()->json(['success' => false, 'message' => '❌ Koordinat GPS Invalid - Kemungkinan VPN/Spoofing'], 400);
+            }
+            
+            // Enterprise: Accept all GPS accuracy levels (informative logging only)
+            \Log::info("Contract Sign: GPS Locked - Accuracy {$geoAccuracy}m for user {$request->user()->id}");
+        }
+
         DB::beginTransaction();
         try {
             $snapshotPath = null;
@@ -431,9 +446,9 @@ class ContractController extends Controller
                 'signed_at' => now(),
                 'signature_draw_data' => $data['signature_image'] ?? null,
                 'signature_draw_hash' => $sigHash,
-                'geo_lat' => $data['geo_lat'] ?? null,
-                'geo_lng' => $data['geo_lng'] ?? null,
-                'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
+                'geo_lat' => $geoLat,
+                'geo_lng' => $geoLng,
+                'geo_accuracy_m' => $geoAccuracy,
                 'camera_photo_path' => $snapshotPath,
                 'camera_photo_hash' => $camHash,
                 'snapshot_data' => $snapshotPath,
