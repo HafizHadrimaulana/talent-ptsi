@@ -902,7 +902,7 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function destroyLna($id)
+    public function deleteLna($id)
     {
         $item = TrainingReference::find($id);
 

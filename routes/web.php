@@ -73,7 +73,7 @@ Route::middleware('web')->group(function () {
                 Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])->name('training-request.get-employee-by-unit');
                 Route::get('training-request/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])->name('training-request.get-training-request-list');
 
-                Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'destroyLna'])->name('training-request.delete-lna');
+                Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'deleteLna'])->name('training-request.delete-lna');
                 Route::delete('training-request/{id}/delete-training-request', [TrainingRequestController::class, 'destroyTrainingRequest'])->name('training-request.delete-training-request');
                 Route::post('training-request/input-training-request', [TrainingRequestController::class, 'inputTrainingRequest'])->name('training-request.input-training-request');
                 Route::post('training-request/{id}/approve-training-request', [TrainingRequestController::class, 'approveTrainingRequest'])->name('training-request.approve-training-request');

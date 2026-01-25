@@ -72,7 +72,8 @@ const TABLE_CONFIGS = {
     "pengajuan-training-peserta-table": {
         tableId: "pengajuan-training-peserta-table",
         modalId: "#training-peserta-modal",
-        apiEndpoint: (unitId) => `/training/training-management/${unitId}/get-pengajuan-training-peserta`,
+        apiEndpoint: (unitId) =>
+            `/training/training-management/${unitId}/get-pengajuan-training-peserta`,
         columns: [
             "no",
             "judul_sertifikasi",
@@ -174,11 +175,27 @@ const initModalSystem = () => {
 
             const $modal = $(config.modalId);
 
-            console.log("row data aaa", rowData);
-
             if ($modal.length && rowData) {
                 toggleEditMode($modal, false);
                 populateModalData($modal, rowData);
+                if (rowData.status_training_reference === "cancelled") {
+                    $modal.find("#btn-toggle-edit").addClass("hidden");
+                    $modal.find("#btn-submit-action").addClass("hidden");
+
+                    $modal
+                        .find(".edit-indicator")
+                        .text("Data tidak aktif (Read Only)")
+                        .addClass("text-red-600");
+                } else {
+                    $modal.find("#btn-toggle-edit").removeClass("hidden");
+                    $modal.find("#btn-submit-action").removeClass("hidden");
+
+                    $modal
+                        .find(".edit-indicator")
+                        .text("Pratinjau Data")
+                        .removeClass("text-red-600");
+                }
+
                 $modal.removeClass("hidden").show();
             }
         });
@@ -191,6 +208,12 @@ const initModalSystem = () => {
 
     $body.on("click", "#btn-submit-action", function () {
         const $modal = $(this).closest(".u-modal");
+        
+        if (isCancelled($modal)) {
+            Swal.fire("Info", "Data sudah tidak aktif", "info");
+            return;
+        }
+
         const isEditMode = $modal.hasClass("is-editing-active");
         const id = $modal.attr("data-current-id");
 
@@ -200,7 +223,7 @@ const initModalSystem = () => {
             handleUpdateAction(id, formData, $modal);
         } else {
             // LOGIKA HAPUS (EX: Approve/Decline lama anda)
-            handleDeleteAction(id);
+            handleDeleteAction(id, $modal);
         }
     });
 
@@ -260,6 +283,7 @@ const initModalSystem = () => {
 const populateModalData = ($modal, data) => {
     // Mapping ID Modal (Opsional: untuk logika spesifik berdasarkan modal)
     $modal.attr("data-current-id", data.id);
+    $modal.attr("data-status", data.status_training_reference);
     $modal.find("#edit-id").val(data.id);
 
     // Informasi Dasar (Menggunakan selector lama & baru agar kompatibel)
@@ -335,6 +359,10 @@ const populateModalData = ($modal, data) => {
 };
 
 const toggleEditMode = ($modal, isEditing) => {
+    if (isCancelled($modal)) {
+        return;
+    }
+
     if (isEditing) {
         $modal.addClass("is-editing-active");
         $modal.find(".view-mode").addClass("hidden");
@@ -568,6 +596,64 @@ const renderApprovalTimeline = (approvals) => {
     });
 };
 
+const handleDeleteAction = (id, $modal) => {
+    console.log("handleDeleteAction", id);
+
+    Swal.fire({
+        title: "Yakin ingin menghapus?",
+        text: "Data yang dihapus akan dinonaktifkan.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Ya, hapus",
+        cancelButtonText: "Batal",
+        reverseButtons: true,
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        $.ajax({
+            url: `/training/training-request/${id}/delete-lna`,
+            method: "POST",
+            data: {
+                _method: "DELETE",
+                _token: $('meta[name="csrf-token"]').attr("content"),
+            },
+            beforeSend: () => {
+                Swal.fire({
+                    title: "Menghapus...",
+                    text: "Mohon tunggu",
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                });
+            },
+            success: (res) => {
+                $modal.fadeOut(200, function () {
+                    $(this).addClass("hidden").hide();
+                });
+
+                Swal.fire("Berhasil", res.message, "success");
+
+                // Reload table
+                if ($.fn.DataTable.isDataTable(".dataTable")) {
+                    $(".dataTable").DataTable().ajax.reload(null, false);
+                }
+            },
+            error: (xhr) => {
+                const status = xhr.status;
+                const message =
+                    xhr.responseJSON?.message || "Terjadi kesalahan sistem";
+
+                if (status === 409) {
+                    Swal.fire("Perhatian", message, "warning");
+                } else if (status === 404) {
+                    Swal.fire("Tidak ditemukan", message, "error");
+                } else {
+                    Swal.fire("Gagal", message, "error");
+                }
+            },
+        });
+    });
+};
+
 const formatRupiah = (v) =>
     new Intl.NumberFormat("id-ID", {
         style: "currency",
@@ -584,6 +670,8 @@ const formatDate = (d) =>
           })
         : "-";
 
+const isCancelled = ($modal) => $modal.attr("data-status") === "cancelled";
+
 const renderStatusBadge = (status) => {
     const STATUS_MAP = {
         approved: {
@@ -595,7 +683,7 @@ const renderStatusBadge = (status) => {
             class: "bg-red-100 text-red-700 border border-red-200",
         },
         in_review_gmvp: {
-            label: "In Review",
+            label: "In Review GM/VP",
             class: "bg-sky-100 text-sky-700 border border-sky-200",
         },
         active: {
@@ -605,6 +693,10 @@ const renderStatusBadge = (status) => {
         pending: {
             label: "Pending",
             class: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+        },
+        cancelled: {
+            label: "Cancelled",
+            class: "bg-slate-100 text-slate-600 border border-slate-200",
         },
     };
 
