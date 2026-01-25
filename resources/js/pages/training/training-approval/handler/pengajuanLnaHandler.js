@@ -1,8 +1,9 @@
-import { postFormData, getJSON } from "@/utils/fetch";
+import { postFormData } from "@/utils/fetch";
 
 export function initPengajuanLnaHandler(modal) {
     if (!modal) return;
-    const inputForm = document.querySelector("#lna-pengajuan-form");
+
+    const inputForm = modal.querySelector("#lna-pengajuan-form");
     const unitSelect = modal.querySelector(".js-select-unit");
 
     if (!inputForm || !unitSelect) return;
@@ -10,57 +11,53 @@ export function initPengajuanLnaHandler(modal) {
     autoSetUnit(unitSelect);
     initBiayaHandler(inputForm);
 
-    // ==== HANDLE SUBMIT ====
     inputForm.addEventListener("submit", async function (e) {
         e.preventDefault();
 
         const fd = new FormData(inputForm);
 
         Swal.fire({
-            title: "Menyimpan...",
+            title: "Menyimpan Data...",
+            text: "Harap tunggu sebentar",
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading(),
         });
 
         try {
-            modal.classList.add("hidden");
-
-            Swal.fire({
-                title: "Menyimpan Data...",
-                text: "Harap tunggu sebentar.",
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-            });
-
             const res = await postFormData(
                 "/training/training-request/input-lna",
-                fd
+                fd,
             );
 
             Swal.close();
 
-            if (res.status === "success") {
-                await Swal.fire({
-                    icon: "success",
-                    title: "Berhasil!",
-                    text: res.message || "Data berhasil disimpan.",
-                    timer: 2000,
-                    showConfirmButton: false,
+            if (res.status !== "success") {
+                Swal.fire({
+                    icon: "error",
+                    title: "Gagal Menyimpan",
+                    text:
+                        res.message || "Terjadi kesalahan saat menyimpan data.",
                 });
-
-                inputForm.reset();
-                window.location.reload();
                 return;
             }
 
-            Swal.fire({
-                icon: "error",
-                title: "Gagal Menyimpan",
-                text: res.message || "Terjadi kesalahan saat menyimpan data.",
+            await Swal.fire({
+                icon: "success",
+                title: "Berhasil!",
+                text: res.message || "Data berhasil disimpan.",
+                timer: 1500,
+                showConfirmButton: false,
             });
+
+            inputForm.reset();
+
+            modal.classList.add("hidden");
+
+            window.location.reload();
+
         } catch (err) {
             Swal.close();
-            console.error("Error:", err);
+            console.error(err);
 
             Swal.fire({
                 icon: "error",
@@ -69,45 +66,51 @@ export function initPengajuanLnaHandler(modal) {
             });
         }
     });
-
-    function initBiayaHandler(inputForm) {
-        const biayaPelatihan = inputForm.querySelector("input[name='biaya_pelatihan']");
-
-        if (!biayaPelatihan) {
-            alert("Biaya handler: element tidak ditemukan di form");
-            return;
-        }
-
-        biayaPelatihan.addEventListener("input", () => {
-            const val = biayaPelatihan.value.replace(/[^\d]/g, "");
-            biayaPelatihan.value = formatRupiah(val);
-        });
-
-        function formatRupiah(value) {
-            if (!value) return "";
-            return new Intl.NumberFormat("id-ID", {
-                style: "currency",
-                currency: "IDR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-            }).format(parseInt(value, 10));
-        }
-    }
 }
 
 function autoSetUnit(select) {
+    if (!select) return;
+
     const userUnitId = window.currentUnitId;
     const userUnitName = window.currentUnitName;
 
     if (!userUnitId) {
-        console.warn("User tidak memiliki unit");
+        console.warn("autoSetUnit: User tidak memiliki unit");
         return;
     }
 
-    select.innerHTML = `
-        <option value="${userUnitId}" selected>
-            ${userUnitName || "Unit tidak ditemukan"}
-        </option>
-    `;
+    // Reset option agar tidak dobel
+    select.innerHTML = "";
+
+    const option = document.createElement("option");
+    option.value = userUnitId;
+    option.textContent = userUnitName || "Unit tidak ditemukan";
+    option.selected = true;
+
+    select.appendChild(option);
+
+    // Lock agar user tidak bisa ganti unit
     select.disabled = true;
+}
+
+function initBiayaHandler(inputForm) {
+    const biayaPelatihan = inputForm.querySelector(
+        "input[name='biaya_pelatihan']",
+    );
+
+    if (!biayaPelatihan) return;
+
+    biayaPelatihan.addEventListener("input", () => {
+        const raw = biayaPelatihan.value.replace(/[^\d]/g, "");
+        biayaPelatihan.value = formatRupiah(raw);
+    });
+
+    function formatRupiah(value) {
+        if (!value) return "";
+        return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(Number(value));
+    }
 }
