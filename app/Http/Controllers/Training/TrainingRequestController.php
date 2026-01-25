@@ -959,6 +959,21 @@ class TrainingRequestController extends Controller
         ], 200);
     }
 
+    public function viewDocument($filename)
+    {
+        $path = 'lampiran_penawaran/' . $filename;
+
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404, 'File tidak ditemukan.');
+        }
+
+        $file = Storage::disk('public')->get($path);
+        
+        $mimeType = Storage::disk('public')->mimeType($path);
+
+        return response($file, 200)->header('Content-Type', $mimeType);
+    }
+
     // HELPER FUNCTION
     private function cleanRupiah($value)
     {

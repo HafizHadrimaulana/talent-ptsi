@@ -208,7 +208,7 @@ const initModalSystem = () => {
 
     $body.on("click", "#btn-submit-action", function () {
         const $modal = $(this).closest(".u-modal");
-        
+
         if (isCancelled($modal)) {
             Swal.fire("Info", "Data sudah tidak aktif", "info");
             return;
@@ -309,8 +309,12 @@ const populateModalData = ($modal, data) => {
     $modal
         .find(".detail-waktu_pelaksanaan")
         .text(data.waktu_pelaksanaan || "-");
-    $modal.find(".detail-tanggal_mulai").text(data.tanggal_mulai || "-");
-    $modal.find(".detail-tanggal_berakhir").text(data.tanggal_berakhir || "-");
+    $modal
+        .find(".detail-tanggal_mulai")
+        .text(formatDate(data.tanggal_mulai) || "-");
+    $modal
+        .find(".detail-tanggal_berakhir")
+        .text(formatDate(data.tanggal_berakhir) || "-");
 
     // Proyek & Fungsi
     $modal
@@ -342,13 +346,21 @@ const populateModalData = ($modal, data) => {
         $modal.find(".section-peserta").hide();
     }
 
-    // Handle Lampiran (Khusus untuk Training Request)
     if (data.lampiran_penawaran) {
+        const filename = data.lampiran_penawaran;
+        const extension = filename.split(".").pop().toLowerCase();
+        const viewUrl = `/training/training-request/${filename}`;
+
+        let icon = "fa-file-alt"; // default
+        if (extension === "pdf") icon = "fa-file-pdf text-red-500";
+        else if (["jpg", "jpeg", "png"].includes(extension))
+            icon = "fa-file-image text-blue-500";
+
         $modal.find(".detail-lampiran_penawaran").html(`
-            <a href="${data.lampiran_penawaran}" target="_blank" class="u-btn u-btn--sm u-btn--light">
-                <i class="fas fa-download u-mr-xs"></i> Lihat Lampiran
-            </a>
-        `);
+        <a href="${viewUrl}" target="_blank" class="u-btn u-btn--sm u-btn--light border u-hover-lift">
+            <i class="fas ${icon} u-mr-xs"></i> Lihat Lampiran (${extension.toUpperCase()})
+        </a>
+    `);
     } else {
         $modal
             .find(".detail-lampiran_penawaran")
