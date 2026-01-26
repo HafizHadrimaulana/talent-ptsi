@@ -308,3 +308,11 @@ table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:before { con
 .geo-precision-fill.med{background:#f59e0b}
 .geo-precision-fill.high{background:#10b981}
 .u-modal #map-head,.u-modal #map-cand,.u-modal #map-sign{visibility:visible!important;display:block!important;opacity:1!important}
+
+.geo-precision-bar{width:100%;height:8px;background:rgba(0,0,0,0.08);border-radius:999px;overflow:hidden;margin:8px 0}
+.geo-precision-fill{height:100%;transition:width .6s cubic-bezier(0.4,0,0.2,1),background .3s;border-radius:999px}
+.geo-precision-fill.high{background:linear-gradient(90deg,#10b981,#059669);box-shadow:0 0 12px rgba(16,185,129,0.5)}
+.geo-precision-fill.med{background:linear-gradient(90deg,#f59e0b,#d97706);box-shadow:0 0 12px rgba(245,158,11,0.5)}
+.geo-precision-fill.low{background:linear-gradient(90deg,#ef4444,#dc2626);box-shadow:0 0 12px rgba(239,68,68,0.5)}
+#geoStatus{font-size:0.9rem;font-weight:600;min-height:24px;display:flex;align-items:center;gap:8px}
+#geoIcon{font-size:1.1rem}
