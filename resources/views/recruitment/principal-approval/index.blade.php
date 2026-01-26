@@ -262,11 +262,18 @@
             <label class="u-block u-text-sm u-font-medium u-mb-sm">Jenis Kontrak<span class="text-red-500">*</span></label>
             <select class="u-input" id="contractTypeSelect" name="employment_type" required>
                 <option value="">Pilih jenis kontrak</option>
-                <option value="Organik">Organik</option>
-                <option value="Project Based">Project Based</option>
-                <option value="Kontrak MPS">Kontrak MPS</option>
-                <option value="Kontrak On-call">Kontrak On-call</option>
-                <option value="Alihdaya">Alihdaya</option>
+                @foreach($employeeStatuses as $status)
+                    @php
+                        // Mapping nama dari database ke label tampilan
+                        $displayLabel = $status;
+                        if ($status == 'Kontrak Organik') $displayLabel = 'Organik';
+                        elseif ($status == 'Kontrak-Project Based') $displayLabel = 'Project Based';
+                        elseif ($status == 'Kontrak-MPS') $displayLabel = 'Kontrak MPS';
+                        elseif ($status == 'Kontrak-On Call') $displayLabel = 'Kontrak On-call';
+                        elseif ($status == 'Alihdaya/ Outsourcing') $displayLabel = 'Alihdaya';
+                    @endphp
+                    <option value="{{ $status }}">{{ $displayLabel }}</option>
+                @endforeach
             </select>
           </div>
           <div class="u-space-y-sm">
@@ -1505,16 +1512,33 @@
                 }
                 if (contractTypeSelect) {
                     contractTypeSelect.addEventListener('change', function() {
-                    const val = this.value;
-                    multiDataStore = {}; 
-                    resetDynamicInputs();
-                    activeDataIndex = 1;
-                    renderTabs(totalDataCount); 
-                    const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
-                    if (val === 'Organik') { setBudgetLock(true, 'RKAP'); }
-                    else if (projectTypes.includes(val)) { setBudgetLock(true, 'RAB Proyek');}
-                    else { setBudgetLock(false, ''); }
-                    updateVisibility();
+                        const val = this.value; // Nilai dari database, misal: 'Kontrak Organik'
+                        
+                        // 1. Reset data internal setiap kali jenis kontrak berubah
+                        multiDataStore = {}; 
+                        resetDynamicInputs();
+                        activeDataIndex = 1;
+                        renderTabs(totalDataCount); 
+
+                        // 2. Logika otomatisasi Sumber Anggaran (Budget Lock)
+                        // Disesuaikan dengan nilai employee_status di database
+                        const projectRelated = [
+                            'Kontrak-Project Based', 
+                            'Kontrak-MPS', 
+                            'Kontrak-On Call'
+                        ];
+
+                        if (val === 'Kontrak Organik') {
+                            setBudgetLock(true, 'RKAP');
+                        } else if (projectRelated.includes(val)) {
+                            setBudgetLock(true, 'RAB Proyek');
+                        } else {
+                            // Untuk 'Alihdaya/ Outsourcing' atau lainnya, biarkan user memilih manual
+                            setBudgetLock(false, '');
+                        }
+
+                        // 3. Jalankan fungsi visibilitas field (seperti memunculkan tabel RKAP atau Section Project)
+                        updateVisibility();
                     });
                 }
                 submitBtn.addEventListener('click', function(e) {
@@ -1628,8 +1652,10 @@
                                 const contractType = btnCreate.getAttribute('data-employment-type');
                                 const budgetType   = btnCreate.getAttribute('data-budget-source-type');
                                 if(contractTypeSelect) contractTypeSelect.value = contractType;
-                                if (contractType === 'Organik') { setBudgetLock(true, 'RKAP'); }
-                                else if (contractType === 'Project Based') { setBudgetLock(true, 'RAB Proyek'); }
+                                if (contractType === 'Kontrak Organik') { setBudgetLock(true, 'RKAP'); }
+                                else if (['Kontrak-Project Based', 'Kontrak-MPS', 'Kontrak-On Call'].includes(contractType)) { 
+                                    setBudgetLock(true, 'RAB Proyek'); 
+                                }
                                 else { setBudgetLock(false, ''); if(budgetSourceSelect) budgetSourceSelect.value = budgetType; }
                                 updateVisibility();
                                 const posName = btnCreate.getAttribute('data-position');
@@ -1982,6 +2008,7 @@
                 setupSearchableDropdown(picOrganikSearchInput, picOrganikInput, picOrganikResults, picData, false);
                 const updateVisibility = () => { 
                     const budget = budgetSourceSelect ? budgetSourceSelect.value : '';
+                    const contractType = contractTypeSelect ? contractTypeSelect.value : '';
                     const isRkap = (budget === 'RKAP');
                     const isProjectRab = (budget === 'RAB Proyek');
                     if (rkapSection) rkapSection.style.display = isRkap ? 'block' : 'none';
@@ -2002,24 +2029,6 @@
                 if (budgetSourceSelect) {
                     budgetSourceSelect.addEventListener('change', function() {
                         resetDynamicInputs(); 
-                        updateVisibility();
-                    });
-                }
-                if (contractTypeSelect) {
-                    contractTypeSelect.addEventListener('change', function() {
-                        const val = this.value;
-                        const projectTypes = ['Project Based', 'Kontrak MPS', 'Kontrak On-call'];
-                        multiDataStore = {}; 
-                        resetDynamicInputs();
-                        activeDataIndex = 1;
-                        renderTabs(totalDataCount); 
-                        if (val === 'Organik') {
-                            if(budgetSourceSelect) budgetSourceSelect.value = 'RKAP';
-                        } else if (projectTypes.includes(val)) {
-                            if(budgetSourceSelect) budgetSourceSelect.value = 'RAB Proyek';
-                        } else {
-                            if(budgetSourceSelect) budgetSourceSelect.value = '';
-                        }
                         updateVisibility();
                     });
                 }

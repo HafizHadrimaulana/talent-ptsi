@@ -201,12 +201,26 @@ class PrincipalApprovalController extends Controller
             ? DB::table('units')->select('id', 'name')->orderBy('name')->get()
             : DB::table('units')->select('id', 'name')->where('id', $me?->unit_id)->get();
         $locations = DB::table('locations')->select('id', 'city', 'name')->orderBy('city')->get();
+
+        $allowedStatuses = [
+            'Kontrak Organik',
+            'Kontrak-Project Based',
+            'Kontrak-MPS',
+            'Kontrak-On Call',
+            'Alihdaya/ Outsourcing'
+        ];
+        $employeeStatuses = DB::table('employees')
+        ->whereIn('employee_status', $allowedStatuses)
+        ->distinct()
+        ->pluck('employee_status');
+
         return view('recruitment.principal-approval.index', [
             'units'          => $units,
             'canSeeAll'      => $canSeeAll,
             'selectedUnitId' => $selectedUnitId,
             'locations'      => $locations,
             'currentTab'     => $r->input('tab', 'berjalan'),
+            'employeeStatuses' => $employeeStatuses,
         ]);
     }
     private function renderTitleColumn($r) {
