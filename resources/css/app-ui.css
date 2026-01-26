@@ -274,6 +274,16 @@ table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:before { con
 .dataTables_paginate{justify-content:center}
 .u-dt-child-item{flex-direction:column;align-items:flex-start;gap:0.25rem}
 .u-dt-child-data{text-align:left;max-width:100%}
+.map-container{height:200px!important}
+#map-head,#map-cand,#map-sign{height:200px!important}
+.leaflet-control-zoom a{width:28px!important;height:28px!important;line-height:28px!important;font-size:13px!important}
+#signCanvas{height:140px!important}
+#geoStatus{font-size:.82rem}
+#geoIcon{font-size:.95rem}
+.geo-precision-bar{height:5px}
+.u-input{padding:.5rem .65rem;font-size:.85rem}
+.uj-label{font-size:.8rem}
+.cell-actions{font-size:.75rem}
 }
 @media (min-width:769px) and (max-width:1024px){
 .u-modal__card{width:88vw}
@@ -282,6 +292,8 @@ table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:before { con
 .u-tabs{gap:.35rem;flex-wrap:wrap;white-space:normal}
 .u-tab{padding:.38rem .72rem;font-size:.75rem}
 .u-tree-col{flex:1 1 calc(50% - var(--space-md))}
+.map-container{height:240px!important}
+#map-head,#map-cand,#map-sign{height:240px!important}
 }
 @media (min-width:1025px){.u-hide-desktop{display:none!important}}
 @media (-webkit-min-device-pixel-ratio:2),(min-resolution:192dpi){

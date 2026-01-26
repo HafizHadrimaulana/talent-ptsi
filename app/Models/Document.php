@@ -20,13 +20,11 @@ class Document extends Model
         'original_name',
         'mime',
         'size_bytes',
-        'meta',        // Digunakan oleh ContractController
-        'meta_json',   // Cadangan jika schema DB menggunakan ini
+        'meta',
         'hash_sha256',
-        'person_id',   // WAJIB: Untuk relasi ke pemilik dokumen
-        'employee_id', // WAJIB: Untuk relasi ke data pegawai
-        'created_by_person_id',
-        'created_by_user_id',
+        'person_id',
+        'employee_id',
+        'source_system',
     ];
 
     protected $casts = [

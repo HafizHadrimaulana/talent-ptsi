@@ -520,18 +520,40 @@ class UserController extends Controller
         if (!$path) return '';
         $pathTrim = ltrim((string) $path, '/');
         
+        // Return as-is if already full URL
         if (preg_match('~^https?://~i', $pathTrim)) return $pathTrim;
 
+        // Handle SITMS documents (external)
         if (strpos($pathTrim, 'uploads/') === 0) {
             return 'https://sitms.ptsi.co.id/' . $pathTrim;
         }
 
+        // Handle contracts from local disk - route to controller instead of direct storage access
+        if (strpos($pathTrim, 'contracts/') === 0 && ($disk === 'local' || !$disk)) {
+            // Extract contract ID from filename pattern: contracts/TYPE-ID-timestamp.pdf
+            // TYPE can contain letters, numbers, underscores, dashes
+            // ID and timestamp are numbers only
+            if (preg_match('~contracts/(.+?)-(\d+)-(\d+)\.pdf$~', $pathTrim, $matches)) {
+                $contractId = $matches[2]; // Second capture group is the contract ID
+                return route('recruitment.contracts.document', ['contract' => $contractId]);
+            }
+            // If pattern doesn't match, return as-is (won't work but better than breaking)
+            return $path;
+        }
+
+        // Handle public disk - accessible via /storage symlink
+        if ($disk === 'public') {
+            return asset('storage/' . $pathTrim);
+        }
+
+        // Try to get URL from filesystem driver (for s3, etc)
         $disk = $disk ?: config('filesystems.default');
         try {
             $fs = Storage::disk($disk);
             if (method_exists($fs, 'url')) return (string) $fs->url($pathTrim);
         } catch (\Throwable $e) {}
-        if ($disk === 'public') return asset('storage/' . $pathTrim);
+        
+        // Fallback: return path as-is
         return $path;
     }
 }
