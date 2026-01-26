@@ -563,20 +563,28 @@ class TrainingManagementController extends Controller
                     'trainingReference:id,judul_sertifikasi,biaya_pelatihan',
                     'employee:id,unit_id,person_id,employee_id',
                     'employee.person:id,full_name',
+                    'approvals' => function ($q) {
+                        $q->with('user:id,name')
+                        ->orderBy('created_at', 'asc');
+                    }
                 ])
                 ->orderByDesc('id');
 
             if (in_array('SDM Unit', $roles)) {
-
                 $query->whereHas('employee', function ($q) use ($employeeUnitId) {
                     $q->where('unit_id', $employeeUnitId);
                 });
 
             } elseif ($unitId) {
-
                 $query->whereHas('employee', function ($q) use ($unitId) {
                     $q->where('unit_id', $unitId);
                 });
+            } else {
+                $query->whereIn('status_approval_training', [
+                    'in_review_gmvp',
+                    'in_review_avpdhc',
+                    'in_review_vpdhc',
+                ]);
             }
 
             $data = $query->paginate($perPage);
@@ -596,7 +604,18 @@ class TrainingManagementController extends Controller
                     'realisasi_biaya_pelatihan'=> $item->realisasi_biaya_pelatihan ?? 0,
                     'lampiran_penawaran'       => $item->lampiran_penawaran,
                     'status_approval_training' => $item->status_approval_training,
-                    'actions'                  => null,
+                    'approvals' => $item->approvals->map(fn ($approval) => [
+                        'id'          => $approval->id,
+                        'role'        => $approval->role,
+                        'action'      => $approval->action, // approve | reject | in_review
+                        'from_status' => $approval->from_status,
+                        'to_status'   => $approval->to_status,
+                        'note'        => $approval->note,
+                        'created_at'  => $approval->created_at,
+                        'user'        => [
+                            'name' => $a->user?->name ?? '-',
+                        ],
+                    ]),
                 ];
             });
 

@@ -172,6 +172,7 @@ const initModalSystem = () => {
 
             const row = dt.row($btn.parents("tr"));
             const rowData = row.data();
+            console.log("row data aa", rowData);
 
             const $modal = $(config.modalId);
 
@@ -563,48 +564,83 @@ const handleUpdateAction = (id, formData, $modal) => {
     });
 };
 
-const renderApprovalTimeline = (approvals) => {
+const renderApprovalTimeline = (approvals = []) => {
     const $container = $("#approval-timeline-container");
     $container.empty();
 
-    if (!approvals?.length) {
-        $container.append(
-            '<div class="u-text-center u-py-md u-muted u-text-xs italic">Belum ada riwayat.</div>',
-        );
+    if (!approvals.length) {
+        $container.append(`
+            <div class="u-text-center u-py-md u-muted u-text-xs italic">
+                Belum ada riwayat
+            </div>
+        `);
         return;
     }
 
     approvals.forEach((item) => {
-        const isApprove = item.action === "approve";
-        const colorClass = isApprove ? "text-green-600" : "text-red-600";
-        const bgClass = isApprove ? "bg-green-50" : "bg-red-50";
+        const status = item.to_status || item.action || "-";
+        const approverName = item.user_name ?? "System";
 
-        // Format tanggal sederhana (bisa disesuaikan)
+        const isApprove = status === "approved";
+        const isReject = status === "rejected";
+
+        const colorClass = isApprove
+            ? "text-green-600"
+            : isReject
+              ? "text-red-600"
+              : "text-sky-600";
+
+        const dotColor = isApprove
+            ? "#16a34a"
+            : isReject
+              ? "#dc2626"
+              : "#0284c7";
+
         const date = item.created_at
             ? new Date(item.created_at).toLocaleString("id-ID", {
                   day: "2-digit",
                   month: "short",
+                  year: "numeric",
                   hour: "2-digit",
                   minute: "2-digit",
               })
             : "-";
 
         $container.append(`
-            <div class="u-mb-md u-pl-md border-l-2 border-gray-200 u-relative">
-                <div class="u-absolute" style="left: -7px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; border: 2px solid ${
-                    isApprove ? "#10b981" : "#ef4444"
-                }"></div>
+            <div class="u-mb-md u-pl-md u-relative border-l-2 border-gray-200">
+                <span class="u-absolute"
+                    style="
+                        left:-7px;
+                        top:4px;
+                        width:12px;
+                        height:12px;
+                        border-radius:50%;
+                        background:#fff;
+                        border:2px solid ${dotColor};
+                    ">
+                </span>
+
                 <div class="u-flex u-justify-between">
-                    <span class="u-text-xs u-font-bold u-uppercase text-gray-800">${
-                        item.role
-                    }</span>
+                    <span class="u-text-xs u-font-semibold ${colorClass}">
+                        ${approverName} (${item.role})
+                    </span>
                     <span class="u-text-xs u-muted">${date}</span>
                 </div>
-                <div class="u-mt-xs u-p-xs u-rounded ${bgClass} border border-gray-100">
-                    <p class="u-text-xs italic text-gray-600">"${
-                        item.note || "Tanpa catatan"
-                    }"</p>
+
+                <div class="u-text-xs u-mt-[2px]">
+                    Ke Status:
+                    <span class="u-font-semibold ${colorClass}">
+                        ${status.replace(/_/g, " ")}
+                    </span>
                 </div>
+
+                ${
+                    item.note
+                        ? `<div class="u-text-xs italic text-gray-600 u-mt-[2px]">
+                            “${item.note}”
+                           </div>`
+                        : ""
+                }
             </div>
         `);
     });
