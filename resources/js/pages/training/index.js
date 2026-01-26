@@ -1,5 +1,4 @@
 import { initGetDataTable } from "./training-approval/getData";
-import { initModalHandler } from "../../utils/modal";
 import { initInputHandler } from "./training-approval/handler/inputHandler";
 import { initInputLnaHandler } from "./training-approval/handler/inputLnaHandler";
 import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
