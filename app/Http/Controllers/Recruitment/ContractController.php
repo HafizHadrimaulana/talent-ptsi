@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Contract, ContractTemplate, RecruitmentApplicant, Unit, Document, Signature, Approval, User, Employee, Person};
+use App\Models\{Contract, ContractTemplate, RecruitmentApplicant, Unit, Document, Signature, Approval, User, Employee, Person, RecruitmentRequest};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Storage};
 use Carbon\Carbon;
@@ -203,6 +203,134 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Get approved recruitment requests for contract creation
+     */
+    public function getRecruitmentRequests(Request $request)
+    {
+        $user = $request->user();
+        $unitId = $request->input('unit_id');
+        
+        $query = RecruitmentRequest::with(['unit:id,name'])
+            ->where('status', 'approved')
+            ->whereNotNull('ticket_number')
+            ->orderBy('created_at', 'desc');
+        
+        // Filter by unit
+        if ($unitId) {
+            $query->where('unit_id', $unitId);
+        } elseif (!$user->hasRole(['Superadmin', 'DHC'])) {
+            $query->where('unit_id', $user->unit_id);
+        }
+        
+        $requests = $query->get()->map(function($rr) {
+            $meta = $rr->meta ?? [];
+            $details = $meta['recruitment_details'] ?? [];
+            $firstDetail = $details[0] ?? [];
+            
+            return [
+                'id' => $rr->id,
+                'ticket_number' => $rr->ticket_number,
+                'title' => $rr->title,
+                'unit_id' => $rr->unit_id,
+                'unit_name' => $rr->unit->name ?? '-',
+                'employment_type' => $rr->employment_type,
+                'position' => $rr->position,
+                'position_text' => $firstDetail['position_text'] ?? '-',
+                'headcount' => $rr->headcount,
+                'meta' => $meta,
+            ];
+        });
+        
+        return response()->json($requests);
+    }
+
+    /**
+     * Get applicants from a recruitment request
+     */
+    public function getApplicantsFromRequest(Request $request, $recruitmentRequestId)
+    {
+        $applicants = RecruitmentApplicant::with(['user.person', 'positionObj'])
+            ->where('recruitment_request_id', $recruitmentRequestId)
+            ->whereNotNull('user_id')
+            ->get()
+            ->map(function($app) {
+                return [
+                    'id' => $app->id,
+                    'user_id' => $app->user_id,
+                    'person_id' => $app->user->person_id ?? null,
+                    'name' => $app->user->person->full_name ?? $app->user->name ?? '-',
+                    'email' => $app->user->email ?? '-',
+                    'phone' => $app->user->person->phone ?? '-',
+                    'position_id' => $app->position_id,
+                    'position_name' => $app->positionObj->name ?? '-',
+                ];
+            });
+        
+        return response()->json($applicants);
+    }
+
+    /**
+     * Get recruitment request detail with remuneration data
+     */
+    public function getRecruitmentDetail(Request $request, $recruitmentRequestId)
+    {
+        $rr = RecruitmentRequest::with(['unit'])->findOrFail($recruitmentRequestId);
+        
+        $meta = $rr->meta ?? [];
+        $details = $meta['recruitment_details'] ?? [];
+        $firstDetail = $details[0] ?? [];
+        
+        return response()->json([
+            'id' => $rr->id,
+            'ticket_number' => $rr->ticket_number,
+            'title' => $rr->title,
+            'unit_id' => $rr->unit_id,
+            'unit_name' => $rr->unit->name ?? '-',
+            'employment_type' => $rr->employment_type,
+            'budget_source_type' => $rr->budget_source_type,
+            'position' => $rr->position,
+            'position_id' => $rr->position_id,
+            'position_text' => $firstDetail['position_text'] ?? '-',
+            'target_start_date' => $rr->target_start_date,
+            'meta' => $meta,
+            'detail' => $firstDetail,
+            // Remuneration data
+            'salary' => $firstDetail['salary'] ?? null,
+            'allowanceJ' => $firstDetail['allowanceJ'] ?? null,
+            'allowanceP' => $firstDetail['allowanceP'] ?? null,
+            'allowanceL' => $firstDetail['allowanceL'] ?? null,
+            'allowanceK' => $firstDetail['allowanceK'] ?? null,
+            'pph21' => $firstDetail['pph21'] ?? null,
+            'bpjs_kes' => $firstDetail['bpjs_kes'] ?? null,
+            'bpjs_tk' => $firstDetail['bpjs_tk'] ?? null,
+            'thr' => $firstDetail['thr'] ?? null,
+            'kompensasi' => $firstDetail['kompensasi'] ?? null,
+            'location' => $firstDetail['location'] ?? null,
+            'start_date' => $firstDetail['start_date'] ?? null,
+            'end_date' => $firstDetail['end_date'] ?? null,
+            'project_code' => $firstDetail['project_code'] ?? null,
+            'project_name' => $firstDetail['project_name'] ?? null,
+        ]);
+    }
+
+    /**
+     * Get person data including NIK and photo
+     */
+    public function getPersonData(Request $request, $personId)
+    {
+        $person = Person::findOrFail($personId);
+        
+        return response()->json([
+            'id' => $person->id,
+            'full_name' => $person->full_name,
+            'nik' => $person->nik,
+            'photo_path' => $person->photo_path,
+            'email' => $person->email,
+            'phone' => $person->phone,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $v = $this->validateContract($request);
@@ -228,11 +356,20 @@ class ContractController extends Controller
             if ($isNew) $c->contract_no = null;
             $c->unit_id = $v['unit_id'];
 
+            // Link to recruitment request if provided
+            if (!empty($v['recruitment_request_id'])) {
+                $c->recruitment_request_id = $v['recruitment_request_id'];
+                $rr = RecruitmentRequest::find($v['recruitment_request_id']);
+                if ($rr && $rr->ticket_number) {
+                    $c->ticket_number = $rr->ticket_number;
+                }
+            }
+
             if (in_array($v['contract_type'], ['SPK', 'PKWT_BARU']) && $v['applicant_id']) {
                 $a = RecruitmentApplicant::with(['user', 'recruitmentRequest'])->find($v['applicant_id']);
                 $c->applicant_id = $a->id;
                 $c->person_id = $a->user?->person_id ?? null;
-                if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number) {
+                if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number && !$c->ticket_number) {
                     $c->ticket_number = $a->recruitmentRequest->ticket_number;
                 }
                 if (empty($v['position_name'])) $c->position_name = $a->position_applied;
@@ -294,6 +431,7 @@ class ContractController extends Controller
     {
         $rules = [
             'contract_type' => 'required',
+            'recruitment_request_id' => 'nullable|exists:recruitment_requests,id',
             'unit_id' => 'required',
             'applicant_id' => 'nullable',
             'employee_id' => 'nullable',

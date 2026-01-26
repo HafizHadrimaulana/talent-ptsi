@@ -16,7 +16,14 @@ return [
 'UJ'=>['code'=>'UJ','label'=>'Ujian','mode'=>'uj','requires_applicant'=>true,'requires_existing_contract'=>false,'document_type'=>'UJ'],
 'BIODATA'=>['code'=>'BIODATA','label'=>'Biodata','mode'=>'bio','requires_applicant'=>true,'requires_existing_contract'=>false,'document_type'=>'BD'],
 ],
-'employment_types'=>['Kontrak Organik'=>'Kontrak Organik','Kontrak-Project Based'=>'Kontrak-Project Based'],
+'employment_types'=>[
+    'Tetap'=>'Tetap',
+    'Kontrak Organik'=>'Kontrak Organik',
+    'Kontrak-Project Based'=>'Kontrak-Project Based',
+    'Kontrak-MPS'=>'Kontrak-MPS',
+    'Kontrak-Tenaga Ahli'=>'Kontrak-Tenaga Ahli',
+    'Kontrak-On Call'=>'Kontrak-On Call'
+],
 'numbering'=>[
 'default_head_code'=>'XX',
 'doc_codes'=>['SPK'=>'SPK','PKWT_BARU'=>'PERJ','PKWT_PERPANJANGAN'=>'PERJ','PB_PENGAKHIRAN'=>'PB','UJ'=>'UJ','BIODATA'=>'BD'],
