@@ -49,11 +49,10 @@ Route::middleware('web')->group(function () {
 
         Route::prefix('training')->name('training.')->group(function () {
 
-            Route::get('dashboard', [TrainingDashboardController::class, 'index'])
-                ->middleware('permission:training.dashboard.view')->name('dashboard');
-
-            Route::get('dashboard/{unit_id}/get-detail-anggaran', [TrainingDashboardController::class, 'getDetailAnggaran'])
-                ->name('dashboard.get-detail-anggaran');
+            Route::middleware('permission:training.dashboard.view')->group(function () {
+                Route::get('dashboard', [TrainingDashboardController::class, 'index'])->name('dashboard');
+                Route::get('dashboard/{unit_id}/get-detail-anggaran', [TrainingDashboardController::class, 'getDetailAnggaran'])->name('dashboard.get-detail-anggaran');
+            });
 
             Route::middleware('permission:training.view')->group(function () {
                 Route::get('training-request', [TrainingRequestController::class, 'index'])->name('training-request');
