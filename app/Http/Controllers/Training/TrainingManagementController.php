@@ -572,59 +572,41 @@ class TrainingManagementController extends Controller
 
             $perPage = $request->input('per_page', 10);
 
-            /**
-             * ==================================================
-             * QUERY BASE
-             * ==================================================
-             */
             $query = TrainingRequest::query()
                 ->with([
-                    'trainingReference:id,judul_sertifikasi',
-                    'employee:id,unit_id,person_id',
+                    'trainingReference:id,judul_sertifikasi,biaya_pelatihan',
+                    'employee:id,unit_id,person_id,employee_id',
                     'employee.person:id,full_name',
                 ])
                 ->orderByDesc('id');
 
-            /**
-             * ==================================================
-             * FILTER UNIT (ROLE BASED)
-             * ==================================================
-             */
             if (in_array('SDM Unit', $roles)) {
 
-                // 🔒 SDM Unit → hanya unit sendiri
                 $query->whereHas('employee', function ($q) use ($employeeUnitId) {
                     $q->where('unit_id', $employeeUnitId);
                 });
 
             } elseif ($unitId) {
 
-                // 🧭 DHC / Admin → optional filter unit
                 $query->whereHas('employee', function ($q) use ($unitId) {
                     $q->where('unit_id', $unitId);
                 });
             }
 
-            /**
-             * ==================================================
-             * PAGINATION
-             * ==================================================
-             */
             $data = $query->paginate($perPage);
 
-            /**
-             * ==================================================
-             * MAPPING RESPONSE
-             * ==================================================
-             */
             $mappedData = collect($data->items())->map(function ($item, $index) use ($data) {
+                Log::info('getPengajuanTrainingPeserta', [
+                    'item' => $item
+                ]);
                 return [
-                    'no'                       => ($data->currentPage() - 1) * $data->perPage() + $index + 1,
                     'id'                       => $item->id,
                     'judul_sertifikasi'        => $item->trainingReference?->judul_sertifikasi ?? '-',
                     'peserta'                  => $item->employee?->person?->full_name ?? '-',
+                    'nik'                      => $item->employee?->employee_id ?? '-',
                     'tanggal_mulai'            => $item->start_date,
                     'tanggal_berakhir'         => $item->end_date,
+                    'biaya_pelatihan'          => $item->trainingReference?->biaya_pelatihan ?? 0,
                     'realisasi_biaya_pelatihan'=> $item->realisasi_biaya_pelatihan ?? 0,
                     'lampiran_penawaran'       => $item->lampiran_penawaran,
                     'status_approval_training' => $item->status_approval_training,
@@ -752,7 +734,8 @@ class TrainingManagementController extends Controller
         $currentStatus = $trainingRequest->status_approval_training;
         $user          = auth()->user();
         $roleNames     = $user->getRoleNames()->toArray();
-        $isHumanCapital = $this->isHumanCapital($user);
+        $isHumanCapital  = $this->isHumanCapital($user);
+        $isFromDHC       = $this->isTrainingFromDHC($trainingRequest);
 
         Log::info('Process approval', [
             'training_id' => $trainingRequest->id,
@@ -808,6 +791,28 @@ class TrainingManagementController extends Controller
             throw new \Exception("Status {$currentStatus} tidak valid.");
         }
 
+        if (
+            $currentStatus === 'in_review_gmvp'
+            && in_array('Kepala Unit', $roleNames)
+            && $isHumanCapital
+            && $isFromDHC
+        ) {
+            $trainingRequest->update([
+                'status_approval_training' => 'approved',
+                'updated_at' => now()
+            ]);
+
+            Log::info('Training approved (GMVP DHC by VP DHC)', [
+                'from' => $currentStatus,
+                'to'   => 'approved',
+            ]);
+
+            return [
+                'from_status' => $currentStatus,
+                'to_status'   => 'approved'
+            ];
+        }
+
         $step = $approvalFlow[$currentStatus];
 
         if (!$step['canApprove']()) {
@@ -829,6 +834,11 @@ class TrainingManagementController extends Controller
             'from_status' => $currentStatus,
             'to_status'   => $toStatus
         ];
+    }
+
+    private function isTrainingFromDHC(TrainingRequest $trainingRequest): bool
+    {
+        return optional($trainingRequest->trainingReference?->unit)->name === 'Divisi Human Capital';
     }
 
     protected function isHumanCapital($user): bool

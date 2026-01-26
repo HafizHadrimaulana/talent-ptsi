@@ -53,19 +53,19 @@
                 <div class="u-grid-4 u-gap-sm">
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Atas (cm)</label>
-                        <input type="number" step="0.1" id="marginTop" class="u-input u-input--sm page-setting" value="3.5">
+                        <input type="number" step="0.01" id="marginTop" class="u-input u-input--sm page-setting" value="3.5">
                     </div>
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Bawah (cm)</label>
-                        <input type="number" step="0.1" id="marginBottom" class="u-input u-input--sm page-setting" value="2.54">
+                        <input type="number" step="0.01" id="marginBottom" class="u-input u-input--sm page-setting" value="3.25">
                     </div>
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Kiri (cm)</label>
-                        <input type="number" step="0.1" id="marginLeft" class="u-input u-input--sm page-setting" value="2.54">
+                        <input type="number" step="0.01" id="marginLeft" class="u-input u-input--sm page-setting" value="2.54">
                     </div>
                     <div class="u-form-group u-mb-0">
                         <label class="u-text-xs">Margin Kanan (cm)</label>
-                        <input type="number" step="0.1" id="marginRight" class="u-input u-input--sm page-setting" value="2.54">
+                        <input type="number" step="0.01" id="marginRight" class="u-input u-input--sm page-setting" value="2.54">
                     </div>
                 </div>
                 <div class="u-grid-2 u-gap-sm u-mt-sm">
@@ -158,12 +158,19 @@ document.addEventListener("DOMContentLoaded", function() {
         const ml = document.getElementById('marginLeft').value || 0;
         const mr = document.getElementById('marginRight').value || 0;
         const fs = document.getElementById('fontSize').value || 11;
-        const ff = document.getElementById('fontFamily').value;
+        let ff = document.getElementById('fontFamily').value;
+
+        // Normalisasi font family - extract hanya nama font tanpa quotes dan fallback
+        let fontName = 'Tahoma';
+        if (ff.includes('Tahoma')) fontName = "'Tahoma'";
+        else if (ff.includes('Times')) fontName = "'Times New Roman', Times";
+        else if (ff.includes('Arial')) fontName = "Arial, Helvetica";
+        else fontName = ff;
 
         // CSS untuk PDF
         const cssString = `
         @page { margin: ${mt}cm ${mr}cm ${mb}cm ${ml}cm; }
-        body { font-family: ${ff}; font-size: ${fs}pt; line-height: 1.3; color: #000000; }
+        body { font-family: ${fontName}, sans-serif; font-size: ${fs}pt; line-height: 1.3; color: #000000; }
         .title { text-align: center; font-weight: bold; font-size: 14pt; text-transform: uppercase; text-decoration: underline; margin-bottom: 5px; }
         .subtitle { text-align: center; font-weight: bold; font-size: 11pt; margin-bottom: 20px; text-transform: uppercase; }
         .justify { text-align: justify; text-justify: inter-word; }
@@ -186,7 +193,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (tinymce.activeEditor) {
             const body = tinymce.activeEditor.getBody();
             
-            body.style.fontFamily = ff.replace(/'/g, "");
+            body.style.fontFamily = fontName.replace(/'/g, "");
             body.style.fontSize = fs + 'pt';
             body.style.padding = `${mt}cm ${mr}cm ${mb}cm ${ml}cm`;
             body.style.maxWidth = '21cm';

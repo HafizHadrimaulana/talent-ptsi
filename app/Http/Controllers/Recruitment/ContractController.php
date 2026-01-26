@@ -12,6 +12,12 @@ use Illuminate\Support\Str;
 
 class ContractController extends Controller
 {
+    /**
+     * Display a listing of contracts with DataTables support.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse|\Illuminate\View\View
+     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -252,7 +258,7 @@ class ContractController extends Controller
             $meta['new_unit_name'] = Unit::find($v['unit_id'])?->name;
             $meta['new_unit_id'] = (int) $v['unit_id'];
 
-            if (!in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+            if (!in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN'])) {
                 unset($meta['work_location']);
             }
 
@@ -327,7 +333,7 @@ class ContractController extends Controller
             'requires_geolocation' => 'nullable'
         ];
 
-        if (!in_array($request->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN'])) {
+        if (!in_array($request->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN'])) {
             unset($rules['work_location']);
         }
 
@@ -384,6 +390,21 @@ class ContractController extends Controller
             'snapshot_image' => 'nullable|string',
         ]);
 
+        // GPS VALIDATION - Ultra Presisi Check
+        $geoLat = !empty($data['geo_lat']) ? floatval($data['geo_lat']) : null;
+        $geoLng = !empty($data['geo_lng']) ? floatval($data['geo_lng']) : null;
+        $geoAccuracy = !empty($data['geo_accuracy']) ? floatval($data['geo_accuracy']) : 999;
+        
+        // Validasi: GPS coordinates harus valid
+        if ($geoLat && $geoLng) {
+            if ($geoLat < -90 || $geoLat > 90 || $geoLng < -180 || $geoLng > 180) {
+                return response()->json(['success' => false, 'message' => '❌ Koordinat GPS Invalid - Kemungkinan VPN/Spoofing'], 400);
+            }
+            
+            // Enterprise: Accept all GPS accuracy levels (informative logging only)
+            \Log::info("Contract Sign: GPS Locked - Accuracy {$geoAccuracy}m for user {$request->user()->id}");
+        }
+
         DB::beginTransaction();
         try {
             $snapshotPath = null;
@@ -431,9 +452,9 @@ class ContractController extends Controller
                 'signed_at' => now(),
                 'signature_draw_data' => $data['signature_image'] ?? null,
                 'signature_draw_hash' => $sigHash,
-                'geo_lat' => $data['geo_lat'] ?? null,
-                'geo_lng' => $data['geo_lng'] ?? null,
-                'geo_accuracy_m' => $data['geo_accuracy'] ?? null,
+                'geo_lat' => $geoLat,
+                'geo_lng' => $geoLng,
+                'geo_accuracy_m' => $geoAccuracy,
                 'camera_photo_path' => $snapshotPath,
                 'camera_photo_hash' => $camHash,
                 'snapshot_data' => $snapshotPath,
@@ -509,6 +530,12 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Display the specified contract with signatures and approval logs.
+     *
+     * @param  \App\Models\Contract  $contract
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show(Contract $contract)
     {
         $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
@@ -894,6 +921,10 @@ class ContractController extends Controller
         $template = ContractTemplate::where('code', $doc)->firstOrFail();
         $vars = $this->getTemplateVars($contract);
         $html = $this->renderPdfHtml($contract, $template, $vars);
+
+        // Debug: Simpan HTML sebelum diubah menjadi PDF
+        Storage::disk('local')->put('debug_contract.html', $html);
+
         $cfg = (array) (config('recruitment.pdf', []) ?? []);
         $page = (array) ($cfg['page'] ?? []);
         $paper = (string) ($page['paper'] ?? 'a4');
@@ -954,19 +985,23 @@ class ContractController extends Controller
         $pathRegular = storage_path((string) ($font['regular_file'] ?? 'app/fonts/tahoma.ttf'));
         $pathBold = storage_path((string) ($font['bold_file'] ?? 'app/fonts/tahomabd.ttf'));
         $fontFaceCss = '';
-        $finalFamily = 'sans-serif';
+        $finalFamily = $ff; // Gunakan font dari config atau template
         if (file_exists($pathRegular)) {
-            $finalFamily = 'Tahoma';
             $fr64 = base64_encode(file_get_contents($pathRegular));
             $fb64 = file_exists($pathBold) ? base64_encode(file_get_contents($pathBold)) : $fr64;
-            $fontFaceCss = "@font-face{font-family:'Tahoma';font-style:normal;font-weight:400;src:url(data:font/truetype;base64,{$fr64}) format('truetype');}@font-face{font-family:'Tahoma';font-style:normal;font-weight:700;src:url(data:font/truetype;base64,{$fb64}) format('truetype');}";
+            $fontFaceCss = "@font-face{font-family:'{$ff}';font-style:normal;font-weight:400;src:url(data:font/truetype;base64,{$fr64}) format('truetype');}@font-face{font-family:'{$ff}';font-style:normal;font-weight:700;src:url(data:font/truetype;base64,{$fb64}) format('truetype');}";
+        } else {
+            // Jika font file tidak ada, gunakan web-safe alternative
+            if (stripos($ff, 'Tahoma') !== false) {
+                $finalFamily = "'Trebuchet MS', 'Lucida Grande', sans-serif";
+            }
         }
 
-        $tplCss = preg_replace('~@page\s*[^{]*\{.*?\}~is', '', (string) ($template->css ?? ''));
-        $tplCss = preg_replace('~\b(html|body)\b\s*\{.*?\}~is', '', $tplCss);
+        // Extract hanya font-family dari template CSS tanpa menghapus @page dan body
+        $tplCss = (string) ($template->css ?? '');
 
         $css = "@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}{$fontFaceCss}
-        body{margin:0;padding:0;font-family:'{$finalFamily}',{$ff},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:rgba(255,255,255,0.88);}
+        body{margin:0;padding:0;font-family:{$finalFamily},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:rgba(255,255,255,0.88);}
         .letterhead-img{position:fixed;top:-{$mt}cm;left:-{$ml}cm;width:{$pw}cm;height:{$ph}cm;z-index:-9999;opacity:1.0;}
         .content{margin:0!important;padding:0!important;}
         p{margin:0 0 {$pa}pt 0;text-align:justify;text-justify:inter-word;}
@@ -988,6 +1023,9 @@ class ContractController extends Controller
         .sig-box{height:70px;}
         {$tplCss}";
 
+        // Hapus deklarasi body duplikat untuk memastikan hanya satu font-family yang digunakan
+        $css = preg_replace('/body\s*\{[^}]*font-family:[^;]+;[^}]*\}/', '', $css, 1);
+
         $bg = $lhImg ? ("<img class='letterhead-img' src='{$lhImg}'>") : '';
         return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body>{$bg}{$body}</body></html>";
     }
@@ -997,7 +1035,8 @@ class ContractController extends Controller
         if (!$path || !Storage::disk($disk)->exists($path))
             return null;
         $bin = Storage::disk($disk)->get($path);
-        $mime = Storage::disk($disk)->mimeType($path) ?: 'image/jpeg';
+        $fullPath = Storage::disk($disk)->path($path);
+        $mime = file_exists($fullPath) ? mime_content_type($fullPath) : 'image/jpeg';
         return "data:{$mime};base64," . base64_encode($bin);
     }
 
@@ -1015,8 +1054,8 @@ class ContractController extends Controller
 
         $duration = '-';
         if ($c->start_date && $c->end_date) {
-            $startDate = $c->start_date->copy()->startOfDay();
-            $endDatePlusOne = $c->end_date->copy()->startOfDay()->addDay();
+            $startDate = Carbon::parse($c->start_date)->startOfDay();
+            $endDatePlusOne = Carbon::parse($c->end_date)->startOfDay()->addDay();
             $diff = $startDate->diff($endDatePlusOne);
             
             $parts = [];
@@ -1066,8 +1105,8 @@ class ContractController extends Controller
             'unit_head_position' => $unitHeadTitle,
             'employment_type' => $c->employment_type,
             'duration' => $duration,
-            'start_date' => $c->start_date?->translatedFormat('d F Y'),
-            'end_date' => $c->end_date?->translatedFormat('d F Y'),
+            'start_date' => $c->start_date ? Carbon::parse($c->start_date)->translatedFormat('d F Y') : '-',
+            'end_date' => $c->end_date ? Carbon::parse($c->end_date)->translatedFormat('d F Y') : '-',
             'salary' => $fmt($meta['salary_amount'] ?? 0),
             'salary_words' => ucwords($meta['salary_amount_words'] ?? ''),
             'meal_allowance' => $fmt($meta['lunch_allowance_daily'] ?? 0),
@@ -1081,7 +1120,7 @@ class ContractController extends Controller
             'pb_date' => isset($meta['pb_effective_end']) ? Carbon::parse($meta['pb_effective_end'])->translatedFormat('d F Y') : '-',
             'pb_amount' => $fmt($meta['pb_compensation_amount'] ?? 0),
             'pb_words' => ucwords($meta['pb_compensation_amount_words'] ?? ''),
-            'work_location' => in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN']) ? ($meta['work_location'] ?? 'Jakarta') : ''
+            'work_location' => in_array($c->contract_type, ['PKWT_BARU', 'PKWT_PERPANJANGAN', 'PB_PENGAKHIRAN']) ? ($meta['work_location'] ?? '') : ''
         ];
     }
 

@@ -9,6 +9,30 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * @property int $id
+ * @property string|null $contract_no
+ * @property string|null $ticket_number
+ * @property string $contract_type
+ * @property int|null $person_id
+ * @property int|null $employee_id
+ * @property int|null $applicant_id
+ * @property int|null $unit_id
+ * @property string|null $employment_type
+ * @property string|null $budget_source_type
+ * @property int|null $position_id
+ * @property int|null $position_level_id
+ * @property string|null $position_name
+ * @property int|null $document_id
+ * @property string|null $status
+ * @property \Illuminate\Support\Carbon|null $start_date
+ * @property \Illuminate\Support\Carbon|null $end_date
+ * @property int|null $created_by_user_id
+ * @property array|null $remuneration_json
+ * @property bool|null $requires_draw_signature
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class Contract extends Model
 {
     use HasFactory;

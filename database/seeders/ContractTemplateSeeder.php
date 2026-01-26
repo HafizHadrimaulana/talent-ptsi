@@ -10,7 +10,7 @@ class ContractTemplateSeeder extends Seeder
     public function run()
     {
         $css = "
-        @page { margin: 3.5cm 2.54cm 2.54cm 2.54cm; }
+        @page { margin: 3.5cm 2.54cm 3.25cm 2.54cm; }
         body { font-family: 'Tahoma', sans-serif; font-size: 11pt; line-height: 1.3; color: #000000; }
         
         /* Judul Utama */
@@ -75,7 +75,7 @@ class ContractTemplateSeeder extends Seeder
                 <div class="title" style="font-size: 14pt;">PERJANJIAN KERJA WAKTU TERTENTU</div>
                 <div class="subtitle">NOMOR: {{contract_no}}</div>
 
-                <p class="justify">Pada hari ini, <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date_numeric}}), bertempat di Jakarta:</p>
+                <p class="justify">Pada hari ini, <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date_numeric}}), bertempat di {{work_location}}:</p>
 
                 <table class="info">
                     <tr>
@@ -396,7 +396,7 @@ class ContractTemplateSeeder extends Seeder
                 <div class="title" style="font-size: 14pt;">PERJANJIAN BERSAMA (PB)<br>PENGAKHIRAN HUBUNGAN KERJA</div>
                 <div class="subtitle">NOMOR: {{contract_no}}</div>
 
-                <p class="justify">Pada hari ini <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date_numeric}}), bertempat di Jakarta, telah dibuat dan ditandatangani Perjanjian Bersama (PB), oleh dan antara:</p>
+                <p class="justify">Pada hari ini <strong>{{day_name}}</strong> tanggal <strong>{{day_number}}</strong> bulan <strong>{{month_name}}</strong> tahun <strong>{{year_name}}</strong> ({{today_date_numeric}}), bertempat di {{work_location}}, telah dibuat dan ditandatangani Perjanjian Bersama (PB), oleh dan antara:</p>
                 
                 <table class="info">
                     <tr><td width="150">Nama</td><td width="10">:</td><td><strong>{{signer_name}}</strong></td></tr>

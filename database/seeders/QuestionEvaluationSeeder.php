@@ -77,12 +77,16 @@ class QuestionEvaluationSeeder extends Seeder
         ];
 
         foreach ($data as $item) {
-            TrainingEvaluationQuestion::create([
-                'category' => $item['category'],
-                'question_text' => $item['question_text'],
-                'question_type' => $item['question_type'] ?? 'scale',
-                'is_active' => true,
-            ]);
+            TrainingEvaluationQuestion::updateOrCreate(
+                [
+                    'category'      => $item['category'],
+                    'question_text'=> $item['question_text'],
+                ],
+                [
+                    'question_type' => $item['question_type'] ?? 'scale',
+                    'is_active'     => true,
+                ]
+            );
         }
     }
 }
