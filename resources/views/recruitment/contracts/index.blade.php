@@ -1090,8 +1090,7 @@ const initMap = (divId, lat, lng, acc = 0, options = {}) => {
         }
         const color = tierColor[accuracyTier(circleAcc)];
         const baseOpacity = Math.min(0.95, 0.7 + (zoom - 12) * 0.05);
-        const zoomFactor = Math.max(0.2, Math.min(0.3, 0.5 - (zoom * 0.015)));
-        const displayRadius = Math.round(circleAcc * zoomFactor);
+        const displayRadius = circleAcc; // Real radius - no scaling
         circle = L.circle([circleLat, circleLng], {
             radius: displayRadius,
             color: color,
@@ -1251,121 +1250,108 @@ const handleSign = (url) => {
         const mapWrap = select('#map-sign-wrapper');
         const mapSignDiv = select('#map-sign');
         const btnForce = select('#btnForceLoc');
-        let watchId = null, firstLock = false, positionHistory = [];
+        let watchId = null, quickWatchId = null, firstLock = false, hasQuickLock = false, positionHistory = [];
         
         if(btnForce) hide(btnForce);
         select('[name="geo_lat"]').value = '';
         if (!window.isSecureContext && location.hostname !== 'localhost') {
-            geoStat.innerHTML = '<span class="u-text-danger">HTTPS required for geolocation</span>';
+            geoStat.innerHTML = '<span class="u-text-danger">HTTPS required</span>';
             return;
         }
         
-        geoStat.textContent = 'Locating position...';
-        geoIcon.className = 'fas fa-spinner fa-spin u-text-warning';
+        geoStat.innerHTML = '<span class="u-text-info"><i class="fas fa-spinner fa-spin"></i> Ultra fast acquiring...</span>';
+        geoIcon.className = 'fas fa-satellite-dish u-text-info';
         if(mapWrap) mapWrap.style.display = 'block';
         if(mapSignDiv) mapSignDiv.style.display = 'block';
+        
         const isLocationSpoofed = () => {
             if(positionHistory.length < 2) return false;
             const [prev, curr] = positionHistory.slice(-2);
-            const R = 6371000;
-            const dLat = (curr.lat - prev.lat) * Math.PI / 180;
-            const dLon = (curr.lon - prev.lon) * Math.PI / 180;
-            const a = Math.sin(dLat/2) ** 2 + 
-                      Math.cos(prev.lat * Math.PI / 180) * Math.cos(curr.lat * Math.PI / 180) * Math.sin(dLon/2) ** 2;
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return (R * c) > 200;
+            const R = 6371000, dLat = (curr.lat - prev.lat) * Math.PI / 180, dLon = (curr.lon - prev.lon) * Math.PI / 180;
+            const a = Math.sin(dLat/2) ** 2 + Math.cos(prev.lat * Math.PI / 180) * Math.cos(curr.lat * Math.PI / 180) * Math.sin(dLon/2) ** 2;
+            return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) > 200;
         };
         
-        const updateLocation = (pos) => {
-            if(!pos?.coords || pos.coords.latitude === 0 || pos.coords.longitude === 0) {
-                geoStat.innerHTML = '<span class="u-text-danger">Invalid location data</span>';
-                return;
-            }
+        const updateLocation = (pos, isHighPrecision = false) => {
+            if(!pos?.coords || pos.coords.latitude === 0 || pos.coords.longitude === 0) return;
             const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
             select('[name="geo_lat"]').value = lat;
             select('[name="geo_lng"]').value = lng;
             select('[name="geo_accuracy"]').value = acc;
-            const tierThresholds = { 15: [100, 'high'], 50: [85, 'high'], 150: [60, 'med'], 300: [40, 'low'], 500: [25, 'low'] };
-            let [pct, cls] = [20, 'low'];
+            
+            const tierThresholds = { 10: [100, 'high'], 25: [90, 'high'], 50: [75, 'med'], 100: [50, 'low'], 200: [30, 'low'] };
+            let [pct, cls] = [15, 'low'];
             for(const [threshold, [p, c]] of Object.entries(tierThresholds)) {
                 if(acc <= threshold) { [pct, cls] = [p, c]; break; }
             }
             
             geoProg.style.width = `${pct}%`;
             geoProg.className = `geo-precision-fill ${cls}`;
+            
             if(!firstLock) {
                 firstLock = true;
-                const getAccText = (a) => {
-                    if(a <= 15) return { text: 'Excellent precision', icon: 'success' };
-                    if(a <= 50) return { text: 'Good precision', icon: 'success' };
-                    if(a <= 150) return { text: 'Fair precision', icon: 'success' };
-                    if(a <= 300) return { text: 'Acceptable precision', icon: 'success' };
-                    return { text: 'GPS locked', icon: 'success' };
-                };
-                const { text: accText, icon: accIcon } = getAccText(acc);
-                geoStat.innerHTML = `<span class="u-text-success">📍 ${accText} • ±${Math.round(acc)}m</span>`;
-                geoIcon.className = `fas fa-location-dot u-text-success`;
-                initMap('map-sign', lat, lng, acc, { isRealTime: true, initialZoom: 19 });
+                hasQuickLock = true;
+                const accTiers = [[10,'🎯 Excellent'],[25,'✅ High'],[50,'👍 Good'],[100,'⚠️ Fair'],[300,'⚠️ Low'],['⚠️ Very Low']];
+                const accText = (accTiers.find(([t]) => acc <= t) || accTiers[5])[1];
+                const prefix = isHighPrecision ? '📍' : '⚡';
+                geoStat.innerHTML = `<span class="${acc <= 150 ? 'u-text-success' : 'u-text-warning'}">${prefix} ${accText} ±${Math.round(acc)}m${isHighPrecision ? '' : ' • Refining...'}</span>`;
+                geoIcon.className = `fas fa-location-dot ${acc <= 150 ? 'u-text-success' : 'u-text-warning'}`;
+                initMap('map-sign', lat, lng, acc, { isRealTime: true, initialZoom: acc <= 50 ? 19 : (acc <= 150 ? 17 : 15) });
                 if(btnForce) hide(btnForce);
-                checkReady();
+                checkReady(); // Enable button immediately
             } else {
-                if(maps['map-sign']?._updatePosition) {
-                    maps['map-sign']._updatePosition(lat, lng, acc);
-                }
-                geoStat.innerHTML = `<span class="u-text-success">📍 Live tracking • ±${Math.round(acc)}m</span>`;
-                geoIcon.className = 'fas fa-location-dot u-text-success';
+                if(maps['map-sign']?._updatePosition) maps['map-sign']._updatePosition(lat, lng, acc);
+                const prefix = isHighPrecision ? '📍' : '⚡';
+                geoStat.innerHTML = `<span class="${acc <= 150 ? 'u-text-success' : 'u-text-warning'}">${prefix} ${acc <= 50 ? 'Precision' : 'Tracking'} ±${Math.round(acc)}m${isHighPrecision ? '' : ' • Improving...'}</span>`;
+                geoIcon.className = `fas fa-location-dot ${acc <= 150 ? 'u-text-success' : 'u-text-warning'}`;
             }
         };
         
-        const onSuccess = (pos) => {
+        const onSuccess = (pos, isHighPrecision = false) => {
             const acc = pos.coords.accuracy;
-            positionHistory.push({
-                lat: pos.coords.latitude,
-                lon: pos.coords.longitude,
-                acc: acc,
-                ts: Date.now()
-            });
+            positionHistory.push({ lat: pos.coords.latitude, lon: pos.coords.longitude, acc: acc, ts: Date.now() });
             if(positionHistory.length > 3) positionHistory.shift();
-            
             if(isLocationSpoofed()) {
-                geoStat.innerHTML = `<span class="u-text-danger">⚠️ Anomaly detected in location signal</span>`;
+                geoStat.innerHTML = `<span class="u-text-danger">⚠️ Location anomaly detected</span>`;
                 geoIcon.className = 'fas fa-exclamation-triangle u-text-danger';
                 return;
             }
-            
-            updateLocation(pos);
+            updateLocation(pos, isHighPrecision);
         };
         
         const onError = (err) => {
-            const errorMessages = {
-                1: 'Location access denied',
-                2: 'GPS signal not available',
-                3: 'Location request timeout'
-            };
-            const message = errorMessages[err.code] || 'Unable to get location';
-            geoStat.innerHTML = `<span class="u-text-danger">⚠️ ${message}</span>`;
-            geoProg.className = 'geo-precision-fill low';
-            geoProg.style.width = '0%';
-            geoIcon.className = 'fas fa-exclamation-circle u-text-danger';
-        };
-        const geoOptions = { 
-            enableHighAccuracy: true, 
-            timeout: 8000,
-            maximumAge: 1000
-        };
-        watchId = navigator.geolocation.watchPosition(onSuccess, onError, geoOptions);
-        setTimeout(() => {
-            if(!firstLock && watchId) {
-                navigator.geolocation.clearWatch(watchId);
-                geoStat.innerHTML = `<span class="u-text-success">📍 Position acquired • Using available signal</span>`;
-                geoIcon.className = 'fas fa-location-dot u-text-success';
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => { if(!firstLock) onSuccess(pos); },
-                    () => {},
-                    { enableHighAccuracy: false, timeout: 5000, maximumAge: 5000 }
-                );
+            const errorMessages = { 1: 'Access denied', 2: 'GPS unavailable', 3: 'Timeout' };
+            if(!hasQuickLock) {
+                geoStat.innerHTML = `<span class="u-text-danger">⚠️ ${errorMessages[err.code] || 'Location error'}</span>`;
+                geoProg.className = 'geo-precision-fill low';
+                geoProg.style.width = '0%';
+                geoIcon.className = 'fas fa-exclamation-circle u-text-danger';
+                if(btnForce) show(btnForce);
             }
-        }, 12000);
+        };
+        
+        // DUAL MODE: Quick + Precise (Google-style hybrid)
+        // Phase 1: Quick Lock (WiFi/Cell) ~1-3s
+        const quickOpts = { enableHighAccuracy: false, timeout: 5000, maximumAge: 10000 };
+        quickWatchId = navigator.geolocation.watchPosition((pos) => onSuccess(pos, false), (err) => console.log('Quick:', err.message), quickOpts);
+        
+        // Phase 2: High Precision (GPS) ~5-15s
+        setTimeout(() => {
+            const preciseOpts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
+            watchId = navigator.geolocation.watchPosition((pos) => onSuccess(pos, true), onError, preciseOpts);
+        }, 500);
+        
+        // Stop quick after 10s
+        setTimeout(() => { if(quickWatchId) navigator.geolocation.clearWatch(quickWatchId); }, 10000);
+        
+        // Fallback button after 20s if accuracy still poor
+        setTimeout(() => {
+            const currAcc = parseFloat(select('[name="geo_accuracy"]').value || '999');
+            if(hasQuickLock && currAcc > 150) {
+                if(btnForce) show(btnForce);
+                geoStat.innerHTML += ' <small style="color:var(--muted)">(Try outdoor)</small>';
+            }
+        }, 20000);
     };
     getGeo();
     

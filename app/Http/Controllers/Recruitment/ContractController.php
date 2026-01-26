@@ -390,19 +390,39 @@ class ContractController extends Controller
             'snapshot_image' => 'nullable|string',
         ]);
 
-        // GPS VALIDATION - Ultra Presisi Check
+        // GPS VALIDATION - Balanced Precision (Allow reasonable accuracy)
         $geoLat = !empty($data['geo_lat']) ? floatval($data['geo_lat']) : null;
         $geoLng = !empty($data['geo_lng']) ? floatval($data['geo_lng']) : null;
         $geoAccuracy = !empty($data['geo_accuracy']) ? floatval($data['geo_accuracy']) : 999;
         
         // Validasi: GPS coordinates harus valid
         if ($geoLat && $geoLng) {
+            // Check coordinate boundaries
             if ($geoLat < -90 || $geoLat > 90 || $geoLng < -180 || $geoLng > 180) {
-                return response()->json(['success' => false, 'message' => '❌ Koordinat GPS Invalid - Kemungkinan VPN/Spoofing'], 400);
+                return response()->json(['success' => false, 'message' => '❌ Koordinat GPS Invalid'], 400);
             }
             
-            // Enterprise: Accept all GPS accuracy levels (informative logging only)
-            \Log::info("Contract Sign: GPS Locked - Accuracy {$geoAccuracy}m for user {$request->user()->id}");
+            // Check Indonesia boundaries (relaxed for border areas)
+            $indonesiaBounds = ['lat_min' => -12.0, 'lat_max' => 7.0, 'lng_min' => 94.0, 'lng_max' => 142.0];
+            if ($geoLat < $indonesiaBounds['lat_min'] || $geoLat > $indonesiaBounds['lat_max'] ||
+                $geoLng < $indonesiaBounds['lng_min'] || $geoLng > $indonesiaBounds['lng_max']) {
+                \Log::warning("Contract Sign: GPS outside Indonesia - User {$request->user()->id} at ({$geoLat}, {$geoLng})");
+            }
+            
+            // Balanced Accuracy: Accept up to 300m (reasonable for indoor/urban)
+            if ($geoAccuracy > 300) {
+                \Log::warning("Contract Sign: Very low accuracy ({$geoAccuracy}m) for user {$request->user()->id}");
+                return response()->json(['success' => false, 'message' => "⚠️ Akurasi GPS terlalu rendah (±{$geoAccuracy}m). Pindah ke area yang lebih terbuka."], 400);
+            }
+            
+            // Log dengan tier classification
+            $tier = $geoAccuracy <= 50 ? 'HIGH' : ($geoAccuracy <= 150 ? 'MEDIUM' : 'LOW');
+            \Log::info("Contract Sign: GPS {$tier} ±{$geoAccuracy}m for user {$request->user()->id} at ({$geoLat}, {$geoLng})");
+        } else {
+            // GPS required but not provided
+            if ($contract->requires_geolocation) {
+                return response()->json(['success' => false, 'message' => '📍 Lokasi GPS diperlukan'], 400);
+            }
         }
 
         DB::beginTransaction();
