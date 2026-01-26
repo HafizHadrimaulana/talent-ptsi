@@ -129,7 +129,14 @@
                             </div>
                             <div class="u-badge u-badge--glass">{{ $work['start_year'] ?? '' }} - {{ $work['end_year'] ?? 'Sekarang' }}</div>
                         </div>
-                        <div class="u-text-xs u-muted u-mb-xs">Gaji Terakhir: {{ $work['salary'] ?? '-' }}</div>
+                        <div class="u-text-xs u-muted u-mb-xs">
+                            Gaji Terakhir: 
+                            {{ 
+                                (isset($work['salary']) && is_numeric($work['salary'])) 
+                                ? 'Rp ' . number_format($work['salary'], 0, ',', '.') 
+                                : ($work['salary'] ?? '-') 
+                            }}
+                        </div>
                         <div class="u-text-xs u-muted u-mb-sm">Alasan Berhenti: {{ $work['reason'] ?? '-' }}</div>
                         <p class="u-text-sm u-p-sm u-rounded u-italic" style="background-color: var(--surface-2);">"{{ $work['desc'] ?? '-' }}"</p>
                     </div>
@@ -144,7 +151,7 @@
                     <h3 class="uj-section-title" style="margin-top:0;">Keahlian (Skills)</h3>
                     <ul class="u-list-disc u-pl-md u-text-sm u-space-y-sm">
                         @forelse($person->skills ?? [] as $skill)
-                            <li><b>{{ $skill['name'] ?? '-' }}</b><br><span class="u-muted">{{ $skill['desc'] ?? '' }}</span></li>
+                            <li><b>{{ $skill['name'] ?? '-' }}</b><br><p class="u-text-xs u-mt-xs u-italic u-muted">{{ $skill['desc'] ?? '' }}</p></li>
                         @empty
                             <span class="u-muted u-text-sm">Tidak ada data.</span>
                         @endforelse
@@ -157,7 +164,7 @@
                             <li>
                                 <b>{{ $org['name'] ?? '-' }}</b> | {{ $org['position'] ?? '-' }} 
                                 <span class="u-text-xs u-muted">({{ $org['start_year'] ?? '-' }} - {{ $org['end_year'] ?? 'Sekarang' }})</span>
-                                <p class="u-text-xs u-mt-xs u-italic u-muted">"{{ $org['desc'] ?? '-' }}"</p>
+                                <p class="u-text-xs u-mt-xs u-italic u-muted">{{ $org['desc'] ?? '-' }}</p>
                             </li>
                         @empty
                             <li class="u-muted u-list-none">Tidak ada data.</li>

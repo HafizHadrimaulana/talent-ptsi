@@ -1035,7 +1035,9 @@ const initMap = (divId, lat, lng, acc = 0, options = {}) => {
         attribution: ''
     }).addTo(map);
     const createDynamicIcon = (zoom) => {
-        const scale = Math.max(0.4, Math.min(1.0, (zoom - 10) / 8));
+        const isMobile = window.innerWidth <= 768;
+        const baseScale = isMobile ? 0.6 : 1.0;
+        const scale = Math.max(0.3, Math.min(baseScale, (zoom - 10) / 8));
         const iconWidth = Math.round(25 * scale);
         const iconHeight = Math.round(41 * scale);
         const shadowWidth = Math.round(41 * scale);
@@ -1070,11 +1072,40 @@ const initMap = (divId, lat, lng, acc = 0, options = {}) => {
         }
     }, 100);
     
+    window.addEventListener('resize', () => {
+        if(marker && map._createDynamicIcon) {
+            marker.setIcon(map._createDynamicIcon(map.getZoom()));
+        }
+    });
+    
     map._marker = marker;
     map._createDynamicIcon = createDynamicIcon;
     let circle = null;
     let isAnimating = false;
     let currentState = { lat, lng, acc };
+    
+    // Function to generate tooltip content dynamically
+    const generateTooltipContent = (accuracy) => {
+        const tier = accuracyTier(accuracy);
+        const tierText = tierLabel[tier];
+        const color = tierColor[tier];
+        return `<div style="padding:12px 16px;border-radius:10px;background:linear-gradient(135deg,rgba(255,255,255,0.98) 0%,rgba(248,250,252,0.98) 100%);border:1px solid rgba(0,0,0,0.08);box-shadow:0 8px 20px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.06);backdrop-filter:blur(12px);min-width:220px;max-width:280px">` +
+            `<div style="text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif">` +
+            `<div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:8px">` +
+            `<span style="font-size:1.2rem;line-height:1">📍</span>` +
+            `<strong style="color:${color};font-size:0.95rem;font-weight:700;letter-spacing:-0.01em">${tierText} Signal</strong>` +
+            `</div>` +
+            `<div style="background:linear-gradient(135deg,rgba(0,0,0,0.04) 0%,rgba(0,0,0,0.02) 100%);padding:8px 12px;border-radius:6px;margin:6px 0">` +
+            `<div style="color:#64748b;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">GPS Accuracy</div>` +
+            `<span style="color:#1e293b;font-size:1rem;font-weight:700;display:block">±${Math.round(accuracy)} meters</span>` +
+            `</div>` +
+            `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;gap:5px">` +
+            `<span style="font-size:0.85rem">✨</span>` +
+            `<small style="color:#64748b;font-size:0.75rem;font-weight:500">Click marker to zoom in</small>` +
+            `</div>` +
+            `</div></div>`;
+    };
+    
     const drawCircle = (circleLat = currentState.lat, circleLng = currentState.lng, circleAcc = currentState.acc) => {
         const zoom = map.getZoom();
         if (circle) {
@@ -1133,6 +1164,8 @@ const initMap = (divId, lat, lng, acc = 0, options = {}) => {
     map._updatePosition = (newLat, newLng, newAcc) => {
         currentState = { lat: newLat, lng: newLng, acc: newAcc };
         marker.setLatLng([newLat, newLng]);
+        // Update tooltip content with new accuracy
+        marker.setTooltipContent(generateTooltipContent(newAcc));
         if (config.isRealTime) {
             map.setView([newLat, newLng], map.getZoom(), { animate: false });
         }
@@ -1144,22 +1177,7 @@ const initMap = (divId, lat, lng, acc = 0, options = {}) => {
     }, 80);
     const tier = accuracyTier(acc);
     const tierText = tierLabel[tier];
-    const tooltipContent = 
-        `<div style="padding:12px 16px;border-radius:10px;background:linear-gradient(135deg,rgba(255,255,255,0.98) 0%,rgba(248,250,252,0.98) 100%);border:1px solid rgba(0,0,0,0.08);box-shadow:0 8px 20px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.06);backdrop-filter:blur(12px);min-width:220px;max-width:280px">` +
-        `<div style="text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif">` +
-        `<div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:8px">` +
-        `<span style="font-size:1.2rem;line-height:1">📍</span>` +
-        `<strong style="color:${circleColor};font-size:0.95rem;font-weight:700;letter-spacing:-0.01em">${tierText} Signal</strong>` +
-        `</div>` +
-        `<div style="background:linear-gradient(135deg,rgba(0,0,0,0.04) 0%,rgba(0,0,0,0.02) 100%);padding:8px 12px;border-radius:6px;margin:6px 0">` +
-        `<div style="color:#64748b;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">GPS Accuracy</div>` +
-        `<span style="color:#1e293b;font-size:1rem;font-weight:700;display:block">±${Math.round(acc)} meters</span>` +
-        `</div>` +
-        `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;gap:5px">` +
-        `<span style="font-size:0.85rem">✨</span>` +
-        `<small style="color:#64748b;font-size:0.75rem;font-weight:500">Click marker to zoom in</small>` +
-        `</div>` +
-        `</div></div>`;
+    const tooltipContent = generateTooltipContent(acc);
     
     marker.bindTooltip(tooltipContent, {
         permanent: false,
@@ -1330,21 +1348,16 @@ const handleSign = (url) => {
             }
         };
         
-        // DUAL MODE: Quick + Precise (Google-style hybrid)
-        // Phase 1: Quick Lock (WiFi/Cell) ~1-3s
-        const quickOpts = { enableHighAccuracy: false, timeout: 5000, maximumAge: 10000 };
-        quickWatchId = navigator.geolocation.watchPosition((pos) => onSuccess(pos, false), (err) => console.log('Quick:', err.message), quickOpts);
+        const preciseOpts = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
+        watchId = navigator.geolocation.watchPosition((pos) => onSuccess(pos, true), onError, preciseOpts);
         
-        // Phase 2: High Precision (GPS) ~5-15s
         setTimeout(() => {
-            const preciseOpts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-            watchId = navigator.geolocation.watchPosition((pos) => onSuccess(pos, true), onError, preciseOpts);
-        }, 500);
+            const quickOpts = { enableHighAccuracy: false, timeout: 8000, maximumAge: 5000 };
+            quickWatchId = navigator.geolocation.watchPosition((pos) => onSuccess(pos, false), (err) => console.log('Quick:', err.message), quickOpts);
+        }, 100);
         
-        // Stop quick after 10s
         setTimeout(() => { if(quickWatchId) navigator.geolocation.clearWatch(quickWatchId); }, 10000);
         
-        // Fallback button after 20s if accuracy still poor
         setTimeout(() => {
             const currAcc = parseFloat(select('[name="geo_accuracy"]').value || '999');
             if(hasQuickLock && currAcc > 150) {

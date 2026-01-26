@@ -483,6 +483,15 @@ class ContractController extends Controller
             ]);
 
             $contract->update(['status' => $status]);
+            
+            // Ensure document is bound to person and employee when signed
+            if ($status === 'signed' && $contract->document) {
+                $contract->document->update([
+                    'person_id' => $contract->person_id,
+                    'employee_id' => $contract->employee_id
+                ]);
+            }
+            
             $contract->loadMissing('document');
             if ($contract->document && Storage::disk('local')->exists($contract->document->path))
                 Storage::disk('local')->delete($contract->document->path);
@@ -537,14 +546,92 @@ class ContractController extends Controller
     public function document(Request $request, Contract $contract)
     {
         set_time_limit(300);
+        
+        // Authorization: Team-scoped and role-based access control
+        $user = $request->user();
+        $isSuperadmin = $user->hasRole('Superadmin');
+        $isDhc = $user->hasRole('DHC');
+        
+        // Define admin roles that can view all contracts in their unit
+        $adminRoles = [
+            'SDM Unit',
+            'Dir SDM',
+            'Kepala Unit',
+            'Admin Operasi Unit',
+            'Kepala Proyek (MP)',
+            'AVP',
+            'DBS Unit',
+            'GM/VP Unit'
+        ];
+        
+        // Superadmin can access all contracts
+        if ($isSuperadmin) {
+            // Allowed - no restrictions
+        }
+        // DHC can only access contracts from enabler units
+        elseif ($isDhc) {
+            $contractUnit = DB::table('units')->where('id', $contract->unit_id)->first();
+            if (!$contractUnit || strtoupper($contractUnit->category) !== 'ENABLER') {
+                abort(403, 'DHC can only access contracts from Enabler units');
+            }
+        }
+        // Admin roles can access all contracts within their unit
+        elseif ($user->hasAnyRole($adminRoles)) {
+            if ($user->unit_id != $contract->unit_id) {
+                abort(403, 'You can only access contracts from your own unit');
+            }
+        }
+        // Regular employees can only access their own contracts
+        else {
+            $isOwnContract = false;
+            
+            // Check by employee_id
+            if ($user->employee_id && $contract->employee_id && $user->employee_id === $contract->employee_id) {
+                $isOwnContract = true;
+            }
+            
+            // Check by person_id
+            if (!$isOwnContract && $user->person_id && $contract->person_id && $user->person_id === $contract->person_id) {
+                $isOwnContract = true;
+            }
+            
+            if (!$isOwnContract) {
+                abort(403, 'You can only access your own contracts');
+            }
+        }
+        
         $this->ensureDocumentRecord($contract);
         $contract->refresh()->loadMissing('document');
-        if (!Storage::disk('local')->exists($contract->document->path)) {
+        
+        if (!$contract->document) {
+            abort(404, 'Document record not found');
+        }
+        
+        $filePath = $contract->document->path;
+        
+        // Check if file exists in local storage
+        if (!Storage::disk('local')->exists($filePath)) {
+            \Log::warning("Contract document not found, regenerating: {$filePath}");
             $this->generatePdfFile($contract);
             $contract->refresh()->loadMissing('document');
+            
+            // Re-check after generation
+            if (!Storage::disk('local')->exists($contract->document->path)) {
+                abort(404, 'Document file could not be generated');
+            }
+            $filePath = $contract->document->path;
         }
-        $filename = basename($contract->document->path);
-        return response()->file(Storage::disk('local')->path($contract->document->path), [
+        
+        $fullPath = Storage::disk('local')->path($filePath);
+        
+        if (!file_exists($fullPath)) {
+            \Log::error("Physical file not found: {$fullPath}");
+            abort(404, 'Document file not found on disk');
+        }
+        
+        $filename = basename($filePath);
+        
+        return response()->file($fullPath, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
@@ -1148,9 +1235,34 @@ class ContractController extends Controller
     {
         if (!$c->document_id) {
             $path = "contracts/{$c->contract_type}-{$c->id}-" . time() . ".pdf";
-            $doc = Document::create(['doc_type' => $c->contract_type, 'storage_disk' => 'local', 'path' => $path, 'mime' => 'application/pdf', 'size_bytes' => 0]);
+            
+            // Get document title from config
+            $contractTypes = config('recruitment.contract_types', []);
+            $title = isset($contractTypes[$c->contract_type]) 
+                     ? $contractTypes[$c->contract_type]['label'] 
+                     : $c->contract_type;
+            
+            $doc = Document::create([
+                'doc_type' => $c->contract_type,
+                'title' => $title,
+                'storage_disk' => 'local',
+                'path' => $path,
+                'mime' => 'application/pdf',
+                'size_bytes' => 0,
+                'person_id' => $c->person_id,
+                'employee_id' => $c->employee_id
+            ]);
             $c->update(['document_id' => $doc->id]);
             $c->refresh();
+        } else {
+            // Update document binding jika sudah ada tapi belum ter-bind
+            $doc = $c->document;
+            if ($doc && (!$doc->person_id || !$doc->employee_id)) {
+                $doc->update([
+                    'person_id' => $c->person_id,
+                    'employee_id' => $c->employee_id
+                ]);
+            }
         }
         if (!Storage::disk('local')->exists('contracts'))
             Storage::disk('local')->makeDirectory('contracts');
