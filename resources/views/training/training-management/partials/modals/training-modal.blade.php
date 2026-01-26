@@ -103,7 +103,7 @@
     {{-- Modal Footer --}}
     <div class="u-modal__foot u-flex u-justify-between u-items-center">
       <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
-      @hasanyrole('DHC|DBS Unit')
+      @hasanyrole('DHC')
       <div class="modal-footer-actions u-flex u-gap-sm">
         <button type="button" id="btn-decline-request" class="u-btn u-btn--danger u-btn--outline">
           <i class="fas fa-times u-mr-xs"></i> Decline

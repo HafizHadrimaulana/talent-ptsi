@@ -24,7 +24,6 @@ class EnsureUserIsAdmin
             'Admin Operasi Unit',
             'Kepala Proyek (MP)',
             'AVP',
-            'DBS Unit'
         ];
 
         if (!Auth::user()->hasAnyRole($allowedRoles)) {

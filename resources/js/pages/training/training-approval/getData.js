@@ -175,6 +175,8 @@ const initModalSystem = () => {
 
             const $modal = $(config.modalId);
 
+            $modal.attr("data-table-id", tableId);
+
             if ($modal.length && rowData) {
                 toggleEditMode($modal, false);
                 populateModalData($modal, rowData);
@@ -243,7 +245,7 @@ const initModalSystem = () => {
         const note = $modal.find("#catatan").val();
 
         const reloadTable = () => {
-            const tableId = $modal.find(".btn-trigger-modal")?.data("table");
+            const tableId = $modal.attr("data-table-id");
 
             if (tableId) {
                 DataTableManager.reload(tableId);
@@ -265,7 +267,7 @@ const initModalSystem = () => {
         const note = $modal.find("#catatan").val();
 
         const reloadTable = () => {
-            const tableId = $modal.find(".btn-trigger-modal")?.data("table");
+            const tableId = $modal.attr("data-table-id");
 
             if (tableId) {
                 DataTableManager.reload(tableId);
