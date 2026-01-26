@@ -435,11 +435,11 @@
                     </div>
                 </div>
                 <div class="u-bg-section u-p-lg">
-                      <div class="section-divider">Personnel</div>
+                      <div class="section-divider">Personel</div>
                       <div class="u-space-y-md">
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Name</span><span id="detName" class="u-font-bold u-text-xl text-ellipsis" style="max-width: 200px;">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Employee ID</span><span id="detNik" class="u-font-medium">-</span></div>
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">National ID</span><span id="detNikReal" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK KTP</span><span id="detNikReal" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Position</span><span id="detPos" class="u-font-medium">-</span></div>
                           <div id="detLocationRow" class="u-flex u-justify-between u-items-center u-py-xs u-border-b is-hidden"><span class="u-text-sm u-muted">Location</span><span id="detLocation" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Employment Type</span><span id="detEmpType" class="u-font-medium">-</span></div>
