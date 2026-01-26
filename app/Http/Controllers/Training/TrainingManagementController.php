@@ -85,20 +85,6 @@ class TrainingManagementController extends Controller
                 ],
             ],
 
-            'DBS Unit' => [
-                'tabs' => ['approval-training-data'],
-                'default_tab' => 'approval-training-data',
-
-                'tab_configs' => [
-
-                   'approval-training-data' => [
-                        'tables' => [
-                            'approval-data-training-table',
-                        ],
-                    ]
-                ],
-            ],
-
             'AVP' => [
                 'tabs' => ['training-peserta'],
                 'default_tab' => 'training-peserta',

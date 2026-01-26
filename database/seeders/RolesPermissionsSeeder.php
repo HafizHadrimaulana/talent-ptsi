@@ -65,9 +65,6 @@ class RolesPermissionsSeeder extends Seeder
             'AVP' => [
                 'training.view', 'training.management.view', 'training.management.approve','recruitment.view', 'recruitment.approve', 'recruitment.reject',
             ],
-            'DBS Unit' => [
-                'training.view', 'training.management.view',
-            ],
             'Karyawan' => [
                 'contract.view', 'contract.sign', 'training.view',
             ],
