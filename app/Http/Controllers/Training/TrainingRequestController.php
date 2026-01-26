@@ -902,7 +902,7 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function destroyLna($id)
+    public function deleteLna($id)
     {
         $item = TrainingReference::find($id);
 
@@ -957,6 +957,21 @@ class TrainingRequestController extends Controller
             'status' => 'success',
             'message' => 'Data berhasil dihapus!',
         ], 200);
+    }
+
+    public function viewDocument($filename)
+    {
+        $path = 'lampiran_penawaran/' . $filename;
+
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404, 'File tidak ditemukan.');
+        }
+
+        $file = Storage::disk('public')->get($path);
+        
+        $mimeType = Storage::disk('public')->mimeType($path);
+
+        return response($file, 200)->header('Content-Type', $mimeType);
     }
 
     // HELPER FUNCTION

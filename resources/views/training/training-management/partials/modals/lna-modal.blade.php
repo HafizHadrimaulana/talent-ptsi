@@ -125,7 +125,7 @@
 
         {{-- Modal Footer --}}
         <div class="u-modal__foot u-flex u-justify-between u-items-center">
-            <div class="u-muted u-text-sm">Status: <span class="detail-status_training_reference">Active</span></div>
+            <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
             <div class="u-flex u-gap-sm">
                 {{-- Tombol Sekunder (Bisa Edit / Batal) --}}
                 <button type="button" id="btn-toggle-edit" class="u-btn u-btn--outline u-btn--danger">
