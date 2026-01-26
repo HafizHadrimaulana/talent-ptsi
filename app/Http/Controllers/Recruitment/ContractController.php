@@ -547,10 +547,22 @@ class ContractController extends Controller
     {
         set_time_limit(300);
         
-        // Authorization: Ensure user can view this contract
+        // Authorization: Team-scoped and role-based access control
         $user = $request->user();
         $isSuperadmin = $user->hasRole('Superadmin');
         $isDhc = $user->hasRole('DHC');
+        
+        // Define admin roles that can view all contracts in their unit
+        $adminRoles = [
+            'SDM Unit',
+            'Dir SDM',
+            'Kepala Unit',
+            'Admin Operasi Unit',
+            'Kepala Proyek (MP)',
+            'AVP',
+            'DBS Unit',
+            'GM/VP Unit'
+        ];
         
         // Superadmin can access all contracts
         if ($isSuperadmin) {
@@ -563,10 +575,28 @@ class ContractController extends Controller
                 abort(403, 'DHC can only access contracts from Enabler units');
             }
         }
-        // Other users can only access contracts from their own unit
-        else {
+        // Admin roles can access all contracts within their unit
+        elseif ($user->hasAnyRole($adminRoles)) {
             if ($user->unit_id != $contract->unit_id) {
                 abort(403, 'You can only access contracts from your own unit');
+            }
+        }
+        // Regular employees can only access their own contracts
+        else {
+            $isOwnContract = false;
+            
+            // Check by employee_id
+            if ($user->employee_id && $contract->employee_id && $user->employee_id === $contract->employee_id) {
+                $isOwnContract = true;
+            }
+            
+            // Check by person_id
+            if (!$isOwnContract && $user->person_id && $contract->person_id && $user->person_id === $contract->person_id) {
+                $isOwnContract = true;
+            }
+            
+            if (!$isOwnContract) {
+                abort(403, 'You can only access your own contracts');
             }
         }
         
@@ -1205,8 +1235,16 @@ class ContractController extends Controller
     {
         if (!$c->document_id) {
             $path = "contracts/{$c->contract_type}-{$c->id}-" . time() . ".pdf";
+            
+            // Get document title from config
+            $contractTypes = config('recruitment.contract_types', []);
+            $title = isset($contractTypes[$c->contract_type]) 
+                     ? $contractTypes[$c->contract_type]['label'] 
+                     : $c->contract_type;
+            
             $doc = Document::create([
                 'doc_type' => $c->contract_type,
+                'title' => $title,
                 'storage_disk' => 'local',
                 'path' => $path,
                 'mime' => 'application/pdf',
