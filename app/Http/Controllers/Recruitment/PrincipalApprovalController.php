@@ -15,6 +15,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\RecruitmentRequestExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Gate;
+use Carbon\Carbon;
 
 class PrincipalApprovalController extends Controller
 {
@@ -795,6 +796,19 @@ class PrincipalApprovalController extends Controller
             }
             $orgChart = "<img src='{$src}' style='max-width:100%; max-height:400px; object-fit:contain;'>";
         }
+        Carbon::setLocale('id'); // Set locale global ke ID
+        $todayDate = now()->translatedFormat('d F Y'); // Output: 26 Januari 2026
+
+        // Jika server tidak mendukung locale 'id', gunakan array mapping manual (fallback)
+        if (str_contains($todayDate, 'January') || str_contains($todayDate, 'February') || str_contains($todayDate, 'March') || str_contains($todayDate, 'May') || str_contains($todayDate, 'June') || str_contains($todayDate, 'July') || str_contains($todayDate, 'August') || str_contains($todayDate, 'October') || str_contains($todayDate, 'December')) {
+            $months = [
+                'January' => 'Januari', 'February' => 'Februari', 'March' => 'Maret', 'April' => 'April', 'May' => 'Mei', 'June' => 'Juni',
+                'July' => 'Juli', 'August' => 'Agustus', 'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
+            ];
+            $todayDate = strtr(now()->format('d F Y'), $months);
+        }
+        $reportsToSig = !empty($d['melapor']) ? $d['melapor'] : '........................................';
+        $incumbentSig = !empty($d['pemangku']) ? $d['pemangku'] : '........................................';
 
         $vars = [
             'job_title' => $d['nama'] ?? '-',
@@ -818,9 +832,9 @@ class PrincipalApprovalController extends Controller
             'spec_mandatory'  => $fmt($d['spek_kompetensi_wajib'] ?? ''),
             'spec_generic'    => $fmt($d['spek_kompetensi_generik'] ?? ''),
             'org_chart'       => $orgChart,
-            'today_date'      => now()->translatedFormat('d F Y'),
-            'reports_to_name_sig' => !empty($d['melapor']) ? $d['melapor'] : '................................',
-            'incumbent_name_sig' => !empty($d['pemangku']) ? $d['pemangku'] : '................................'
+            'today_date'      => $todayDate,
+            'reports_to_name_sig' => $reportsToSig,
+            'incumbent_name_sig'  => $incumbentSig
         ];
         $html = $this->renderPdfTemplate($template, $vars, $dynamicCss, $bgImage);
         $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
