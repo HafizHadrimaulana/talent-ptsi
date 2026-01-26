@@ -32,20 +32,17 @@ class RolesPermissionsSeeder extends Seeder
         $roles = [
             'Superadmin' => Permission::all(),
             'DHC' => [
-                'users.view', 'rbac.view', 'rbac.assign',
-                'org.view', 'org.create', 'org.update', 'org.delete',
+                'users.view', 'users.update',
                 'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.approve', 'recruitment.reject',
-                'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve',
+                'contract.view', 'contract.create', 'contract.update', 'contract.delete',
                 'recruitment.external.view', 'recruitment.external.manage',
                 'training.dashboard.view', 'training.management.view', 'training.management.approve',
             ],
             'Dir SDM' => [
-                'org.view', 'org.update',
                 'recruitment.view', 'recruitment.approve', 'recruitment.reject',
-                'contract.view', 'contract.approve',
             ],
             'SDM Unit' => [
-                'users.view', 'org.view', 'org.create', 'org.update',
+                'users.view', 'users.update',
                 'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'recruitment.approve', 'recruitment.reject',
                 'contract.view', 'contract.create', 'contract.update', 'contract.delete',
                 'recruitment.external.view', 'recruitment.external.manage',
