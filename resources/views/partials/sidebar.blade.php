@@ -103,13 +103,6 @@
                 </a>
                 @endif
 
-                @if($isSuper || $user->can('recruitment.external.view'))
-                <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}" href="{{ route('recruitment.external.index') }}">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-                    <span class="label">Careers</span>
-                </a>
-                @endif
-
                 @if( ($isSuper || $user?->can('recruitment.view')) && !$hideMenuForNonHcAvp )
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.monitoring')?'active':'' }}" href="{{ \Illuminate\Support\Facades\Route::has('recruitment.monitoring') ? route('recruitment.monitoring') : '#' }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
@@ -118,6 +111,13 @@
                 <a class="nav-item nav-child {{ request()->routeIs('recruitment.principal-approval*')?'active':'' }}" href="{{ route('recruitment.principal-approval.index') }}">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="m9 12 2 2 4-4" /></svg>
                     <span class="label">Principal Approval</span>
+                </a>
+                @endif
+
+                @if($isSuper || $user->can('recruitment.external.view'))
+                <a class="nav-item nav-child {{ request()->routeIs('recruitment.external.*') ? 'active' : '' }}" href="{{ route('recruitment.external.index') }}">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
+                    <span class="label">Careers</span>
                 </a>
                 @endif
 
