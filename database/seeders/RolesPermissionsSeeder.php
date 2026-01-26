@@ -37,33 +37,33 @@ class RolesPermissionsSeeder extends Seeder
                 'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.approve', 'recruitment.reject',
                 'contract.view', 'contract.create', 'contract.update', 'contract.delete', 'contract.approve',
                 'recruitment.external.view', 'recruitment.external.manage',
-                'training.dashboard.view', 'training.view', 'training.management.view', 'training.management.approve',
+                'training.dashboard.view', 'training.management.view', 'training.management.approve',
             ],
             'Dir SDM' => [
                 'org.view', 'org.update',
                 'recruitment.view', 'recruitment.approve', 'recruitment.reject',
-                'contract.view', 'contract.approve', 'training.view',
+                'contract.view', 'contract.approve',
             ],
             'SDM Unit' => [
                 'users.view', 'org.view', 'org.create', 'org.update',
                 'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'recruitment.approve', 'recruitment.reject',
                 'contract.view', 'contract.create', 'contract.update', 'contract.delete',
                 'recruitment.external.view', 'recruitment.external.manage',
-                'training.view', 'training.dashboard.view', 'training.management.view',
+                'training.dashboard.view', 'training.management.view',
             ],
             'Kepala Unit' => [
                 'recruitment.view', 'recruitment.approve', 'recruitment.reject',
                 'contract.view', 'contract.approve', 'contract.sign',
-                'training.dashboard.view', 'training.view', 'training.management.view', 'training.management.approve',
+                'training.dashboard.view', 'training.management.view', 'training.management.approve',
             ],
             'Admin Operasi Unit' => [
-                'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit', 'training.view',
+                'recruitment.view', 'recruitment.create', 'recruitment.update', 'recruitment.submit',
             ],
             'Kepala Proyek (MP)' => [
-                'recruitment.view', 'recruitment.approve', 'recruitment.reject', 'training.view',
+                'recruitment.view', 'recruitment.approve', 'recruitment.reject',
             ],
             'AVP' => [
-                'training.view', 'training.management.view', 'training.management.approve','recruitment.view', 'recruitment.approve', 'recruitment.reject',
+                'training.management.view', 'training.management.approve','recruitment.view', 'recruitment.approve', 'recruitment.reject',
             ],
             'Karyawan' => [
                 'contract.view', 'contract.sign', 'training.view',
