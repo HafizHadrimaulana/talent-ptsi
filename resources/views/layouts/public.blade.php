@@ -306,16 +306,16 @@
             Meningkatkan masa depan dengan solusi cerdas dan inovatif, memberdayakan bisnis serta individu untuk tumbuh bersama.
           </p>
           <div class="flex gap-4 mt-4">
-            <a href="https://linkedin.com" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+            <a href="https://linkedin.com/company/suveryor-id/" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
               <img src="/images/LinkedIn_logo_initials.png" alt="LinkedIn" class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
             </a>
-            <a href="https://instagram.com" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+            <a href="https://www.instagram.com/surveyor.id/" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
               <img src="/images/Instagram_icon.png" alt="Instagram" class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
             </a>
-            <a href="https://x.com" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden bg-white hover:border-[#49D4A9] transition group">
+            <a href="https://x.com/surveyor_id" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden bg-white hover:border-[#49D4A9] transition group">
               <img src="/images/X_logo_2023.svg.png" alt="X (Twitter)" class="w-full h-full object-contain scale-100 group-hover:scale-110 transition-transform duration-300">
             </a>
-            <a href="https://facebook.com" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
+            <a href="https://www.facebook.com/surveyor.id" target="_blank" class="w-9 h-9 flex items-center justify-center border border-gray-500 rounded-full overflow-hidden hover:border-[#49D4A9] transition group">
               <img src="/images/2021_Facebook_icon.svg.png" alt="Facebook" class="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-300">
             </a>
           </div>
@@ -747,7 +747,7 @@
                     desc: `<span class="font-montserrat text-base md:text-lg font-light">Kami mencari kandidat potensial yang dapat membuka jalan bagi pertumbuhan industri yang tangguh dan berkelanjutan.</span>`,
                 },
                 {
-                    title: `<span class="font-montserrat text-3xl md:text-5xl font-bold leading-snug">Temukan <span class="text-[#A4F5DD] font-bold">Peluang Karier</span> Terbaikmu</span>`,
+                    title: `<span class="font-montserrat text-3xl md:text-5xl font-bold leading-snug">Temukan <span class="text-[#A4F5DD] font-bold">Peluang Karir</span> Terbaikmu</span>`,
                     desc: `<span class="font-montserrat text-base md:text-lg font-light">Raih karir impianmu bersama Surveyor Indonesia</span>`,
                 },
             ];
