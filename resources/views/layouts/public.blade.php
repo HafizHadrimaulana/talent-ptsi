@@ -56,10 +56,10 @@
                 </nav>
                 <div class="flex items-center gap-3">
                     <button type="button" onclick="openLoginModal()" class="px-5 py-2 rounded-xl bg-white text-[#00A29A] font-bold text-sm hover:bg-gray-100 transition shadow-sm cursor-pointer">
-                        Login
+                        Masuk
                     </button>
                     <button type="button" onclick="openRegisterModal()" class="px-5 py-2 rounded-xl border border-white text-white font-bold text-sm hover:bg-white/10 transition shadow-sm cursor-pointer">
-                        Register
+                        Daftar
                     </button>
                 </div>
             </div>
@@ -91,11 +91,11 @@
 
                     <div class="grid grid-cols-2 gap-3 mt-1">
                         <button onclick="toggleMobileMenu(); setTimeout(openLoginModal, 200);" class="flex justify-center items-center gap-2 py-2.5 px-3 bg-white border border-[#00A29A] text-[#00A29A] hover:bg-[#e6fbf7] rounded-xl text-sm font-semibold transition shadow-sm">
-                            Login
+                            Masuk
                         </button>
                         
                         <button onclick="toggleMobileMenu(); setTimeout(openRegisterModal, 200);" class="flex justify-center items-center gap-2 py-2.5 px-3 bg-[#00A29A] text-white hover:bg-[#008f87] rounded-xl text-sm font-semibold transition shadow-md shadow-[#00A29A]/30">
-                            Register
+                            Daftar
                         </button>
                     </div>
                 </div>
@@ -354,7 +354,7 @@
                 ✕
             </button>
             <div class="text-center mb-5">
-                <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-2">
+                <img src="/images/sapahc-logo.png" alt="sapahc-logo" class="w-auto h-24 mx-auto mb-2">
                 <h2 class="text-xl font-semibold text-gray-800">Pendaftaran Akun</h2>
             </div>
             <form method="POST" action="{{ route('register') }}">
@@ -425,7 +425,7 @@
                         Batal
                     </button>
                     <button id="submitBtn" type="submit" disabled class="px-6 py-2 rounded-lg bg-gray-300 text-white text-sm font-medium cursor-not-allowed transition-all">
-                        Register
+                        Daftar
                     </button>
                 </div>
             </form>
@@ -433,9 +433,9 @@
     </div>
     <div id="loginModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm">
         <div class="bg-white w-[90%] sm:w-full max-w-[350px] rounded-2xl p-5 sm:p-6 shadow-2xl relative transform transition-all">
-            <img src="/images/logo-alter.png" alt="logo-alter" class="w-auto h-12 mx-auto mb-5">
+            <img src="/images/sapahc-logo.png" alt="sapahc-logo" class="w-auto h-24 mx-auto mb-2">
             <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">
-                Login
+                Masuk ke akun Anda
             </h2>
             <form method="POST" action="{{ route('login.store') }}" class="space-y-5.5">
                 @csrf
@@ -482,11 +482,11 @@
                 </div>
                 <div class="flex flex-col gap-2.5 mt-2">
                     <button id="loginSubmitBtn" type="submit" class="w-full rounded bg-[#98A4B8] py-2.5 font-semibold text-white shadow-sm transition-all duration-300 hover:brightness-110 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" disabled>
-                        Sign in
+                        Masuk
                     </button>
-                    <button id="forgotPwBtn" type="button" class="w-full rounded bg-white py-2.5 font-semibold text-black shadow-sm transition-all duration-300 hover:bg-gray-100 hover:shadow-md cursor-pointer">
+                    <!-- <button id="forgotPwBtn" type="button" class="w-full rounded bg-white py-2.5 font-semibold text-black shadow-sm transition-all duration-300 hover:bg-gray-100 hover:shadow-md cursor-pointer">
                       Forgot Password
-                  </button>
+                  </button> -->
                 </div>
             </form>
             <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 cursor-pointer">
@@ -539,7 +539,7 @@
                     </a>
                 @else
                     <button onclick="triggerLoginForApply()" class="px-6 py-2.5 rounded-xl bg-[#00A29A] text-white font-bold hover:bg-[#008f87] transition shadow-lg shadow-[#00A29A]/30 text-sm">
-                        Register / Login untuk Melamar Lowongan
+                        Daftar / Masuk untuk Melamar Lowongan
                     </button>
                 @endauth
             </div>
@@ -739,7 +739,7 @@
             const nextBtn = document.getElementById("nextBtn");
             const slideTexts = [
                 {
-                    title: `<span class="font-montserrat text-3xl md:text-3xl font-light leading-snug">Selamat Datang di</span><br><span class="font-montserrat text-4xl md:text-6xl font-semibold block">SAPA HC</span><span class="text-[#A4F5DD] font-semibold">PT Surveyor Indonesia</span>`,
+                    title: `<span class="font-montserrat text-3xl md:text-3xl font-light leading-snug">Selamat Datang di</span><br><span class="font-montserrat text-4xl md:text-6xl font-semibold block"><img src="/images/sapahc-logo.png" alt="sapahc-logo" class="w-auto h-48 mx-auto mb-2"></span><span class="text-[#A4F5DD] font-semibold">PT Surveyor Indonesia</span>`,
                     desc: `<span class="font-montserrat text-base md:text-lg font-light">Your Trusted Partner for Assurance.</span>`,
                 },
                 {
