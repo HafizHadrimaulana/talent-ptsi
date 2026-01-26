@@ -59,42 +59,63 @@
     </div>
     @endif
 
-    @if(isset($recruitmentApproved) || isset($recruitmentInReview))
-    <div style="background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(0, 0, 0, 0.08); padding: 1.5rem; border-radius: 18px; backdrop-filter: blur(10px);">
+    @if(auth()->user()->hasAnyRole(['Superadmin', 'DHC', 'SDM Unit']))
+    <div style="background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(0, 0, 0, 0.08); padding: 1.5rem; border-radius: 18px; backdrop-filter: blur(10px); margin-bottom: 24px;">
         <div class="u-mb-sm u-p-md">
-            <h3 class="u-title" style="font-size: 1.25rem; color: #1D446F;">Rekap Rekrutmen</h3>
+            <h3 class="u-title" style="font-size: 1.25rem; color: #1D446F;">Rekap Izin Prinsip</h3>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            @isset($recruitmentApproved)
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            
+            {{-- CARD 1: Sedang Berjalan (In Review) --}}
             <div class="u-card u-card--glass u-hover-lift u-flex u-items-center u-p-lg u-gap-lg" style="border-radius: 18px; border: 1px solid rgba(0, 0, 0, 0.05); min-height: 100px; background: white;">
-                <div class="u-flex u-items-center justify-center" style="width: 58px; height: 58px; background: var(--accent-ghost); border-radius: 12px; color: var(--accent); flex-shrink: 0;">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                <div class="u-flex u-items-center justify-center" style="width: 58px; height: 58px; background: #e0f2fe; border-radius: 12px; color: #0284c7; flex-shrink: 0;">
+                    <i class="fas fa-spinner fa-lg"></i> 
                 </div>
                 <div class="u-flex u-flex-col">
-                    <p class="u-text-xs u-uppercase u-font-semibold u-tracking-wide u-mb-1" style="color: #64748b;">Total Approved</p>
+                    <p class="u-text-xs u-uppercase u-font-semibold u-tracking-wide u-mb-1" style="color: #64748b;">Sedang Berjalan</p>
                     <div class="u-flex u-items-center u-gap-md">
-                        <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: #1D446F; letter-spacing: -0.03em;">{{ $recruitmentApproved }}</h3>
+                        <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: #1D446F; letter-spacing: -0.03em;">
+                            {{ $recruitmentInReview ?? 0 }}
+                        </h3>
                         <span style="font-size: 0.875rem; font-weight: 600; color: var(--muted); letter-spacing: 0.02em;">Permintaan</span>
                     </div>
                 </div>
             </div>
-            @endisset
 
-            @isset($recruitmentInReview)
+            {{-- CARD 2: Selesai (Approved) --}}
             <div class="u-card u-card--glass u-hover-lift u-flex u-items-center u-p-lg u-gap-lg" style="border-radius: 18px; border: 1px solid rgba(0, 0, 0, 0.05); min-height: 100px; background: white;">
                 <div class="u-flex u-items-center justify-center" style="width: 58px; height: 58px; background: var(--accent-ghost); border-radius: 12px; color: var(--accent); flex-shrink: 0;">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                 </div>
                 <div class="u-flex u-flex-col">
-                    <p class="u-text-xs u-uppercase u-font-semibold u-tracking-wide u-mb-1" style="color: #64748b;">In Review</p>
+                    <p class="u-text-xs u-uppercase u-font-semibold u-tracking-wide u-mb-1" style="color: #64748b;">Selesai</p>
                     <div class="u-flex u-items-center u-gap-md">
-                        <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: #1D446F; letter-spacing: -0.03em;">{{ $recruitmentInReview }}</h3>
+                        <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: #1D446F; letter-spacing: -0.03em;">
+                            {{ $recruitmentApproved ?? 0 }}
+                        </h3>
                         <span style="font-size: 0.875rem; font-weight: 600; color: var(--muted); letter-spacing: 0.02em;">Permintaan</span>
                     </div>
                 </div>
             </div>
-            @endisset
+
+            {{-- CARD 3: Ditolak (Rejected) --}}
+            <div class="u-card u-card--glass u-hover-lift u-flex u-items-center u-p-lg u-gap-lg" style="border-radius: 18px; border: 1px solid rgba(0, 0, 0, 0.05); min-height: 100px; background: white;">
+                <div class="u-flex u-items-center justify-center" style="width: 58px; height: 58px; background: #fee2e2; border-radius: 12px; color: #dc2626; flex-shrink: 0;">
+                    {{-- Icon Cross/Times --}}
+                    <i class="fas fa-times-circle fa-lg"></i>
+                </div>
+                <div class="u-flex u-flex-col">
+                    <p class="u-text-xs u-uppercase u-font-semibold u-tracking-wide u-mb-1" style="color: #64748b;">Ditolak</p>
+                    <div class="u-flex u-items-center u-gap-md">
+                        <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: #1D446F; letter-spacing: -0.03em;">
+                            {{ $recruitmentRejected ?? 0 }}
+                        </h3>
+                        <span style="font-size: 0.875rem; font-weight: 600; color: var(--muted); letter-spacing: 0.02em;">Permintaan</span>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
     @endif
