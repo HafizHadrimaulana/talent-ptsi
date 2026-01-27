@@ -745,6 +745,18 @@ const renderStatusBadge = (status) => {
             label: "In Review GM/VP",
             class: "bg-sky-100 text-sky-700 border border-sky-200",
         },
+        in_review_dhc: {
+            label: "In Review DHC",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_avpdhc: {
+            label: "In Review AVP DHC",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_vpdhc: {
+            label: "In Review VP DHC",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
         active: {
             label: "Aktif",
             class: "bg-green-100 text-green-700 border border-green-200",
