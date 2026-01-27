@@ -98,6 +98,7 @@
             <input type="hidden" name="source_contract_id" id="createSourceIdInput">
             <input type="hidden" name="employee_id" id="createEmployeeIdInput">
             <input type="hidden" name="person_id" id="createPersonIdInput">
+            <input type="hidden" name="position_id" id="createPositionIdInput">
             <div class="u-bg-section">
                 <div class="section-divider"><i class="fas fa-layer-group"></i> 1. Jenis Dokumen</div>
                 <div class="u-grid-2 u-stack-mobile">
@@ -126,6 +127,15 @@
                         <div class="u-bg-section">
                             <div class="section-divider"><i class="fas fa-database"></i> 2. Sumber Data</div>
                             <div data-mode-section="new" class="is-hidden u-space-y-md">
+                                <div class="u-form-group">
+                                    <label><i class="fas fa-clipboard-check u-text-accent u-mr-xs"></i> Izin Prinsip (Opsional)</label>
+                                    <select name="recruitment_request_id" id="createRecruitmentRequestSelect" class="u-input">
+                                        <option value="">-- Tanpa Izin Prinsip / Pilih Manual --</option>
+                                    </select>
+                                    <div class="u-text-2xs u-text-muted u-mt-xs">
+                                        <i class="fas fa-info-circle"></i> Pilih izin prinsip untuk auto-fill data kontrak
+                                    </div>
+                                </div>
                                 <div class="u-form-group">
                                     <label>Pilih Pelamar (Status Approved)</label>
                                     <select name="applicant_id" id="createApplicantSelect" class="u-input">
@@ -200,14 +210,15 @@
                     <div class="u-space-y-lg">
                         <div id="createPersonPreview" class="u-card u-card--glass u-p-lg is-hidden float-in">
                             <div class="u-flex u-items-center u-gap-md u-mb-lg">
-                                <div class="u-avatar u-avatar--lg u-avatar--brand"><i class="fas fa-user"></i></div>
-                                <div><div class="u-font-bold u-text-lg" id="prevName">-</div><div class="u-text-sm u-muted u-font-mono" id="prevNik">-</div><div class="u-text-sm u-text-info u-mt-xxs" id="prevTicket"></div></div>
+                                <img id="prevPhoto" src="" alt="" class="u-avatar u-avatar--lg" style="display:none; object-fit:cover; border-radius:50%;">
+                                <div class="u-avatar u-avatar--lg u-avatar--brand" id="prevPhotoPlaceholder"><i class="fas fa-user"></i></div>
+                                <div><div class="u-font-bold u-text-lg" id="prevName">-</div><div class="u-text-sm u-muted u-font-mono" id="prevNik" style="display:none;">-</div><div class="u-text-sm u-text-info u-mt-xxs" id="prevTicket"></div></div>
                             </div>
                             <div class="u-grid-2 u-gap-md u-text-sm">
                                 <div><span class="u-muted u-text-sm u-uppercase u-font-bold">Posisi</span><div class="u-font-medium u-mt-xxs" id="prevPos">-</div></div>
                                 <div><span class="u-muted u-text-sm u-uppercase u-font-bold">Unit</span><div class="u-font-medium u-mt-xxs" id="prevUnit">-</div></div>
-                                <div class="u-grid-col-span-2 u-border-t u-pt-md">
-                                    <span class="u-muted u-text-sm u-uppercase u-font-bold">Periode Lama</span>
+                                <div class="u-grid-col-span-2 u-border-t u-pt-md" id="prevDateSection" style="display:none;">
+                                    <span class="u-muted u-text-sm u-uppercase u-font-bold" id="prevDateLabel">Periode</span>
                                     <div class="u-font-medium u-mt-xxs" id="prevDate">-</div>
                                 </div>
                             </div>
@@ -253,10 +264,10 @@
                         <div>
                             <label class="u-text-sm u-font-bold u-muted u-uppercase u-mb-sm u-block">Tunjangan Lainnya</label>
                             <div class="u-space-y-md">
-                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" class="u-input" placeholder="Jabatan" data-rupiah="true"></div>
-                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" class="u-input" placeholder="Komunikasi" data-rupiah="true"></div>
-                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" class="u-input" placeholder="Khusus" data-rupiah="true"></div>
-                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" class="u-input" placeholder="Lainnya" data-rupiah="true"></div>
+                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_position_amount" class="u-input" placeholder="Tunjangan Jabatan" data-rupiah="true"></div>
+                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_communication_amount" class="u-input" placeholder="Tunjangan Kinerja" data-rupiah="true"></div>
+                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_special_amount" class="u-input" placeholder="Tunjangan Project" data-rupiah="true"></div>
+                                <div class="has-prefix"><span class="currency-prefix">Rp</span><input type="text" name="allowance_other_amount" class="u-input" placeholder="Tunjangan Lainnya" data-rupiah="true"></div>
                             </div>
                             <input type="text" name="other_benefits_desc" class="u-input u-mt-lg" placeholder="Deskripsi Benefit Lain (BPJS, dll)">
                         </div>
@@ -424,11 +435,11 @@
                     </div>
                 </div>
                 <div class="u-bg-section u-p-lg">
-                      <div class="section-divider">Personnel</div>
+                      <div class="section-divider">Personel</div>
                       <div class="u-space-y-md">
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Name</span><span id="detName" class="u-font-bold u-text-xl text-ellipsis" style="max-width: 200px;">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Employee ID</span><span id="detNik" class="u-font-medium">-</span></div>
-                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">National ID</span><span id="detNikReal" class="u-font-medium">-</span></div>
+                          <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">NIK KTP</span><span id="detNikReal" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Position</span><span id="detPos" class="u-font-medium">-</span></div>
                           <div id="detLocationRow" class="u-flex u-justify-between u-items-center u-py-xs u-border-b is-hidden"><span class="u-text-sm u-muted">Location</span><span id="detLocation" class="u-font-medium">-</span></div>
                           <div class="u-flex u-justify-between u-items-center u-py-xs u-border-b"><span class="u-text-sm u-muted">Employment Type</span><span id="detEmpType" class="u-font-medium">-</span></div>
@@ -753,6 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const srcSel = select('#createSourceSelect');
         const filterUnit = select('#filterSourceUnit');
         const appSel = select('#createApplicantSelect');
+        const rrSel = select('#createRecruitmentRequestSelect'); // Recruitment Request select
         const inpType = select('#createTypeInput');
         const inpMode = select('#createModeInput');
         const secSubtype = select('#createSubtypeWrap');
@@ -764,6 +776,196 @@ document.addEventListener('DOMContentLoaded', () => {
         const secExist = select('[data-mode-section="existing"]');
         const prevTicket = select('#prevTicket');
         let existingSource = null;
+        let selectedRecruitmentData = null;
+
+        // Function to load recruitment requests based on selected unit
+        const loadRecruitmentRequests = async (unitId = null) => {
+            if (!rrSel) return;
+            try {
+                const url = new URL('{{ route("recruitment.contracts.api.recruitment-requests") }}', window.location.origin);
+                if (unitId) url.searchParams.set('unit_id', unitId);
+                const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf } });
+                const data = await res.json();
+                rrSel.innerHTML = '<option value="">-- Tanpa Izin Prinsip / Pilih Manual --</option>';
+                data.forEach(rr => {
+                    const opt = document.createElement('option');
+                    opt.value = rr.id;
+                    opt.textContent = `${rr.ticket_number} - ${rr.title} (${rr.position_text})`;
+                    opt.dataset.json = JSON.stringify(rr);
+                    rrSel.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to load recruitment requests:', e);
+            }
+        };
+
+        // Function to load applicants from recruitment request
+        const loadApplicantsFromRR = async (rrId) => {
+            if (!appSel || !rrId) return;
+            try {
+                const url = `{{ url('recruitment/contracts/api/recruitment-requests') }}/${rrId}/applicants`;
+                const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf } });
+                const applicants = await res.json();
+                
+                // Clear existing options except the first placeholder
+                appSel.innerHTML = '<option value="">-- Pilih Pelamar dari Izin Prinsip --</option>';
+                
+                applicants.forEach(app => {
+                    const opt = document.createElement('option');
+                    opt.value = app.id;
+                    opt.dataset.personId = app.person_id || '';
+                    opt.dataset.fullname = app.name;
+                    opt.dataset.pos = app.position_name;
+                    opt.dataset.unit = selectedRecruitmentData?.unit_name || '';
+                    opt.dataset.unitId = selectedRecruitmentData?.unit_id || '';
+                    opt.textContent = `${app.name} - ${app.position_name}`;
+                    appSel.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to load applicants:', e);
+            }
+        };
+
+        // Function to auto-fill form from recruitment request data
+        const autoFillFromRR = async (rrId) => {
+            if (!rrId) {
+                selectedRecruitmentData = null;
+                return;
+            }
+            
+            try {
+                const url = `{{ url('recruitment/contracts/api/recruitment-requests') }}/${rrId}/detail`;
+                const res = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf } });
+                const data = await res.json();
+                selectedRecruitmentData = data;
+                
+                // Auto-fill unit
+                const unitSelect = select('#createUnitSelectNew');
+                if (unitSelect && data.unit_id) {
+                    unitSelect.value = data.unit_id;
+                    unitSelect.dispatchEvent(new Event('change'));
+                }
+                
+                // Auto-fill position name and ID
+                const positionInput = select('input[name="position_name"]');
+                const positionIdInput = select('#createPositionIdInput');
+                if (positionInput && data.position_text) {
+                    positionInput.value = data.position_text;
+                }
+                if (positionIdInput && data.position_id) {
+                    positionIdInput.value = data.position_id;
+                }
+                
+                // Auto-fill employment type (exclude Tetap dan Alih Daya)
+                const empTypeSelect = select('#createEmpType');
+                if (empTypeSelect && data.employment_type) {
+                    const empType = data.employment_type;
+                    // Map dari employment_type lama ke baru
+                    let mappedType = empType;
+                    if (empType === 'Organik') mappedType = 'Kontrak Organik';
+                    else if (empType === 'Project Based') mappedType = 'Kontrak-Project Based';
+                    
+                    // Hanya set jika bukan Tetap atau Alih Daya
+                    if (mappedType !== 'Tetap' && !mappedType.includes('Alih Daya') && !mappedType.includes('Outsourcing')) {
+                        // Check if option exists
+                        const optionExists = Array.from(empTypeSelect.options).some(opt => opt.value === mappedType);
+                        if (optionExists) {
+                            empTypeSelect.value = mappedType;
+                        }
+                    }
+                }
+                
+                // Auto-fill budget source
+                const budgetSelect = select('#createBudgetSource');
+                if (budgetSelect && data.budget_source_type) {
+                    budgetSelect.value = data.budget_source_type;
+                }
+                
+                // Auto-fill dates
+                const startDateInput = select('input[name="start_date"]');
+                const endDateInput = select('input[name="end_date"]');
+                if (startDateInput && data.start_date) startDateInput.value = data.start_date;
+                if (endDateInput && data.end_date) endDateInput.value = data.end_date;
+                
+                // Auto-fill location
+                const locationInput = select('#createLocation');
+                if (locationInput && data.location) locationInput.value = data.location;
+                
+                // Auto-fill remuneration
+                const salaryInput = select('input[name="salary_amount"]');
+                const salaryWordsInput = select('input[name="salary_amount_words"]');
+                if (salaryInput && data.salary) {
+                    const cleanSalary = data.salary.toString().replace(/\D/g, '');
+                    salaryInput.value = cleanSalary;
+                    if (salaryWordsInput) {
+                        salaryWordsInput.value = (terbilang(cleanSalary) + ' RUPIAH').toUpperCase();
+                    }
+                    salaryInput.dispatchEvent(new Event('input'));
+                }
+                
+                // Auto-fill allowances with CORRECT mapping
+                // allowanceL -> lunch_allowance_daily (Uang Makan)
+                const lunchInput = select('input[name="lunch_allowance_daily"]');
+                const lunchWordsInput = select('input[name="lunch_allowance_words"]');
+                if (lunchInput && data.allowanceL) {
+                    const cleanLunch = data.allowanceL.toString().replace(/\D/g, '');
+                    lunchInput.value = cleanLunch;
+                    if (lunchWordsInput) {
+                        lunchWordsInput.value = (terbilang(cleanLunch) + ' RUPIAH').toUpperCase();
+                    }
+                    lunchInput.dispatchEvent(new Event('input'));
+                }
+                
+                // allowanceP -> allowance_position_amount (Tunjangan Jabatan)
+                const positionAllowanceInput = select('input[name="allowance_position_amount"]');
+                if (positionAllowanceInput && data.allowanceP) {
+                    const cleanPos = data.allowanceP.toString().replace(/\D/g, '');
+                    positionAllowanceInput.value = cleanPos;
+                    positionAllowanceInput.dispatchEvent(new Event('input'));
+                }
+                
+                // allowanceK -> allowance_communication_amount (Tunjangan Kinerja)
+                const commAllowanceInput = select('input[name="allowance_communication_amount"]');
+                if (commAllowanceInput && data.allowanceK) {
+                    const cleanComm = data.allowanceK.toString().replace(/\D/g, '');
+                    commAllowanceInput.value = cleanComm;
+                    commAllowanceInput.dispatchEvent(new Event('input'));
+                }
+                
+                // allowanceJ -> allowance_special_amount (Tunjangan Project)
+                const specialAllowanceInput = select('input[name="allowance_special_amount"]');
+                if (specialAllowanceInput && data.allowanceJ) {
+                    const cleanSpecial = data.allowanceJ.toString().replace(/\D/g, '');
+                    specialAllowanceInput.value = cleanSpecial;
+                    specialAllowanceInput.dispatchEvent(new Event('input'));
+                }
+                
+                // Auto-fill BPJS & PPh21 in benefits description
+                const benefitsDesc = select('input[name="other_benefits_desc"]');
+                if (benefitsDesc) {
+                    let descParts = [];
+                    if (data.bpjs_kes) descParts.push(`BPJS Kesehatan: Rp ${money(data.bpjs_kes)}`);
+                    if (data.bpjs_tk) descParts.push(`BPJS Ketenagakerjaan: Rp ${money(data.bpjs_tk)}`);
+                    if (data.pph21) descParts.push(`PPh21: Rp ${money(data.pph21)}`);
+                    if (data.thr) descParts.push(`THR: Rp ${money(data.thr)}`);
+                    if (descParts.length > 0) {
+                        benefitsDesc.value = descParts.join(' | ');
+                    }
+                }
+                
+                // Show ticket number in preview
+                if (prevTicket && data.ticket_number) {
+                    prevTicket.textContent = `Ticket: ${data.ticket_number}`;
+                }
+                
+                // Load applicants from this recruitment request
+                await loadApplicantsFromRR(rrId);
+                
+            } catch (e) {
+                console.error('Failed to auto-fill from recruitment request:', e);
+            }
+        };
+
         const toggleInputs = (container, enable) => {
             if(!container) return;
             container.querySelectorAll('input, select, textarea').forEach(el => el.disabled = !enable);
@@ -772,17 +974,64 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 formCreate.reset();
                 famSel.value = ""; subSel.value = ""; srcSel.value = ""; appSel.value = "";
+                if (rrSel) rrSel.value = "";
                 existingSource = null;
+                selectedRecruitmentData = null;
                 hide(secSubtype); hide(secMain);
                 hide(secPkwtSpk); hide(secPb); hide(secRemun);
                 hide(secNew); hide(secExist);
                 const preview = select('#createPersonPreview');
                 if(preview) hide(preview);
                 if(prevTicket) prevTicket.textContent = '';
+                // Reset foto dan NIK
+                const prevPhoto = select('#prevPhoto');
+                const prevPhotoPlaceholder = select('#prevPhotoPlaceholder');
+                const prevNik = select('#prevNik');
+                if (prevPhoto) prevPhoto.style.display = 'none';
+                if (prevPhotoPlaceholder) prevPhotoPlaceholder.style.display = 'flex';
+                if (prevNik) prevNik.style.display = 'none';
                 if(typeof handleLocationAutofill === 'function') handleLocationAutofill();
             } catch(e) { console.error(e); }
         };
-        btnCreate.addEventListener('click', (e) => { e.preventDefault(); resetCreateUI(); openModal('createContractModal'); });
+        btnCreate.addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            resetCreateUI(); 
+            openModal('createContractModal');
+            // Load recruitment requests when modal opens
+            const currentUnitId = @json($canSeeAll ? null : $meUnit);
+            loadRecruitmentRequests(currentUnitId);
+        });
+
+        // Event listener for recruitment request selection
+        if (rrSel) {
+            rrSel.addEventListener('change', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const rrId = rrSel.value;
+                if (rrId) {
+                    await autoFillFromRR(rrId);
+                } else {
+                    selectedRecruitmentData = null;
+                    // Reset applicant select to original state
+                    appSel.innerHTML = '<option value="">-- Cari Pelamar --</option>';
+                    @foreach ($applicants as $a)
+                        appSel.innerHTML += `<option value="{{ $a->id }}" data-person-id="{{ $a->person_id ?? '' }}" data-fullname="{{ $a->full_name }}" data-pos="{{ $a->position_applied }}" data-unit="{{ $a->unit_name ?? '' }}" data-unit-id="{{ $a->unit_id ?? '' }}" data-ticket="{{ $a->ticket_number ?? '' }}">{{ $a->full_name }} — {{ $a->position_applied }}</option>`;
+                    @endforeach
+                }
+            });
+        }
+
+        // When unit changes, reload recruitment requests
+        const unitSelectNew = select('#createUnitSelectNew');
+        if (unitSelectNew && rrSel) {
+            unitSelectNew.addEventListener('change', () => {
+                const unitId = unitSelectNew.value;
+                if (unitId) {
+                    loadRecruitmentRequests(unitId);
+                }
+            });
+        }
+
         const applyAutoFill = () => {
             const type = inpType.value;
             if (!existingSource) return;
@@ -855,25 +1104,123 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         if(appSel) {
-            appSel.addEventListener('change', () => {
+            appSel.addEventListener('change', async () => {
                 const o = appSel.options[appSel.selectedIndex];
                 const hidPerson = select('#createPersonIdInput');
                 const hidEmp = select('#createEmployeeIdInput');
+                const contractType = inpType.value; // Get current contract type
+                const contractMode = inpMode.value; // Get current mode
+                
                 if (appSel.value) {
                     hidPerson.value = o.dataset.personId || '';
                     hidEmp.value = '';
-                    select('#prevName').textContent = o.dataset.fullname || '-';
-                    select('#prevPos').textContent = o.dataset.pos || '-';
-                    select('#prevUnit').textContent = o.dataset.unit || '-';
-                    select('#prevNik').textContent = '-';
-                    select('#prevDate').textContent = '-';
-                    if(prevTicket) prevTicket.textContent = o.dataset.ticket ? `Ticket: ${o.dataset.ticket}` : '';
+                    
+                    // Update preview with applicant/person data
+                    const applicantName = o.dataset.fullname || '-';
+                    const applicantPos = o.dataset.pos || '-';
+                    const applicantUnit = selectedRecruitmentData ? selectedRecruitmentData.unit_name : (o.dataset.unit || '-');
+                    
+                    select('#prevName').textContent = applicantName;
+                    select('#prevPos').textContent = applicantPos;
+                    select('#prevUnit').textContent = applicantUnit;
+                    
+                    // Show NIK KTP only for SPK/PKWT Baru
+                    const prevNik = select('#prevNik');
+                    const isNewContract = (contractType === 'SPK' || contractType === 'PKWT_BARU');
+                    
+                    if (isNewContract && o.dataset.personId) {
+                        // Fetch person data untuk NIK dan foto
+                        try {
+                            const personRes = await fetch(`/recruitment/contracts/api/persons/${o.dataset.personId}`, {
+                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf }
+                            });
+                            if (personRes.ok) {
+                                const personData = await personRes.json();
+                                if (personData.nik) {
+                                    prevNik.textContent = `NIK: ${personData.nik}`;
+                                    prevNik.style.display = 'block';
+                                } else {
+                                    prevNik.style.display = 'none';
+                                }
+                                
+                                // Show photo if available
+                                const prevPhoto = select('#prevPhoto');
+                                const prevPhotoPlaceholder = select('#prevPhotoPlaceholder');
+                                if (personData.photo_path) {
+                                    prevPhoto.src = `/storage/${personData.photo_path}`;
+                                    prevPhoto.style.display = 'block';
+                                    prevPhotoPlaceholder.style.display = 'none';
+                                } else {
+                                    prevPhoto.style.display = 'none';
+                                    prevPhotoPlaceholder.style.display = 'flex';
+                                }
+                            } else {
+                                prevNik.style.display = 'none';
+                            }
+                        } catch (e) {
+                            console.error('Failed to fetch person data:', e);
+                            prevNik.style.display = 'none';
+                        }
+                    } else {
+                        prevNik.style.display = 'none';
+                        select('#prevPhoto').style.display = 'none';
+                        select('#prevPhotoPlaceholder').style.display = 'flex';
+                    }
+                    
+                    // Dynamic preview date section based on contract type
+                    const prevDateSection = select('#prevDateSection');
+                    const prevDateLabel = select('#prevDateLabel');
+                    const prevDate = select('#prevDate');
+                    
+                    // Show date section only for perpanjangan/pengakhiran
+                    if (contractType === 'PKWT_PERPANJANGAN' || contractType === 'PB_PENGAKHIRAN') {
+                        // For perpanjangan/pengakhiran - show "Periode Lama" from existing contract
+                        if (existingSource && existingSource.end) {
+                            prevDateLabel.textContent = 'Periode Lama';
+                            prevDate.textContent = `Berakhir: ${existingSource.endHuman}`;
+                            prevDateSection.style.display = 'block';
+                        }
+                    } else if (selectedRecruitmentData && selectedRecruitmentData.start_date && selectedRecruitmentData.end_date) {
+                        // For SPK/PKWT Baru - show "Periode Kontrak" from RR
+                        const startDate = new Date(selectedRecruitmentData.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                        const endDate = new Date(selectedRecruitmentData.end_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                        prevDateLabel.textContent = 'Periode Kontrak';
+                        prevDate.textContent = `${startDate} - ${endDate}`;
+                        prevDateSection.style.display = 'block';
+                    } else {
+                        // Hide date section for SPK/PKWT Baru without RR
+                        prevDateSection.style.display = 'none';
+                    }
+                    
+                    // Show ticket from RR if available, or from applicant's old data
+                    if (selectedRecruitmentData && selectedRecruitmentData.ticket_number) {
+                        if(prevTicket) prevTicket.textContent = `Ticket: ${selectedRecruitmentData.ticket_number}`;
+                    } else if (prevTicket) {
+                        prevTicket.textContent = o.dataset.ticket ? `Ticket: ${o.dataset.ticket}` : '';
+                    }
+                    
                     showBlock(select('#createPersonPreview'));
-                    const uSel = select('#createUnitSelectNew');
-                    if(uSel && o.dataset.unitId) { uSel.value = o.dataset.unitId; uSel.dispatchEvent(new Event('change')); }
-                    const inpPos = select('#createPosName');
-                    if(inpPos) inpPos.value = o.dataset.pos || '';
-                } else { hide(select('#createPersonPreview')); }
+                    
+                    // Only auto-fill unit and position if not from recruitment request
+                    if (!selectedRecruitmentData) {
+                        const uSel = select('#createUnitSelectNew');
+                        if(uSel && o.dataset.unitId) { 
+                            uSel.value = o.dataset.unitId; 
+                            uSel.dispatchEvent(new Event('change')); 
+                        }
+                        const inpPos = select('input[name="position_name"]');
+                        if(inpPos) inpPos.value = o.dataset.pos || '';
+                    } else {
+                        // From RR - position already filled by autoFillFromRR
+                        // Just ensure it's still correct
+                        const inpPos = select('input[name="position_name"]');
+                        if(inpPos && !inpPos.value && applicantPos !== '-') {
+                            inpPos.value = applicantPos;
+                        }
+                    }
+                } else { 
+                    hide(select('#createPersonPreview')); 
+                }
             });
         }
         if(filterUnit && srcSel) {
@@ -909,11 +1256,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 hidEmp.value = existingSource.employeeId;
                 const uExist = select('#createUnitSelectExisting');
                 if(uExist) { uExist.value = existingSource.unitId; uExist.dispatchEvent(new Event('change')); }
+                
+                // Update preview
                 select('#prevName').textContent = existingSource.person || '-';
                 select('#prevPos').textContent = existingSource.pos || '-';
                 select('#prevUnit').textContent = existingSource.unitName || '-';
                 select('#prevNik').textContent = existingSource.nik || '-';
-                select('#prevDate').textContent = 'Exp: ' + existingSource.endHuman;
+                
+                // Show periode section for existing contract
+                const prevDateSection = select('#prevDateSection');
+                const prevDateLabel = select('#prevDateLabel');
+                const prevDate = select('#prevDate');
+                prevDateLabel.textContent = 'Periode Lama';
+                prevDate.textContent = 'Berakhir: ' + existingSource.endHuman;
+                prevDateSection.style.display = 'block';
+                
                 if(prevTicket) prevTicket.textContent = '';
                 showBlock(select('#createPersonPreview'));
                 applyAutoFill();

@@ -43,6 +43,7 @@ class Contract extends Model
         'contract_no',
         'ticket_number', // Added ticket_number
         'contract_type',
+        'recruitment_request_id', // Link to izin prinsip
         'person_id',
         'employee_id',
         'applicant_id',
@@ -90,6 +91,11 @@ class Contract extends Model
     public function applicant(): BelongsTo
     {
         return $this->belongsTo(RecruitmentApplicant::class, 'applicant_id');
+    }
+
+    public function recruitmentRequest(): BelongsTo
+    {
+        return $this->belongsTo(RecruitmentRequest::class, 'recruitment_request_id');
     }
 
     public function employee(): BelongsTo

@@ -35,5 +35,5 @@
 <script>
     window.currentUserRoles = @json(Auth::user()->getRoleNames());
     window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
-    window.currentUnitName = "{{ optional(Auth::user()->employee->unit)->nama_unit ?? '' }}";
+    window.currentUnitName = "{{ Auth::user()->employee?->unit?->nama_unit ?? '' }}";
 </script>

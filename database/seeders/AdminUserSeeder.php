@@ -59,7 +59,12 @@ class AdminUserSeeder extends Seeder
                 );
 
                 app(PermissionRegistrar::class)->setPermissionsTeamId($unit->id);
-                $adminUnit->assignRole('SDM Unit');
+                
+                if ($unit->code === 'DHC') {
+                    $adminUnit->assignRole('DHC');
+                } else {
+                    $adminUnit->assignRole('SDM Unit');
+                }
             }
         }
     }
