@@ -142,15 +142,25 @@ html[data-theme="dark"] .u-input:disabled,html[data-theme="dark"] .u-input[reado
 .u-panel{display:none;animation:fadeIn .2s ease}
 .u-panel.is-active{display:block}
 
-.u-modal,.u-modal-signature{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:var(--z-modal);padding:var(--space-md);background:rgba(0,0,0,.38);backdrop-filter:blur(10px) saturate(130%);-webkit-backdrop-filter:blur(10px) saturate(130%)}
-.u-modal[hidden]{display:none!important}
-.u-modal__card{width:min(96vw,760px);max-height:min(92vh,980px);display:flex;flex-direction:column;overflow:hidden;background:color-mix(in srgb,var(--surface-0) 92%,transparent);border:1px solid color-mix(in srgb,var(--border) 85%,transparent);border-radius:var(--radius-2xl);box-shadow:var(--shadow-xl);backdrop-filter:blur(var(--blur)) saturate(160%);-webkit-backdrop-filter:blur(var(--blur)) saturate(160%);animation:modalFloatIn .28s cubic-bezier(0.16,1,0.3,1)}
+.u-modal,.u-modal-signature{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:var(--z-modal);padding:var(--space-md);background:rgba(0,0,0,.38);backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);opacity:0;transition:opacity .22s cubic-bezier(0.4,0,0.2,1);pointer-events:none}
+.u-modal:not([hidden]):not(.is-hidden),.u-modal-signature:not([hidden]):not(.is-hidden){opacity:1;pointer-events:auto}
+.u-modal[hidden],.u-modal.is-hidden{display:none!important}
+.u-modal__backdrop{position:absolute;inset:0;background:linear-gradient(135deg,color-mix(in srgb,var(--surface-0) 18%,transparent) 0%,color-mix(in srgb,var(--surface-1) 22%,transparent) 50%,color-mix(in srgb,var(--surface-0) 18%,transparent) 100%);backdrop-filter:blur(24px) saturate(180%) brightness(1.02);-webkit-backdrop-filter:blur(24px) saturate(180%) brightness(1.02);cursor:pointer;animation:backdropFadeIn .28s cubic-bezier(0.16,1,0.3,1)}
+@keyframes backdropFadeIn{from{opacity:0;backdrop-filter:blur(0px) saturate(100%)}to{opacity:1;backdrop-filter:blur(24px) saturate(180%)}}
+.u-modal__card{position:relative;width:min(96vw,760px);max-height:min(92vh,980px);display:flex;flex-direction:column;overflow:hidden;background:color-mix(in srgb,var(--surface-0) 92%,transparent);border:1px solid color-mix(in srgb,var(--border) 40%,transparent);border-radius:var(--radius-2xl);box-shadow:0 25px 50px -12px rgba(0,0,0,.25),0 0 0 1px color-mix(in srgb,var(--border) 20%,transparent) inset;backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);transform:scale(.96) translateY(20px);opacity:0;transition:transform .28s cubic-bezier(0.16,1,0.3,1),opacity .28s cubic-bezier(0.4,0,0.2,1);will-change:transform,opacity}
+.u-modal:not([hidden]):not(.is-hidden) .u-modal__card{transform:scale(1) translateY(0);opacity:1}
 .u-modal__card--xl{width:min(96vw,1120px);max-height:92vh}
 .u-modal__card--md{width:min(96vw,520px)}
-.u-modal__head{position:sticky;top:0;z-index:var(--z-sticky);display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);padding:var(--space-lg);background:color-mix(in srgb,var(--surface-1) 92%,transparent);border-bottom:1px solid color-mix(in srgb,var(--border) 85%,transparent);backdrop-filter:blur(calc(var(--blur)*.9)) saturate(150%);-webkit-backdrop-filter:blur(calc(var(--blur)*.9)) saturate(150%)}
-.u-modal__body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--space-lg)}
-.u-modal__foot{position:sticky;bottom:0;z-index:var(--z-sticky);display:flex;justify-content:space-between;align-items:center;gap:var(--space-md);padding:var(--space-md) var(--space-lg);background:color-mix(in srgb,var(--surface-1) 92%,transparent);border-top:1px solid color-mix(in srgb,var(--border) 85%,transparent);backdrop-filter:blur(calc(var(--blur)*.9)) saturate(150%);-webkit-backdrop-filter:blur(calc(var(--blur)*.9)) saturate(150%)}
+.u-modal__head{position:sticky;top:0;z-index:var(--z-sticky);display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);padding:var(--space-lg);background:color-mix(in srgb,var(--surface-1) 85%,transparent);border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%)}
+.u-modal__body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--space-lg);font-size:.875rem}
+.u-modal__foot{position:sticky;bottom:0;z-index:var(--z-sticky);display:flex;justify-content:space-between;align-items:center;gap:var(--space-md);padding:var(--space-md) var(--space-lg);background:color-mix(in srgb,var(--surface-1) 85%,transparent);border-top:1px solid color-mix(in srgb,var(--border) 50%,transparent);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%)}
+.u-modal__body{font-size:.875rem!important}
+.u-modal__body *{font-size:.875rem!important;line-height:1.5!important}
+.u-modal__body label,.u-modal__body .u-text-xs,.u-modal__body .section-divider{font-size:.75rem!important}
+.u-modal__body input,.u-modal__body select,.u-modal__body textarea{font-size:.875rem!important}
+.u-modal__body .u-badge{font-size:.75rem!important;padding:.25rem .5rem!important}
 body.modal-open{overflow:hidden}
+@media (max-width:640px){.u-modal__card{transform:scale(.98) translateY(12px)}.u-modal:not([hidden]):not(.is-hidden) .u-modal__card{transform:scale(1) translateY(0)}}
 #createApprovalModal,#detailApprovalModal,#uraianModal,#noteEditorModal,#publishDescriptionModal,#vacancyDetailModal,#editVacancyModal{background-color:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;position:fixed;inset:0}
 #createApprovalModal{z-index:1050!important}#detailApprovalModal{z-index:1060!important}#uraianModal{z-index:2000!important}#noteEditorModal{z-index:2050!important}#publishDescriptionModal,#vacancyDetailModal,#editVacancyModal{z-index:2200!important}
 #uraianModal:not([hidden]),#noteEditorModal:not([hidden]),#publishDescriptionModal,#vacancyDetailModal:not([hidden]),#editVacancyModal:not([hidden]){display:flex!important}
@@ -248,11 +258,9 @@ table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:before { con
 .leaflet-popup-close-button { font-size: 18px!important; color: var(--muted)!important; }
 .leaflet-popup-close-button:hover { color: var(--text)!important; }
 .leaflet-interactive{stroke:var(--accent)!important;fill-opacity:0.1!important}
-.float-in{animation:modalFloatIn .4s cubic-bezier(0.16,1,0.3,1) forwards}
 @keyframes liquidSpin{0%,100%{transform:scale(0)}50%{transform:scale(1)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes modalFloatIn{from{opacity:0;transform:scale(.985) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @media (max-width:768px){
 .u-grid-2-custom,.u-grid-2{grid-template-columns:1fr;gap:var(--space-sm)}
 .u-modal,.u-modal__head,.u-modal__body,.u-modal__foot,.u-panels{padding:var(--space-sm)}

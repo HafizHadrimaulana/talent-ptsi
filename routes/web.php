@@ -110,7 +110,12 @@ Route::middleware('web')->group(function () {
             Route::get('contracts/api/recruitment-requests/{recruitmentRequestId}/detail', [ContractController::class, 'getRecruitmentDetail'])->middleware('permission:contract.create')->name('contracts.api.recruitment-detail');
             Route::get('contracts/api/recruitment-requests/{recruitmentRequestId}/applicants', [ContractController::class, 'getApplicantsFromRequest'])->middleware('permission:contract.create')->name('contracts.api.recruitment-applicants');
             Route::get('contracts/api/persons/{personId}', [ContractController::class, 'getPersonData'])->middleware('permission:contract.create')->name('contracts.api.person-data');
-            Route::get('contracts/{contract}', [ContractController::class, 'show'])->middleware('permission:contract.view')->name('contracts.show');
+            
+            // SECURITY: Rate limit sensitive endpoints to prevent data scraping
+            Route::get('contracts/{contract}', [ContractController::class, 'show'])
+                ->middleware(['permission:contract.view', 'throttle:60,1'])
+                ->name('contracts.show');
+            
             Route::delete('contracts/{contract}', [ContractController::class, 'destroy'])->middleware('permission:contract.delete')->name('contracts.destroy');
             Route::get('contracts/{contract}/document', [ContractController::class, 'document'])
                 ->middleware('permission:contract.view')

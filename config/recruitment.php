@@ -17,7 +17,6 @@ return [
 'BIODATA'=>['code'=>'BIODATA','label'=>'Biodata','mode'=>'bio','requires_applicant'=>true,'requires_existing_contract'=>false,'document_type'=>'BD'],
 ],
 'employment_types'=>[
-    'Tetap'=>'Tetap',
     'Kontrak Organik'=>'Kontrak Organik',
     'Kontrak-Project Based'=>'Kontrak-Project Based',
     'Kontrak-MPS'=>'Kontrak-MPS',

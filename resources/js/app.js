@@ -8,11 +8,12 @@ import 'datatables.net-dt/css/dataTables.dataTables.css';
 import 'datatables.net-responsive-dt';
 import 'datatables.net-responsive-dt/css/responsive.dataTables.css';
 
-import { initDataTables, bindExternalSearch } from './plugins/datatables';
+import { initDataTables, bindExternalSearch, reloadTable } from './plugins/datatables';
 import { initModalHandler, openModal, closeModal } from './utils/modal';
 
 window.initDataTables = initDataTables;
 window.bindExternalSearch = bindExternalSearch;
+window.reloadTable = reloadTable;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.initModalHandler = initModalHandler;

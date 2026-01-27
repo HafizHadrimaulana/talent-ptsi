@@ -783,6 +783,25 @@ class ContractController extends Controller
      */
     public function show(Contract $contract)
     {
+        // SECURITY: Only allow AJAX requests - prevent direct browser access to JSON
+        if (!request()->ajax() && !request()->wantsJson()) {
+            abort(404);
+        }
+        
+        // AUTHORIZATION: Verify user can view this contract
+        $me = auth()->user();
+        $canView = $me->can('contract.read');
+        
+        // Non-admin users can only view their own contracts
+        if (!$me->hasRole(['Superadmin', 'DHC', 'SDM Unit', 'Kepala Unit'])) {
+            $isOwner = ($contract->employee_id && $contract->employee_id === $me->employee_id)
+                || ($contract->applicant && $contract->applicant->user_id === $me->id);
+            
+            if (!$isOwner && !$canView) {
+                abort(403, 'Unauthorized access to contract');
+            }
+        }
+        
         $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
 
         $creatorName = 'System';
@@ -1414,7 +1433,7 @@ class ContractController extends Controller
         if (($v = $m['allowance_communication_amount'] ?? 0))
             $list[] = "T.Komunikasi " . $fmt($v);
         if (($v = $m['allowance_special_amount'] ?? 0))
-            $list[] = "T.Khusus " . $fmt($v);
+            $list[] = "T.Project " . $fmt($v);
         if (($v = $m['allowance_other_amount'] ?? 0))
             $list[] = "Lainnya " . $fmt($v);
         return implode(', ', $list) ?: '-';

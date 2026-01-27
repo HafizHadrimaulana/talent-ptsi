@@ -12,7 +12,8 @@ export default defineConfig({
                 'resources/css/map.css',
                 'resources/js/app.js',
                 'resources/js/app-layout.js',
-                'resources/js/pages/training/index.js'
+                'resources/js/pages/training/index.js',
+                'resources/js/pages/recruitment/contracts/index.js'
             ],
             refresh: true,
         }),
