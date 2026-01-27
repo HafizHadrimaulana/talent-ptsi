@@ -389,13 +389,6 @@ const toggleEditMode = ($modal, isEditing) => {
         $modal.find(".view-mode").addClass("hidden");
         $modal.find(".edit-mode").removeClass("hidden");
 
-        // Sync data dari view ke input
-        // $modal
-        //     .find('input[name="judul_sertifikasi"]')
-        //     .val($modal.find(".judul_sertifikasi").text().trim());
-        // $modal
-        //     .find('input[name="unit"]')
-        //     .val($modal.find(".detail-unit").text().trim());
         $modal
             .find('input[name="penyelenggara"]')
             .val($modal.find(".detail-penyelenggara").text().trim());
@@ -411,12 +404,13 @@ const toggleEditMode = ($modal, isEditing) => {
         $modal
             .find('input[name="fungsi"]')
             .val($modal.find(".detail-fungsi").text().trim());
-        $modal
-            .find('input[name="jenis_portofolio"]')
-            .val($modal.find(".detail-jenis_portofolio").text().trim());
-        $modal
-            .find('input[name="jenis_pelatihan"]')
-            .val($modal.find(".detail-jenis_pelatihan").text().trim());
+
+        const jenisPortofolio = $modal.find(".detail-jenis_portofolio").text().trim();
+        $modal.find('select[name="jenis_portofolio"]').val(jenisPortofolio);
+
+        const jenisPelatihan = $modal.find(".detail-jenis_pelatihan").text().trim();
+        $modal.find('select[name="jenis_pelatihan"]').val(jenisPelatihan);
+
         $modal.find('input[name="biaya_pelatihan"]').val(
             $modal
                 .find(".detail-biaya_pelatihan")
