@@ -215,22 +215,6 @@
 const CAN_UPDATE = {{ $canUpdate ? 'true' : 'false' }};
 const CAN_DELETE = {{ $canDelete ? 'true' : 'false' }};
 
-// iOS Liquid Glass Alert Helper
-const showAlert = (options = {}) => {
-    const defaults = {
-        customClass: {
-            popup: 'swal2-ios-glass',
-            title: 'swal2-ios-title',
-            confirmButton: 'swal2-ios-confirm',
-            cancelButton: 'swal2-ios-cancel'
-        },
-        buttonsStyling: false,
-        confirmButtonText: 'OK',
-        cancelButtonText: 'Batal'
-    };
-    return Swal.fire({ ...defaults, ...options });
-};
-
 document.addEventListener('DOMContentLoaded', function () {
     
     function initDynamicLightbox() {
@@ -476,13 +460,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const result = await response.json().catch(() => ({}));
                 
                 if (response.ok) {
-                    showAlert({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: isUpdate ? 'User berhasil diupdate' : 'User berhasil dibuat',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    showSuccess(
+                        isUpdate ? 'User berhasil diupdate' : 'User berhasil dibuat',
+                        'Berhasil'
+                    );
                     window.closeModal('#editModal');
                     editForm.reset();
                     // DT reload - no page refresh
@@ -491,11 +472,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     throw new Error(result.message || 'Gagal menyimpan user');
                 }
             } catch (err) {
-                showAlert({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: err.message || 'Terjadi kesalahan saat menyimpan user'
-                });
+                showError(
+                    err.message || 'Terjadi kesalahan saat menyimpan user',
+                    'Gagal'
+                );
             } finally {
                 // Re-enable form
                 submitBtn.disabled = false;
@@ -506,30 +486,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     window.deleteUser = function(id) {
-        showAlert({
-            title: 'Hapus User?',
-            text: 'User account akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Hapus',
-            cancelButtonText: 'Batal',
-            customClass: {
-                confirmButton: 'swal2-ios-confirm swal2-ios-danger'
-            }
-        }).then((result) => {
+        showDeleteConfirm(
+            'User account akan dihapus permanen',
+            'Hapus User?'
+        ).then((result) => {
             if (!result.isConfirmed) return;
             
-            // Show loading
-            showAlert({
-                title: 'Menghapus...',
-                text: 'Mohon tunggu',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+            // Show loading toast
+            showLoading('Menghapus user...');
             
             fetch(`${UPDATE_BASE}/${id}`, {
                 method: 'POST',
@@ -545,22 +509,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 return res.json();
             })
             .then(() => {
-                showAlert({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: 'User berhasil dihapus',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                showSuccess('User berhasil dihapus', 'Berhasil');
                 // DT reload - no page refresh
                 usersTable.ajax.reload(null, false);
             })
             .catch(err => {
-                showAlert({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: 'Gagal menghapus user: ' + err.message
-                });
+                showError('Gagal menghapus user: ' + err.message, 'Gagal');
             });
         });
     };

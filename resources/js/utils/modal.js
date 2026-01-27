@@ -8,6 +8,16 @@ export function openModal(modalOrId) {
 
     if (!modal) return;
 
+    // Close all other modals first to prevent stacking
+    const allModals = document.querySelectorAll('.u-modal:not(.hidden):not([hidden])');
+    allModals.forEach(m => {
+        if (m !== modal) {
+            m.classList.add('hidden', 'is-hidden');
+            m.hidden = true;
+            m.style.display = 'none';
+        }
+    });
+
     // Show with smooth animation
     modal.classList.remove('hidden', 'is-hidden');
     modal.hidden = false;

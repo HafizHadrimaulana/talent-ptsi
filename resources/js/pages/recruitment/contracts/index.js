@@ -83,35 +83,28 @@ document.addEventListener('DOMContentLoaded', () => {
     initSignModal();
 
     // Delete handler
-    $(document).on('click', '.js-btn-delete', function(e) {
+    $(document).on('click', '.js-btn-delete', async function(e) {
         e.preventDefault();
         const btnDelete = this;
         const csrf = select('meta[name="csrf-token"]')?.content;
-        Swal.fire({
-            title: 'Hapus Dokumen?',
-            text: "Data tidak dapat dikembalikan!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            confirmButtonText: 'Ya, Hapus!'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = btnDelete.dataset.url;
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = csrf;
-                form.appendChild(csrfInput);
-                const methodInput = document.createElement('input');
-                methodInput.type = 'hidden';
-                methodInput.name = '_method';
-                methodInput.value = 'DELETE';
-                form.appendChild(methodInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
-        });
+        
+        const confirmed = await window.showDeleteConfirm('dokumen ini');
+        if (confirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = btnDelete.dataset.url;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrf;
+            form.appendChild(csrfInput);
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
     });
 });

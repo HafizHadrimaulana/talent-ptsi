@@ -406,42 +406,9 @@ document.addEventListener('DOMContentLoaded', () => {
     [notifDropdown, userDropdown].forEach(p=>{ if(p){ p.hidden=true; }});
   })();
 
-  /* ========= SweetAlert2 (Universal iOS Glass) ========= */
-  (function initSwalIOS(){
-    const ensureSwal = () => new Promise((resolve, reject)=>{
-      if (window.Swal) return resolve(window.Swal);
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js';
-      s.async = true;
-      s.onload = ()=> resolve(window.Swal);
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-
-    const buildMixin = () => {
-      const ios = Swal.mixin({
-        customClass: {
-          container: 'swal-ios-container',
-          popup:     'swal-ios-popup glass',
-          title:     'swal-ios-title',
-          htmlContainer: 'swal-ios-html',
-          confirmButton: 'swal-ios-btn swal-ios-btn--confirm',
-          cancelButton:  'swal-ios-btn swal-ios-btn--cancel',
-          denyButton:    'swal-ios-btn swal-ios-btn--danger',
-          actions:   'swal-ios-actions',
-          icon:      'swal-ios-icon',
-          input:     'swal-ios-input',
-          timerProgressBar: 'swal-ios-progress'
-        },
-        buttonsStyling: false,
-        backdrop: true,
-        background: 'transparent',
-        showClass: { popup: 'swal2-show' },
-        hideClass: { popup: 'swal2-hide' }
-      });
-      return ios;
-    };
-
+  /* ========= SweetAlert2 Flash Messages ========= */
+  // Note: SweetAlert2 config now handled globally in alert.js for consistency
+  (function initFlashHandler(){
     const readFlashMeta = () => {
       const meta = document.querySelector('meta[name="swal"]');
       if (meta?.content) {
@@ -450,41 +417,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return null;
     };
 
-    ensureSwal().then(()=>{
-      const IOS = buildMixin();
-
-      const api = {
-        fire: (opts)=> IOS.fire(opts),
-        success: (title='Berhasil', text='')=> IOS.fire({icon:'success', title, text}),
-        error:   (title='Gagal', text='')   => IOS.fire({icon:'error',   title, text}),
-        info:    (title='Info', text='')    => IOS.fire({icon:'info',    title, text}),
-        warn:    (title='Perhatian', text='')=> IOS.fire({icon:'warning', title, text}),
-        toast:   (title='Tersimpan', icon='success')=> IOS.fire({
-          toast:true, position:'top-end', icon, title,
-          showConfirmButton:false, timer:2500, timerProgressBar:true
-        }),
-        confirm: async (title='Apakah Anda yakin?', text='Tindakan ini tidak dapat dibatalkan.', confirmText='Ya, lanjut', cancelText='Batal', icon='question')=>{
-          const res = await IOS.fire({
-            icon, title, text, showCancelButton:true,
-            confirmButtonText:confirmText, cancelButtonText:cancelText,
-            reverseButtons:true, focusCancel:true
-          });
-          return res.isConfirmed === true;
-        }
-      };
-      window.SwalIOS = api;
-
-      // Auto flash jika ada payload dari server (via <meta name="swal">)
+    // Wait for global alert functions to be available
+    if (typeof window.showAlert === 'function') {
       const flash = readFlashMeta();
       if (flash && typeof flash === 'object') {
-        api.fire(flash);
+        window.showAlert(flash);
         try {
           const meta = document.querySelector('meta[name="swal"]');
           if (meta) meta.remove();
         } catch(_){}
       }
-    }).catch(()=> {
-      console.warn('SweetAlert2 gagal dimuat.');
-    });
+    }
   })();
 });

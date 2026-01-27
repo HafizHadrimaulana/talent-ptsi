@@ -39,10 +39,13 @@
                             <a href="{{ route('admin.contract-templates.edit', $t->id) }}" class="u-btn u-btn--sm u-btn--outline u-btn--icon" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form action="{{ route('admin.contract-templates.destroy', $t->id) }}" method="POST" style="display:inline-block" onsubmit="return confirm('Hapus template ini?')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="u-btn u-btn--sm u-btn--danger u-btn--icon" title="Hapus"><i class="fas fa-trash"></i></button>
-                            </form>
+                            <button type="button" 
+                                    class="u-btn u-btn--sm u-btn--danger u-btn--icon js-delete-template" 
+                                    data-id="{{ $t->id }}" 
+                                    data-name="{{ $t->name }}" 
+                                    title="Hapus">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                     @endforeach
@@ -62,6 +65,34 @@ document.addEventListener('DOMContentLoaded', function() {
             order: [[1, 'asc']]
         });
     }
+
+    // Delete template handler with toast confirmation
+    document.addEventListener('click', function(e) {
+        const deleteBtn = e.target.closest('.js-delete-template');
+        if (!deleteBtn) return;
+
+        const templateId = deleteBtn.dataset.id;
+        const templateName = deleteBtn.dataset.name;
+
+        showDeleteConfirm(
+            `Template "${templateName}" akan dihapus permanen`,
+            'Hapus Template?'
+        ).then((result) => {
+            if (!result.isConfirmed) return;
+
+            showLoading('Menghapus template...');
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `{{ url('admin/contract-templates') }}/${templateId}`;
+            form.innerHTML = `
+                @csrf
+                @method('DELETE')
+            `;
+            document.body.appendChild(form);
+            form.submit();
+        });
+    });
 });
 </script>
 @endsection

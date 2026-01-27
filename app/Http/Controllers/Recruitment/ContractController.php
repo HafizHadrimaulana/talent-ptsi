@@ -1261,11 +1261,15 @@ class ContractController extends Controller
             }
         }
 
-        // Extract hanya font-family dari template CSS tanpa menghapus @page dan body
+        // Extract dan bersihkan template CSS
         $tplCss = (string) ($template->css ?? '');
+        // Hapus deklarasi body dan @page dari template CSS untuk menghindari konflik
+        $tplCss = preg_replace('/@page\s*\{[^}]*\}/i', '', $tplCss);
+        $tplCss = preg_replace('/body\s*\{[^}]*\}/i', '', $tplCss);
 
-        $css = "@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}{$fontFaceCss}
-        body{margin:0;padding:0;font-family:{$finalFamily},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:rgba(255,255,255,0.88);}
+        $css = "{$fontFaceCss}
+        @page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}
+        body{margin:0;padding:0;font-family:{$finalFamily},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:#ffffff;}
         .letterhead-img{position:fixed;top:-{$mt}cm;left:-{$ml}cm;width:{$pw}cm;height:{$ph}cm;z-index:-9999;opacity:1.0;}
         .content{margin:0!important;padding:0!important;}
         p{margin:0 0 {$pa}pt 0;text-align:justify;text-justify:inter-word;}
@@ -1286,9 +1290,6 @@ class ContractController extends Controller
         table.ttd td{text-align:center;vertical-align:top;}
         .sig-box{height:70px;}
         {$tplCss}";
-
-        // Hapus deklarasi body duplikat untuk memastikan hanya satu font-family yang digunakan
-        $css = preg_replace('/body\s*\{[^}]*font-family:[^;]+;[^}]*\}/', '', $css, 1);
 
         $bg = $lhImg ? ("<img class='letterhead-img' src='{$lhImg}'>") : '';
         return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body>{$bg}{$body}</body></html>";
