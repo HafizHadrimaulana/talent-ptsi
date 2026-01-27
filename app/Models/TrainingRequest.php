@@ -17,6 +17,10 @@ class TrainingRequest extends Model
         'realisasi_biaya_pelatihan',
         'estimasi_total_biaya',
         'lampiran_penawaran',
+        'dokumen_sertifikat',
+        'is_evaluated',
+        'is_ikatan_dinas_filled',
+        'signed_document_path',
     ];
 
     // Relasi ke training_reference

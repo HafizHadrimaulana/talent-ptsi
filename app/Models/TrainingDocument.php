@@ -10,7 +10,9 @@ class TrainingDocument extends Model
         'training_request_id',
         'template_code',
         'payload',
-        'draft_path',
+        'signed_face_path',
+        'signed_signature_path',
+        'signed_location',
         'signed_path',
         'status',
         'signed_at',
@@ -19,6 +21,7 @@ class TrainingDocument extends Model
 
     protected $casts = [
         'payload' => 'array',
+        'signed_location' => 'array',
         'signed_at' => 'datetime',
     ];
 
