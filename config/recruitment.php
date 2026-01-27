@@ -46,7 +46,7 @@ return [
 'UJ'=>['margin_cm'=>['top'=>3.5, 'right' => 2.0, 'bottom' => 2.7, 'left' => 2.0]],
 'BIODATA' => ['margin_cm' => ['top' => 3.5, 'right' => 2.0, 'bottom' => 2.8, 'left' => 2.0]],
 ],
-'font'=>['family'=>'Tahoma','size_pt'=>11,'title_size_pt'=>14,'line_height'=>1.15,'paragraph_after_pt'=>3,'regular_file'=>'app/fonts/tahoma.ttf','bold_file'=>'app/fonts/tahomabd.ttf'],
+'font'=>['family'=>'Tahoma','size_pt'=>11,'title_size_pt'=>14,'line_height'=>1.15,'paragraph_after_pt'=>3,'regular_file'=>'fonts/tahoma.ttf','bold_file'=>'fonts/tahomabd.ttf'],
 'dompdf'=>['dpi'=>96,'isRemoteEnabled'=>true,'isHtml5ParserEnabled'=>true],
 ],
 ];
