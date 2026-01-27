@@ -20,10 +20,8 @@
       <form id="lna-input-form" method="POST">
         @csrf
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 u-gap-md">
-          
-          {{-- Kolom Kiri: Detail Pelatihan --}}
-          <div class="u-space-y-md">
+        <div class="u-space-y-lg">
+          <div class="grid grid-cols-2 u-gap-md">
             <div class="u-card u-p-md u-shadow-sm border-0 bg-slate-50/50">
               <div class="font-bold u-mb-md u-flex u-items-center u-gap-md">
                 <i class="fas fa-book text-brand"></i>
@@ -68,11 +66,7 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          {{-- Kolom Kanan: Proyek & Biaya --}}
-          <div class="u-space-y-md">
-            
             {{-- Card Detail Proyek --}}
             <div class="u-card u-p-md u-shadow-sm border-0 bg-slate-50/50">
               <div class="font-bold u-mb-md u-flex u-items-center u-gap-md">
@@ -89,15 +83,34 @@
                 <div class="grid grid-cols-2 u-gap-sm">
                   <div class="u-space-y-xs">
                     <label class="font-medium after:content-['*'] after:text-red-500">Jenis Portofolio</label>
-                    <input type="text" name="jenis_portofolio" class="u-input u-font-semibold" placeholder="Jenis portofolio" required>
+                    <select name="jenis_portofolio" class="u-input u-font-semibold" required>
+                      <option value="" disabled selected>Pilih jenis portofolio</option>
+                      <option value="kompetensi portofolio">Kompetensi Portofolio</option>
+                      <option value="kompetensi non portofolio">Kompetensi Non Portofolio</option>
+                    </select>
                   </div>
                   <div class="u-space-y-xs">
                     <label class="font-medium after:content-['*'] after:text-red-500">Fungsi</label>
                     <input type="text" name="fungsi" class="u-input u-font-semibold" placeholder="Fungsi pekerjaan" required>
                   </div>
                 </div>
+                <div class="u-space-y-xs">
+                  <label class="font-medium after:content-['*'] after:text-red-500">Jenis Pelatihan</label>
+                  <select name="jenis_pelatihan" class="u-input u-font-semibold" required>
+                      <option value="" disabled selected>Pilih jenis pelatihan</option>
+                      <option value="Expertise Development Program">Expertise Development Program</option>
+                      <option value="Leadership Development Program">Leadership Development Program</option>
+                      <option value="Service Knowledge Program">Service Knowledge Program</option>
+                      <option value="Business Recommendation Program">Business Recommendation Program</option>
+                  </select>
+                </div>
               </div>
             </div>
+          </div>
+          
+
+          {{-- Kolom Kanan: Proyek & Biaya --}}
+          <div class="u-space-y-md">
 
             {{-- Card Biaya --}}
             <div class="u-card u-p-md u-shadow-sm border-0 bg-emerald-50/50 border-l-4 border-l-emerald-400">
@@ -108,7 +121,6 @@
               <div class="u-space-y-xs">
                 <label class="font-medium after:content-['*'] after:text-red-500">Biaya Pelatihan (Rp)</label>
                 <div class="u-flex u-items-center u-gap-xs">
-                  <span class="font-bold text-slate-400">Rp</span>
                   <input type="text" name="biaya_pelatihan" class="u-input u-font-semibold border-emerald-200 focus:border-emerald-500" placeholder="Masukkan angka" required>
                 </div>
               </div>

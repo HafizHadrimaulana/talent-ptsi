@@ -21,6 +21,7 @@ class TrainingReference extends Model
         'biaya_pelatihan',
         'nama_proyek',
         'jenis_portofolio',
+        'jenis_pelatihan',
         'fungsi',
         'status_training_reference',
     ];

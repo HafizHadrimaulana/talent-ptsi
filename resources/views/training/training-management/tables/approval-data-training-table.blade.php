@@ -11,6 +11,7 @@
             <th>Biaya Pelatihan</th>
             <th>Nama Proyek</th>
             <th>Jenis Portofolio</th>
+            <th>Jenis Pelatihan</th>
             <th>Fungsi</th>
             <th>Status</th>
             <th class="cell-actions">Aksi</th>

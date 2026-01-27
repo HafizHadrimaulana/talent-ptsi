@@ -79,6 +79,7 @@ Route::middleware('web')->group(function () {
                 Route::post('training-request/{id}/approve-training-request', [TrainingRequestController::class, 'approveTrainingRequest'])->name('training-request.approve-training-request');
                 Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class, 'rejectTrainingRequest'])->name('training-request.reject-training-request');
                 Route::get('/training-request/lampiran_penawaran/{filename}', [TrainingRequestController::class, 'viewDocument'])->name('training.view-document');
+                Route::get('/training-request/download-ikatan-dinas/{id}', [TrainingRequestController::class, 'downloadSignedIkdin'])->name('ikatan-dinas.download');
             });
 
             Route::middleware('permission:training.management.view')->group(function () {

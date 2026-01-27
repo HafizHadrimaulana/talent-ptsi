@@ -2,7 +2,7 @@
     <div class="u-modal__card u-modal__card--lg">
 
         <input type="hidden" id="signature-training-document-id" name="training_document_id">
-        <input type="hidden" id="signature-document-id" name="document_id">
+        <!-- <input type="hidden" id="signature-document-id" name="document_id"> -->
         
         {{-- Modal Header --}}
         <div class="u-modal__head u-mb-sm">

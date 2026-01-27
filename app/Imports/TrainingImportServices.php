@@ -48,10 +48,10 @@ class TrainingImportServices
                         DB::raw('MAX(biaya_pelatihan) as biaya_pelatihan'),
                         DB::raw('MAX(nama_proyek) as nama_proyek'),
                         DB::raw('MAX(jenis_portofolio) as jenis_portofolio'),
+                        DB::raw('MAX(jenis_pelatihan) as jenis_pelatihan'),
                         DB::raw('MAX(fungsi) as fungsi'),
                     )
                     ->groupBy('judul_sertifikasi', 
-                        // 'penyelenggara', 
                         'unit_kerja'
                         )
                     ->get();
@@ -74,6 +74,7 @@ class TrainingImportServices
                         "biaya_pelatihan"      => $row->biaya_pelatihan,
                         "nama_proyek"          => $row->nama_proyek,
                         "jenis_portofolio"     => $row->jenis_portofolio,
+                        "jenis_pelatihan"      => $row->jenis_pelatihan,
                         "fungsi"               => $row->fungsi,
                         "created_at"           => now(),
                         "updated_at"           => now(),
@@ -155,6 +156,7 @@ class TrainingImportServices
             'biaya_pelatihan',
             'nama_proyek',
             'jenis_portofolio',
+            'jenis_pelatihan',
             'fungsi',
             'updated_at'
         ];

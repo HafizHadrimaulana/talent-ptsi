@@ -91,9 +91,17 @@
                         </button>
                         @endif
 
-                        <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
-                            <i class="fas fa-users"></i> Ikatan Dinas
-                        </button>
+                        @if (strtolower($item->trainingReference?->jenis_pelatihan ?? '') ==='expertise development program')
+                            @if($item->is_ikatan_dinas_filled == 0)
+                                <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
+                                    <i class="fas fa-users"></i> Ikatan Dinas
+                                </button>
+                            @else
+                                <a href="{{ route('training.ikatan-dinas.download', $item->id) }}" class="u-btn u-btn--xs u-btn--success">
+                                    <i class="fas fa-download"></i> Download Dokumen Ikatan Dinas
+                                </a>
+                            @endif
+                        @endif
                     </td>
                 </tr>
                 @empty
@@ -263,13 +271,8 @@
 
                             // Set ID ke modal signature
                             $('#signature-training-document-id').val(response.training_document_id);
-                            $('#signature-document-id').val(response.document_id);
 
                             $modalSignature.removeClass('hidden').fadeIn(200);
-
-                            console.log('kirim trainingId', response.training_id);
-                            console.log('kirim training_document_id', response.training_document_id);
-                            console.log('kirim documentId', response.document_id);
                         });
                     }
                 },
@@ -287,22 +290,17 @@
             
             // Ambil ID dari input hidden di modal signature
             const trainingDocumentId = $('#signature-training-document-id').val();
-            const documentId = $('#signature-document-id').val();
-            
-            console.log('trainingDocumentId', trainingDocumentId);
-            console.log('documentId', documentId);
             
             if (confirm('Batal tanda tangan? Data dokumen yang baru dibuat akan dihapus.')) {
                 
                 // Jalankan Fungsi Hapus Data di Backend
-                if (documentId) {
+                if (trainingDocumentId) {
                     $.ajax({
                         url: "/training/training-request/delete-dokumen-ikdin",
                         method: "POST",
                         data: {
                             _token: $('meta[name="csrf-token"]').attr('content'),
                             training_document_id: trainingDocumentId,
-                            document_id: documentId,
                         },
                         success: function(response) {
                             console.log("Dokumen sementara berhasil dihapus.");
@@ -330,7 +328,6 @@
         $(document).on('click', '#btn-preview-ikatan-dinas', function () {
             const $btn = $(this);
             const trainingDocumentId = $('#signature-training-document-id').val();
-            console.log('documentId', trainingDocumentId);
 
             if (!trainingDocumentId) {
                 alert('Dokumen belum tersedia untuk dipratinjau.');
@@ -474,7 +471,7 @@
             e.preventDefault();
 
             const trainingDocumentId = document.getElementById('signature-training-document-id').value;
-            const documentId = document.getElementById('signature-document-id').value;
+            // const documentId = document.getElementById('signature-document-id').value;
 
             if (!capturedPhoto) {
                 alert('Silakan ambil foto wajah terlebih dahulu');
@@ -502,7 +499,6 @@
                 },
                 body: JSON.stringify({
                     training_document_id: trainingDocumentId,
-                    document_id: documentId,
                     face_photo: capturedPhoto,
                     signature: signaturePad.toDataURL(),
                     latitude: userLocation.lat,
@@ -514,7 +510,34 @@
                 if (res.status === 'success') {
                     console.log(res);
                     alert('Dokumen berhasil ditandatangani');
-                    // location.reload();
+
+                    // ===== Tutup modal =====
+                    modal.classList.add('hidden');
+
+                    // ===== Reset semua state =====
+                    capturedPhoto = null;
+                    userLocation = null;
+                    signaturePad.clear();
+
+                    snapshotPreview.style.display = 'none';
+                    snapshotPreview.src = '';
+
+                    video.style.display = 'block';
+                    btnCapture.classList.remove('is-hidden');
+                    btnRetake.classList.add('is-hidden');
+
+                    cameraPlaceholder.style.display = 'block';
+
+                    locationText.innerText = '';
+                    locationDetail.innerText = '';
+
+                    // Stop kamera saat modal ditutup
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                        stream = null;
+                    }   
+
+                    location.reload(); 
                 } else {
                     alert('Gagal menandatangani dokumen');
                 }

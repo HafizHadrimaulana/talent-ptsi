@@ -21,6 +21,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -43,6 +44,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -103,6 +105,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -327,6 +330,9 @@ const populateModalData = ($modal, data) => {
     $modal
         .find(".detail-portofolio, .detail-jenis_portofolio")
         .text(data.jenis_portofolio || "-");
+    $modal
+        .find(".detail-jenis_pelatihan, .detail-jenis_pelatihan")
+        .text(data.jenis_pelatihan || "-");
 
     // Informasi Biaya
     $modal
@@ -383,13 +389,6 @@ const toggleEditMode = ($modal, isEditing) => {
         $modal.find(".view-mode").addClass("hidden");
         $modal.find(".edit-mode").removeClass("hidden");
 
-        // Sync data dari view ke input
-        // $modal
-        //     .find('input[name="judul_sertifikasi"]')
-        //     .val($modal.find(".judul_sertifikasi").text().trim());
-        // $modal
-        //     .find('input[name="unit"]')
-        //     .val($modal.find(".detail-unit").text().trim());
         $modal
             .find('input[name="penyelenggara"]')
             .val($modal.find(".detail-penyelenggara").text().trim());
@@ -405,9 +404,13 @@ const toggleEditMode = ($modal, isEditing) => {
         $modal
             .find('input[name="fungsi"]')
             .val($modal.find(".detail-fungsi").text().trim());
-        $modal
-            .find('input[name="jenis_portofolio"]')
-            .val($modal.find(".detail-jenis_portofolio").text().trim());
+
+        const jenisPortofolio = $modal.find(".detail-jenis_portofolio").text().trim();
+        $modal.find('select[name="jenis_portofolio"]').val(jenisPortofolio);
+
+        const jenisPelatihan = $modal.find(".detail-jenis_pelatihan").text().trim();
+        $modal.find('select[name="jenis_pelatihan"]').val(jenisPelatihan);
+
         $modal.find('input[name="biaya_pelatihan"]').val(
             $modal
                 .find(".detail-biaya_pelatihan")
@@ -734,6 +737,18 @@ const renderStatusBadge = (status) => {
         },
         in_review_gmvp: {
             label: "In Review GM/VP",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_dhc: {
+            label: "In Review DHC",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_avpdhc: {
+            label: "In Review AVP DHC",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_vpdhc: {
+            label: "In Review VP DHC",
             class: "bg-sky-100 text-sky-700 border border-sky-200",
         },
         active: {

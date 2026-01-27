@@ -194,7 +194,14 @@
         <tr>
             <td style="width: 60%;"></td>
             <td style="text-align: center;">
-                Yang Membuat Peryataan,<br><br><br><br><br>
+                Yang Membuat Peryataan,<br><br>
+
+                @if(isset($signature_base64))
+                    <img src="{{ $signature_base64 }}" 
+                        alt="Tanda Tangan" 
+                        style="width:150px; height:auto; display:block; margin:0 auto 5px;">
+                @endif
+                <br>
                 <strong>{{ data_get($payload, 'employee.nama') }}</strong>
             </td>
         </tr>
