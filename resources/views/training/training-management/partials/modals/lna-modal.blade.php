@@ -85,6 +85,11 @@
                               <div class="view-mode u-font-semibold detail-jenis_portofolio text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
                               <input type="text" name="jenis_portofolio" class="edit-mode u-input hidden w-full">
                             </div>
+                            <div class="u-space-y-xs">
+                              <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Pelatihan</label>
+                              <div class="view-mode u-font-semibold detail-jenis_pelatihan text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                              <input type="text" name="jenis_pelatihan" class="edit-mode u-input hidden w-full">
+                            </div>
                         </div>
                     </div>
                 </div>

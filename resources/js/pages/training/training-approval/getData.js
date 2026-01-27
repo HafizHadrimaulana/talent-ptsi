@@ -21,6 +21,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -43,6 +44,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -103,6 +105,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -327,6 +330,9 @@ const populateModalData = ($modal, data) => {
     $modal
         .find(".detail-portofolio, .detail-jenis_portofolio")
         .text(data.jenis_portofolio || "-");
+    $modal
+        .find(".detail-jenis_pelatihan, .detail-jenis_pelatihan")
+        .text(data.jenis_pelatihan || "-");
 
     // Informasi Biaya
     $modal
@@ -408,6 +414,9 @@ const toggleEditMode = ($modal, isEditing) => {
         $modal
             .find('input[name="jenis_portofolio"]')
             .val($modal.find(".detail-jenis_portofolio").text().trim());
+        $modal
+            .find('input[name="jenis_pelatihan"]')
+            .val($modal.find(".detail-jenis_pelatihan").text().trim());
         $modal.find('input[name="biaya_pelatihan"]').val(
             $modal
                 .find(".detail-biaya_pelatihan")

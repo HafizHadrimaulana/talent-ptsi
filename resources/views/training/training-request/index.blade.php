@@ -91,14 +91,16 @@
                         </button>
                         @endif
 
-                        @if($item->is_ikatan_dinas_filled == 0)
-                            <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
-                                <i class="fas fa-users"></i> Ikatan Dinas
-                            </button>
-                        @else
-                            <a href="{{ route('training.ikatan-dinas.download', $item->id) }}" class="u-btn u-btn--xs u-btn--success">
-                                <i class="fas fa-download"></i> Download Dokumen Ikatan Dinas
-                            </a>
+                        @if (strtolower($item->trainingReference?->jenis_pelatihan ?? '') ==='expertise development program')
+                            @if($item->is_ikatan_dinas_filled == 0)
+                                <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
+                                    <i class="fas fa-users"></i> Ikatan Dinas
+                                </button>
+                            @else
+                                <a href="{{ route('training.ikatan-dinas.download', $item->id) }}" class="u-btn u-btn--xs u-btn--success">
+                                    <i class="fas fa-download"></i> Download Dokumen Ikatan Dinas
+                                </a>
+                            @endif
                         @endif
                     </td>
                 </tr>

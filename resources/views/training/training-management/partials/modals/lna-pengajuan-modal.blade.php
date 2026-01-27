@@ -92,6 +92,10 @@
                     <label class="font-medium after:content-['*'] after:text-red-500">Jenis Portofolio</label>
                     <input type="text" name="jenis_portofolio" class="u-input u-font-semibold" placeholder="Jenis portofolio" required>
                   </div>
+                  <div class="u-space-y-xs">
+                    <label class="font-medium after:content-['*'] after:text-red-500">Jenis Pelatihan</label>
+                    <input type="text" name="jenis_pelatihan" class="u-input u-font-semibold" placeholder="Jenis pelatihan" required>
+                  </div>
 
                   {{-- Fungsi --}}
                   <div class="u-space-y-xs">
@@ -111,7 +115,6 @@
               <div class="u-space-y-xs">
                 <label class="font-medium text-emerald-800 after:content-['*'] after:text-red-500">Biaya Pelatihan (Rp)</label>
                 <div class="u-flex u-items-center u-gap-xs">
-                    <span class="font-bold text-slate-400">Rp</span>
                     <input type="text" name="biaya_pelatihan" class="u-input u-font-semibold border-emerald-200 focus:border-emerald-500" placeholder="0" required>
                 </div>
               </div>

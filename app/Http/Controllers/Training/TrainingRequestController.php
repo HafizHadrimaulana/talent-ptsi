@@ -88,8 +88,12 @@ class TrainingRequestController extends Controller
             'start_date' => $item->start_date,
             'end_date' => $item->end_date,
             'status_approval_training' => $item->status_approval_training,
-            'approvals' => $item->approvals, // Jika ingin menampilkan timeline
-            // ... tambahkan field lain yang dibutuhkan modal evaluasi
+            
+            'can_ikatan_dinas' =>
+                strtolower($item->trainingReference?->jenis_pelatihan ?? '') ===
+                strtolower('Expertise Development Program'),
+
+            'approvals' => $item->approvals,
         ];
 
         Log::info('questions', ['questions' => $questions]);
@@ -678,6 +682,7 @@ class TrainingRequestController extends Controller
                         "biaya_pelatihan"   => $item->biaya_pelatihan ?? 0,
                         "nama_proyek"       => $item->nama_proyek ?? "-",
                         "jenis_portofolio"  => $item->jenis_portofolio ?? "-",
+                        "jenis_pelatihan"   => $item->jenis_pelatihan ?? "-",
                         "fungsi"            => $item->fungsi ?? "-",
                         "status_training_reference" => $item->status_training_reference,
                         "created_at"        => $item->created_at ? $item->created_at->format('Y-m-d H:i:s') : null,
@@ -748,6 +753,7 @@ class TrainingRequestController extends Controller
                     'biaya_pelatihan'   => $item->biaya_pelatihan ?? 0,
                     'nama_proyek'       => $item->nama_proyek ?? '-',
                     'jenis_portofolio'  => $item->jenis_portofolio ?? '-',
+                    'jenis_pelatihan'   => $item->jenis_pelatihan ?? '-',
                     'fungsi'            => $item->fungsi ?? '-',
                     'status_training_reference' => $item->status_training_reference,
                     'created_at'        => optional($item->created_at)
@@ -805,6 +811,7 @@ class TrainingRequestController extends Controller
                     'penyelenggara',
                     'jumlah_jam',
                     'jenis_portofolio',
+                    'jenis_pelatihan',
                     'fungsi',
                     'waktu_pelaksanaan',
                     'nama_proyek',
@@ -999,11 +1006,11 @@ class TrainingRequestController extends Controller
                 ]);
 
             $isDHC         = $user->hasRole('DHC');
-            $isAVP         = $user->hasRole('AVP');
+            $isAVPDHC      = $user->hasRole('AVP') && $this->isHumanCapital($user);
             $isKepalaUnit  = $user->hasRole('Kepala Unit');
             $isHumanCapital = $this->isHumanCapital($user);
 
-            $canSeeAllUnit = $isDHC || (($isAVP || $isKepalaUnit) && $isHumanCapital);
+            $canSeeAllUnit = $isDHC || (($isAVPDHC || $isKepalaUnit) && $isHumanCapital);
 
             if (!$canSeeAllUnit) {
                 $query->whereHas('employee', function ($q) use ($userUnitId) {
@@ -1036,8 +1043,11 @@ class TrainingRequestController extends Controller
             elseif ($isDHC) {
                 $query->where('status_approval_training', 'in_review_dhc');
             }
-            elseif ($isAVP && $isHumanCapital) {
+            elseif ($isAVPDHC && $isHumanCapital) {
                 $query->where('status_approval_training', 'in_review_avpdhc');
+            }
+            elseif ($user->hasRole('AVP') && !$isHumanCapital) {
+                $query->where('status_approval_training', 'in_review_gmvp');
             }
             elseif ($isKepalaUnit && !$isHumanCapital) {
                 $query->where('status_approval_training', 'in_review_gmvp');
@@ -1046,7 +1056,7 @@ class TrainingRequestController extends Controller
             if (!empty($allowedStatuses)) {
                 $query->whereIn('status_approval_training', $allowedStatuses);
             }
-
+                
             /**
              * ==================================================
              * FETCH DATA
@@ -1072,15 +1082,6 @@ class TrainingRequestController extends Controller
                     'status_approval_training' => $item->status_approval_training,
                 ];
             });
-
-            Log::info('Training Request Fetch OK', [
-                'role'              => $roles,
-                'user_unit_id'      => $userUnitId,
-                'can_see_all_unit'  => $canSeeAllUnit,
-                'filtered_unit_id' => $unitId,
-                'allowed_statuses' => $allowedStatuses,
-                'total'            => $trainingRequest->total(),
-            ]);
 
             return response()->json([
                 'status' => 'success',

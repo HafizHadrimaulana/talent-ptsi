@@ -411,7 +411,7 @@ class TrainingManagementController extends Controller
             $data = [];
             $fields = [
                 'judul_sertifikasi', 'penyelenggara', 'jumlah_jam', 
-                'waktu_pelaksanaan', 'nama_proyek', 'jenis_portofolio', 'fungsi'
+                'waktu_pelaksanaan', 'nama_proyek', 'jenis_portofolio', 'jenis_pelatihan', 'fungsi'
             ];
 
             // Field biasa (string)
@@ -511,6 +511,7 @@ class TrainingManagementController extends Controller
                     "biaya_pelatihan" => $item->biaya_pelatihan ?? 0,
                     "nama_proyek" => $item->nama_proyek ?? "-",
                     "jenis_portofolio" => $item->jenis_portofolio ?? "-",
+                    "jenis_pelatihan" => $item->jenis_pelatihan ?? "-",
                     "fungsi" => $item->fungsi ?? "-",
                     "status_training_reference" => $item->status_training_reference,
                     "created_at" => optional($item->created_at)?->format('Y-m-d H:i:s'),
@@ -697,6 +698,7 @@ class TrainingManagementController extends Controller
                 'biaya_pelatihan'       => 'required|numeric',
                 'nama_proyek'           => 'required|string|max:255',
                 'jenis_portofolio'      => 'required|string|max:255',
+                'jenis_pelatihan'      => 'required|string|max:255',
                 'fungsi'                => 'required|string|max:255',
             ]);
 
@@ -708,6 +710,7 @@ class TrainingManagementController extends Controller
                 'waktu_pelaksanaan'           => $request->waktu_pelaksanaan,
                 'nama_proyek'                 => $request->nama_proyek,
                 'jenis_portofolio'            => $request->jenis_portofolio,
+                'jenis_pelatihan'             => $request->jenis_pelatihan,
                 'fungsi'                      => $request->fungsi,
                 'biaya_pelatihan'             => $request->biaya_pelatihan,
                 'status_training_reference'   => $statusTrainingReference,
