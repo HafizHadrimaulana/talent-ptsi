@@ -86,7 +86,9 @@ class DashboardController extends Controller
             ->select('status_training_reference', DB::raw('count(*) as total'))
             ->pluck('total', 'status_training_reference');
 
-        $requestCounts = TrainingRequest::whereHas('employee', fn($q) => $q->whereIn('unit_id', $allValidUnitIds))
+        $requestCounts = TrainingRequest::whereHas('employee', function($q) use ($allValidUnitIds) {
+                $q->whereIn('unit_id', $allValidUnitIds);
+            })
             ->groupBy('status_approval_training')
             ->select('status_approval_training', DB::raw('count(*) as total'))
             ->pluck('total', 'status_approval_training');
