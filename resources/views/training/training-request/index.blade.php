@@ -534,6 +534,8 @@
                         stream.getTracks().forEach(track => track.stop());
                         stream = null;
                     }   
+
+                    location.reload(); 
                 } else {
                     alert('Gagal menandatangani dokumen');
                 }
