@@ -23,19 +23,30 @@ class DashboardController extends Controller
         $unitId   = $employee?->unit_id;
         $role     = $user->getRoleNames()->first();
 
-        // Logika Penentuan Hak Akses (DHC & Kepala Unit HC bisa lihat semua)
+        // 1. Logika Penentuan Hak Akses
         $isHumanCapital  = $this->isHumanCapital($user);
-        $isKepalaUnitHC  = $role === 'Kepala Unit' && $isHumanCapital;
-        $canViewAllUnits = $role === 'DHC' || $isKepalaUnitHC;
+        $isKepalaUnitHC  = ($role === 'Kepala Unit' && $isHumanCapital);
+        $canViewAllUnits = ($role === 'DHC' || $isKepalaUnitHC);
 
-        // BUDGET PER UNIT
-        // Filter Kategori Unit Sesuai Ketentuan
+        // 2. Filter Unit Berdasarkan Hak Akses
         $allowedCategories = ['operasi', 'cabang', 'enabler'];
-        $allValidUnits = DB::table('units')
-            ->whereIn('category', $allowedCategories)
-            ->get();
         
+        $unitQuery = DB::table('units')->whereIn('category', $allowedCategories);
+
+        // JIKA bukan DHC/Kepala Unit HC, batasi hanya untuk unit milik user sendiri
+        if (!$canViewAllUnits) {
+            $unitQuery->where('id', $unitId);
+        }
+
+        $allValidUnits = $unitQuery->get();
         $allValidUnitIds = $allValidUnits->pluck('id')->toArray();
+
+        // Jika user tidak punya unit dan tidak boleh akses semua, berikan array kosong agar data dashboard jadi 0
+        if (empty($allValidUnitIds)) {
+            $allValidUnitIds = [0]; 
+        }
+
+        // 3. BUDGET PER UNIT (Data otomatis terfilter karena menggunakan $allValidUnitIds)
         $anggaranData = DB::table('training_anggaran')
             ->whereIn('unit_id', $allValidUnitIds)
             ->pluck('limit_anggaran', 'unit_id');
@@ -68,9 +79,8 @@ class DashboardController extends Controller
                     : 0,
             ];
         });
-        // END BUDGET PER UNIT
-        
-        // STATISTIK LNA
+
+        // 4. STATISTIK LNA (Data otomatis terfilter karena menggunakan $allValidUnitIds)
         $referenceCounts = TrainingReference::whereIn('unit_id', $allValidUnitIds)
             ->groupBy('status_training_reference')
             ->select('status_training_reference', DB::raw('count(*) as total'))
@@ -91,7 +101,6 @@ class DashboardController extends Controller
             ['key' => 'approved', 'label' => 'Approved (Req)', 'total' => $requestCounts['approved'] ?? 0],
             ['key' => 'rejected', 'label' => 'Rejected', 'total' => $requestCounts['rejected'] ?? 0],
         ]);
-        // END STATISTIK LNA
 
         return view('training.dashboard.index', compact(
             'dashboardItems',
