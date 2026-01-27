@@ -740,9 +740,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (btnCancel) {
     btnCancel.addEventListener('click', function () {
-      if (confirm('Batalkan semua perubahan layout yang belum disimpan?')) {
-        window.location.reload();
-      }
+      showConfirm(
+        'Batalkan semua perubahan layout yang belum disimpan?',
+        'Konfirmasi'
+      ).then((result) => {
+        if (result.isConfirmed) {
+          window.location.reload();
+        }
+      });
     });
   }
 
@@ -910,16 +915,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     if (changed.length === 0) {
-      alert('Tidak ada perubahan layout.');
+      showInfo('Tidak ada perubahan layout', 'Info');
       return;
     }
 
-    if (!confirm('Simpan perubahan layout untuk ' + changed.length + ' unit?')) {
+    const confirmResult = await showConfirm(
+      'Simpan perubahan layout untuk ' + changed.length + ' unit?',
+      'Konfirmasi Simpan'
+    );
+    
+    if (!confirmResult.isConfirmed) {
       return;
     }
 
     if (!csrf) {
-      alert('CSRF token tidak ditemukan.');
+      showError('CSRF token tidak ditemukan', 'Error');
       return;
     }
 
@@ -927,6 +937,8 @@ document.addEventListener('DOMContentLoaded', function () {
       btnSaveLayout.disabled = true;
       btnSaveLayout.innerHTML = '<i class="fas fa-spinner fa-spin u-text-xs u-mr-xs"></i> Saving...';
     }
+
+    showLoading('Menyimpan perubahan layout...');
 
     try {
       for (const item of changed) {
@@ -945,10 +957,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
 
-      window.location.reload();
+      showSuccess('Layout berhasil disimpan', 'Berhasil');
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
       console.error(err);
-      alert('Gagal menyimpan layout: ' + err.message);
+      showError('Gagal menyimpan layout: ' + err.message, 'Error');
       if (btnSaveLayout) {
         btnSaveLayout.disabled = false;
         btnSaveLayout.innerHTML = '<i class="fas fa-save u-text-xs u-mr-xs"></i> Save Changes';
@@ -959,7 +972,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (btnSaveLayout) {
     btnSaveLayout.addEventListener('click', function () {
       if (!editing) {
-        alert('Aktifkan Edit Layout terlebih dahulu.');
+        showWarning('Aktifkan Edit Layout terlebih dahulu', 'Peringatan');
         return;
       }
       saveLayout();

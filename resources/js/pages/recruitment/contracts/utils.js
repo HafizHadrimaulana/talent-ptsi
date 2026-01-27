@@ -5,7 +5,23 @@ export const hide = el => { if(el){ el.hidden = true; el.style.display = 'none';
 export const show = el => { if(el){ el.hidden = false; el.style.display = 'flex'; el.classList.remove('is-hidden'); } };
 export const showBlock = el => { if(el){ el.hidden = false; el.style.display = 'block'; el.classList.remove('is-hidden'); } };
 export const money = n => (!n || n == 0) ? '-' : n.toString().replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
-export const safeJSON = (v) => { try{ return JSON.parse(v) || {}; } catch(e){ return v && typeof v === 'object' ? v : {}; } };
+export const safeJSON = (v) => { 
+    if (!v) return {};
+    if (typeof v === 'object' && v !== null) return v;
+    if (typeof v !== 'string') return {};
+    
+    try {
+        // Clean string sebelum parse
+        const cleaned = v.trim();
+        if (!cleaned || cleaned === 'null' || cleaned === 'undefined') return {};
+        
+        const parsed = JSON.parse(cleaned);
+        return (parsed && typeof parsed === 'object') ? parsed : {};
+    } catch(e) {
+        console.warn('JSON parse failed, returning empty object:', e.message);
+        return {};
+    }
+};
 export const terbilang = (n) => {
     const h = ['','satu','dua','tiga','empat','lima','enam','tujuh','delapan','sembilan','sepuluh','sebelas'];
     n = Math.abs(parseInt(n)) || 0;

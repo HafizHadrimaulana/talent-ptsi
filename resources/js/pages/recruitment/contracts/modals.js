@@ -20,26 +20,9 @@
 import { select, selectAll, hide, show, showBlock, money, terbilang, safeJSON, addDays, bindCalc, handleLocationAutofill } from './utils.js';
 import { initMap, maps } from './map.js';
 import { openModal, closeModal } from '../../../utils/modal.js';
+import { showAlert, showSuccess, showError, showConfirm, showDeleteConfirm, showLoading, closeAlert } from '../../../utils/alert.js';
 
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
-
-/**
- * iOS Liquid Glass Alert
- */
-const showAlert = (options = {}) => {
-    const defaults = {
-        customClass: {
-            popup: 'swal2-ios-glass',
-            title: 'swal2-ios-title',
-            confirmButton: 'swal2-ios-confirm',
-            cancelButton: 'swal2-ios-cancel'
-        },
-        buttonsStyling: false,
-        confirmButtonText: 'OK',
-        cancelButtonText: 'Batal'
-    };
-    return Swal.fire({ ...defaults, ...options });
-};
 
 /**
  * Create Modal Handler
@@ -73,6 +56,9 @@ export const initCreateModal = () => {
                 formData.append(submitBtn.name, submitBtn.value);
             }
             
+            // Show loading alert saat submit
+            showLoading('Menyimpan dokumen...');
+            
             const response = await fetch(formCreate.action, {
                 method: 'POST',
                 headers: {
@@ -84,16 +70,13 @@ export const initCreateModal = () => {
             
             const result = await response.json().catch(() => ({}));
             
+            closeAlert(); // Close loading
+            
             if (response.ok && (result.success ?? true)) {
-                showAlert({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: isDraft ? 'Draft berhasil disimpan' : 'Dokumen berhasil dibuat',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                showSuccess(isDraft ? 'Draft berhasil disimpan' : 'Dokumen berhasil dibuat');
                 closeModal('createContractModal');
                 formCreate.reset();
+                // Reload table di background
                 if (window.contractsTable) {
                     window.contractsTable.ajax.reload(null, false);
                 }
@@ -101,11 +84,8 @@ export const initCreateModal = () => {
                 throw new Error(result.message || 'Gagal menyimpan dokumen');
             }
         } catch (error) {
-            showAlert({
-                icon: 'error',
-                title: 'Gagal!',
-                text: error.message || 'Terjadi kesalahan saat menyimpan'
-            });
+            closeAlert(); // Close any loading
+            showError(error.message || 'Terjadi kesalahan saat menyimpan');
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
@@ -669,10 +649,37 @@ export const initEditModal = () => {
         e.preventDefault();
         const btnEdit = this;
         
+        // Buka modal dulu (instant)
+        openModal('editContractModal');
+        
+        // Tampilkan loading overlay di modal body
+        const modal = select('#editContractModal');
+        const modalBody = modal?.querySelector('.u-modal__body');
+        if (modalBody) {
+            // Reset scroll position
+            modalBody.scrollTop = 0;
+            modalBody.scrollLeft = 0;
+            
+            // Tambahkan loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'modal-loading-overlay';
+            loadingDiv.innerHTML = `
+                <div class="spinner-container">
+                    <div class="u-dt-liquid-spinner"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div>
+                    <div class="spinner-text">Memuat data kontrak...</div>
+                </div>
+            `;
+            modalBody.appendChild(loadingDiv);
+        }
+        
         try {
             const res = await fetch(btnEdit.dataset.showUrl, { 
                 headers: { 'Accept': 'application/json' } 
             }).then(r => r.json());
+            
+            // Hapus loading
+            const loadingDiv = modalBody?.querySelector('.modal-loading-overlay');
+            if (loadingDiv) loadingDiv.remove();
             
             if (!res.success) throw new Error(res.message);
             
@@ -761,9 +768,12 @@ export const initEditModal = () => {
                 hide(boxNew);
             }
             
-            openModal('editContractModal');
+            // Modal sudah dibuka di awal, tidak perlu openModal lagi
         } catch (err) {
             console.error(err);
+            const loadingDiv = modalBody?.querySelector('.modal-loading-overlay');
+            if (loadingDiv) loadingDiv.remove();
+            closeModal('editContractModal');
             showAlert({
                 icon: 'error',
                 title: 'Gagal!',
@@ -794,6 +804,9 @@ export const initEditModal = () => {
                     formData.append(submitBtn.name, submitBtn.value);
                 }
                 
+                // Show loading alert
+                showLoading('Menyimpan perubahan...');
+                
                 const response = await fetch(formEdit.action, {
                     method: 'POST',
                     headers: {
@@ -805,27 +818,23 @@ export const initEditModal = () => {
                 
                 const result = await response.json().catch(() => ({}));
                 
+                closeAlert(); // Close loading
+                
                 if (response.ok && (result.success ?? true)) {
-                    showAlert({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: isDraft ? 'Draft berhasil disimpan' : 'Dokumen berhasil diperbarui',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    showSuccess(isDraft ? 'Draft berhasil disimpan' : 'Dokumen berhasil diperbarui');
                     closeModal('editContractModal');
-                    if (window.contractsTable) {
-                        window.contractsTable.ajax.reload(null, false);
-                    }
+                    // Reload table di background tanpa wait
+                    setTimeout(() => {
+                        if (window.contractsTable) {
+                            window.contractsTable.ajax.reload(null, false);
+                        }
+                    }, 100);
                 } else {
                     throw new Error(result.message || 'Gagal menyimpan dokumen');
                 }
             } catch (error) {
-                showAlert({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: error.message || 'Terjadi kesalahan saat menyimpan'
-                });
+                closeAlert(); // Close any loading
+                showError(error.message || 'Terjadi kesalahan saat menyimpan');
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -844,10 +853,37 @@ export const initDetailModal = () => {
         e.preventDefault();
         const btnDet = this;
         
+        // Buka modal dulu (instant)
+        openModal('detailContractModal');
+        
+        // Tampilkan loading overlay di modal body
+        const modal = select('#detailContractModal');
+        const modalBody = modal?.querySelector('.u-modal__body');
+        if (modalBody) {
+            // Reset scroll position
+            modalBody.scrollTop = 0;
+            modalBody.scrollLeft = 0;
+            
+            // Tambahkan loading
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'modal-loading-overlay';
+            loadingDiv.innerHTML = `
+                <div class="spinner-container">
+                    <div class="u-dt-liquid-spinner"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div>
+                    <div class="spinner-text">Memuat detail kontrak...</div>
+                </div>
+            `;
+            modalBody.appendChild(loadingDiv);
+        }
+        
         try {
             const res = await fetch(btnDet.dataset.showUrl, { 
                 headers: { 'Accept': 'application/json' } 
             }).then(r => r.json());
+            
+            // Hapus loading
+            const loadingDiv = modalBody?.querySelector('.modal-loading-overlay');
+            if (loadingDiv) loadingDiv.remove();
             
             if (!res.success) throw new Error(res.message);
             
@@ -1117,9 +1153,9 @@ export const initDetailModal = () => {
                 hide(logSection);
             }
             
-            openModal('detailContractModal');
+            // Modal sudah dibuka di awal, tidak perlu openModal lagi
             
-            // Invalidate maps after modal open
+            // Invalidate maps after data loaded
             setTimeout(() => {
                 ['map-head', 'map-cand'].forEach(id => {
                     if (maps[id] && typeof maps[id].invalidateSize === 'function') {
@@ -1133,7 +1169,14 @@ export const initDetailModal = () => {
             }, 250);
         } catch (err) {
             console.error(err);
-            if (window.toastErr) window.toastErr('Gagal', err.message);
+            const loadingDiv = modalBody?.querySelector('.modal-loading-overlay');
+            if (loadingDiv) loadingDiv.remove();
+            closeModal('detailContractModal');
+            showAlert({
+                icon: 'error',
+                title: 'Gagal!',
+                text: err.message || 'Gagal memuat data dokumen'
+            });
         }
     });
 };
@@ -1177,17 +1220,20 @@ export const initRejectModal = () => {
             const note = (noteEl?.value || '').trim();
             
             if (!rejectCtx.url) {
-                if (window.toastErr) window.toastErr('Gagal', 'URL tidak ditemukan');
+                showError('URL tidak ditemukan', 'Gagal');
                 return;
             }
             
             if (note.length < 5) {
-                if (window.toastErr) window.toastErr('Validasi Gagal', 'Alasan wajib minimal 5 karakter');
+                showError('Alasan penolakan wajib diisi minimal 5 karakter', 'Validasi Gagal');
+                noteEl?.focus();
                 return;
             }
             
             btn.disabled = true;
-            btn.textContent = 'Memproses...';
+            
+            // Show loading alert
+            showLoading('Memproses reject...');
             
             try {
                 const r = await fetch(rejectCtx.url, {
@@ -1202,27 +1248,21 @@ export const initRejectModal = () => {
                 
                 const j = await r.json().catch(() => ({}));
                 
+                closeAlert(); // Close loading
+                
                 if (r.ok && (j.success ?? true)) {
-                    showAlert({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: 'Dokumen berhasil ditolak',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    showSuccess('Dokumen berhasil ditolak');
                     closeModal('rejectModal');
                     closeModal('detailContractModal');
                     
-                    // STRATEGY: Use DT reload for simple operations (no camera/GPS resources)
-                    // - Faster UX (no page reload)
-                    // - Safe since no complex resources to cleanup
-                    // - Maintains scroll position and filter state
-                    if (window.contractsTable) {
-                        window.contractsTable.ajax.reload(null, false);
-                    }
+                    // Reload table di background tanpa wait
+                    setTimeout(() => {
+                        if (window.contractsTable) {
+                            window.contractsTable.ajax.reload(null, false);
+                        }
+                    }, 100);
                     
                     // Fix scroll lock after double modal close
-                    // Timeout needs to be longer than modal close animation (280ms * 2)
                     setTimeout(() => {
                         document.body.style.overflow = '';
                         document.body.classList.remove('overflow-hidden', 'modal-open');
@@ -1231,13 +1271,9 @@ export const initRejectModal = () => {
                     throw new Error(j.message || 'Gagal menolak dokumen');
                 }
             } catch (err) {
-                showAlert({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: err.message || 'Terjadi kesalahan saat menolak dokumen'
-                });
+                closeAlert(); // Close any loading
+                showError(err.message || 'Terjadi kesalahan saat menolak dokumen');
                 btn.disabled = false;
-                btn.textContent = 'Tolak Dokumen';
             }
         });
     }
@@ -1630,13 +1666,9 @@ export const initSignModal = () => {
                         window.removeEventListener('touchend', eventListeners.touchend);
                     }
                     
-                    showAlert({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: 'Dokumen berhasil ditandatangani',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
+                    closeAlert(); // Close loading
+                    
+                    showSuccess('Dokumen berhasil ditandatangani').then(() => {
                         // STRATEGY: Use global refresh for complex workflows (camera/GPS/signature)
                         // - Prevents memory leaks from event listeners
                         // - Ensures clean state (no dangling streams/watchers)
@@ -1648,11 +1680,8 @@ export const initSignModal = () => {
                     throw new Error(j.message || 'Gagal memproses tanda tangan');
                 }
             } catch (err) {
-                showAlert({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: err.message || 'Terjadi kesalahan saat memproses tanda tangan'
-                });
+                closeAlert(); // Close loading
+                showError(err.message || 'Terjadi kesalahan saat memproses tanda tangan');
                 // Reset all states on error
                 isSubmitting = false;
                 btnSubmit.disabled = false;

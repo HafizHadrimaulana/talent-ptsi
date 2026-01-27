@@ -1,0 +1,785 @@
+/**
+ * Modern Liquid Glass Toast System
+ * Responsive, adaptive, consistent with app design
+ * Perfect for all devices and resolutions
+ */
+
+/* ===== CSS Variables for Dynamic Theming ===== */
+:root {
+    --toast-glass-bg: linear-gradient(
+        135deg, 
+        rgba(255, 255, 255, 0.98) 0%, 
+        rgba(255, 255, 255, 0.92) 50%,
+        rgba(255, 255, 255, 0.95) 100%
+    );
+    --toast-glass-border: rgba(255, 255, 255, 0.6);
+    --toast-glass-shadow: 
+        0 16px 40px -10px rgba(0, 0, 0, 0.18), 
+        0 0 0 1px rgba(255, 255, 255, 0.3) inset, 
+        0 2px 8px 0 rgba(0, 0, 0, 0.08),
+        0 1px 0 0 rgba(255, 255, 255, 0.8) inset;
+    --toast-text: #1e293b;
+    --toast-blur: 24px;
+    --toast-radius: clamp(14px, 1.8vw, 20px);
+    --toast-padding: clamp(0.875rem, 1.5vw, 1.25rem);
+    --toast-max-width: min(440px, calc(100vw - 2rem));
+    --toast-icon-size: clamp(28px, 3vw, 36px);
+    --toast-font-size: clamp(0.875rem, 1.8vw, 0.95rem);
+}
+
+html[data-theme="dark"] {
+    --toast-glass-bg: linear-gradient(
+        135deg, 
+        rgba(15, 23, 42, 0.98) 0%, 
+        rgba(15, 23, 42, 0.92) 50%,
+        rgba(15, 23, 42, 0.95) 100%
+    );
+    --toast-glass-border: rgba(255, 255, 255, 0.15);
+    --toast-glass-shadow: 
+        0 16px 40px -10px rgba(0, 0, 0, 0.7), 
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 2px 8px 0 rgba(0, 0, 0, 0.5);
+    --toast-text: #f1f5f9;
+    --toast-blur: 28px;
+}
+
+/* ===== Toast Container - ABSOLUTELY NO BACKDROP EVER ===== */
+/* Ultra high specificity to override any backdrop rules */
+.swal2-container[class*="top-"],
+.swal2-container[class*="bottom-"],
+.swal2-container.swal2-center-start,
+.swal2-container.swal2-center-end {
+    z-index: 99999 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    pointer-events: none !important;
+    /* Prevent vertical glitch */
+    transform: translateZ(0) !important;
+    will-change: auto !important;
+    /* Override any animation or transition backdrop */
+    transition: none !important;
+}
+
+/* Double protection - class-based selectors */
+.swal2-container.swal2-top-end,
+.swal2-container.swal2-top-start,
+.swal2-container.swal2-top-center,
+.swal2-container.swal2-bottom-end,
+.swal2-container.swal2-bottom-start,
+.swal2-container.swal2-bottom-center {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Floating margins for toast positions */
+.swal2-container.swal2-top-end {
+    padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.5rem) 0 0 !important;
+}
+
+.swal2-container.swal2-top-start {
+    padding: clamp(1rem, 2vw, 1.5rem) 0 0 clamp(1rem, 2vw, 1.5rem) !important;
+}
+
+.swal2-container.swal2-top-center {
+    padding: clamp(1rem, 2vw, 1.5rem) clamp(0.5rem, 1vw, 1rem) 0 clamp(0.5rem, 1vw, 1rem) !important;
+}
+
+.swal2-container.swal2-bottom-end,
+.swal2-container.swal2-bottom-start,
+.swal2-container.swal2-bottom-center {
+    padding: 0 clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.5rem) !important;
+}
+
+.swal2-container > * {
+    pointer-events: auto !important;
+}
+
+/* ===== Liquid Glass Toast - Enhanced ===== */
+.swal2-toast-glass {
+    background: var(--toast-glass-bg) !important;
+    backdrop-filter: blur(var(--toast-blur)) saturate(180%) contrast(110%) !important;
+    -webkit-backdrop-filter: blur(var(--toast-blur)) saturate(180%) contrast(110%) !important;
+    border: 1px solid var(--toast-glass-border) !important;
+    border-radius: var(--toast-radius) !important;
+    box-shadow: var(--toast-glass-shadow) !important;
+    padding: var(--toast-padding) clamp(1rem, 2vw, 1.5rem) !important;
+    min-height: auto !important;
+    width: auto !important;
+    max-width: var(--toast-max-width) !important;
+    transform-origin: top center !important;
+    /* Hardware acceleration for smooth rendering */
+    transform: translateZ(0) !important;
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+    will-change: transform, opacity !important;
+    /* Floating effect */
+    position: relative !important;
+}
+
+/* Hover effect - Enhanced */
+.swal2-toast-glass:hover {
+    transform: translateY(-3px) scale(1.03) !important;
+    box-shadow: 
+        0 20px 48px -12px rgba(0, 0, 0, 0.25), 
+        0 0 0 1px rgba(255, 255, 255, 0.4) inset,
+        0 4px 12px 0 rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    backdrop-filter: blur(28px) saturate(200%) contrast(115%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(200%) contrast(115%) !important;
+}
+
+html[data-theme="dark"] .swal2-toast-glass:hover {
+    box-shadow: 
+        0 20px 48px -12px rgba(0, 0, 0, 0.8), 
+        0 0 0 1px rgba(255, 255, 255, 0.15) inset !important;
+}
+
+/* ===== Toast Title ===== */
+.swal2-toast-title {
+    font-size: var(--toast-font-size) !important;
+    font-weight: 600 !important;
+    color: var(--toast-text) !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* ===== Toast Icon - Dynamic Sizing ===== */
+.swal2-toast-glass .swal2-icon {
+    width: var(--toast-icon-size) !important;
+    height: var(--toast-icon-size) !important;
+    margin: 0 clamp(0.5rem, 1.2vw, 0.875rem) 0 0 !important;
+    border-width: 2.5px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Success - Green */
+.swal2-toast-glass .swal2-icon.swal2-success {
+    border-color: #10b981 !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-success [class^='swal2-success-line'] {
+    background-color: #10b981 !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-success .swal2-success-ring {
+    border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+/* Error - Red */
+.swal2-toast-glass .swal2-icon.swal2-error {
+    border-color: #ef4444 !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
+    background-color: #ef4444 !important;
+}
+
+/* Warning - Orange */
+.swal2-toast-glass .swal2-icon.swal2-warning {
+    border-color: #f59e0b !important;
+    color: #f59e0b !important;
+    font-size: clamp(1.125rem, 2vw, 1.375rem) !important;
+}
+
+/* Info - Blue */
+.swal2-toast-glass .swal2-icon.swal2-info {
+    border-color: #3b82f6 !important;
+    color: #3b82f6 !important;
+    font-size: clamp(1.125rem, 2vw, 1.375rem) !important;
+}
+
+/* ===== Loading Spinner in Toast ===== */
+.swal2-toast-glass .swal2-loader {
+    width: calc(var(--toast-icon-size) - 4px) !important;
+    height: calc(var(--toast-icon-size) - 4px) !important;
+    border-width: 3px !important;
+    border-color: #3b82f6 transparent #3b82f6 transparent !important;
+    margin: 0 clamp(0.5rem, 1.2vw, 0.875rem) 0 0 !important;
+}
+
+/* ===== Timer Progress Bar - Liquid Gradient ===== */
+.swal2-toast-glass .swal2-timer-progress-bar {
+    background: linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #8b5cf6 100%) !important;
+    height: clamp(2px, 0.3vw, 3px) !important;
+    border-radius: 0 0 var(--toast-radius) var(--toast-radius) !important;
+    opacity: 0.8 !important;
+}
+
+/* ===== Animations - Smooth & Dynamic ===== */
+/* Toast show animation with explicit backdrop override */
+@keyframes swal2-toast-show {
+    0% {
+        opacity: 0;
+        transform: translateY(calc(-100% - 1rem)) scale(0.9);
+        filter: blur(4px);
+        background: transparent;
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0px);
+        background: transparent;
+    }
+}
+
+@keyframes swal2-toast-hide {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0px);
+        background: transparent;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(calc(-100% - 1rem)) scale(0.9);
+        filter: blur(4px);
+        background: transparent;
+    }
+}
+
+.swal2-toast-show {
+    animation: swal2-toast-show 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.swal2-toast-hide {
+    animation: swal2-toast-hide 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045) !important;
+}
+
+/* ===== Backdrop ONLY for Center Confirmation Dialogs (NOT Toast) ===== */
+/* ONLY apply to .swal2-center that is NOT a toast position */
+.swal2-container.swal2-center:not([class*="top-"]):not([class*="bottom-"]):not(.swal2-center-start):not(.swal2-center-end) {
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(12px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+    pointer-events: auto !important;
+}
+
+html[data-theme="dark"] .swal2-container.swal2-center:not([class*="top-"]):not([class*="bottom-"]):not(.swal2-center-start):not(.swal2-center-end) {
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ===== Confirmation Dialog - Liquid Glass Center Popup ===== */
+.swal2-confirm-popup {
+    background: var(--toast-glass-bg) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid var(--toast-glass-border) !important;
+    border-radius: clamp(20px, 2vw, 28px) !important;
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+        0 2px 4px 0 rgba(0, 0, 0, 0.05) !important;
+    padding: clamp(1.5rem, 3vw, 2.5rem) !important;
+    width: 90% !important;
+    max-width: min(440px, calc(100vw - 2rem)) !important;
+}
+
+html[data-theme="dark"] .swal2-confirm-popup {
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+}
+
+/* Confirmation title */
+.swal2-confirm-popup .swal2-title {
+    font-size: clamp(1.125rem, 2.5vw, 1.375rem) !important;
+    font-weight: 700 !important;
+    color: var(--toast-text) !important;
+    margin-bottom: 0.75rem !important;
+}
+
+/* Confirmation text */
+.swal2-confirm-popup .swal2-html-container {
+    font-size: clamp(0.875rem, 1.8vw, 0.9375rem) !important;
+    color: var(--toast-text) !important;
+    opacity: 0.85 !important;
+    line-height: 1.6 !important;
+}
+
+/* ===== Confirmation Buttons - Liquid Glass Style ===== */
+.swal2-confirm-btn,
+.swal2-cancel-btn {
+    padding: clamp(0.5rem, 1.2vw, 0.75rem) clamp(1.25rem, 2.5vw, 1.75rem) !important;
+    border-radius: clamp(10px, 1.2vw, 14px) !important;
+    font-size: clamp(0.875rem, 1.8vw, 0.9375rem) !important;
+    font-weight: 600 !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: none !important;
+    cursor: pointer !important;
+    letter-spacing: -0.01em !important;
+}
+
+.swal2-confirm-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35) !important;
+}
+
+.swal2-confirm-btn:hover {
+    transform: translateY(-2px) scale(1.02) !important;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.45) !important;
+}
+
+.swal2-confirm-btn:active {
+    transform: translateY(0) scale(0.98) !important;
+}
+
+.swal2-cancel-btn {
+    background: rgba(148, 163, 184, 0.12) !important;
+    color: #64748b !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    backdrop-filter: blur(8px) !important;
+}
+
+.swal2-cancel-btn:hover {
+    background: rgba(148, 163, 184, 0.2) !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+html[data-theme="dark"] .swal2-cancel-btn {
+    color: #cbd5e1 !important;
+}
+
+/* ===== Responsive Breakpoints ===== */
+
+/* Small Mobile (320px - 479px) */
+@media (max-width: 479px) {
+    :root {
+        --toast-radius: 10px;
+        --toast-padding: 0.75rem;
+        --toast-max-width: calc(100vw - 1rem);
+        --toast-icon-size: 26px;
+        --toast-font-size: 0.8125rem;
+    }
+    
+    .swal2-toast-glass {
+        min-width: calc(100vw - 1rem) !important;
+    }
+    
+    .swal2-container.swal2-top-center {
+        padding: 0.75rem 0.5rem !important;
+    }
+}
+
+/* Standard Mobile (480px - 640px) */
+@media (min-width: 480px) and (max-width: 640px) {
+    :root {
+        --toast-radius: 12px;
+        --toast-padding: 0.875rem;
+        --toast-max-width: calc(100vw - 1.5rem);
+        --toast-icon-size: 30px;
+        --toast-font-size: 0.875rem;
+    }
+}
+
+/* Tablet Portrait (641px - 768px) */
+@media (min-width: 641px) and (max-width: 768px) {
+    :root {
+        --toast-max-width: 400px;
+        --toast-icon-size: 32px;
+    }
+}
+
+/* Tablet Landscape (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    :root {
+        --toast-max-width: 420px;
+        --toast-icon-size: 34px;
+    }
+}
+
+/* Desktop (1025px - 1440px) */
+@media (min-width: 1025px) and (max-width: 1440px) {
+    :root {
+        --toast-max-width: 440px;
+        --toast-icon-size: 36px;
+    }
+}
+
+/* Large Desktop (1441px - 1920px) */
+@media (min-width: 1441px) and (max-width: 1920px) {
+    :root {
+        --toast-max-width: 460px;
+        --toast-icon-size: 38px;
+        --toast-font-size: 0.9375rem;
+    }
+}
+
+/* Extra Large / 2K (1921px - 2560px) */
+@media (min-width: 1921px) and (max-width: 2560px) {
+    :root {
+        --toast-max-width: 500px;
+        --toast-icon-size: 40px;
+        --toast-font-size: 1rem;
+        --toast-padding: 1.5rem;
+    }
+}
+
+/* 4K / Ultra Wide (2561px+) */
+@media (min-width: 2561px) {
+    :root {
+        --toast-max-width: 560px;
+        --toast-icon-size: 44px;
+        --toast-font-size: 1.0625rem;
+        --toast-padding: 1.75rem;
+        --toast-radius: 20px;
+    }
+}
+
+/* ===== Landscape Mobile ===== */
+@media (max-width: 896px) and (max-height: 500px) and (orientation: landscape) {
+    :root {
+        --toast-padding: 0.625rem;
+        --toast-icon-size: 24px;
+        --toast-font-size: 0.8125rem;
+        --toast-radius: 10px;
+    }
+    
+    .swal2-toast-glass {
+        max-height: 80vh !important;
+    }
+}
+
+/* ===== High DPI / Retina ===== */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .swal2-toast-glass {
+        border-width: 0.5px !important;
+    }
+    
+    .swal2-toast-glass .swal2-icon {
+        border-width: 2px !important;
+    }
+}
+
+/* ===== Reduce Motion (Accessibility) ===== */
+@media (prefers-reduced-motion: reduce) {
+    .swal2-toast-show,
+    .swal2-toast-hide,
+    .swal2-toast-glass {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ===== Touch Device Optimizations ===== */
+@media (hover: none) and (pointer: coarse) {
+    .swal2-toast-glass {
+        /* Larger touch target */
+        min-height: 44px !important;
+    }
+    
+    .swal2-confirm-btn,
+    .swal2-cancel-btn {
+        /* Minimum touch target size */
+        min-height: 44px !important;
+        min-width: 44px !important;
+    }
+    
+    /* Remove hover effects on touch */
+    .swal2-toast-glass:hover {
+        transform: none !important;
+        box-shadow: var(--toast-glass-shadow) !important;
+    }
+}
+
+/* ===== Print Media ===== */
+@media print {
+    .swal2-container,
+    .swal2-toast-glass,
+    .swal2-confirm-popup {
+        display: none !important;
+    }
+}
+
+/* ===== Toast Glass Design ===== */
+.swal2-toast-glass {
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.9) 100%
+    ) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 16px !important;
+    box-shadow: 
+        0 12px 32px -8px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+        0 2px 4px 0 rgba(0, 0, 0, 0.05) !important;
+    padding: 1rem 1.25rem !important;
+    min-height: auto !important;
+    width: auto !important;
+    max-width: min(420px, calc(100vw - 2rem)) !important;
+}
+
+/* Dark theme */
+html[data-theme="dark"] .swal2-toast-glass {
+    background: linear-gradient(
+        135deg,
+        rgba(30, 41, 59, 0.95) 0%,
+        rgba(30, 41, 59, 0.9) 100%
+    ) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 
+        0 12px 32px -8px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+}
+
+/* ===== Toast Title ===== */
+.swal2-toast-title {
+    font-size: clamp(0.875rem, 2vw, 0.95rem) !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+html[data-theme="dark"] .swal2-toast-title {
+    color: #f1f5f9 !important;
+}
+
+/* ===== Toast Icon ===== */
+.swal2-toast-glass .swal2-icon {
+    width: 32px !important;
+    height: 32px !important;
+    margin: 0 0.75rem 0 0 !important;
+    border-width: 2px !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-success {
+    border-color: #10b981 !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-success [class^='swal2-success-line'] {
+    background-color: #10b981 !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-success .swal2-success-ring {
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-error {
+    border-color: #ef4444 !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
+    background-color: #ef4444 !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-warning {
+    border-color: #f59e0b !important;
+    color: #f59e0b !important;
+    font-size: 1.25rem !important;
+}
+
+.swal2-toast-glass .swal2-icon.swal2-info {
+    border-color: #3b82f6 !important;
+    color: #3b82f6 !important;
+    font-size: 1.25rem !important;
+}
+
+/* ===== Timer Progress Bar ===== */
+.swal2-toast-glass .swal2-timer-progress-bar {
+    background: linear-gradient(90deg, #10b981, #3b82f6) !important;
+    height: 3px !important;
+    border-radius: 0 0 16px 16px !important;
+}
+
+/* ===== Animations ===== */
+@keyframes swal2-toast-show {
+    0% {
+        opacity: 0;
+        transform: translateY(-100%) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes swal2-toast-hide {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-100%) scale(0.95);
+    }
+}
+
+.swal2-toast-show {
+    animation: swal2-toast-show 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.swal2-toast-hide {
+    animation: swal2-toast-hide 0.25s cubic-bezier(0.6, -0.28, 0.735, 0.045) !important;
+}
+
+/* ===== Loading Spinner in Toast ===== */
+.swal2-toast-glass .swal2-loader {
+    width: 28px !important;
+    height: 28px !important;
+    border-width: 3px !important;
+    border-color: #3b82f6 transparent #3b82f6 transparent !important;
+    margin: 0 0.75rem 0 0 !important;
+}
+
+/* ===== Confirmation Dialog (Center) ===== */
+.swal2-confirm-popup {
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.9) 100%
+    ) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 24px !important;
+    box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
+    padding: 2rem !important;
+    width: 90% !important;
+    max-width: 420px !important;
+}
+
+html[data-theme="dark"] .swal2-confirm-popup {
+    background: linear-gradient(
+        180deg,
+        rgba(30, 41, 59, 0.95) 0%,
+        rgba(30, 41, 59, 0.9) 100%
+    ) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ===== Confirmation Buttons ===== */
+.swal2-confirm-btn,
+.swal2-cancel-btn {
+    padding: 0.625rem 1.5rem !important;
+    border-radius: 12px !important;
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: none !important;
+    cursor: pointer !important;
+}
+
+.swal2-confirm-btn {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.swal2-confirm-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
+}
+
+.swal2-cancel-btn {
+    background: rgba(148, 163, 184, 0.15) !important;
+    color: #64748b !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+}
+
+.swal2-cancel-btn:hover {
+    background: rgba(148, 163, 184, 0.25) !important;
+}
+
+/* ===== Responsive Mobile ===== */
+@media (max-width: 640px) {
+    /* Toast adjustments */
+    .swal2-toast-glass {
+        border-radius: 12px !important;
+        padding: 0.875rem 1rem !important;
+        max-width: calc(100vw - 1rem) !important;
+    }
+    
+    .swal2-toast-glass .swal2-icon {
+        width: 28px !important;
+        height: 28px !important;
+        margin: 0 0.5rem 0 0 !important;
+    }
+    
+    .swal2-toast-title {
+        font-size: 0.875rem !important;
+    }
+    
+    /* Center toast on mobile */
+    .swal2-container.swal2-top-center {
+        padding: 1rem 0.5rem !important;
+    }
+    
+    /* Confirmation dialog */
+    .swal2-confirm-popup {
+        width: 95% !important;
+        padding: 1.5rem !important;
+        border-radius: 20px !important;
+    }
+    
+    .swal2-confirm-btn,
+    .swal2-cancel-btn {
+        padding: 0.5rem 1.25rem !important;
+        font-size: 0.875rem !important;
+    }
+}
+
+/* ===== Tablet ===== */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .swal2-toast-glass {
+        max-width: 400px !important;
+    }
+}
+
+/* ===== Large Desktop ===== */
+@media (min-width: 1920px) {
+    .swal2-toast-glass {
+        max-width: 480px !important;
+        padding: 1.125rem 1.5rem !important;
+    }
+    
+    .swal2-toast-title {
+        font-size: 1rem !important;
+    }
+}
+
+/* ===== Landscape Mobile ===== */
+@media (max-width: 768px) and (max-height: 500px) and (orientation: landscape) {
+    .swal2-toast-glass {
+        padding: 0.75rem 1rem !important;
+        border-radius: 10px !important;
+    }
+    
+    .swal2-toast-glass .swal2-icon {
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    .swal2-toast-title {
+        font-size: 0.8125rem !important;
+    }
+}
+
+/* ===== High DPI Displays ===== */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .swal2-toast-glass {
+        border-width: 0.5px !important;
+    }
+}
+
+/* ===== Reduce Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+    .swal2-toast-show,
+    .swal2-toast-hide {
+        animation-duration: 0.01ms !important;
+    }
+}

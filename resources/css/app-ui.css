@@ -336,3 +336,211 @@ table.dataTable.dtr-inline.collapsed>tbody>tr.parent>td.dtr-control:before { con
 .geo-precision-fill.low{background:linear-gradient(90deg,#ef4444,#dc2626);box-shadow:0 0 12px rgba(239,68,68,0.5)}
 #geoStatus{font-size:0.9rem;font-weight:600;min-height:24px;display:flex;align-items:center;gap:8px}
 #geoIcon{font-size:1.1rem}
+
+/* Modal Loading Overlay - Full Coverage Responsive */
+.u-modal__body{
+  position:relative!important;
+}
+
+.u-modal__body:has(.modal-loading-overlay){
+  overflow:hidden!important;
+}
+
+.u-modal__body:has(.modal-loading-overlay) > *:not(.modal-loading-overlay){
+  visibility:hidden!important;
+  pointer-events:none!important;
+  opacity:0!important;
+}
+
+/* Hide modal footer (buttons) saat loading */
+.u-modal__card:has(.modal-loading-overlay) .u-modal__foot{
+  display:none!important;
+}
+
+.modal-loading-overlay{
+  position:absolute!important;
+  inset:0!important;
+  width:calc(100% + 2rem)!important;
+  height:calc(100% + 2rem)!important;
+  margin:-1rem!important;
+  background:rgba(0,0,0,0.4)!important;
+  backdrop-filter:blur(20px) saturate(180%)!important;
+  -webkit-backdrop-filter:blur(20px) saturate(180%)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  z-index:9999!important;
+  border-radius:inherit!important;
+  animation:modalLoadingBackdropFadeIn 0.3s cubic-bezier(0.4,0,0.2,1)!important;
+  overflow:hidden!important;
+  pointer-events:all!important;
+  overscroll-behavior:contain!important;
+}
+
+html[data-theme="dark"] .modal-loading-overlay{
+  background:rgba(0,0,0,0.5)!important;
+}
+
+.modal-loading-overlay .spinner-container{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(0.875rem,2vh,1.25rem);
+  padding:clamp(1.5rem,4vh,2.5rem) clamp(1.75rem,5vw,3rem);
+  background:linear-gradient(180deg,rgba(255,255,255,0.85) 0%,rgba(255,255,255,0.75) 100%);
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid rgba(255,255,255,0.3);
+  border-radius:24px;
+  box-shadow:
+    0 25px 50px -12px rgba(0,0,0,0.25),
+    0 0 0 1px rgba(255,255,255,0.1) inset,
+    0 1px 2px 0 rgba(0,0,0,0.05);
+  max-width:min(90%,420px);
+  width:auto;
+  min-width:min(260px,85vw);
+  animation:modalLoadingShow 0.3s cubic-bezier(0.175,0.885,0.32,1.275) 0.1s backwards;
+}
+
+html[data-theme="dark"] .modal-loading-overlay .spinner-container{
+  background:linear-gradient(180deg,rgba(30,41,59,0.85) 0%,rgba(30,41,59,0.75) 100%);
+  border-color:rgba(255,255,255,0.1);
+  box-shadow:
+    0 25px 50px -12px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,255,255,0.05) inset;
+}
+
+.modal-loading-overlay .u-dt-liquid-spinner{
+  transform:scale(clamp(1,2vmin + 0.7,1.2));
+}
+
+.modal-loading-overlay .spinner-text{
+  font-size:clamp(0.875rem,2vmin,1rem);
+  font-weight:600;
+  color:var(--text);
+  text-shadow:0 1px 3px rgba(0,0,0,0.12);
+  letter-spacing:0.015em;
+  text-align:center;
+  line-height:1.5;
+  max-width:92%;
+}
+
+html[data-theme="dark"] .modal-loading-overlay .spinner-text{
+  color:rgba(255,255,255,0.95);
+  text-shadow:0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Animations matching alert.css */
+@keyframes modalLoadingBackdropFadeIn{
+  from{
+    opacity:0;
+    backdrop-filter:blur(0px) saturate(100%);
+    -webkit-backdrop-filter:blur(0px) saturate(100%);
+  }
+  to{
+    opacity:1;
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+  }
+}
+
+@keyframes modalLoadingShow{
+  from{
+    opacity:0;
+    transform:scale(0.9) translateY(-10px);
+  }
+  to{
+    opacity:1;
+    transform:scale(1) translateY(0);
+  }
+}
+
+@keyframes liquidSpin{
+  0%,100%{
+    transform:scale(0);
+    opacity:0.5;
+  }
+  50%{
+    transform:scale(1);
+    opacity:1;
+  }
+}
+
+/* Responsive - Modal Panjang Vertikal */
+@media (min-height:800px){
+  .modal-loading-overlay{
+    padding:max(8vh,2rem)!important;
+  }
+  .modal-loading-overlay .spinner-container{
+    padding:2.5rem 3rem;
+    gap:1.5rem;
+  }
+}
+
+/* Responsive - Modal Lebar Horizontal */
+@media (min-width:1200px) and (max-height:700px){
+  .modal-loading-overlay{
+    padding:max(3vh,1.25rem) max(4vw,2rem)!important;
+  }
+  .modal-loading-overlay .spinner-container{
+    padding:1.5rem 3rem;
+  }
+}
+
+/* Tablet Portrait */
+@media (max-width:768px){
+  .modal-loading-overlay{
+    inset:-0.75rem!important;
+    padding:max(4vh,1.25rem)!important;
+  }
+  .modal-loading-overlay .spinner-container{
+    padding:1.75rem 2rem!important;
+    gap:1.125rem;
+    max-width:88%;
+    min-width:min(260px,85vw);
+  }
+  .modal-loading-overlay .u-dt-liquid-spinner{
+    transform:scale(1.25);
+  }
+  .modal-loading-overlay .spinner-text{
+    font-size:0.938rem;
+  }
+}
+
+/* Mobile */
+@media (max-width:480px){
+  .modal-loading-overlay{
+    inset:-0.5rem!important;
+    padding:max(3vh,1rem)!important;
+  }
+  .modal-loading-overlay .spinner-container{
+    padding:1.5rem 1.75rem!important;
+    border-radius:20px;
+    min-width:min(240px,82vw);
+    gap:1rem;
+  }
+  .modal-loading-overlay .u-dt-liquid-spinner{
+    transform:scale(1.15);
+  }
+  .modal-loading-overlay .spinner-text{
+    font-size:0.875rem;
+  }
+}
+
+/* Mobile Landscape */
+@media (max-width:768px) and (max-height:500px) and (orientation:landscape){
+  .modal-loading-overlay{
+    padding:max(2vh,0.875rem) max(3vw,1rem)!important;
+  }
+  .modal-loading-overlay .spinner-container{
+    padding:1.25rem 2rem!important;
+    gap:0.875rem;
+  }
+  .modal-loading-overlay .u-dt-liquid-spinner{
+    transform:scale(1.1);
+  }
+  .modal-loading-overlay .spinner-text{
+    font-size:0.813rem;
+  }
+}
