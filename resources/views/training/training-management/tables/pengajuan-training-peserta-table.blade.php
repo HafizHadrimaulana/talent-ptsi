@@ -31,5 +31,18 @@
 
 <script>
     window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
-    window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+    window.currentUnitId = "{{ Auth::user()->unit_id ?? optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+    const rawUnitId = "{{ Auth::user()->unit_id }}";
+    const employeeUnitId = "{{ optional(Auth::user()->employee)->unit_id }}";
+    const personUnitId = "{{ optional(Auth::user()->person)->unit_id }}";
+    
+    window.currentUnitId = rawUnitId || employeeUnitId || personUnitId || "";
+    
+    console.log("Debug Admin - User Table:", rawUnitId);
+    console.log("Debug Admin - Employee Table:", employeeUnitId);
+    console.log("Debug Admin - Final Result:", window.currentUnitId);
+
+    console.log("Blade Check - Unit ID:", window.currentUnitId);
+
+    console.log("Role terdeteksi:", window.currentUserRole);
 </script>

@@ -20,7 +20,7 @@ class DashboardController extends Controller
     {
         $user     = auth()->user();
         $employee = $user->employee;
-        $unitId   = $employee?->unit_id;
+        $unitId   = $employee?->unit_id ?? $user->unit_id ?? null;
         $role     = $user->getRoleNames()->first();
 
         // 1. Logika Penentuan Hak Akses
