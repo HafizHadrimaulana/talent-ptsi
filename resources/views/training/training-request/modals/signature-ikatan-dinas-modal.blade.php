@@ -1,6 +1,9 @@
 <div id="signature-ikatan-dinas-modal" class="u-modal-signature hidden">
     <div class="u-modal__card u-modal__card--lg">
-        <input type="hidden" name="document_id" id="signature-document-id">
+
+        <input type="hidden" id="signature-training-document-id" name="training_document_id">
+        <input type="hidden" id="signature-document-id" name="document_id">
+        
         {{-- Modal Header --}}
         <div class="u-modal__head u-mb-sm">
             <div class="u-flex u-items-center u-gap-md">
