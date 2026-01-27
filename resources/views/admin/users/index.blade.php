@@ -215,6 +215,22 @@
 const CAN_UPDATE = {{ $canUpdate ? 'true' : 'false' }};
 const CAN_DELETE = {{ $canDelete ? 'true' : 'false' }};
 
+// iOS Liquid Glass Alert Helper
+const showAlert = (options = {}) => {
+    const defaults = {
+        customClass: {
+            popup: 'swal2-ios-glass',
+            title: 'swal2-ios-title',
+            confirmButton: 'swal2-ios-confirm',
+            cancelButton: 'swal2-ios-cancel'
+        },
+        buttonsStyling: false,
+        confirmButtonText: 'OK',
+        cancelButtonText: 'Batal'
+    };
+    return Swal.fire({ ...defaults, ...options });
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     
     function initDynamicLightbox() {
@@ -350,6 +366,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Auto-responsive: adjust table on window resize
+    let resizeTimer;
+    const handleResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (usersTable && usersTable.columns) {
+                usersTable.columns.adjust();
+                if (usersTable.responsive) usersTable.responsive.recalc();
+            }
+        }, 150);
+    };
+    window.addEventListener('resize', handleResize);
+
     const shell = document.querySelector('.u-card[data-store-url]');
     const STORE_URL = shell?.dataset.storeUrl || '';
     const UPDATE_BASE = shell?.dataset.updateUrlBase || '';
@@ -412,27 +441,127 @@ document.addEventListener('DOMContentLoaded', function () {
         window.openModal('#editModal');
     };
 
+    // Intercept form submit for AJAX + SweetAlert2
+    const editForm = document.getElementById('editForm');
+    if (editForm) {
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = editForm.querySelector('#submitEdit');
+            const isUpdate = editForm.querySelector('input[name="_method"]').value === 'PUT';
+            
+            // Disable form
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Menyimpan...';
+            editForm.style.pointerEvents = 'none';
+            
+            try {
+                const formData = new FormData(editForm);
+                
+                // Collect selected roles
+                const roleInputs = editForm.querySelectorAll('#rolesChecklist input:checked');
+                roleInputs.forEach((input, idx) => {
+                    formData.append(`roles[${idx}]`, input.value);
+                });
+                
+                const response = await fetch(editForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json().catch(() => ({}));
+                
+                if (response.ok) {
+                    showAlert({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: isUpdate ? 'User berhasil diupdate' : 'User berhasil dibuat',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    window.closeModal('#editModal');
+                    editForm.reset();
+                    // DT reload - no page refresh
+                    usersTable.ajax.reload(null, false);
+                } else {
+                    throw new Error(result.message || 'Gagal menyimpan user');
+                }
+            } catch (err) {
+                showAlert({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: err.message || 'Terjadi kesalahan saat menyimpan user'
+                });
+            } finally {
+                // Re-enable form
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save';
+                editForm.style.pointerEvents = '';
+            }
+        });
+    }
+
     window.deleteUser = function(id) {
-        if(!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
-        fetch(`${UPDATE_BASE}/${id}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({_method: 'DELETE'})
-        })
-        .then(res => {
-            if(!res.ok) throw new Error(res.statusText);
-            return res.json();
-        })
-        .then(() => {
-            usersTable.ajax.reload(null, false);
-            alert('User deleted successfully');
-        })
-        .catch(err => {
-            alert('Failed to delete user: ' + err.message);
+        showAlert({
+            title: 'Hapus User?',
+            text: 'User account akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal',
+            customClass: {
+                confirmButton: 'swal2-ios-confirm swal2-ios-danger'
+            }
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            
+            // Show loading
+            showAlert({
+                title: 'Menghapus...',
+                text: 'Mohon tunggu',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch(`${UPDATE_BASE}/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({_method: 'DELETE'})
+            })
+            .then(res => {
+                if(!res.ok) throw new Error(res.statusText);
+                return res.json();
+            })
+            .then(() => {
+                showAlert({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: 'User berhasil dihapus',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                // DT reload - no page refresh
+                usersTable.ajax.reload(null, false);
+            })
+            .catch(err => {
+                showAlert({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: 'Gagal menghapus user: ' + err.message
+                });
+            });
         });
     };
 
