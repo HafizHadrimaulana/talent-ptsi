@@ -1,9 +1,6 @@
 import { getJSON } from "@/utils/fetch";
 import { initDataTables } from "../../../plugins/datatables";
-import {
-    executeApprove,
-    executeApproveReference,
-} from "./handler/approveHandler";
+import { executeApprove, executeApproveReference } from "./handler/approveHandler";
 import { executeReject, executeRejectPengajuan } from "./handler/rejectHandler";
 
 const TABLE_CONFIGS = {

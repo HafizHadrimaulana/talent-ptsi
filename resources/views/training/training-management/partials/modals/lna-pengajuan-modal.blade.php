@@ -90,11 +90,21 @@
                   {{-- Jenis Portofolio --}}
                   <div class="u-space-y-xs">
                     <label class="font-medium after:content-['*'] after:text-red-500">Jenis Portofolio</label>
-                    <input type="text" name="jenis_portofolio" class="u-input u-font-semibold" placeholder="Jenis portofolio" required>
+                    <select name="jenis_portofolio" class="u-input u-font-semibold" required>
+                        <option value="" disabled selected>Pilih jenis portofolio</option>
+                        <option value="Kompetensi Portofolio">Kompetensi Portofolio</option>
+                        <option value="Kompetensi Non Portofolio">Kompetensi Non Portofolio</option>
+                    </select>
                   </div>
                   <div class="u-space-y-xs">
                     <label class="font-medium after:content-['*'] after:text-red-500">Jenis Pelatihan</label>
-                    <input type="text" name="jenis_pelatihan" class="u-input u-font-semibold" placeholder="Jenis pelatihan" required>
+                    <select name="jenis_pelatihan" class="u-input u-font-semibold" required>
+                        <option value="" disabled selected>Pilih jenis pelatihan</option>
+                        <option value="Expertise Development Program">Expertise Development Program</option>
+                        <option value="Leadership Development Program">Leadership Development Program</option>
+                        <option value="Service Knowledge Program">Service Knowledge Program</option>
+                        <option value="Business Recommendation Program">Business Recommendation Program</option>
+                    </select>
                   </div>
 
                   {{-- Fungsi --}}
