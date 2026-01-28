@@ -1,0 +1,59 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to cPanel Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install Composer dependencies
+        run: composer install --optimize-autoloader --no-dev --no-interaction --prefer-dist
+        
+      - name: Install NPM dependencies
+        run: npm ci
+        
+      - name: Build assets
+        run: npm run build
+        
+      - name: Deploy to cPanel via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tests/**
+            **/.env
+            **/.env.example
+            **/storage/logs/*.log
+            **/storage/debugbar/**
+            **/storage/framework/sessions/**
+            **/storage/framework/cache/data/**
+            **/README.md
+            **/.github/**
