@@ -719,7 +719,7 @@ class TrainingRequestController extends Controller
             $roles = $user->getRoleNames()->toArray();
 
             $unitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             Log::info('getApprovalPengajuanTraining', [
                 'user_id' => $user->id,

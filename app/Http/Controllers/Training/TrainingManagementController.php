@@ -470,7 +470,7 @@ class TrainingManagementController extends Controller
             }
 
             $unitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             if (!$unitId) {
                 return response()->json([
@@ -548,7 +548,7 @@ class TrainingManagementController extends Controller
             $roles  = $user->getRoleNames()->toArray();
 
             $employeeUnitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             if (!$employeeUnitId && in_array('SDM Unit', $roles)) {
                 return response()->json([
@@ -668,7 +668,7 @@ class TrainingManagementController extends Controller
 
         if ($isSdmUnit) {
             $unitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             if (!$unitId) {
                 return response()->json([
