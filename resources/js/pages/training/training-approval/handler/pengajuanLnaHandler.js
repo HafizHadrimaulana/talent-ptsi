@@ -1,6 +1,8 @@
 import { postFormData } from "@/utils/fetch";
+import { closeModal } from "../../../../utils/modal";
+import { DataTableManager } from "../getData";
 
-export function initPengajuanLnaHandler(modal) {
+export function submitPengajuanLnaHandler(modal) {
     if (!modal) return;
 
     const inputForm = modal.querySelector("#lna-pengajuan-form");
@@ -15,6 +17,9 @@ export function initPengajuanLnaHandler(modal) {
         e.preventDefault();
 
         const fd = new FormData(inputForm);
+
+        // modal.classList.add("hidden");
+        closeModal(modal);
 
         Swal.fire({
             title: "Menyimpan Data...",
@@ -51,9 +56,10 @@ export function initPengajuanLnaHandler(modal) {
 
             inputForm.reset();
 
-            modal.classList.add("hidden");
-
-            window.location.reload();
+            const tableId = modal.getAttribute("data-table-id");
+            if (tableId) {
+                DataTableManager.reload(tableId);
+            }
 
         } catch (err) {
             Swal.close();

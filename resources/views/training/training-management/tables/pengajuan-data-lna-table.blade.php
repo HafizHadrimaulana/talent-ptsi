@@ -3,6 +3,7 @@
         type="button"
         class="u-btn u-btn--brand u-hover-lift"
         data-modal-target="lna-pengajuan-modal"
+        data-table-id="pengajuan-data-lna-table"
     >
         Ajukan LNA Baru
     </button>
