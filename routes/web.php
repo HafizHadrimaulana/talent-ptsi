@@ -151,7 +151,11 @@ Route::middleware('web')->group(function () {
             });
 
             Route::post('/project/store', [RecruitmentApprovalController::class, 'storeProject'])->middleware('permission:recruitment.create')->name('project.store');
+            
+            // Uraian Jabatan Routes
             Route::post('/uraian-jabatan/preview-pdf', [RecruitmentApprovalController::class, 'previewUraianPdf'])->name('uraian-jabatan.preview-pdf');
+            Route::post('/uraian-jabatan/{id}/save', [RecruitmentApprovalController::class, 'saveUraian'])->name('uraian-jabatan.save');
+            Route::get('/uraian-jabatan/{id}/load', [RecruitmentApprovalController::class, 'loadUraian'])->name('uraian-jabatan.load');
 
             Route::get('principal-approval', [RecruitmentApprovalController::class, 'index'])->middleware('permission:recruitment.view')->name('principal-approval.index');
             Route::post('principal-approval', [RecruitmentApprovalController::class, 'store'])->middleware('permission:recruitment.update')->name('principal-approval.store');
