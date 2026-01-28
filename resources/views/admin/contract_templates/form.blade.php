@@ -261,6 +261,22 @@ document.addEventListener("DOMContentLoaded", function() {
         plugins: 'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount pagebreak',
         toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table | pagebreak | insertVarBtn code',
         
+        // === CRITICAL: Preserve HTML/CSS ===
+        valid_elements: '*[*]',
+        extended_valid_elements: '*[*]',
+        valid_children: '+body[style],+div[table]',
+        custom_elements: '~*',
+        verify_html: false,
+        cleanup: false,
+        convert_urls: false,
+        remove_trailing_brs: false,
+        forced_root_block: false,
+        force_br_newlines: false,
+        force_p_newlines: false,
+        protect: [
+            /\{\{[^\}]+\}\}/gi
+        ],
+        
         // CSS VISUALISASI MEJA & KERTAS
         content_style: `
             @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
