@@ -1,0 +1,99 @@
+{
+  "_alert-DtKmKZVb.js": {
+    "file": "assets/alert-DtKmKZVb.js",
+    "name": "alert"
+  },
+  "_datatables-ChBcC82Q.js": {
+    "file": "assets/datatables-ChBcC82Q.js",
+    "name": "datatables"
+  },
+  "_modal-X6AMKalI.js": {
+    "file": "assets/modal-X6AMKalI.js",
+    "name": "modal"
+  },
+  "resources/css/alert.css": {
+    "file": "assets/alert-BV82pZIJ.css",
+    "src": "resources/css/alert.css",
+    "isEntry": true,
+    "name": "alert",
+    "names": [
+      "alert.css"
+    ]
+  },
+  "resources/css/app-layout.css": {
+    "file": "assets/app-layout-BJBJff23.css",
+    "src": "resources/css/app-layout.css",
+    "isEntry": true,
+    "name": "app-layout",
+    "names": [
+      "app-layout.css"
+    ]
+  },
+  "resources/css/app-ui.css": {
+    "file": "assets/app-ui-Ct-JyGep.css",
+    "src": "resources/css/app-ui.css",
+    "isEntry": true,
+    "name": "app-ui",
+    "names": [
+      "app-ui.css"
+    ]
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-Dgm7xGY7.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/css/map.css": {
+    "file": "assets/map-D-IfPniy.css",
+    "src": "resources/css/map.css",
+    "isEntry": true,
+    "name": "map",
+    "names": [
+      "map.css"
+    ]
+  },
+  "resources/js/app-layout.js": {
+    "file": "assets/app-layout-BAwfglD6.js",
+    "name": "app-layout",
+    "src": "resources/js/app-layout.js",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-D2Fn3fre.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_datatables-ChBcC82Q.js",
+      "_modal-X6AMKalI.js",
+      "_alert-DtKmKZVb.js"
+    ],
+    "css": [
+      "assets/app-BISpOW3S.css"
+    ]
+  },
+  "resources/js/pages/recruitment/contracts/index.js": {
+    "file": "assets/index-Dfrj09zH.js",
+    "name": "index",
+    "src": "resources/js/pages/recruitment/contracts/index.js",
+    "isEntry": true,
+    "imports": [
+      "_modal-X6AMKalI.js",
+      "_alert-DtKmKZVb.js"
+    ]
+  },
+  "resources/js/pages/training/index.js": {
+    "file": "assets/index-yGRYtcrk.js",
+    "name": "index",
+    "src": "resources/js/pages/training/index.js",
+    "isEntry": true,
+    "imports": [
+      "_datatables-ChBcC82Q.js",
+      "_modal-X6AMKalI.js"
+    ]
+  }
+}
