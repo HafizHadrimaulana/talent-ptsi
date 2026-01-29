@@ -36,24 +36,16 @@ jobs:
       - name: Build assets
         run: npm run build
         
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/tests/**
-            **/.env
-            **/.env.example
-            **/storage/logs/*.log
-            **/storage/debugbar/**
-            **/storage/framework/sessions/**
-            **/storage/framework/cache/data/**
-            **/README.md
-            **/.github/**
+      - name: Commit built assets
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add public/build -f
+          git diff --staged --quiet || git commit -m "build: compile assets for production [skip ci]"
+          git push origin production
+          
+      - name: Trigger cPanel deployment
+        run: |
+          curl -X POST "${{ secrets.CPANEL_DEPLOY_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.CPANEL_DEPLOY_TOKEN }}" \
+            || echo "Deploy webhook not configured - manual pull required"
