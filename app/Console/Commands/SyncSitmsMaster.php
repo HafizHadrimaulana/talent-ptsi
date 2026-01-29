@@ -84,10 +84,12 @@ class SyncSitmsMaster extends Command
 
         $this->info('Sync selesai.');
         $this->table(
-            ['Processed rows', 'Seen unique', 'Reported total', 'Pages', 'Stopped reason', 'Insert errors'],
+            ['Processed rows', 'Seen unique', 'Successful inserts', 'Skipped duplicates', 'Reported total', 'Pages', 'Stopped reason', 'Insert errors'],
             [[
                 $sum['processed_total'] ?? '-',
                 $sum['seen_unique'] ?? '-',
+                $sum['successful_rows'] ?? '-',
+                $sum['skipped_duplicates'] ?? '0',
                 $sum['reported_total'] ?? '-',
                 $sum['pages'] ?? '-',
                 $sum['stop_reason'] ?? '-',
