@@ -473,33 +473,71 @@ Test upload file (kalau ada fitur upload):
 
 ## 🔄 STEP 8: DEPLOYMENT BERIKUTNYA
 
-Setelah setup awal, deploy berikutnya SANGAT MUDAH!
+Setelah setup awal, deploy berikutnya SANGAT MUDAH dengan **Auto Deploy Script**!
 
 ### 8.1 Dari Development (Local)
 ```bash
-# 1. Merge changes ke main
+# 1. Build assets baru (jika ada perubahan CSS/JS)
+npm run build
+
+# 2. Merge changes ke main
 git checkout main
 git merge develop
 git push origin main
 
-# 2. Merge ke production
+# 3. Merge ke production (include build assets)
 git checkout production
 git merge main
+npm run build  # Build ulang untuk production
+git add public/build
+git commit -m "Build assets for production"
 git push origin production
 ```
 
-### 8.2 Di cPanel
+### 8.2 Setup Auto Deploy Script (SEKALI SAJA)
+
+1. **Upload deploy-auto.php ke public_html**
+   - File Manager → public_html/
+   - Upload `deploy-auto.php` dari repository
+   - Edit file, ganti `SECRET_TOKEN` dengan random string (line 17)
+   - Contoh: `define('SECRET_TOKEN', 'my-secret-key-abc123xyz');`
+   - Save
+
+2. **Bookmark Deploy URL**
+   ```
+   https://demo-sapahc.ptsi.co.id/deploy-auto.php?token=YOUR_SECRET_TOKEN
+   ```
+   (Ganti YOUR_SECRET_TOKEN dengan token yang kamu set)
+
+### 8.3 Deploy di cPanel (MUDAH!)
+
+Tinggal **buka URL deploy** di browser:
+```
+https://demo-sapahc.ptsi.co.id/deploy-auto.php?token=YOUR_SECRET_TOKEN
+```
+
+Script akan otomatis:
+- ✅ Git pull latest dari production
+- ✅ Copy build assets ke public_html/build/
+- ✅ Copy static assets (images, storage)
+- ✅ Run database migrations
+- ✅ Cache config, routes, views
+- ✅ Set permissions
+
+**SELESAI!** Refresh website (Ctrl+Shift+R)
+
+### 8.4 Alternative: Manual Deploy
+
+Kalau mau manual tanpa script:
+
 1. **Git Version Control** → **Manage** → **Update from Remote**
-2. Done! ✨
+2. **File Manager** → Copy `talent-ptsi/public/build/` ke `public_html/build/`
+3. Done!
 
 **TIDAK PERLU:**
 - ❌ Upload file manual
 - ❌ Run setup script lagi
-- ❌ Set permission lagi
-
-**Yang PERLU (kadang-kadang):**
-- Run migrations jika ada perubahan database
-- Clear cache jika ada issue
+- ❌ Set permission lagi (kecuali ada folder baru)
 
 ---
 
