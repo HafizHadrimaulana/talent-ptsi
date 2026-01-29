@@ -1,309 +1,250 @@
-# 🚀 Deployment Guide - SSH Method
+# 🚀 Deploy Guide - Talent PTSI
 
-## ⚠️ cPanel Shared Hosting Limitation
-
-**Status:** HTTP-based automation **NOT POSSIBLE** due to severe `exec()` restrictions.
-
-**Solution:** Deploy via SSH (manual or automated via GitHub Actions)
+> **Kenapa SSH?** cPanel shared hosting block PHP `exec()`, jadi automation via HTTP ga bisa. Harus pake SSH.
 
 ---
 
-## 📋 Current Setup
+## 📌 Quick Info
 
-- **Repository:** https://github.com/HafizHadrimaulana/talent-ptsi.git
-- **Branch:** `production` (for deployment)
-- **cPanel:** cpaneldrc.ptsi.co.id:2083
-- **User:** demosapahcptsico
 - **Website:** https://demo-sapahc.ptsi.co.id
+- **cPanel:** https://cpaneldrc.ptsi.co.id:2083 (user: `demosapahcptsico`)
+- **GitHub:** https://github.com/HafizHadrimaulana/talent-ptsi
+- **Branch Deploy:** `production`
 
 ---
 
-## 🔑 Setup SSH Access (One-Time)
+## 🎯 Setup SSH (Sekali Aja)
 
-### 1. Enable SSH in cPanel
+### Step 1: Generate SSH Key di cPanel
 
-1. Login to cPanel: https://cpaneldrc.ptsi.co.id:2083
-2. Go to **Security → SSH Access → Manage SSH Keys**
-3. Click **Generate a New Key**
-   - Key Name: `deploy-github` (or any name)
-   - Key Type: RSA
-   - Key Size: 4096 bits
-   - Click **Generate Key**
-4. Click **Go Back**
-5. Find the key you just created
-6. Click **Manage** → **Authorize**
-7. Click **Go Back** → **View/Download** → Download **Private Key**
+1. Buka cPanel → **Security** → **SSH Access** → **Manage SSH Keys**
+2. Klik **Generate a New Key**
+3. Isi form:
+   ```
+   Key Name: deploy-github
+   Key Password: buat password (misal: Deploy123!)
+   Reenter Password: ketik ulang password yang sama
+   Key Type: RSA
+   Key Size: 2048  ← pilih ini aja, cukup
+   ```
+   > ⚠️ **Simpan password ini!** Nanti dipake tiap kali SSH connect
+4. Klik **Generate Key**
 
-### 2. Test SSH Connection
+### Step 2: Authorize Key
+
+1. Klik **Go Back**
+2. Di list "Public Keys", cari key `deploy-github`
+3. Klik **Manage** (di sebelah kanan)
+4. Klik **Authorize** (tombol biru)
+5. ✅ Sekarang SSH udah aktif!
+
+### Step 3: Download Private Key
+
+1. Klik **Go Back**
+2. Di list "Private Keys", cari `deploy-github`
+3. Klik **View/Download**
+4. Klik **Download Key**
+5. Save file ke: `C:\Users\hafiz\.ssh\cpanel-deploy.key`
+
+### Step 4: Set Permission (Windows Git Bash)
 
 ```bash
-# Windows (Git Bash / WSL / PowerShell)
-ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i path/to/private-key
-
-# Linux/Mac
-chmod 600 path/to/private-key
-ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i path/to/private-key
+# Buka Git Bash
+cd ~/.ssh
+chmod 600 cpanel-deploy.key
 ```
 
-First time akan minta konfirmasi fingerprint, ketik `yes`.
+### Step 5: Test Koneksi
+
+```bash
+ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key
+```
+
+**Saat connect:**
+1. Pertama kali muncul konfirmasi fingerprint → ketik: **yes**
+2. Minta **passphrase** → ketik password yang lu buat di Step 1 (misal: `Deploy123!`)
+3. Kalo berhasil, bakal masuk ke terminal server
+4. Ketik `exit` buat keluar
+
+> 💡 **Tip:** Password ini diminta tiap kali SSH connect. Kalo mau auto deploy via GitHub Actions, password ini bakal di-handle otomatis via secrets.
 
 ---
 
-## 🚀 Manual Deployment via SSH
+## 🚀 Cara Deploy (Setiap Update)
 
-### Full Deployment Steps
-
-```bash
-# Connect via SSH
-ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083
-
-# Navigate to project
-cd ~/talent-ptsi
-
-# Pull latest code
-git pull origin production
-
-# Clear caches
-php artisan config:clear
-php artisan cache:clear
-
-# Optimize Laravel
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-
-# (Optional) Run migrations
-php artisan migrate --force
-
-# (Optional) Sync storage files if needed
-# Run: https://demo-sapahc.ptsi.co.id/fix-storage-direct.php?run=true
-
-# Exit SSH
-exit
-```
-
-### Quick Deploy (One-Liner)
+### Workflow Lokal → Production
 
 ```bash
-ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 "cd ~/talent-ptsi && git pull origin production && php artisan config:clear && php artisan cache:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
-```
-
----
-
-## 🤖 Automated Deployment via GitHub Actions
-
-### Option A: SSH Direct Deploy (Recommended)
-
-**Advantages:**
-- ✅ Fully automated (no manual steps)
-- ✅ Runs commands directly via SSH (no exec restrictions)
-- ✅ Fast (~10-15 seconds)
-- ✅ Logs available in GitHub Actions
-
-**Setup:**
-
-1. **Add SSH Private Key to GitHub Secrets**
-   - Go to: https://github.com/HafizHadrimaulana/talent-ptsi/settings/secrets/actions
-   - Click **New repository secret**
-   - Name: `SSH_PRIVATE_KEY`
-   - Value: Paste entire private key content (including `-----BEGIN RSA PRIVATE KEY-----`)
-
-2. **Update GitHub Actions Workflow**
-
-Edit `.github/workflows/deploy-cpanel.yml`:
-
-```yaml
-name: Deploy to cPanel via SSH
-
-on:
-  push:
-    branches:
-      - production
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: 🚀 Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: cpaneldrc.ptsi.co.id
-          username: demosapahcptsico
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 2083
-          script: |
-            cd ~/talent-ptsi
-            git pull origin production
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            echo "✅ Deployment completed!"
-```
-
-3. **Push workflow update**
-
-```bash
-git add .github/workflows/deploy-cpanel.yml
-git commit -m "Update to SSH-based deployment"
-git push origin main:production
-```
-
-4. **Test deployment**
-
-Push any change to `production` branch and check GitHub Actions tab.
-
----
-
-### Option B: HTTP Notification + Manual SSH (Current)
-
-**Current setup:**
-- GitHub Actions triggers: `deploy-k8m3x9p2f5h7w4j6.php`
-- Script only logs notification (no commands run)
-- Manual SSH deployment still needed
-
-**Why:** cPanel shared hosting blocks PHP `exec()` even for Laravel commands.
-
----
-
-## 📝 Daily Workflow
-
-### Local Development
-
-```bash
-# 1. Develop locally
+# 1. Development lokal
 cd C:\laragon\www\talent-ptsi
-npm run dev  # for development
+npm run dev
 
-# 2. Build assets for production
+# 2. Build untuk production
 npm run build
 
-# 3. Test locally
-php artisan serve
-
-# 4. Commit & push
+# 3. Commit & push
 git add .
-git commit -m "Your changes"
+git commit -m "update fitur X"
 git push origin main
 
-# 5. Merge to production
+# 4. Merge ke production branch
 git checkout production
 git merge main
 git push origin production
 ```
 
-### Deployment
+### Deploy ke Server (Manual via SSH)
 
-**Option A (Automated via SSH):**
-- Just push to `production` branch
-- GitHub Actions will deploy automatically
-- Check: https://demo-sapahc.ptsi.co.id
+**Option 1: Interaktif** (login dulu, command satu-satu)
 
-**Option B (Manual via SSH):**
-- Push to `production` branch
-- Run SSH deploy command (see above)
-- Check: https://demo-sapahc.ptsi.co.id
+```bash
+# Login SSH (nanti minta password SSH key)
+ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key
+
+# Jalankan commands
+cd ~/talent-ptsi
+git pull origin production
+php artisan config:clear
+php artisan cache:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# (Kalo ada migration baru)
+php artisan migrate --force
+
+# Keluar
+exit
+```
+
+**Option 2: One-liner** (langsung jalan semua)
+
+```bash
+ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key "cd ~/talent-ptsi && git pull origin production && php artisan config:clear && php artisan cache:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+```
+
+> Bakal minta password SSH key sekali, terus langsung jalan semua command. Selesai ~5-10 detik.
+
+---
+
+## ⚡ Automation (Optional - Kalo Mau Full Auto)
+
+> **Current:** Manual SSH deploy tiap push (5 menit)  
+> **With automation:** Push ke GitHub langsung auto deploy (0 menit)
+
+### Setup GitHub Actions SSH Deploy
+
+**1. Add SSH Private Key to GitHub**
+
+- Buka: https://github.com/HafizHadrimaulana/talent-ptsi/settings/secrets/actions
+- Klik: **New repository secret**
+- Name: `SSH_PRIVATE_KEY`
+- Value: Buka file `cpanel-deploy.key` dengan Notepad, copy **SEMUA** isi (dari `-----BEGIN` sampai `-----END`)
+- Klik: **Add secret**
+
+**2. Add SSH Password to GitHub**
+
+- Klik: **New repository secret** lagi
+- Name: `SSH_PASSPHRASE`
+- Value: Password SSH key yang lu buat (misal: `Deploy123!`)
+- Klik: **Add secret**
+
+**3. Update Workflow File**
+
+Edit [.github/workflows/deploy-cpanel.yml](.github/workflows/deploy-cpanel.yml):
+
+```yaml
+name: Auto Deploy via SSH
+
+on:
+  push:
+    branches: [production]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: cpaneldrc.ptsi.co.id
+          username: demosapahcptsico
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: 2083
+          script: |
+            cd ~/talent-ptsi
+            git pull origin production
+            php artisan config:clear && php artisan cache:clear
+            php artisan config:cache && php artisan route:cache && php artisan view:cache
+```
+
+**4. Test**
+
+```bash
+git add .github/workflows/deploy-cpanel.yml
+git commit -m "Enable SSH auto-deploy"
+git push origin production
+```
+
+Cek: https://github.com/HafizHadrimaulana/talent-ptsi/actions
+
+Kalo berhasil, next time tinggal `git push origin production` aja, deploy otomatis jalan.
+
+---
+
+## 📋 Cheatsheet
+
+### Deploy Manual (Copy-Paste)
+
+```bash
+ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key "cd ~/talent-ptsi && git pull origin production && php artisan config:clear && php artisan cache:clear && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+```
+
+### Kalo Ada Migration
+
+```bash
+ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key "cd ~/talent-ptsi && php artisan migrate --force"
+```
+
+### Cek Website
+
+- Production: https://demo-sapahc.ptsi.co.id
+- cPanel: https://cpaneldrc.ptsi.co.id:2083
+- GitHub Actions: https://github.com/HafizHadrimaulana/talent-ptsi/actions
 
 ---
 
 ## 🛠️ Troubleshooting
 
-### Issue: SSH Connection Refused
-
-**Solution:**
-- Make sure SSH key is authorized in cPanel
-- Check port is 2083 (not 22)
-- Verify username: `demosapahcptsico`
-
-### Issue: Git Pull Fails
-
-**Solution:**
+**SSH ga bisa connect**
 ```bash
-# Via SSH
+# Cek SSH key permission
+chmod 600 ~/.ssh/cpanel-deploy.key
+
+# Test koneksi dengan verbose
+ssh -v demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key
+```
+
+**Git pull error**
+```bash
+# Login SSH, force reset
+ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key
 cd ~/talent-ptsi
-git status
 git reset --hard origin/production
 git pull origin production
+exit
 ```
 
-Or use cPanel **Git Version Control** → **Update from Remote**
+**Upload image 403 Forbidden**
 
-### Issue: Permission Denied
+Jalanin: https://demo-sapahc.ptsi.co.id/fix-storage-direct.php?run=true
 
-**Solution:**
+**Cache ga ke-clear**
 ```bash
-# Via SSH
-chmod -R 775 ~/talent-ptsi/storage
-chmod -R 775 ~/talent-ptsi/bootstrap/cache
-```
-
-### Issue: Images Not Accessible (403 Forbidden)
-
-**Solution:**
-- Run: https://demo-sapahc.ptsi.co.id/fix-storage-direct.php?run=true
-- This copies files directly to `public_html/storage/` (no symlinks)
-
-### Issue: Old Cache Not Cleared
-
-**Solution:**
-```bash
-# Via SSH - Force clear everything
-cd ~/talent-ptsi
-php artisan cache:clear
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
-rm -rf bootstrap/cache/*.php
-php artisan optimize
+ssh demosapahcptsico@cpaneldrc.ptsi.co.id -p 2083 -i ~/.ssh/cpanel-deploy.key "cd ~/talent-ptsi && php artisan optimize:clear && php artisan optimize"
 ```
 
 ---
 
-## 📊 File Structure
-
-```
-talent-ptsi/
-├── .github/
-│   └── workflows/
-│       └── deploy-cpanel.yml       # GitHub Actions workflow
-├── public_html/                     # (cPanel symlink to public/)
-│   ├── storage/                     # Direct file copy (no symlink)
-│   ├── build/                       # Vite compiled assets
-│   ├── deploy-k8m3x9p2f5h7w4j6.php # Deploy notification script
-│   └── fix-storage-direct.php       # Storage file sync script
-├── app/
-├── resources/
-├── storage/
-└── DEPLOY-SSH.md                    # This file
-```
-
----
-
-## 🎯 Recommendations
-
-### For Shared Hosting (Current):
-✅ **Use SSH deployment** (manual or automated via GitHub Actions)
-
-### For Better Performance:
-Consider upgrading to:
-- VPS (DigitalOcean, Linode, Vultr)
-- Managed hosting (Laravel Forge, Ploi)
-- Docker containers (AWS ECS, Google Cloud Run)
-
-These allow full automation without restrictions.
-
----
-
-## 🔗 Quick Links
-
-- **Website:** https://demo-sapahc.ptsi.co.id
-- **cPanel:** https://cpaneldrc.ptsi.co.id:2083
-- **GitHub:** https://github.com/HafizHadrimaulana/talent-ptsi
-- **GitHub Actions:** https://github.com/HafizHadrimaulana/talent-ptsi/actions
-
----
-
-**Last Updated:** 2026-01-29  
-**Status:** SSH deployment working, HTTP automation blocked by hosting restrictions
+**Last Updated:** 29 Jan 2026
