@@ -26,6 +26,12 @@
 - ✅ Password: [password Anda]
 - ✅ Repository GitHub: `https://github.com/HafizHadrimaulana/talent-ptsi.git`
 
+### Environment Setup:
+- **STAGING** → Testing & UAT (database: `demosapahcptsico_talent_ptsi-staging`)
+- **PRODUCTION** → Live (database: `demosapahcptsico_talent_ptsi`)
+
+**Note:** Staging digunakan untuk developer testing DAN user acceptance testing sekaligus.
+
 ### Tools yang Dipakai:
 - **File Manager** - untuk manage files
 - **Git™ Version Control** - untuk clone & pull repository
@@ -204,42 +210,93 @@ Halaman manage akan terbuka:
 6. Klik kanan file yang baru di-paste → **"Rename"**
 7. Rename menjadi: **`.env`** (PENTING: titik di depan!)
 
-### 4.3 Edit .env untuk Production
+### 4.3 Edit .env untuk Staging/UAT
 1. Klik kanan file **`.env`**
 2. Pilih **"Edit"**
 3. Editor akan terbuka
 
-**Update nilai-nilai ini:**
+**Template .env untuk cPanel (Copy & Paste):**
 
 ```env
-# WAJIB DIUBAH:
-APP_ENV=production
+APP_NAME="Talent PTSI"
+APP_ENV=staging
+APP_KEY=base64:iYb0jR7iorAdFAQ43zf9/t0gKo9TT2tk20N9AL0GqH4=
 APP_DEBUG=false
 APP_URL=https://demo-sapahc.ptsi.co.id
 
-# CEK KEMBALI database credentials:
+DEBUGBAR_ENABLED=false
+LOG_CHANNEL=stack
+LOG_LEVEL=error
+
+# Database - CEK PASSWORD!
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=talent_ptsi_production
-DB_USERNAME=demosapahcptsico_talent
-DB_PASSWORD=[password database]
+DB_DATABASE=demosapahcptsico_talent_ptsi-staging
+DB_USERNAME=demosapahcptsico_admin
+DB_PASSWORD=Sapahc@ptsi
 
-# Pastikan ini ada:
+# Session & Cache
 SESSION_DRIVER=database
-QUEUE_CONNECTION=database
-CACHE_STORE=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=true
+FILESYSTEM_DISK=public
+QUEUE_CONNECTION=sync
+CACHE_STORE=file
+
+# Email - Setup SMTP production nanti
+MAIL_MAILER=smtp
+MAIL_HOST=mail.ptsi.co.id
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS="no-reply@ptsi.co.id"
+MAIL_FROM_NAME="${APP_NAME}"
+
+# SITMS Integration
+SITMS_BASE_URL=https://sitms.ptsi.co.id/admin/api
+SITMS_EMPLOYEE_ENDPOINT=/employees_list
+SITMS_API_KEY=V1HoPfqlsfBQyD8EuLOGLytcSaP2YZyM
+SITMS_COOKIE=itms_session_live=7b3764ecb21c5f6f77a8928fedd333ec29bb5a7c
+SITMS_TIMEOUT=60
+SITMS_RETRIES=5
+SITMS_VERIFY_SSL=true
+SITMS_PER_PAGE=1500
+
+# CRM Integration
+CRM_PROJECT_LIST_URL=https://crm-api.ptsi.co.id/rest/list-project
+CRM_BASIC_AUTH='Basic cmFiLW9ubGluZTpyYWJvbDEyMw=='
+
+# LibreOffice Path (cPanel biasanya /usr/bin/soffice)
+SOFFICE_PATH="/usr/bin/soffice"
 ```
+
+**PENTING - Ubah Sesuai Environment:**
+
+**Untuk STAGING (Saat ini - untuk testing & UAT):**
+- `APP_ENV=staging`
+- `APP_DEBUG=false`
+- `DB_DATABASE=demosapahcptsico_talent_ptsi-staging`
+- `QUEUE_CONNECTION=sync`
+
+**Untuk PRODUCTION (Nanti):**
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `DB_DATABASE=demosapahcptsico_talent_ptsi`
+- `QUEUE_CONNECTION=database` (butuh cron job)
+- Update MAIL_USERNAME & MAIL_PASSWORD
+- Update APP_KEY (generate baru)
 
 4. Klik **"Save Changes"** (pojok kanan atas)
 5. Klik **"Close"**
 
 **✅ CHECKLIST ENV:**
 - [x] File `.env` sudah ada di folder talent-ptsi
-- [x] APP_ENV=production
+- [x] APP_ENV=staging
 - [x] APP_DEBUG=false
-- [x] APP_URL sesuai domain
+- [x] APP_URL=https://demo-sapahc.ptsi.co.id
+- [x] DB_DATABASE=demosapahcptsico_talent_ptsi-staging
 - [x] Database credentials benar
+- [x] DEBUGBAR_ENABLED=false
 
 ---
 
@@ -452,20 +509,31 @@ git push origin production
 
 **Penyebab & Solusi:**
 
-1. **.env tidak ada atau salah**
+1. **vendor/ folder tidak ada (PALING SERING!)**
+   - Error: `require vendor/autoload.php: failed to open stream`
+   - Penyebab: Branch yang di-clone bukan production (masih main/develop)
+   - **Solusi: PASTIKAN sudah switch ke branch production!** (Step 3)
+   - Verify: Cek di File Manager, folder `vendor/` harus ada dan besar (~50-100MB)
+
+2. **.env tidak ada atau salah**
    - Cek: File `.env` ada di `/home/demosapahcptsico/talent-ptsi/`
    - Cek: APP_KEY ada dan tidak kosong
    - Solusi: Copy dari backup atau run `php artisan key:generate`
 
-2. **Permission salah**
+3. **Permission salah**
    - Cek: storage/ = 775
    - Cek: bootstrap/cache/ = 775
    - Solusi: Set ulang permissions (Step 5)
 
-3. **Database connection error**
+4. **Database connection error**
    - Cek: Credentials di .env benar
    - Cek: Database exists di phpMyAdmin
    - Solusi: Fix credentials atau create database
+
+5. **public/build/ tidak ada**
+   - Error: CSS/JS tidak load
+   - Penyebab: Assets belum di-build
+   - Solusi: Pastikan branch production (sudah include build assets)
 
 ### Error: "419 Page Expired" saat Login
 
