@@ -457,11 +457,49 @@ SETUP COMPLETED!
 2. Navigate ke beberapa menu
 3. Pastikan semua fungsi jalan
 
-### 7.3 Cek Storage Link
-Test upload file (kalau ada fitur upload):
-1. Upload gambar/file
-2. Pastikan file tersimpan
-3. Pastikan file bisa diakses via URL
+### 7.3 Fix Storage Link & Copy Files Lama
+
+**PENTING:** File upload mungkin error karena storage belum di-setup!
+
+#### Cara Fix:
+
+**Option 1: Via Fix Storage Script (MUDAH)**
+
+1. **Copy fix-storage.php ke public_html**
+   - File Manager → Copy `talent-ptsi/fix-storage.php`
+   - Paste ke `public_html/`
+
+2. **Jalankan via browser:**
+   ```
+   https://demo-sapahc.ptsi.co.id/fix-storage.php
+   ```
+
+3. **Script akan otomatis:**
+   - ✅ Create storage symlink di public_html/storage
+   - ✅ Copy file storage lama dari backup (jika ada)
+   - ✅ Set permissions yang benar
+
+4. **Hapus script setelah selesai:**
+   - Delete `public_html/fix-storage.php`
+
+**Option 2: Manual (jika script gagal)**
+
+1. **Copy storage files lama:**
+   ```
+   talent-ptsi-backup-20260129/storage/app/public/* 
+   → Copy ke: talent-ptsi/storage/app/public/
+   ```
+
+2. **Create symlink via File Manager:**
+   - Tidak bisa via File Manager, harus via script atau terminal
+
+3. **Set permissions:**
+   - `storage/app/public/` → 775 (recursive)
+
+#### Test Upload:
+1. Upload gambar/file di aplikasi
+2. Pastikan file tersimpan di `storage/app/public/`
+3. Pastikan file bisa diakses via URL: `https://demo-sapahc.ptsi.co.id/storage/namafile.jpg`
 
 **✅ CHECKLIST TESTING:**
 - [x] Website accessible
