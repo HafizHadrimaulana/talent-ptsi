@@ -1,0 +1,52 @@
+name: Auto Deploy to cPanel
+
+# Trigger: Otomatis saat push ke production branch
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🚀 Trigger cPanel Deploy
+        run: |
+          echo "Triggering deployment to cPanel..."
+          
+          # Trigger deploy-auto.php via URL
+          response=$(curl -s -w "\n%{http_code}" \
+            "${{ secrets.DEPLOY_URL }}?token=${{ secrets.DEPLOY_TOKEN }}")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response:"
+          echo "$body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Deployment failed with HTTP $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Deployment triggered successfully!"
+      
+      - name: 📝 Deployment Summary
+        if: success()
+        run: |
+          echo "### ✅ Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** production" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Staging (demo-sapahc.ptsi.co.id)" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Actions Performed:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Git pull from production" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build assets copied" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Storage files synced" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Database migrations" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Cache cleared & optimized" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 [Visit Website](https://demo-sapahc.ptsi.co.id)" >> $GITHUB_STEP_SUMMARY
