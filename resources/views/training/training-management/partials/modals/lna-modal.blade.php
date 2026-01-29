@@ -1,4 +1,5 @@
-<div id="lna-modal" class="u-modal hidden">
+<div id="lna-modal" class="u-modal" hidden>
+    <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
         {{-- Modal Header --}}
         <div class="u-modal__head border-b u-pb-md">
@@ -9,11 +10,15 @@
                     <div class="u-muted u-text-sm edit-indicator">Pratinjau Data</div>
                 </div>
             </div>
-            <button class="u-btn u-btn--ghost u-btn--sm close-modal-review" aria-label="Close"><i class="fas fa-times"></i></button>
+            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
 
         {{-- Modal Body --}}
         <div class="u-modal__body u-p-md bg-slate-50/50">
+            <div id="confirm-toast-root"></div>
+            <div id="app-toast" class="app-toast hidden"></div>
             <form id="lna-detail-form" class="u-space-y-md">
                 @csrf
                 <input type="hidden" name="id" id="edit-id">
@@ -83,11 +88,7 @@
                             <div class="u-space-y-xs">
                                 <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Portofolio</label>
                                 <div class="view-mode u-font-semibold detail-jenis_portofolio text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
-                                <select name="jenis_portofolio" class="edit-mode u-input u-font-semibold" required>
-                                    <option value="" disabled selected>Pilih jenis portofolio</option>
-                                    <option value="kompetensi portofolio">Kompetensi Portofolio</option>
-                                    <option value="kompetensi non portofolio">Kompetensi Non Portofolio</option>
-                                </select>
+                                <input type="text" name="jenis_portofolio" class="edit-mode u-input hidden w-full">
                             </div>
                             <div class="u-space-y-xs">
                                 <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Pelatihan</label>
@@ -120,18 +121,22 @@
                               Rp 0
                           </div>
 
-                          <div class="edit-mode hidden u-relative">
-                              <div class="u-relative u-flex u-items-center u-gap-md">
-                                  <span class="u-absolute u-left-0 u-ml-3 u-font-bold text-green-600 u-pointer-events-none">
-                                      Rp
-                                  </span>
-                                  
-                                  <input type="number" 
-                                        name="biaya_pelatihan" 
-                                        class="u-input input-biaya u-font-bold text-green-700 border-green-200 focus:u-border-green-500 w-full"
-                                        placeholder="0">
-                              </div>
-                          </div>
+                            <div class="edit-mode hidden space-y-2">
+                                <div class="relative">
+                                    <span
+                                        class="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 font-bold pointer-events-none">
+                                        Rp
+                                    </span>
+
+                                    <input type="number"
+                                        name="biaya_pelatihan"
+                                        min="0"
+                                        step="1000"
+                                        class="u-input pl-12 pr-4 py-2 u-font-bold text-green-700 border-green-300 
+                                            focus:u-border-green-500 focus:ring-2 focus:ring-green-200 w-full"
+                                        placeholder="Masukkan biaya pelatihan">
+                                </div>
+                            </div>
                       </div>
                   </div>
                 </div>

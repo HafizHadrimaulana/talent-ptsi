@@ -87,7 +87,6 @@
 @include('training.training-management.partials.modals.lna-input-modal')
 @include('training.training-management.partials.modals.lna-pengajuan-modal')
 @include('training.training-management.partials.modals.import-modal')
-@include('training.training-management.partials.modals.edit-modal')
 
 @include('training.training-management.partials.modals.lna-modal')
 @include('training.training-management.partials.modals.training-modal')
