@@ -82,9 +82,7 @@ git push origin production
 
 **Step 2: Clear Cache (Kalo Perlu)**
 
-Buka: https://demo-sapahc.ptsi.co.id/deploy-k8m3x9p2f5h7w4j6.php?token=80ROaMyPyXt81XHiNItLnVsitLXU0lcem5JHZuOEGBFCbZL41EpJdkiuIYbTL
-
-Atau bikin file temporary `clear.php` via File Manager:
+Via cPanel File Manager, bikin file `clear.php`:
 
 ```php
 <?php
@@ -101,7 +99,11 @@ $kernel->call('view:cache');
 echo "✅ Cache cleared!";
 ```
 
-Akses via browser, terus hapus file-nya.
+1. cPanel → File Manager → `talent-ptsi` folder
+2. Create file: `clear.php` 
+3. Paste code di atas
+4. Akses: https://demo-sapahc.ptsi.co.id/clear.php
+5. Delete file `clear.php` setelah selesai
 
 **Step 3: Verify**
 
