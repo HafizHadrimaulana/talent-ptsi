@@ -520,13 +520,18 @@ export function initGetDataTable(tableSelector, options = {}) {
 
     const dt = initDataTables(`#${tableId}`, {
         serverSide: true,
+        order: [[1, "asc"]],
         ajax: async (data, callback) => {
+            const orderIndex = data.order[0]?.column;
+            const orderName = data.columns[orderIndex]?.data;
+            const orderDir = data.order[0]?.dir;
+
             const params = new URLSearchParams({
                 page: data.start / data.length + 1,
                 per_page: data.length,
                 search: data.search.value,
-                order_by: data.columns[data.order[0]?.column]?.data || "",
-                order_dir: data.order[0]?.dir || "",
+                order_by: orderName || "",
+                order_dir: orderDir || "",
             });
 
             try {
@@ -548,13 +553,22 @@ export function initGetDataTable(tableSelector, options = {}) {
                 });
             }
         },
-        columns: baseConfig.columns.map((col) => ({
-            data: ["no", "actions", "peserta"].includes(col) ? null : col,
-            render: (d, t, r, m) =>
-                COLUMN_RENDERERS[col]
-                    ? COLUMN_RENDERERS[col](d, t, r, m, baseConfig)
-                    : (d ?? "-"),
-        })),
+        columns: baseConfig.columns.map((col) => {
+            const isUnsortable = [
+                "no",
+                "actions",
+                "lampiran_penawaran",
+            ].includes(col);
+
+            return {
+                data: isUnsortable ? null : col === "peserta" ? "peserta" : col,
+                orderable: !isUnsortable,
+                render: (d, t, r, m) =>
+                    COLUMN_RENDERERS[col]
+                        ? COLUMN_RENDERERS[col](d, t, r, m, baseConfig)
+                        : (d ?? "-"),
+            };
+        }),
     });
 
     DATA_TABLE_INSTANCES[tableId] = dt;
