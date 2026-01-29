@@ -10,8 +10,8 @@
           <div class="u-muted u-text-sm" id="ip-modal-subtitle">Tambah pelatihan</div>
         </div>
       </div>
-      <button class="u-btn u-btn--ghost u-btn--sm lna-input-close-modal" aria-label="Close">
-        <i class="fas fa-times"></i>
+      <button class="u-btn u-btn--ghost u-btn--sm js-close-modal" aria-label="Close">
+          <i class="fas fa-times"></i>
       </button>
     </div>
 

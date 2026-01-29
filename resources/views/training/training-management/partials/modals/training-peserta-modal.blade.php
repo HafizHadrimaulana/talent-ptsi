@@ -1,4 +1,5 @@
-<div id="training-peserta-modal" class="u-modal hidden">
+<div id="training-peserta-modal" class="u-modal" hidden>
+    <div class="u-modal__backdrop js-close-modal"></div>
     <div class="u-modal__card u-modal__card--xl">
         {{-- Modal Header --}}
         <div class="u-modal__head u-mb-sm">
@@ -9,7 +10,7 @@
                     <div class="u-muted u-text-sm detail-status_approval_training">Status: -</div>
                 </div>
             </div>
-            <button class="u-btn u-btn--ghost u-btn--sm close-modal-review" aria-label="Close">
+            <button class="u-btn u-btn--ghost u-btn--sm js-close-modal" aria-label="Close">
                 <i class="fas fa-times"></i>
             </button>
         </div>

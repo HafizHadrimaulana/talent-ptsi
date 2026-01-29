@@ -1,7 +1,11 @@
 import { getJSON } from "@/utils/fetch";
 import { initDataTables } from "../../../plugins/datatables";
-import { executeApprove, executeApproveReference } from "./handler/approveHandler";
+import {
+    executeApprove,
+    executeApproveReference,
+} from "./handler/approveHandler";
 import { executeReject, executeRejectPengajuan } from "./handler/rejectHandler";
+import { confirmToast, showToast } from "../../../utils/toast";
 
 const TABLE_CONFIGS = {
     "data-lna-table": {
@@ -172,7 +176,6 @@ const initModalSystem = () => {
 
             const row = dt.row($btn.parents("tr"));
             const rowData = row.data();
-            console.log("row data aa", rowData);
 
             const $modal = $(config.modalId);
 
@@ -199,7 +202,12 @@ const initModalSystem = () => {
                         .removeClass("text-red-600");
                 }
 
-                $modal.removeClass("hidden").show();
+                $modal
+                    .removeAttr("hidden")
+                    .removeClass("is-hidden")
+                    .removeClass("hidden");
+
+                $("body").addClass("modal-open");
             }
         });
 
@@ -225,19 +233,49 @@ const initModalSystem = () => {
             const formData = $modal.find("#lna-detail-form").serialize();
             handleUpdateAction(id, formData, $modal);
         } else {
-            // LOGIKA HAPUS (EX: Approve/Decline lama anda)
             handleDeleteAction(id, $modal);
         }
     });
 
-    // 2. Handler Tutup Modal (Tombol dengan atribut data-modal-close atau tombol Batal)
-    $body.on("click", "[data-modal-close], .u-btn--ghost", function () {
-        $(this)
-            .closest(".u-modal")
-            .fadeOut(150, function () {
-                $(this).addClass("hidden").hide();
-            });
+    // Handler Tutup Modal
+    const modalClose = ($modal) => {
+        if (!$modal || !$modal.length) return;
+
+        // jika sudah hidden, skip
+        if ($modal.hasClass("is-hidden") || $modal.is("[hidden]")) return;
+
+        // trigger animasi keluar
+        $modal.addClass("is-hidden");
+
+        setTimeout(() => {
+            $modal.attr("hidden", true);
+            $body.removeClass("modal-open");
+        });
+    };
+
+    $body.on("click", ".js-close-modal", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        modalClose($(this).closest(".u-modal"));
     });
+
+    window.addEventListener(
+        "keydown",
+        (e) => {
+            if (e.key !== "Escape") return;
+
+            const $modal = $(".u-modal:not([hidden]):not(.is-hidden)").last();
+            if (!$modal.length) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            modalClose($modal);
+        },
+        true,
+    );
+    // End Handler Tutup Modal
 
     $body.on("click", "#btn-approve-request", function () {
         const $modal = $(this).closest(".u-modal");
@@ -254,7 +292,6 @@ const initModalSystem = () => {
         };
 
         if (modalId === "training-peserta-modal") {
-            console.log("id data", id);
             executeApprove(id, reloadTable, note);
         } else {
             executeApproveReference(id, reloadTable, note);
@@ -402,11 +439,13 @@ const toggleEditMode = ($modal, isEditing) => {
             .find('input[name="fungsi"]')
             .val($modal.find(".detail-fungsi").text().trim());
 
-        const jenisPortofolio = $modal.find(".detail-jenis_portofolio").text().trim();
-        $modal.find('select[name="jenis_portofolio"]').val(jenisPortofolio);
+        $modal
+            .find('input[name="jenis_portofolio"]')
+            .val($modal.find(".detail-jenis_portofolio").text().trim());
 
-        const jenisPelatihan = $modal.find(".detail-jenis_pelatihan").text().trim();
-        $modal.find('select[name="jenis_pelatihan"]').val(jenisPelatihan);
+        $modal
+            .find('select[name="jenis_pelatihan"]')
+            .val($modal.find(".detail-jenis_pelatihan").text().trim());
 
         $modal.find('input[name="biaya_pelatihan"]').val(
             $modal
@@ -524,15 +563,14 @@ export function initGetDataTable(tableSelector, options = {}) {
 
 // --- HELPERS ---
 const handleUpdateAction = (id, formData, $modal) => {
-    console.log("handleUpdateAction", id, formData, $modal);
-
-    const $submitBtn = $modal.find("#btn-submit-action"); // Pastikan ID tombol sesuai
+    const $submitBtn = $modal.find("#btn-submit-action");
     const originalContent = $submitBtn.html();
 
     $.ajax({
         url: `/training/training-request/${id}/edit-data-lna`,
         method: "POST",
         data: formData,
+
         beforeSend: () => {
             $submitBtn
                 .prop("disabled", true)
@@ -541,12 +579,14 @@ const handleUpdateAction = (id, formData, $modal) => {
                 );
         },
         success: (res) => {
-            $modal.fadeOut(200, function () {
-                $(this).addClass("hidden").hide();
-                toggleEditMode($modal, false);
-            });
+            showToast(res.message || "Data berhasil diperbarui", "success");
 
-            Swal.fire("Berhasil", res.message, "success");
+            setTimeout(() => {
+                $modal.fadeOut(200, function () {
+                    $(this).addClass("hidden").hide();
+                    toggleEditMode($modal, false);
+                });
+            }, 1500);
 
             // Reload table agar data terbaru muncul
             if ($.fn.DataTable.isDataTable(".dataTable")) {
@@ -556,7 +596,8 @@ const handleUpdateAction = (id, formData, $modal) => {
         error: (xhr) => {
             const errorMsg =
                 xhr.responseJSON?.message || "Terjadi kesalahan sistem";
-            Swal.fire("Gagal", errorMsg, "error");
+
+            showToast(errorMsg, "error");
         },
         complete: () => {
             $submitBtn.prop("disabled", false).html(originalContent);
@@ -646,70 +687,54 @@ const renderApprovalTimeline = (approvals = []) => {
     });
 };
 
-const handleDeleteAction = (id, $modal) => {
-    console.log("handleDeleteAction", id);
-
-    Swal.fire({
+const handleDeleteAction = async (id, $modal) => {
+    const confirmed = await confirmToast({
         title: "Yakin ingin menghapus?",
         text: "Data yang dihapus akan dinonaktifkan.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Ya, hapus",
-        cancelButtonText: "Batal",
-        reverseButtons: true,
-    }).then((result) => {
-        if (!result.isConfirmed) return;
+        confirmText: "Hapus",
+        cancelText: "Batal",
+    });
 
-        $.ajax({
-            url: `/training/training-request/${id}/delete-lna`,
-            method: "POST",
-            data: {
-                _method: "DELETE",
-                _token: $('meta[name="csrf-token"]').attr("content"),
-            },
-            beforeSend: () => {
-                Swal.fire({
-                    title: "Menghapus...",
-                    text: "Mohon tunggu",
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading(),
-                });
-            },
-            success: (res) => {
-                $modal.fadeOut(200, function () {
-                    $(this).addClass("hidden").hide();
-                });
+    if (!confirmed) return;
 
-                Swal.fire("Berhasil", res.message, "success");
+    showToast("Menghapus data...", "info");
 
-                // Reload table
-                if ($.fn.DataTable.isDataTable(".dataTable")) {
-                    $(".dataTable").DataTable().ajax.reload(null, false);
-                }
-            },
-            error: (xhr) => {
-                const status = xhr.status;
-                const message =
-                    xhr.responseJSON?.message || "Terjadi kesalahan sistem";
+    $.ajax({
+        url: `/training/training-request/${id}/delete-lna`,
+        method: "POST",
+        data: {
+            _method: "DELETE",
+            _token: $('meta[name="csrf-token"]').attr("content"),
+        },
+        success: (res) => {
+            $modal.fadeOut(200, function () {
+                $(this).addClass("hidden").hide();
+            });
 
-                if (status === 409) {
-                    Swal.fire("Perhatian", message, "warning");
-                } else if (status === 404) {
-                    Swal.fire("Tidak ditemukan", message, "error");
-                } else {
-                    Swal.fire("Gagal", message, "error");
-                }
-            },
-        });
+            showToast(res.message, "success");
+
+            // Reload table
+            if ($.fn.DataTable.isDataTable(".dataTable")) {
+                $(".dataTable").DataTable().ajax.reload(null, false);
+            }
+        },
+        error: (xhr) => {
+            showToast(
+                xhr.responseJSON?.message || "Terjadi kesalahan",
+                "error",
+            );
+        },
     });
 };
 
-const formatRupiah = (v) =>
-    new Intl.NumberFormat("id-ID", {
+function formatRupiah(value) {
+    if (!value) return "";
+    return new Intl.NumberFormat("id-ID", {
         style: "currency",
         currency: "IDR",
         minimumFractionDigits: 0,
-    }).format(v || 0);
+    }).format(Number(value));
+}
 
 const formatDate = (d) =>
     d
