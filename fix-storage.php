@@ -172,9 +172,20 @@ if (is_link($storageLink)) {
     echo "✅ Storage symlink exists\n";
     echo "   Link: $storageLink\n";
     echo "   Points to: $target\n";
+    
+    // Test if symlink works
+    if (is_dir($storageLink)) {
+        echo "   ✅ Symlink is working (can access directory)\n";
+    } else {
+        echo "   ❌ Symlink broken! Cannot access target\n";
+    }
+} else if (file_exists($storageLink)) {
+    echo "⚠️  public_html/storage exists but NOT a symlink!\n";
+    echo "   This is the problem! It's a regular directory.\n";
+    echo "   Solution: Rename it and create proper symlink\n";
 } else {
-    echo "⚠️  Storage symlink not found!\n";
-    echo "   Manual fix needed\n";
+    echo "❌ Storage symlink not found!\n";
+    echo "   Path: $storageLink\n";
 }
 echo "\n";
 
@@ -188,13 +199,62 @@ if (is_dir($newStorage)) {
     
     if ($fileCount > 0) {
         echo "   Sample files:\n";
-        $sample = array_slice($files, 0, 5);
+        $sample = array_slice($files, 0, 10);
         foreach ($sample as $file) {
-            echo "   - $file\n";
+            $filePath = $newStorage . '/' . $file;
+            if (is_file($filePath)) {
+                $size = filesize($filePath);
+                $readable = is_readable($filePath) ? '✅' : '❌';
+                echo "   $readable $file (" . round($size/1024, 2) . " KB)\n";
+            } else if (is_dir($filePath)) {
+                echo "   📁 $file/ (directory)\n";
+            }
         }
+    } else {
+        echo "   ⚠️  No files found! Storage is empty.\n";
     }
 } else {
     echo "⚠️  Storage directory not found!\n";
+}
+echo "\n";
+
+// ============================================
+// STEP 5: Test Image Access
+// ============================================
+echo "=================================\n";
+echo "TEST IMAGE ACCESS\n";
+echo "=================================\n";
+
+// Try to find a sample image
+if ($fileCount > 0) {
+    $sampleFile = null;
+    foreach ($files as $file) {
+        $filePath = $newStorage . '/' . $file;
+        if (is_file($filePath) && preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $file)) {
+            $sampleFile = $file;
+            break;
+        }
+    }
+    
+    if ($sampleFile) {
+        echo "Sample image found: $sampleFile\n";
+        echo "Public URL should be:\n";
+        echo "   https://demo-sapahc.ptsi.co.id/storage/$sampleFile\n\n";
+        
+        // Check if accessible via symlink
+        $publicPath = $storageLink . '/' . $sampleFile;
+        if (file_exists($publicPath)) {
+            echo "✅ File accessible via public_html/storage/\n";
+            echo "   Path: $publicPath\n";
+        } else {
+            echo "❌ File NOT accessible via public_html/storage/\n";
+            echo "   This means symlink is broken!\n";
+        }
+    } else {
+        echo "ℹ️  No image files found in storage\n";
+    }
+} else {
+    echo "ℹ️  No files to test\n";
 }
 echo "\n";
 
