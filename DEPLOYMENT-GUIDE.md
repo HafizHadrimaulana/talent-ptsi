@@ -509,20 +509,31 @@ git push origin production
 
 **Penyebab & Solusi:**
 
-1. **.env tidak ada atau salah**
+1. **vendor/ folder tidak ada (PALING SERING!)**
+   - Error: `require vendor/autoload.php: failed to open stream`
+   - Penyebab: Branch yang di-clone bukan production (masih main/develop)
+   - **Solusi: PASTIKAN sudah switch ke branch production!** (Step 3)
+   - Verify: Cek di File Manager, folder `vendor/` harus ada dan besar (~50-100MB)
+
+2. **.env tidak ada atau salah**
    - Cek: File `.env` ada di `/home/demosapahcptsico/talent-ptsi/`
    - Cek: APP_KEY ada dan tidak kosong
    - Solusi: Copy dari backup atau run `php artisan key:generate`
 
-2. **Permission salah**
+3. **Permission salah**
    - Cek: storage/ = 775
    - Cek: bootstrap/cache/ = 775
    - Solusi: Set ulang permissions (Step 5)
 
-3. **Database connection error**
+4. **Database connection error**
    - Cek: Credentials di .env benar
    - Cek: Database exists di phpMyAdmin
    - Solusi: Fix credentials atau create database
+
+5. **public/build/ tidak ada**
+   - Error: CSS/JS tidak load
+   - Penyebab: Assets belum di-build
+   - Solusi: Pastikan branch production (sudah include build assets)
 
 ### Error: "419 Page Expired" saat Login
 
