@@ -11,11 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: � Wait for cPanel Git Pull
+        run: |
+          echo "Waiting for cPanel to pull latest code..."
+          sleep 10  # Give cPanel time to pull via Git Version Control
+      
       - name: 🚀 Trigger cPanel Deploy
         run: |
           echo "Triggering deployment to cPanel..."
           
-          # Trigger deploy-auto.php via URL
+          # Trigger deploy script (handles assets, storage, migrations, cache)
           response=$(curl -s -w "\n%{http_code}" \
             "${{ secrets.DEPLOY_URL }}?token=${{ secrets.DEPLOY_TOKEN }}")
           
