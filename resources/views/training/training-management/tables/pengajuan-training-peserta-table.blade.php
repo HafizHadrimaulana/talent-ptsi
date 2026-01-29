@@ -37,12 +37,4 @@
     const personUnitId = "{{ optional(Auth::user()->person)->unit_id }}";
     
     window.currentUnitId = rawUnitId || employeeUnitId || personUnitId || "";
-    
-    console.log("Debug Admin - User Table:", rawUnitId);
-    console.log("Debug Admin - Employee Table:", employeeUnitId);
-    console.log("Debug Admin - Final Result:", window.currentUnitId);
-
-    console.log("Blade Check - Unit ID:", window.currentUnitId);
-
-    console.log("Role terdeteksi:", window.currentUserRole);
 </script>
