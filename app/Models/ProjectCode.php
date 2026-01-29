@@ -6,18 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProjectCode extends Model
 {
-    protected $table = 'project_code';
+    protected $table = 'master_projects';
 
     protected $fillable = [
-        'client_id',
+        'nama_unit',
+        'kode_project',
+        'nama_project',
+        'nilai_kontrak',
+        'tgl_mulai',
+        'tgl_akhir',
+        'portofolio_code',
+        'portofolio_name',
         'nama_klien',
-        'unit_kerja_id',
-        'unit_kerja_nama',
-        'unit_pengelola_id',
-        'unit_pengelola_nama',
-        'nama_potensial',
-        'jenis_kontrak',
-        'nama_proyek',
-        'project_status',
+        'sync_year',
+    ];
+    protected $casts = [
+        'tgl_mulai'     => 'date',
+        'tgl_akhir'     => 'date',
+        'nilai_kontrak' => 'decimal:2',
     ];
 }
