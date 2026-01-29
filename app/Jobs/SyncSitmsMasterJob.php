@@ -41,8 +41,10 @@ class SyncSitmsMasterJob implements ShouldQueue
     protected array $summary = [];
     protected array $tableColumnsCache = [];
     protected array $lookupCache = [];
+    protected array $processedExternalIds = []; // Track processed external_ids to prevent duplicates
     protected int $errInserts = 0;
     protected int $successfulCount = 0;
+    protected int $skippedDuplicates = 0;
 
     public function __construct(
         int $page,
@@ -117,6 +119,15 @@ class SyncSitmsMasterJob implements ShouldQueue
                     }
                 } else {
                     try {
+                        // Check if we already processed this external_id in current sync
+                        if (isset($this->processedExternalIds[$externalId])) {
+                            $this->skippedDuplicates++;
+                            continue; // Skip duplicate in same sync batch
+                        }
+                        
+                        // Mark as processed before calling upsert to prevent re-entry
+                        $this->processedExternalIds[$externalId] = true;
+                        
                         if ($this->upsertEmployeeRawFromSitmsRow($row)) {
                             $this->successfulCount++;
                         }
@@ -187,6 +198,7 @@ class SyncSitmsMasterJob implements ShouldQueue
             'reported_total' => $reportedTotal,
             'seen_unique' => $this->uniqueCount ? count($this->uniqueExternalIds()) : $processed,
             'successful_rows' => $this->successfulCount,
+            'skipped_duplicates' => $this->skippedDuplicates,
             'pages' => $pagesDone,
             'stop_reason' => $stopReason,
             'err_inserts' => $this->errInserts
@@ -206,8 +218,10 @@ class SyncSitmsMasterJob implements ShouldQueue
         $this->seenDocumentIds = [];
         $this->seenPortfolioIds = [];
         $this->samples = [];
+        $this->processedExternalIds = [];
         $this->errInserts = 0;
         $this->successfulCount = 0;
+        $this->skippedDuplicates = 0;
         $this->lookupCache = [];
     }
 

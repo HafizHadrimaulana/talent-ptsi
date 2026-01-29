@@ -51,7 +51,6 @@ class TrainingImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
         $this->rowCount++;
 
         return new TrainingTemp([
-            'jenis_pelatihan'   => $row['kompetensi_porto/non_porto/resertifikasi'] ?? null,
             'nik'               => $row['nik'] ?? null,
             'nama_peserta'      => $row['nama_peserta'] ?? null,
             'status_pegawai'    => $row['status_pegawai'] ?? null,
@@ -64,6 +63,7 @@ class TrainingImport implements ToModel, WithHeadingRow, WithChunkReading, Skips
             'biaya_pelatihan'   => $this->parseRupiah($row['biaya_pelatihan'] ?? null),
             'nama_proyek'       => $row['nama_proyek_(keterkaitan_dengan_proyek)'] ?? null,
             'jenis_portofolio'  => $row['jenis_portofolio'] ?? null,
+            'jenis_pelatihan'   => $row['jenis_pelatihan'] ?? null,
             'fungsi'            => $row['fungsi'] ?? null,
             'created_at'        => Carbon::now(),
             'updated_at'        => Carbon::now(),

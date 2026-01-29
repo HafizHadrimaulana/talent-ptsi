@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Recruitment;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Contract, ContractTemplate, RecruitmentApplicant, Unit, Document, Signature, Approval, User, Employee, Person};
+use App\Models\{Contract, ContractTemplate, RecruitmentApplicant, Unit, Document, Signature, Approval, User, Employee, Person, RecruitmentRequest};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Storage};
 use Carbon\Carbon;
@@ -203,6 +203,134 @@ class ContractController extends Controller
         ]);
     }
 
+    /**
+     * Get approved recruitment requests for contract creation
+     */
+    public function getRecruitmentRequests(Request $request)
+    {
+        $user = $request->user();
+        $unitId = $request->input('unit_id');
+        
+        $query = RecruitmentRequest::with(['unit:id,name'])
+            ->where('status', 'approved')
+            ->whereNotNull('ticket_number')
+            ->orderBy('created_at', 'desc');
+        
+        // Filter by unit
+        if ($unitId) {
+            $query->where('unit_id', $unitId);
+        } elseif (!$user->hasRole(['Superadmin', 'DHC'])) {
+            $query->where('unit_id', $user->unit_id);
+        }
+        
+        $requests = $query->get()->map(function($rr) {
+            $meta = $rr->meta ?? [];
+            $details = $meta['recruitment_details'] ?? [];
+            $firstDetail = $details[0] ?? [];
+            
+            return [
+                'id' => $rr->id,
+                'ticket_number' => $rr->ticket_number,
+                'title' => $rr->title,
+                'unit_id' => $rr->unit_id,
+                'unit_name' => $rr->unit->name ?? '-',
+                'employment_type' => $rr->employment_type,
+                'position' => $rr->position,
+                'position_text' => $firstDetail['position_text'] ?? '-',
+                'headcount' => $rr->headcount,
+                'meta' => $meta,
+            ];
+        });
+        
+        return response()->json($requests);
+    }
+
+    /**
+     * Get applicants from a recruitment request
+     */
+    public function getApplicantsFromRequest(Request $request, $recruitmentRequestId)
+    {
+        $applicants = RecruitmentApplicant::with(['user.person', 'positionObj'])
+            ->where('recruitment_request_id', $recruitmentRequestId)
+            ->whereNotNull('user_id')
+            ->get()
+            ->map(function($app) {
+                return [
+                    'id' => $app->id,
+                    'user_id' => $app->user_id,
+                    'person_id' => $app->user->person_id ?? null,
+                    'name' => $app->user->person->full_name ?? $app->user->name ?? '-',
+                    'email' => $app->user->email ?? '-',
+                    'phone' => $app->user->person->phone ?? '-',
+                    'position_id' => $app->position_id,
+                    'position_name' => $app->positionObj->name ?? '-',
+                ];
+            });
+        
+        return response()->json($applicants);
+    }
+
+    /**
+     * Get recruitment request detail with remuneration data
+     */
+    public function getRecruitmentDetail(Request $request, $recruitmentRequestId)
+    {
+        $rr = RecruitmentRequest::with(['unit'])->findOrFail($recruitmentRequestId);
+        
+        $meta = $rr->meta ?? [];
+        $details = $meta['recruitment_details'] ?? [];
+        $firstDetail = $details[0] ?? [];
+        
+        return response()->json([
+            'id' => $rr->id,
+            'ticket_number' => $rr->ticket_number,
+            'title' => $rr->title,
+            'unit_id' => $rr->unit_id,
+            'unit_name' => $rr->unit->name ?? '-',
+            'employment_type' => $rr->employment_type,
+            'budget_source_type' => $rr->budget_source_type,
+            'position' => $rr->position,
+            'position_id' => $rr->position_id,
+            'position_text' => $firstDetail['position_text'] ?? '-',
+            'target_start_date' => $rr->target_start_date,
+            'meta' => $meta,
+            'detail' => $firstDetail,
+            // Remuneration data
+            'salary' => $firstDetail['salary'] ?? null,
+            'allowanceJ' => $firstDetail['allowanceJ'] ?? null,
+            'allowanceP' => $firstDetail['allowanceP'] ?? null,
+            'allowanceL' => $firstDetail['allowanceL'] ?? null,
+            'allowanceK' => $firstDetail['allowanceK'] ?? null,
+            'pph21' => $firstDetail['pph21'] ?? null,
+            'bpjs_kes' => $firstDetail['bpjs_kes'] ?? null,
+            'bpjs_tk' => $firstDetail['bpjs_tk'] ?? null,
+            'thr' => $firstDetail['thr'] ?? null,
+            'kompensasi' => $firstDetail['kompensasi'] ?? null,
+            'location' => $firstDetail['location'] ?? null,
+            'start_date' => $firstDetail['start_date'] ?? null,
+            'end_date' => $firstDetail['end_date'] ?? null,
+            'project_code' => $firstDetail['project_code'] ?? null,
+            'project_name' => $firstDetail['project_name'] ?? null,
+        ]);
+    }
+
+    /**
+     * Get person data including NIK and photo
+     */
+    public function getPersonData(Request $request, $personId)
+    {
+        $person = Person::findOrFail($personId);
+        
+        return response()->json([
+            'id' => $person->id,
+            'full_name' => $person->full_name,
+            'nik' => $person->nik,
+            'photo_path' => $person->photo_path,
+            'email' => $person->email,
+            'phone' => $person->phone,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $v = $this->validateContract($request);
@@ -228,11 +356,20 @@ class ContractController extends Controller
             if ($isNew) $c->contract_no = null;
             $c->unit_id = $v['unit_id'];
 
+            // Link to recruitment request if provided
+            if (!empty($v['recruitment_request_id'])) {
+                $c->recruitment_request_id = $v['recruitment_request_id'];
+                $rr = RecruitmentRequest::find($v['recruitment_request_id']);
+                if ($rr && $rr->ticket_number) {
+                    $c->ticket_number = $rr->ticket_number;
+                }
+            }
+
             if (in_array($v['contract_type'], ['SPK', 'PKWT_BARU']) && $v['applicant_id']) {
                 $a = RecruitmentApplicant::with(['user', 'recruitmentRequest'])->find($v['applicant_id']);
                 $c->applicant_id = $a->id;
                 $c->person_id = $a->user?->person_id ?? null;
-                if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number) {
+                if ($a->recruitmentRequest && $a->recruitmentRequest->ticket_number && !$c->ticket_number) {
                     $c->ticket_number = $a->recruitmentRequest->ticket_number;
                 }
                 if (empty($v['position_name'])) $c->position_name = $a->position_applied;
@@ -294,6 +431,7 @@ class ContractController extends Controller
     {
         $rules = [
             'contract_type' => 'required',
+            'recruitment_request_id' => 'nullable|exists:recruitment_requests,id',
             'unit_id' => 'required',
             'applicant_id' => 'nullable',
             'employee_id' => 'nullable',
@@ -390,19 +528,39 @@ class ContractController extends Controller
             'snapshot_image' => 'nullable|string',
         ]);
 
-        // GPS VALIDATION - Ultra Presisi Check
+        // GPS VALIDATION - Balanced Precision (Allow reasonable accuracy)
         $geoLat = !empty($data['geo_lat']) ? floatval($data['geo_lat']) : null;
         $geoLng = !empty($data['geo_lng']) ? floatval($data['geo_lng']) : null;
         $geoAccuracy = !empty($data['geo_accuracy']) ? floatval($data['geo_accuracy']) : 999;
         
         // Validasi: GPS coordinates harus valid
         if ($geoLat && $geoLng) {
+            // Check coordinate boundaries
             if ($geoLat < -90 || $geoLat > 90 || $geoLng < -180 || $geoLng > 180) {
-                return response()->json(['success' => false, 'message' => '❌ Koordinat GPS Invalid - Kemungkinan VPN/Spoofing'], 400);
+                return response()->json(['success' => false, 'message' => '❌ Koordinat GPS Invalid'], 400);
             }
             
-            // Enterprise: Accept all GPS accuracy levels (informative logging only)
-            \Log::info("Contract Sign: GPS Locked - Accuracy {$geoAccuracy}m for user {$request->user()->id}");
+            // Check Indonesia boundaries (relaxed for border areas)
+            $indonesiaBounds = ['lat_min' => -12.0, 'lat_max' => 7.0, 'lng_min' => 94.0, 'lng_max' => 142.0];
+            if ($geoLat < $indonesiaBounds['lat_min'] || $geoLat > $indonesiaBounds['lat_max'] ||
+                $geoLng < $indonesiaBounds['lng_min'] || $geoLng > $indonesiaBounds['lng_max']) {
+                \Log::warning("Contract Sign: GPS outside Indonesia - User {$request->user()->id} at ({$geoLat}, {$geoLng})");
+            }
+            
+            // Balanced Accuracy: Accept up to 300m (reasonable for indoor/urban)
+            if ($geoAccuracy > 300) {
+                \Log::warning("Contract Sign: Very low accuracy ({$geoAccuracy}m) for user {$request->user()->id}");
+                return response()->json(['success' => false, 'message' => "⚠️ Akurasi GPS terlalu rendah (±{$geoAccuracy}m). Pindah ke area yang lebih terbuka."], 400);
+            }
+            
+            // Log dengan tier classification
+            $tier = $geoAccuracy <= 50 ? 'HIGH' : ($geoAccuracy <= 150 ? 'MEDIUM' : 'LOW');
+            \Log::info("Contract Sign: GPS {$tier} ±{$geoAccuracy}m for user {$request->user()->id} at ({$geoLat}, {$geoLng})");
+        } else {
+            // GPS required but not provided
+            if ($contract->requires_geolocation) {
+                return response()->json(['success' => false, 'message' => '📍 Lokasi GPS diperlukan'], 400);
+            }
         }
 
         DB::beginTransaction();
@@ -463,6 +621,15 @@ class ContractController extends Controller
             ]);
 
             $contract->update(['status' => $status]);
+            
+            // Ensure document is bound to person and employee when signed
+            if ($status === 'signed' && $contract->document) {
+                $contract->document->update([
+                    'person_id' => $contract->person_id,
+                    'employee_id' => $contract->employee_id
+                ]);
+            }
+            
             $contract->loadMissing('document');
             if ($contract->document && Storage::disk('local')->exists($contract->document->path))
                 Storage::disk('local')->delete($contract->document->path);
@@ -517,14 +684,92 @@ class ContractController extends Controller
     public function document(Request $request, Contract $contract)
     {
         set_time_limit(300);
+        
+        // Authorization: Team-scoped and role-based access control
+        $user = $request->user();
+        $isSuperadmin = $user->hasRole('Superadmin');
+        $isDhc = $user->hasRole('DHC');
+        
+        // Define admin roles that can view all contracts in their unit
+        $adminRoles = [
+            'SDM Unit',
+            'Dir SDM',
+            'Kepala Unit',
+            'Admin Operasi Unit',
+            'Kepala Proyek (MP)',
+            'AVP',
+            'DBS Unit',
+            'GM/VP Unit'
+        ];
+        
+        // Superadmin can access all contracts
+        if ($isSuperadmin) {
+            // Allowed - no restrictions
+        }
+        // DHC can only access contracts from enabler units
+        elseif ($isDhc) {
+            $contractUnit = DB::table('units')->where('id', $contract->unit_id)->first();
+            if (!$contractUnit || strtoupper($contractUnit->category) !== 'ENABLER') {
+                abort(403, 'DHC can only access contracts from Enabler units');
+            }
+        }
+        // Admin roles can access all contracts within their unit
+        elseif ($user->hasAnyRole($adminRoles)) {
+            if ($user->unit_id != $contract->unit_id) {
+                abort(403, 'You can only access contracts from your own unit');
+            }
+        }
+        // Regular employees can only access their own contracts
+        else {
+            $isOwnContract = false;
+            
+            // Check by employee_id
+            if ($user->employee_id && $contract->employee_id && $user->employee_id === $contract->employee_id) {
+                $isOwnContract = true;
+            }
+            
+            // Check by person_id
+            if (!$isOwnContract && $user->person_id && $contract->person_id && $user->person_id === $contract->person_id) {
+                $isOwnContract = true;
+            }
+            
+            if (!$isOwnContract) {
+                abort(403, 'You can only access your own contracts');
+            }
+        }
+        
         $this->ensureDocumentRecord($contract);
         $contract->refresh()->loadMissing('document');
-        if (!Storage::disk('local')->exists($contract->document->path)) {
+        
+        if (!$contract->document) {
+            abort(404, 'Document record not found');
+        }
+        
+        $filePath = $contract->document->path;
+        
+        // Check if file exists in local storage
+        if (!Storage::disk('local')->exists($filePath)) {
+            \Log::warning("Contract document not found, regenerating: {$filePath}");
             $this->generatePdfFile($contract);
             $contract->refresh()->loadMissing('document');
+            
+            // Re-check after generation
+            if (!Storage::disk('local')->exists($contract->document->path)) {
+                abort(404, 'Document file could not be generated');
+            }
+            $filePath = $contract->document->path;
         }
-        $filename = basename($contract->document->path);
-        return response()->file(Storage::disk('local')->path($contract->document->path), [
+        
+        $fullPath = Storage::disk('local')->path($filePath);
+        
+        if (!file_exists($fullPath)) {
+            \Log::error("Physical file not found: {$fullPath}");
+            abort(404, 'Document file not found on disk');
+        }
+        
+        $filename = basename($filePath);
+        
+        return response()->file($fullPath, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"'
         ]);
@@ -538,6 +783,25 @@ class ContractController extends Controller
      */
     public function show(Contract $contract)
     {
+        // SECURITY: Only allow AJAX requests - prevent direct browser access to JSON
+        if (!request()->ajax() && !request()->wantsJson()) {
+            abort(404);
+        }
+        
+        // AUTHORIZATION: Verify user can view this contract
+        $me = auth()->user();
+        $canView = $me->can('contract.read');
+        
+        // Non-admin users can only view their own contracts
+        if (!$me->hasRole(['Superadmin', 'DHC', 'SDM Unit', 'Kepala Unit'])) {
+            $isOwner = ($contract->employee_id && $contract->employee_id === $me->employee_id)
+                || ($contract->applicant && $contract->applicant->user_id === $me->id);
+            
+            if (!$isOwner && !$canView) {
+                abort(403, 'Unauthorized access to contract');
+            }
+        }
+        
         $contract->load(['unit', 'document', 'person', 'applicant.user.person']);
 
         $creatorName = 'System';
@@ -997,11 +1261,15 @@ class ContractController extends Controller
             }
         }
 
-        // Extract hanya font-family dari template CSS tanpa menghapus @page dan body
+        // Extract dan bersihkan template CSS
         $tplCss = (string) ($template->css ?? '');
+        // Hapus deklarasi body dan @page dari template CSS untuk menghindari konflik
+        $tplCss = preg_replace('/@page\s*\{[^}]*\}/i', '', $tplCss);
+        $tplCss = preg_replace('/body\s*\{[^}]*\}/i', '', $tplCss);
 
-        $css = "@page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}{$fontFaceCss}
-        body{margin:0;padding:0;font-family:{$finalFamily},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:rgba(255,255,255,0.88);}
+        $css = "{$fontFaceCss}
+        @page{margin:{$mt}cm {$mr}cm {$mb}cm {$ml}cm;}
+        body{margin:0;padding:0;font-family:{$finalFamily},sans-serif;font-size:{$fs}pt;line-height:{$lh};color:#000;background-color:#ffffff;}
         .letterhead-img{position:fixed;top:-{$mt}cm;left:-{$ml}cm;width:{$pw}cm;height:{$ph}cm;z-index:-9999;opacity:1.0;}
         .content{margin:0!important;padding:0!important;}
         p{margin:0 0 {$pa}pt 0;text-align:justify;text-justify:inter-word;}
@@ -1022,9 +1290,6 @@ class ContractController extends Controller
         table.ttd td{text-align:center;vertical-align:top;}
         .sig-box{height:70px;}
         {$tplCss}";
-
-        // Hapus deklarasi body duplikat untuk memastikan hanya satu font-family yang digunakan
-        $css = preg_replace('/body\s*\{[^}]*font-family:[^;]+;[^}]*\}/', '', $css, 1);
 
         $bg = $lhImg ? ("<img class='letterhead-img' src='{$lhImg}'>") : '';
         return "<html><head><meta charset='utf-8'><style>{$css}</style></head><body>{$bg}{$body}</body></html>";
@@ -1128,9 +1393,34 @@ class ContractController extends Controller
     {
         if (!$c->document_id) {
             $path = "contracts/{$c->contract_type}-{$c->id}-" . time() . ".pdf";
-            $doc = Document::create(['doc_type' => $c->contract_type, 'storage_disk' => 'local', 'path' => $path, 'mime' => 'application/pdf', 'size_bytes' => 0]);
+            
+            // Get document title from config
+            $contractTypes = config('recruitment.contract_types', []);
+            $title = isset($contractTypes[$c->contract_type]) 
+                     ? $contractTypes[$c->contract_type]['label'] 
+                     : $c->contract_type;
+            
+            $doc = Document::create([
+                'doc_type' => $c->contract_type,
+                'title' => $title,
+                'storage_disk' => 'local',
+                'path' => $path,
+                'mime' => 'application/pdf',
+                'size_bytes' => 0,
+                'person_id' => $c->person_id,
+                'employee_id' => $c->employee_id
+            ]);
             $c->update(['document_id' => $doc->id]);
             $c->refresh();
+        } else {
+            // Update document binding jika sudah ada tapi belum ter-bind
+            $doc = $c->document;
+            if ($doc && (!$doc->person_id || !$doc->employee_id)) {
+                $doc->update([
+                    'person_id' => $c->person_id,
+                    'employee_id' => $c->employee_id
+                ]);
+            }
         }
         if (!Storage::disk('local')->exists('contracts'))
             Storage::disk('local')->makeDirectory('contracts');
@@ -1144,7 +1434,7 @@ class ContractController extends Controller
         if (($v = $m['allowance_communication_amount'] ?? 0))
             $list[] = "T.Komunikasi " . $fmt($v);
         if (($v = $m['allowance_special_amount'] ?? 0))
-            $list[] = "T.Khusus " . $fmt($v);
+            $list[] = "T.Project " . $fmt($v);
         if (($v = $m['allowance_other_amount'] ?? 0))
             $list[] = "Lainnya " . $fmt($v);
         return implode(', ', $list) ?: '-';

@@ -1,10 +1,9 @@
 import { initGetDataTable } from "./training-approval/getData";
-import { initModalHandler } from "../../utils/modal";
 import { initInputHandler } from "./training-approval/handler/inputHandler";
 import { initInputLnaHandler } from "./training-approval/handler/inputLnaHandler";
 import { initDragDropUpload } from "./training-approval/handler/dragDropImport";
 import { initDownloadTemplateHandler } from "./training-approval/handler/downloadTemplateHandler";
-import { initPengajuanLnaHandler } from "./training-approval/handler/pengajuanLnaHandler";
+import { submitPengajuanLnaHandler } from "./training-approval/handler/pengajuanLnaHandler";
 
 const TRAINING_CONFIG = {
     tables: {
@@ -117,7 +116,7 @@ function initModalFeatures() {
         },
         {
             id: "#lna-pengajuan-modal",
-            init: initPengajuanLnaHandler,
+            init: submitPengajuanLnaHandler,
         },
     ];
 
@@ -127,7 +126,7 @@ function initModalFeatures() {
 
         if (modal.dataset.initialized) return;
 
-        init(modal); 
+        init(modal);
         modal.dataset.initialized = "true";
     });
 }
@@ -140,44 +139,46 @@ const initializeButtonHandlers = () => {
     }
 };
 
-const initializeGlobalEventHandlers = () => {
-    // Global modal handlers
-    document.addEventListener("click", (e) => {
-        // Open modal
-        if (e.target.matches("[data-modal-open]")) {
-            const id = e.target.getAttribute("data-modal-open");
-            toggleModal(id, true);
-            return;
-        }
+// const initializeGlobalEventHandlers = () => {
+//     // Global modal handlers
+//     document.addEventListener("click", (e) => {
+//         // Open modal
+//         if (e.target.matches("[data-modal-open]")) {
+//             const id = e.target.getAttribute("data-modal-open");
+//             toggleModal(id, true);
+//             return;
+//         }
 
-        // Close by button
-        if (e.target.matches("[data-modal-close]")) {
-            const id = e.target.getAttribute("data-modal-close");
-            toggleModal(id, false);
-            return;
-        }
+//         // Close by button
+//         if (e.target.matches("[data-modal-close]")) {
+//             const id = e.target.getAttribute("data-modal-close");
+//             toggleModal(id, false);
+//             return;
+//         }
 
-        // Click outside
-        document.querySelectorAll(".u-modal").forEach((modal) => {
-            if (e.target === modal) {
-                modal.classList.add("hidden");
-            }
-            return;
-        });
-    });
+//         // Click outside
+//         const modal = e.target.closest(".u-modal");
+//         if (modal && e.target === modal) {
+//             modal.setAttribute("hidden", "");
+//         }
+//     });
 
-    // Add global error handler
-    window.addEventListener("error", (event) => {
-        console.error("Global error:", event.error);
-    });
-};
+//     // Add global error handler
+//     window.addEventListener("error", (event) => {
+//         console.error("Global error:", event.error);
+//     });
+// };
 
-const toggleModal = (modalId, show) => {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.toggle("hidden", !show);
-    }
-};
+// const toggleModal = (modalId, show) => {
+//     const modal = document.getElementById(modalId);
+//     if (!modal) return;
+
+//     if (show) {
+//         modal.removeAttribute("hidden");
+//     } else {
+//         modal.setAttribute("hidden", "");
+//     }
+// };
 
 const validateEnvironment = () => {
     const requiredGlobals = ["currentUserRole", "userUnitId"];
@@ -205,7 +206,7 @@ const initializeTrainingPage = () => {
         initializeTrainingTables();
         initModalFeatures();
         initializeButtonHandlers();
-        initializeGlobalEventHandlers();
+        // initializeGlobalEventHandlers();
 
         console.log("Training page initialization completed successfully");
     } catch (error) {
@@ -218,7 +219,7 @@ export const TrainingPage = {
     init: initializeTrainingPage,
     config: TRAINING_CONFIG,
     utils: {
-        toggleModal,
+        // toggleModal,
         validateEnvironment,
     },
 };

@@ -16,6 +16,7 @@ use App\Exports\RecruitmentRequestExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Gate;
 use Carbon\Carbon;
+use App\Services\TemplateService;
 
 class PrincipalApprovalController extends Controller
 {
@@ -753,129 +754,6 @@ class PrincipalApprovalController extends Controller
         }
     }
 
-    public function previewUraianPdf(Request $request)
-    {
-        $json = $request->input('data');
-        $d = json_decode($json, true);
-        if (!$d) return "Data error: JSON tidak valid.";
-        $template = ContractTemplate::where('code', 'UJ')->first();
-        if (!$template) return "Template 'UJ' belum ada.";
-        $fontCss = "";
-        try {
-            $fontRegular = storage_path('app/fonts/tahoma.ttf');
-            $fontBold    = storage_path('app/fonts/tahomabd.ttf');
-            if (!file_exists($fontRegular)) $fontRegular = public_path('fonts/tahoma.ttf');
-            if (!file_exists($fontBold)) $fontBold = public_path('fonts/tahomabd.ttf');
-            if (file_exists($fontRegular)) {
-                $fReg = base64_encode(file_get_contents($fontRegular));
-                $fBld = file_exists($fontBold) ? base64_encode(file_get_contents($fontBold)) : $fReg;
-                $fontCss = "
-                    @font-face {font-family: 'Tahoma'; font-style: normal; font-weight: normal; src: url(data:font/truetype;charset=utf-8;base64,{$fReg}) format('truetype');}
-                    @font-face {font-family: 'Tahoma'; font-style: normal; font-weight: bold; src: url(data:font/truetype;charset=utf-8;base64,{$fBld}) format('truetype');}";
-            } else {
-                $fontCss = "body { font-family: Helvetica, Arial, sans-serif !important; }"; 
-            }
-        } catch (\Exception $e) { }
-
-        $disk = config('recruitment.pdf.letterhead_disk', 'public');
-        $bgImage = '';
-        $headerPath = $template->header_image_path; 
-        if (!$headerPath && config('recruitment.pdf.letterhead_path')) {
-             $headerPath = config('recruitment.pdf.letterhead_path');
-        }
-
-        if ($headerPath && Storage::disk($disk)->exists($headerPath)) {
-            $path = Storage::disk($disk)->path($headerPath);
-            $type = pathinfo($path, PATHINFO_EXTENSION);
-            $dataImg = file_get_contents($path);
-            $base64 = 'data:image/' . $type . ';base64,' . base64_encode($dataImg);
-            $bgImage = "<img class='letterhead-img' src='{$base64}'>";
-        }
-        $mt = number_format($template->margin_top ?? 3.5, 2, '.', '');
-        $mr = number_format($template->margin_right ?? 2.54, 2, '.', '');
-        $mb = number_format($template->margin_bottom ?? 2.54, 2, '.', '');
-        $ml = number_format($template->margin_left ?? 2.54, 2, '.', '');
-        $dynamicCss = "
-            {$fontCss}
-            @page { margin: 0cm; }
-            body {font-family: 'Tahoma', sans-serif; margin-top: {$mt}cm; margin-right: {$mr}cm; margin-bottom: {$mb}cm; margin-left: {$ml}cm;}
-            .letterhead-img {position: fixed; top: 0; left: 0; width: 21cm; height: 29.7cm; z-index: -1000;}
-        ";
-        $fmt = fn($t) => !empty($t) ? nl2br(e($t)) : '-';
-        $orgChart = '-';
-        if (!empty($d['struktur_organisasi'])) {
-            $src = $d['struktur_organisasi'];
-            if (!Str::startsWith($src, 'data:image')) {
-                $src = 'data:image/jpeg;base64,' . $src;
-            }
-            $orgChart = "<img src='{$src}' style='max-width:100%; max-height:400px; object-fit:contain;'>";
-        }
-        Carbon::setLocale('id'); // Set locale global ke ID
-        $todayDate = now()->translatedFormat('d F Y'); // Output: 26 Januari 2026
-
-        // Jika server tidak mendukung locale 'id', gunakan array mapping manual (fallback)
-        if (str_contains($todayDate, 'January') || str_contains($todayDate, 'February') || str_contains($todayDate, 'March') || str_contains($todayDate, 'May') || str_contains($todayDate, 'June') || str_contains($todayDate, 'July') || str_contains($todayDate, 'August') || str_contains($todayDate, 'October') || str_contains($todayDate, 'December')) {
-            $months = [
-                'January' => 'Januari', 'February' => 'Februari', 'March' => 'Maret', 'April' => 'April', 'May' => 'Mei', 'June' => 'Juni',
-                'July' => 'Juli', 'August' => 'Agustus', 'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
-            ];
-            $todayDate = strtr(now()->format('d F Y'), $months);
-        }
-        $reportsToSig = !empty($d['melapor']) ? $d['melapor'] : '........................................';
-        $incumbentSig = !empty($d['pemangku']) ? $d['pemangku'] : '........................................';
-
-        $vars = [
-            'job_title' => $d['nama'] ?? '-',
-            'unit_name' => $d['unit'] ?? '-',
-            'incumbent' => $d['pemangku'] ?? '-',
-            'reports_to'=> $d['melapor'] ?? '-',
-            'job_purpose'=> $fmt($d['tujuan'] ?? ''),
-            'accountabilities'=> $fmt($d['akuntabilitas'] ?? ''),
-            'dim_financial'   => $d['dimensi_keuangan'] ?? '-',
-            'budget'          => $d['anggaran'] ?? '-',
-            'dim_non_financial'=> $d['dimensi_non_keuangan'] ?? '-',
-            'direct_subordinates'=> $d['bawahan_langsung'] ?? '-',
-            'total_staff'     => $d['total_staff'] ?? '-',
-            'total_employees' => $d['total_pegawai'] ?? '-',
-            'authority'       => $fmt($d['wewenang'] ?? ''),
-            'rel_internal'    => $fmt($d['hub_internal'] ?? ''),
-            'rel_external'    => $fmt($d['hub_eksternal'] ?? ''),
-            'spec_education'  => $fmt($d['spek_pendidikan'] ?? ''),
-            'spec_skills'     => $fmt($d['spek_pengetahuan'] ?? ''),
-            'spec_behavior'   => $fmt($d['spek_kompetensi'] ?? ''),
-            'spec_mandatory'  => $fmt($d['spek_kompetensi_wajib'] ?? ''),
-            'spec_generic'    => $fmt($d['spek_kompetensi_generik'] ?? ''),
-            'org_chart'       => $orgChart,
-            'today_date'      => $todayDate,
-            'reports_to_name_sig' => $reportsToSig,
-            'incumbent_name_sig'  => $incumbentSig
-        ];
-        $html = $this->renderPdfTemplate($template, $vars, $dynamicCss, $bgImage);
-        $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
-        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
-        $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
-        return $pdf->stream('Uraian_Jabatan.pdf');
-    }
-
-    private function renderPdfTemplate($template, $vars, $dynamicCss, $bgImage)
-    {
-        $body = $template->body ?? '';
-        $css  = $dynamicCss . "\n" . ($template->css ?? '');
-        foreach ($vars as $key => $val) {$body = str_replace("{{" . $key . "}}", (string)$val, $body);}
-        return "
-        <!DOCTYPE html>
-        <html>
-            <head>
-                <meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
-                <style>{$css}</style>
-            </head>
-            <body>
-                {$bgImage}
-                {$body}
-            </body>
-        </html>";
-    }
-
     public function publish(RecruitmentRequest $req, Request $request) 
     {
         $me = Auth::user();
@@ -903,6 +781,7 @@ class PrincipalApprovalController extends Controller
         ]);
         return response()->json(['success' => true, 'message' => 'Lowongan berhasil dipublikasikan dengan deskripsi!']);
     }
+    
     protected function checkUnitHasPosition($unitId, $positionNameFragment)
     {
         return DB::table('employees')
@@ -910,5 +789,145 @@ class PrincipalApprovalController extends Controller
             ->where('employees.unit_id', $unitId)
             ->where('positions.name', 'like', '%' . $positionNameFragment . '%')
             ->exists();
+    }
+
+    /**
+     * Save Uraian Jabatan data to recruitment_request meta
+     */
+    public function saveUraian(Request $request, $id)
+    {
+        try {
+            $recruitmentRequest = RecruitmentRequest::findOrFail($id);
+            $uraianData = $request->input('uraian_data');
+            $status = $request->input('status', 'Draft');
+            
+            // Get existing meta or create new
+            $meta = $recruitmentRequest->meta ?? [];
+            $meta['uraian_jabatan'] = [
+                'data' => $uraianData,
+                'status' => $status,
+                'updated_at' => now()->toDateTimeString(),
+                'updated_by' => Auth::id()
+            ];
+            
+            $recruitmentRequest->meta = $meta;
+            $recruitmentRequest->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Uraian Jabatan berhasil disimpan sebagai ' . $status
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Save Uraian Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Load Uraian Jabatan data from recruitment_request meta
+     */
+    public function loadUraian($id)
+    {
+        try {
+            $recruitmentRequest = RecruitmentRequest::findOrFail($id);
+            $meta = $recruitmentRequest->meta ?? [];
+            $uraianData = $meta['uraian_jabatan'] ?? null;
+            
+            return response()->json([
+                'success' => true,
+                'data' => $uraianData
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Load Uraian Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Preview Uraian Jabatan PDF
+     */
+    public function previewUraianPdf(Request $request)
+    {
+        try {
+            $json = $request->input('data');
+            $rawData = json_decode($json, true);
+            
+            if (!$rawData) {
+                return response("Data error: JSON tidak valid.", 400);
+            }
+            
+            // Map raw data ke format template variables
+            $data = $this->mapUraianJabatanData($rawData);
+            
+            // Generate PDF menggunakan TemplateService
+            $pdf = TemplateService::generatePdf('UJ', $data, 'uraian_jabatan');
+            
+            return $pdf->stream('Uraian_Jabatan.pdf');
+            
+        } catch (\Exception $e) {
+            \Log::error('Preview Uraian PDF Error: ' . $e->getMessage());
+            return response("Error generating PDF: " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Map data dari form ke format template variables
+     */
+    protected function mapUraianJabatanData(array $rawData): array
+    {
+        // Format org chart image jika ada
+        $orgChart = '-';
+        if (!empty($rawData['struktur_organisasi'])) {
+            $src = $rawData['struktur_organisasi'];
+            if (!Str::startsWith($src, 'data:image')) {
+                $src = 'data:image/jpeg;base64,' . $src;
+            }
+            $orgChart = "<img src='{$src}' style='max-width:100%; max-height:400px; object-fit:contain;'>";
+        }
+        
+        return [
+            // Identitas Jabatan
+            'job_title' => $rawData['nama'] ?? '',
+            'unit_name' => $rawData['unit'] ?? '',
+            'incumbent' => $rawData['pemangku'] ?? '',
+            'reports_to' => $rawData['melapor'] ?? '',
+            
+            // Deskripsi
+            'job_purpose' => $rawData['tujuan'] ?? '',
+            'accountabilities' => $rawData['akuntabilitas'] ?? '',
+            
+            // Dimensi
+            'dim_financial' => $rawData['dimensi_keuangan'] ?? '',
+            'budget' => $rawData['anggaran'] ?? '',
+            'dim_non_financial' => $rawData['dimensi_non_keuangan'] ?? '',
+            'direct_subordinates' => $rawData['bawahan_langsung'] ?? '',
+            'total_staff' => $rawData['total_staff'] ?? '',
+            'total_employees' => $rawData['total_pegawai'] ?? '',
+            
+            // Wewenang & Hubungan
+            'authority' => $rawData['wewenang'] ?? '',
+            'rel_internal' => $rawData['hub_internal'] ?? '',
+            'rel_external' => $rawData['hub_eksternal'] ?? '',
+            
+            // Spesifikasi
+            'spec_education' => $rawData['spek_pendidikan'] ?? '',
+            'spec_skills' => $rawData['spek_pengetahuan'] ?? '',
+            'spec_behavior' => $rawData['spek_kompetensi'] ?? '',
+            'spec_mandatory' => $rawData['spek_kompetensi_wajib'] ?? '',
+            'spec_generic' => $rawData['spek_kompetensi_generik'] ?? '',
+            
+            // Visual & Signature
+            'org_chart' => $orgChart,
+            'reports_to_name_sig' => $rawData['melapor'] ?? '',
+            'incumbent_name_sig' => $rawData['pemangku'] ?? '',
+        ];
     }
 }

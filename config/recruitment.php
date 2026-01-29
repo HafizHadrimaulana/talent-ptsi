@@ -16,7 +16,13 @@ return [
 'UJ'=>['code'=>'UJ','label'=>'Ujian','mode'=>'uj','requires_applicant'=>true,'requires_existing_contract'=>false,'document_type'=>'UJ'],
 'BIODATA'=>['code'=>'BIODATA','label'=>'Biodata','mode'=>'bio','requires_applicant'=>true,'requires_existing_contract'=>false,'document_type'=>'BD'],
 ],
-'employment_types'=>['Kontrak Organik'=>'Kontrak Organik','Kontrak-Project Based'=>'Kontrak-Project Based'],
+'employment_types'=>[
+    'Kontrak Organik'=>'Kontrak Organik',
+    'Kontrak-Project Based'=>'Kontrak-Project Based',
+    'Kontrak-MPS'=>'Kontrak-MPS',
+    'Kontrak-Tenaga Ahli'=>'Kontrak-Tenaga Ahli',
+    'Kontrak-On Call'=>'Kontrak-On Call'
+],
 'numbering'=>[
 'default_head_code'=>'XX',
 'doc_codes'=>['SPK'=>'SPK','PKWT_BARU'=>'PERJ','PKWT_PERPANJANGAN'=>'PERJ','PB_PENGAKHIRAN'=>'PB','UJ'=>'UJ','BIODATA'=>'BD'],
@@ -40,7 +46,7 @@ return [
 'UJ'=>['margin_cm'=>['top'=>3.5, 'right' => 2.0, 'bottom' => 2.7, 'left' => 2.0]],
 'BIODATA' => ['margin_cm' => ['top' => 3.5, 'right' => 2.0, 'bottom' => 2.8, 'left' => 2.0]],
 ],
-'font'=>['family'=>'Tahoma','size_pt'=>11,'title_size_pt'=>14,'line_height'=>1.15,'paragraph_after_pt'=>3,'regular_file'=>'app/fonts/tahoma.ttf','bold_file'=>'app/fonts/tahomabd.ttf'],
+'font'=>['family'=>'Tahoma','size_pt'=>11,'title_size_pt'=>14,'line_height'=>1.15,'paragraph_after_pt'=>3,'regular_file'=>'fonts/tahoma.ttf','bold_file'=>'fonts/tahomabd.ttf'],
 'dompdf'=>['dpi'=>96,'isRemoteEnabled'=>true,'isHtml5ParserEnabled'=>true],
 ],
 ];

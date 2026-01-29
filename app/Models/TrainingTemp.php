@@ -12,7 +12,6 @@ class TrainingTemp extends Model
     protected $table = 'training_temp';
 
     protected $fillable = [
-        'jenis_pelatihan',
         'nik',
         'nama_peserta',
         'status_pegawai',
@@ -25,6 +24,7 @@ class TrainingTemp extends Model
         'biaya_pelatihan',
         'nama_proyek',
         'jenis_portofolio',
+        'jenis_pelatihan',
         'fungsi',
         'alasan',
         'start_date',

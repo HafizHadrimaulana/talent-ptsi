@@ -85,20 +85,6 @@ class TrainingManagementController extends Controller
                 ],
             ],
 
-            'DBS Unit' => [
-                'tabs' => ['approval-training-data'],
-                'default_tab' => 'approval-training-data',
-
-                'tab_configs' => [
-
-                   'approval-training-data' => [
-                        'tables' => [
-                            'approval-data-training-table',
-                        ],
-                    ]
-                ],
-            ],
-
             'AVP' => [
                 'tabs' => ['training-peserta'],
                 'default_tab' => 'training-peserta',
@@ -425,7 +411,7 @@ class TrainingManagementController extends Controller
             $data = [];
             $fields = [
                 'judul_sertifikasi', 'penyelenggara', 'jumlah_jam', 
-                'waktu_pelaksanaan', 'nama_proyek', 'jenis_portofolio', 'fungsi'
+                'waktu_pelaksanaan', 'nama_proyek', 'jenis_portofolio', 'jenis_pelatihan', 'fungsi'
             ];
 
             // Field biasa (string)
@@ -484,7 +470,7 @@ class TrainingManagementController extends Controller
             }
 
             $unitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             if (!$unitId) {
                 return response()->json([
@@ -525,6 +511,7 @@ class TrainingManagementController extends Controller
                     "biaya_pelatihan" => $item->biaya_pelatihan ?? 0,
                     "nama_proyek" => $item->nama_proyek ?? "-",
                     "jenis_portofolio" => $item->jenis_portofolio ?? "-",
+                    "jenis_pelatihan" => $item->jenis_pelatihan ?? "-",
                     "fungsi" => $item->fungsi ?? "-",
                     "status_training_reference" => $item->status_training_reference,
                     "created_at" => optional($item->created_at)?->format('Y-m-d H:i:s'),
@@ -561,7 +548,7 @@ class TrainingManagementController extends Controller
             $roles  = $user->getRoleNames()->toArray();
 
             $employeeUnitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             if (!$employeeUnitId && in_array('SDM Unit', $roles)) {
                 return response()->json([
@@ -577,20 +564,28 @@ class TrainingManagementController extends Controller
                     'trainingReference:id,judul_sertifikasi,biaya_pelatihan',
                     'employee:id,unit_id,person_id,employee_id',
                     'employee.person:id,full_name',
+                    'approvals' => function ($q) {
+                        $q->with('user:id,name')
+                        ->orderBy('created_at', 'asc');
+                    }
                 ])
                 ->orderByDesc('id');
 
             if (in_array('SDM Unit', $roles)) {
-
                 $query->whereHas('employee', function ($q) use ($employeeUnitId) {
                     $q->where('unit_id', $employeeUnitId);
                 });
 
             } elseif ($unitId) {
-
                 $query->whereHas('employee', function ($q) use ($unitId) {
                     $q->where('unit_id', $unitId);
                 });
+            } else {
+                $query->whereIn('status_approval_training', [
+                    'in_review_gmvp',
+                    'in_review_avpdhc',
+                    'in_review_vpdhc',
+                ]);
             }
 
             $data = $query->paginate($perPage);
@@ -610,7 +605,18 @@ class TrainingManagementController extends Controller
                     'realisasi_biaya_pelatihan'=> $item->realisasi_biaya_pelatihan ?? 0,
                     'lampiran_penawaran'       => $item->lampiran_penawaran,
                     'status_approval_training' => $item->status_approval_training,
-                    'actions'                  => null,
+                    'approvals' => $item->approvals->map(fn ($approval) => [
+                        'id'          => $approval->id,
+                        'role'        => $approval->role,
+                        'action'      => $approval->action, // approve | reject | in_review
+                        'from_status' => $approval->from_status,
+                        'to_status'   => $approval->to_status,
+                        'note'        => $approval->note,
+                        'created_at'  => $approval->created_at,
+                        'user'        => [
+                            'name' => $a->user?->name ?? '-',
+                        ],
+                    ]),
                 ];
             });
 
@@ -662,7 +668,7 @@ class TrainingManagementController extends Controller
 
         if ($isSdmUnit) {
             $unitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             if (!$unitId) {
                 return response()->json([
@@ -692,6 +698,7 @@ class TrainingManagementController extends Controller
                 'biaya_pelatihan'       => 'required|numeric',
                 'nama_proyek'           => 'required|string|max:255',
                 'jenis_portofolio'      => 'required|string|max:255',
+                'jenis_pelatihan'      => 'required|string|max:255',
                 'fungsi'                => 'required|string|max:255',
             ]);
 
@@ -703,6 +710,7 @@ class TrainingManagementController extends Controller
                 'waktu_pelaksanaan'           => $request->waktu_pelaksanaan,
                 'nama_proyek'                 => $request->nama_proyek,
                 'jenis_portofolio'            => $request->jenis_portofolio,
+                'jenis_pelatihan'             => $request->jenis_pelatihan,
                 'fungsi'                      => $request->fungsi,
                 'biaya_pelatihan'             => $request->biaya_pelatihan,
                 'status_training_reference'   => $statusTrainingReference,

@@ -19,52 +19,57 @@
   $canDelete = $isSuper || $user->can('users.delete');
 @endphp
 
-<div class="u-card u-card--glass u-hover-lift u-mb-xl"
+@if(session('ok'))
+    <div class="u-card u-p-md u-mb-lg u-success u-flex u-gap-md u-items-start">
+        <div class="u-text-success u-text-xl"><i class="fas fa-check-circle"></i></div>
+        <div>
+            <div class="u-font-semibold u-mb-xs">Success!</div>
+            <p class="u-text-sm">{{ session('ok') }}</p>
+        </div>
+    </div>
+@endif
+
+@if($errors->any())
+    <div class="u-card u-p-md u-mb-lg u-error u-flex u-gap-md u-items-start">
+        <div class="u-text-danger u-text-xl"><i class="fas fa-exclamation-triangle"></i></div>
+        <div>
+            <div class="u-font-semibold u-mb-xs">Action Failed</div>
+            <ul class="u-text-sm u-ml-md" style="list-style-type: disc;">
+                @foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach
+            </ul>
+        </div>
+    </div>
+@endif
+
+<div class="u-card u-card--glass u-p-0 u-overflow-hidden u-mb-xl"
      data-store-url="{{ route('admin.users.store') }}"
      data-update-url-base="{{ url('/admin/settings/access/users') }}">
-  
-  <div class="u-flex u-items-center u-justify-between u-mb-md u-stack-mobile">
-    <div>
-        <h2 class="u-title">User Management</h2>
-        <p class="u-text-sm u-muted">Directory & Access Control</p>
-    </div>
-    <div class="u-flex u-items-center u-gap-sm u-stack-mobile">
+    <div class="u-p-lg u-border-b u-flex u-justify-between u-items-center u-stack-mobile u-gap-md u-bg-surface">
+        <div>
+            <h2 class="u-title u-text-lg">User Management</h2>
+            <p class="u-text-sm u-muted u-mt-xs">Directory & Access Control</p>
+        </div>
         @if($canCreate)
-            <button type="button" class="u-btn u-btn--brand" onclick="window.openCreateModal()">
-                <i class="fas fa-plus u-mr-xs"></i> Add User
-            </button>
+        <button type="button" class="u-btn u-btn--brand u-shadow-sm u-hover-lift" onclick="window.openCreateModal()" style="border-radius: 999px;">
+            <i class="fas fa-plus"></i> <span>Add User</span>
+        </button>
         @endif
     </div>
-  </div>
-
-  @if(session('ok'))
-    <div class="u-card u-mb-md u-success">
-      <div class="u-flex u-items-center u-gap-sm"><i class='fas fa-check-circle u-success-icon'></i><span>{{ session('ok') }}</span></div>
+    <div class="dt-wrapper">
+        <div class="u-scroll-x">
+            <table id="users-table" class="u-table nowrap" style="width:100%; margin: 0 !important; border: none;">
+                <thead>
+                    <tr>
+                        <th data-priority="1">Identity</th>
+                        <th data-priority="3">Job / Unit</th>
+                        <th data-priority="4">Status</th>
+                        <th class="cell-actions" width="120" data-priority="2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
     </div>
-  @endif
-
-  @if($errors->any())
-    <div class="u-card u-mb-md u-error">
-      <div class="u-flex u-items-center u-gap-sm u-mb-sm"><i class='fas fa-exclamation-circle u-error-icon'></i><span class="u-font-semibold">Action failed</span></div>
-      <ul class="u-list">@foreach($errors->all() as $e)<li class="u-item">{{ $e }}</li>@endforeach</ul>
-    </div>
-  @endif
-
-  <div class="dt-wrapper">
-      <div class="u-scroll-x">
-        <table id="users-table" class="u-table nowrap" style="width:100%">
-          <thead>
-            <tr>
-              <th data-priority="1">Identity</th>
-              <th data-priority="3">Job / Unit</th>
-              <th data-priority="4">Status</th>
-              <th class="cell-actions" width="120" data-priority="2">Actions</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-  </div>
 </div>
 
 <div id="empModal" class="u-modal" hidden>
@@ -350,6 +355,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Auto-responsive: adjust table on window resize
+    let resizeTimer;
+    const handleResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (usersTable && usersTable.columns) {
+                usersTable.columns.adjust();
+                if (usersTable.responsive) usersTable.responsive.recalc();
+            }
+        }, 150);
+    };
+    window.addEventListener('resize', handleResize);
+
     const shell = document.querySelector('.u-card[data-store-url]');
     const STORE_URL = shell?.dataset.storeUrl || '';
     const UPDATE_BASE = shell?.dataset.updateUrlBase || '';
@@ -412,27 +430,97 @@ document.addEventListener('DOMContentLoaded', function () {
         window.openModal('#editModal');
     };
 
+    // Intercept form submit for AJAX + SweetAlert2
+    const editForm = document.getElementById('editForm');
+    if (editForm) {
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = editForm.querySelector('#submitEdit');
+            const isUpdate = editForm.querySelector('input[name="_method"]').value === 'PUT';
+            
+            // Disable form
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Menyimpan...';
+            editForm.style.pointerEvents = 'none';
+            
+            try {
+                const formData = new FormData(editForm);
+                
+                // Collect selected roles
+                const roleInputs = editForm.querySelectorAll('#rolesChecklist input:checked');
+                roleInputs.forEach((input, idx) => {
+                    formData.append(`roles[${idx}]`, input.value);
+                });
+                
+                const response = await fetch(editForm.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json().catch(() => ({}));
+                
+                if (response.ok) {
+                    showSuccess(
+                        isUpdate ? 'User berhasil diupdate' : 'User berhasil dibuat',
+                        'Berhasil'
+                    );
+                    window.closeModal('#editModal');
+                    editForm.reset();
+                    // DT reload - no page refresh
+                    usersTable.ajax.reload(null, false);
+                } else {
+                    throw new Error(result.message || 'Gagal menyimpan user');
+                }
+            } catch (err) {
+                showError(
+                    err.message || 'Terjadi kesalahan saat menyimpan user',
+                    'Gagal'
+                );
+            } finally {
+                // Re-enable form
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save';
+                editForm.style.pointerEvents = '';
+            }
+        });
+    }
+
     window.deleteUser = function(id) {
-        if(!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
-        fetch(`${UPDATE_BASE}/${id}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({_method: 'DELETE'})
-        })
-        .then(res => {
-            if(!res.ok) throw new Error(res.statusText);
-            return res.json();
-        })
-        .then(() => {
-            usersTable.ajax.reload(null, false);
-            alert('User deleted successfully');
-        })
-        .catch(err => {
-            alert('Failed to delete user: ' + err.message);
+        showDeleteConfirm(
+            'User account akan dihapus permanen',
+            'Hapus User?'
+        ).then((result) => {
+            if (!result.isConfirmed) return;
+            
+            // Show loading toast
+            showLoading('Menghapus user...');
+            
+            fetch(`${UPDATE_BASE}/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({_method: 'DELETE'})
+            })
+            .then(res => {
+                if(!res.ok) throw new Error(res.statusText);
+                return res.json();
+            })
+            .then(() => {
+                showSuccess('User berhasil dihapus', 'Berhasil');
+                // DT reload - no page refresh
+                usersTable.ajax.reload(null, false);
+            })
+            .catch(err => {
+                showError('Gagal menghapus user: ' + err.message, 'Gagal');
+            });
         });
     };
 
@@ -470,7 +558,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div style="${rowStyle}"><span style="${lblStyle}">Company</span><span style="${valStyle}">${d.company_name||'—'}</span></div>
         `;
         const lists = ['brevet-list', 'job-list', 'task-list', 'asg-list', 'edu-list', 'train-list', 'doc-list'];
-        lists.forEach(id => document.getElementById(id).innerHTML = '<div class="u-p-md u-text-center u-muted"><i class="bx bx-loader-alt bx-spin"></i> Loading...</div>');
+        lists.forEach(id => document.getElementById(id).innerHTML = '<div class="u-p-md u-text-center u-muted u-flex u-flex-col u-items-center u-gap-sm"><div class="u-dt-liquid-spinner" style="width: 40px; height: 40px;"><div class="drop"></div><div class="drop"></div><div class="drop"></div></div><div class="u-text-xs">Memuat data...</div></div>');
         const firstTab = document.querySelector('#detailModalTabs .u-tab');
         if(firstTab) window.switchDetailTab('ov', firstTab);
         window.openModal('#empModal');

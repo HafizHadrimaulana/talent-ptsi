@@ -91,9 +91,17 @@
                         </button>
                         @endif
 
-                        <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
-                            <i class="fas fa-users"></i> Ikatan Dinas
-                        </button>
+                        @if (strtolower($item->trainingReference?->jenis_pelatihan ?? '') ==='expertise development program')
+                            @if($item->is_ikatan_dinas_filled == 0)
+                                <button type="button" class="u-btn u-btn--xs u-btn--outline btn-detail-ikatan-dinas" data-id="{{ $item->id }}">
+                                    <i class="fas fa-users"></i> Ikatan Dinas
+                                </button>
+                            @else
+                                <a href="{{ route('training.ikatan-dinas.download', $item->id) }}" class="u-btn u-btn--xs u-btn--success">
+                                    <i class="fas fa-download"></i> Download Dokumen Ikatan Dinas
+                                </a>
+                            @endif
+                        @endif
                     </td>
                 </tr>
                 @empty
@@ -113,6 +121,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const $modal = $('#form-evaluasi-modal');
@@ -217,10 +226,14 @@
                         if (response.status === 'success') {
                             fillIkatanDinasModal($modalIkatanDinas, response);
 
-                            if($modalIkatanDinas.find('input[name="training_request_id"]').length === 0) {
-                                $form.append(`<input type="hidden" name="training_request_id" value="${trainingId}">`);
-                            } else {
-                                $modalIkatanDinas.find('input[name="training_request_id"]').val(trainingId);
+                            // training_request_id
+                            $form.find('input[name="training_request_id"]').remove();
+                            $form.append(`<input type="hidden" name="training_request_id" value="${trainingId}">`);
+
+                            // training_document_id (kalau sudah ada)
+                            if (response.training_document_id) {
+                                $form.find('input[name="training_document_id"]').remove();
+                                $form.append(`<input type="hidden" name="training_document_id" value="${response.training_document_id}">`);
                             }
                         }
                     },
@@ -255,16 +268,11 @@
                             $(this).addClass('hidden');
                             
                             const $modalSignature = $('#signature-ikatan-dinas-modal');
+
                             // Set ID ke modal signature
-                            $modalSignature.find('input[name="training_request_id"]').val(response.training_id);
-                            if($modalSignature.find('input[name="document_id"]').length === 0) {
-                                $modalSignature.append(`<input type="hidden" name="document_id" value="${response.document_id}">`);
-                            } else {
-                                $modalSignature.find('input[name="document_id"]').val(response.document_id);
-                            }
+                            $('#signature-training-document-id').val(response.training_document_id);
+
                             $modalSignature.removeClass('hidden').fadeIn(200);
-                            console.log('kirim trainingId', response.training_id);
-                            console.log('kirim documentId', response.document_id);
                         });
                     }
                 },
@@ -281,20 +289,18 @@
             const $modalIkatanDinas = $('#form-ikatan-dinas-modal');
             
             // Ambil ID dari input hidden di modal signature
-            const documentId = $modalSignature.find('input[name="document_id"]').val();
-            
-            console.log('documentId', documentId);
+            const trainingDocumentId = $('#signature-training-document-id').val();
             
             if (confirm('Batal tanda tangan? Data dokumen yang baru dibuat akan dihapus.')) {
                 
                 // Jalankan Fungsi Hapus Data di Backend
-                if (documentId) {
+                if (trainingDocumentId) {
                     $.ajax({
                         url: "/training/training-request/delete-dokumen-ikdin",
                         method: "POST",
                         data: {
                             _token: $('meta[name="csrf-token"]').attr('content'),
-                            document_id: documentId,
+                            training_document_id: trainingDocumentId,
                         },
                         success: function(response) {
                             console.log("Dokumen sementara berhasil dihapus.");
@@ -320,11 +326,10 @@
         });
 
         $(document).on('click', '#btn-preview-ikatan-dinas', function () {
-            console.log('clicked');
             const $btn = $(this);
-            const documentId = $('#signature-document-id').val();
+            const trainingDocumentId = $('#signature-training-document-id').val();
 
-            if (!documentId) {
+            if (!trainingDocumentId) {
                 alert('Dokumen belum tersedia untuk dipratinjau.');
                 return;
             }
@@ -332,7 +337,7 @@
             $btn.prop('disabled', true)
                 .html('<i class="fas fa-spinner fa-spin"></i> Membuka...');
 
-            const previewUrl = `/training/training-request/${documentId}/preview-ikatan-dinas`;
+            const previewUrl = `/training/training-request/${trainingDocumentId}/preview-ikatan-dinas`;
 
             window.open(previewUrl, '_blank');
 
@@ -342,6 +347,224 @@
             }, 800);
         });
         /// END IKATAN DINAS ///
+
+        ///////////////////////////////////
+        /// SIGN CAMERA, LOCATION, SIGN ///
+        ///////////////////////////////////
+        let stream = null;
+        let capturedPhoto = null;
+        let userLocation = null;
+        let signaturePad = null;
+
+        const modal = document.getElementById('signature-ikatan-dinas-modal');
+        const video = document.getElementById('cameraStream');
+        const snapshotPreview = document.getElementById('snapshotPreview');
+        const btnCapture = document.getElementById('btnCapture');
+        const btnRetake = document.getElementById('btnRetake');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+
+        const locationText = document.getElementById('location-text');
+        const locationDetail = document.getElementById('location-detail');
+
+        const signCanvas = document.getElementById('signCanvas');
+
+        const btnPreview = document.getElementById('btn-preview-ikatan-dinas');
+        const btnSubmit = document.getElementById('signature-ikatan-dinas-form');
+        /* =========================
+        * INIT KAMERA
+        * ========================= */
+        async function initCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                cameraPlaceholder.style.display = 'none';
+            } catch (err) {
+                cameraPlaceholder.innerText = 'Gagal mengakses kamera';
+            }
+        }
+        /* =========================
+        * CAPTURE FOTO
+        * ========================= */
+        btnCapture.addEventListener('click', function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+
+            capturedPhoto = canvas.toDataURL('image/jpeg');
+
+            snapshotPreview.src = capturedPhoto;
+            snapshotPreview.style.display = 'block';
+            video.style.display = 'none';
+
+            btnCapture.classList.add('is-hidden');
+            btnRetake.classList.remove('is-hidden');
+        });
+
+        /* =========================
+        * RETAKE FOTO
+        * ========================= */
+        btnRetake.addEventListener('click', function () {
+            capturedPhoto = null;
+            snapshotPreview.style.display = 'none';
+            video.style.display = 'block';
+
+            btnCapture.classList.remove('is-hidden');
+            btnRetake.classList.add('is-hidden');
+        });
+
+        /* =========================
+        * INIT LOCATION
+        * ========================= */
+        function getLocation() {
+            locationText.innerText = 'Mendeteksi lokasi...';
+            locationDetail.innerText = 'Menunggu izin akses GPS';
+
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    userLocation = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy
+                    };
+
+                    locationText.innerText = 'Lokasi berhasil diperoleh';
+                    locationDetail.innerText = `Lat ${userLocation.lat}, Lng ${userLocation.lng}`;
+                },
+                function () {
+                    locationText.innerText = 'Gagal mendapatkan lokasi';
+                    locationDetail.innerText = 'Pastikan GPS aktif';
+                }
+            );
+        }
+
+        document.getElementById('btnGetLocation').addEventListener('click', getLocation);
+
+        /* =========================
+        * SIGNATURE PAD
+        * ========================= */
+        function initSignature() {
+            signCanvas.width = signCanvas.offsetWidth;
+            signCanvas.height = 220;
+
+            signaturePad = new SignaturePad(signCanvas);
+
+            signCanvas.addEventListener('pointerdown', () => {
+                document.getElementById('sign-text').style.display = 'none';
+            });
+        }
+
+        document.querySelector('.fa-eraser').closest('button')
+            .addEventListener('click', function () {
+                signaturePad.clear();
+                document.getElementById('sign-text').style.display = 'block';
+            });
+
+        /* =========================
+        * SUBMIT SIGNATURE
+        * ========================= */
+        btnSubmit.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const trainingDocumentId = document.getElementById('signature-training-document-id').value;
+            // const documentId = document.getElementById('signature-document-id').value;
+
+            if (!capturedPhoto) {
+                alert('Silakan ambil foto wajah terlebih dahulu');
+                return;
+            }
+
+            if (!userLocation) {
+                alert('Lokasi belum diperoleh');
+                return;
+            }
+
+            if (!signaturePad || signaturePad.isEmpty()) {
+                alert('Tanda tangan belum diisi');
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
+
+            fetch('/training/training-request/sign-ikatan-dinas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    training_document_id: trainingDocumentId,
+                    face_photo: capturedPhoto,
+                    signature: signaturePad.toDataURL(),
+                    latitude: userLocation.lat,
+                    longitude: userLocation.lng,
+                })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    console.log(res);
+                    alert('Dokumen berhasil ditandatangani');
+
+                    // ===== Tutup modal =====
+                    modal.classList.add('hidden');
+
+                    // ===== Reset semua state =====
+                    capturedPhoto = null;
+                    userLocation = null;
+                    signaturePad.clear();
+
+                    snapshotPreview.style.display = 'none';
+                    snapshotPreview.src = '';
+
+                    video.style.display = 'block';
+                    btnCapture.classList.remove('is-hidden');
+                    btnRetake.classList.add('is-hidden');
+
+                    cameraPlaceholder.style.display = 'block';
+
+                    locationText.innerText = '';
+                    locationDetail.innerText = '';
+
+                    // Stop kamera saat modal ditutup
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                        stream = null;
+                    }   
+
+                    location.reload(); 
+                } else {
+                    alert('Gagal menandatangani dokumen');
+                }
+            })
+            .catch(() => alert('Terjadi kesalahan sistem'))
+            .finally(() => {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fas fa-download u-mr-xs"></i> Tanda tangan';
+            });
+        });
+
+        /* =========================
+        * AUTO INIT SAAT MODAL DIBUKA
+        * ========================= */
+        const observer = new MutationObserver(() => {
+            if (!modal.classList.contains('hidden')) {
+                initCamera();
+                getLocation();
+                initSignature();
+            }
+        });
+
+        observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+
+        ///////////////////////////////////
+        /// END SIGN CAMERA, LOCATION, SIGN ///
+        ///////////////////////////////////
 
         /////////////////
         /// PARTIALS ///

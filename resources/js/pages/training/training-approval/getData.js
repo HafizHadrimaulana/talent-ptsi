@@ -1,9 +1,6 @@
 import { getJSON } from "@/utils/fetch";
 import { initDataTables } from "../../../plugins/datatables";
-import {
-    executeApprove,
-    executeApproveReference,
-} from "./handler/approveHandler";
+import { executeApprove, executeApproveReference } from "./handler/approveHandler";
 import { executeReject, executeRejectPengajuan } from "./handler/rejectHandler";
 
 const TABLE_CONFIGS = {
@@ -21,6 +18,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -43,6 +41,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -72,7 +71,8 @@ const TABLE_CONFIGS = {
     "pengajuan-training-peserta-table": {
         tableId: "pengajuan-training-peserta-table",
         modalId: "#training-peserta-modal",
-        apiEndpoint: (unitId) => `/training/training-management/${unitId}/get-pengajuan-training-peserta`,
+        apiEndpoint: (unitId) =>
+            `/training/training-management/${unitId}/get-pengajuan-training-peserta`,
         columns: [
             "no",
             "judul_sertifikasi",
@@ -102,6 +102,7 @@ const TABLE_CONFIGS = {
             "biaya_pelatihan",
             "nama_proyek",
             "jenis_portofolio",
+            "jenis_pelatihan",
             "fungsi",
             "status_training_reference",
             "actions",
@@ -171,14 +172,33 @@ const initModalSystem = () => {
 
             const row = dt.row($btn.parents("tr"));
             const rowData = row.data();
+            console.log("row data aa", rowData);
 
             const $modal = $(config.modalId);
 
-            console.log("row data aaa", rowData);
+            $modal.attr("data-table-id", tableId);
 
             if ($modal.length && rowData) {
                 toggleEditMode($modal, false);
                 populateModalData($modal, rowData);
+                if (rowData.status_training_reference === "cancelled") {
+                    $modal.find("#btn-toggle-edit").addClass("hidden");
+                    $modal.find("#btn-submit-action").addClass("hidden");
+
+                    $modal
+                        .find(".edit-indicator")
+                        .text("Data tidak aktif (Read Only)")
+                        .addClass("text-red-600");
+                } else {
+                    $modal.find("#btn-toggle-edit").removeClass("hidden");
+                    $modal.find("#btn-submit-action").removeClass("hidden");
+
+                    $modal
+                        .find(".edit-indicator")
+                        .text("Pratinjau Data")
+                        .removeClass("text-red-600");
+                }
+
                 $modal.removeClass("hidden").show();
             }
         });
@@ -191,6 +211,12 @@ const initModalSystem = () => {
 
     $body.on("click", "#btn-submit-action", function () {
         const $modal = $(this).closest(".u-modal");
+
+        if (isCancelled($modal)) {
+            Swal.fire("Info", "Data sudah tidak aktif", "info");
+            return;
+        }
+
         const isEditMode = $modal.hasClass("is-editing-active");
         const id = $modal.attr("data-current-id");
 
@@ -200,7 +226,7 @@ const initModalSystem = () => {
             handleUpdateAction(id, formData, $modal);
         } else {
             // LOGIKA HAPUS (EX: Approve/Decline lama anda)
-            handleDeleteAction(id);
+            handleDeleteAction(id, $modal);
         }
     });
 
@@ -220,7 +246,7 @@ const initModalSystem = () => {
         const note = $modal.find("#catatan").val();
 
         const reloadTable = () => {
-            const tableId = $modal.find(".btn-trigger-modal")?.data("table");
+            const tableId = $modal.attr("data-table-id");
 
             if (tableId) {
                 DataTableManager.reload(tableId);
@@ -242,7 +268,7 @@ const initModalSystem = () => {
         const note = $modal.find("#catatan").val();
 
         const reloadTable = () => {
-            const tableId = $modal.find(".btn-trigger-modal")?.data("table");
+            const tableId = $modal.attr("data-table-id");
 
             if (tableId) {
                 DataTableManager.reload(tableId);
@@ -260,6 +286,7 @@ const initModalSystem = () => {
 const populateModalData = ($modal, data) => {
     // Mapping ID Modal (Opsional: untuk logika spesifik berdasarkan modal)
     $modal.attr("data-current-id", data.id);
+    $modal.attr("data-status", data.status_training_reference);
     $modal.find("#edit-id").val(data.id);
 
     // Informasi Dasar (Menggunakan selector lama & baru agar kompatibel)
@@ -285,8 +312,12 @@ const populateModalData = ($modal, data) => {
     $modal
         .find(".detail-waktu_pelaksanaan")
         .text(data.waktu_pelaksanaan || "-");
-    $modal.find(".detail-tanggal_mulai").text(data.tanggal_mulai || "-");
-    $modal.find(".detail-tanggal_berakhir").text(data.tanggal_berakhir || "-");
+    $modal
+        .find(".detail-tanggal_mulai")
+        .text(formatDate(data.tanggal_mulai) || "-");
+    $modal
+        .find(".detail-tanggal_berakhir")
+        .text(formatDate(data.tanggal_berakhir) || "-");
 
     // Proyek & Fungsi
     $modal
@@ -296,6 +327,9 @@ const populateModalData = ($modal, data) => {
     $modal
         .find(".detail-portofolio, .detail-jenis_portofolio")
         .text(data.jenis_portofolio || "-");
+    $modal
+        .find(".detail-jenis_pelatihan, .detail-jenis_pelatihan")
+        .text(data.jenis_pelatihan || "-");
 
     // Informasi Biaya
     $modal
@@ -318,13 +352,21 @@ const populateModalData = ($modal, data) => {
         $modal.find(".section-peserta").hide();
     }
 
-    // Handle Lampiran (Khusus untuk Training Request)
     if (data.lampiran_penawaran) {
+        const filename = data.lampiran_penawaran;
+        const extension = filename.split(".").pop().toLowerCase();
+        const viewUrl = `/training/training-request/${filename}`;
+
+        let icon = "fa-file-alt"; // default
+        if (extension === "pdf") icon = "fa-file-pdf text-red-500";
+        else if (["jpg", "jpeg", "png"].includes(extension))
+            icon = "fa-file-image text-blue-500";
+
         $modal.find(".detail-lampiran_penawaran").html(`
-            <a href="${data.lampiran_penawaran}" target="_blank" class="u-btn u-btn--sm u-btn--light">
-                <i class="fas fa-download u-mr-xs"></i> Lihat Lampiran
-            </a>
-        `);
+        <a href="${viewUrl}" target="_blank" class="u-btn u-btn--sm u-btn--light border u-hover-lift">
+            <i class="fas ${icon} u-mr-xs"></i> Lihat Lampiran (${extension.toUpperCase()})
+        </a>
+    `);
     } else {
         $modal
             .find(".detail-lampiran_penawaran")
@@ -335,18 +377,15 @@ const populateModalData = ($modal, data) => {
 };
 
 const toggleEditMode = ($modal, isEditing) => {
+    if (isCancelled($modal)) {
+        return;
+    }
+
     if (isEditing) {
         $modal.addClass("is-editing-active");
         $modal.find(".view-mode").addClass("hidden");
         $modal.find(".edit-mode").removeClass("hidden");
 
-        // Sync data dari view ke input
-        // $modal
-        //     .find('input[name="judul_sertifikasi"]')
-        //     .val($modal.find(".judul_sertifikasi").text().trim());
-        // $modal
-        //     .find('input[name="unit"]')
-        //     .val($modal.find(".detail-unit").text().trim());
         $modal
             .find('input[name="penyelenggara"]')
             .val($modal.find(".detail-penyelenggara").text().trim());
@@ -362,9 +401,13 @@ const toggleEditMode = ($modal, isEditing) => {
         $modal
             .find('input[name="fungsi"]')
             .val($modal.find(".detail-fungsi").text().trim());
-        $modal
-            .find('input[name="jenis_portofolio"]')
-            .val($modal.find(".detail-jenis_portofolio").text().trim());
+
+        const jenisPortofolio = $modal.find(".detail-jenis_portofolio").text().trim();
+        $modal.find('select[name="jenis_portofolio"]').val(jenisPortofolio);
+
+        const jenisPelatihan = $modal.find(".detail-jenis_pelatihan").text().trim();
+        $modal.find('select[name="jenis_pelatihan"]').val(jenisPelatihan);
+
         $modal.find('input[name="biaya_pelatihan"]').val(
             $modal
                 .find(".detail-biaya_pelatihan")
@@ -521,50 +564,143 @@ const handleUpdateAction = (id, formData, $modal) => {
     });
 };
 
-const renderApprovalTimeline = (approvals) => {
+const renderApprovalTimeline = (approvals = []) => {
     const $container = $("#approval-timeline-container");
     $container.empty();
 
-    if (!approvals?.length) {
-        $container.append(
-            '<div class="u-text-center u-py-md u-muted u-text-xs italic">Belum ada riwayat.</div>',
-        );
+    if (!approvals.length) {
+        $container.append(`
+            <div class="u-text-center u-py-md u-muted u-text-xs italic">
+                Belum ada riwayat
+            </div>
+        `);
         return;
     }
 
     approvals.forEach((item) => {
-        const isApprove = item.action === "approve";
-        const colorClass = isApprove ? "text-green-600" : "text-red-600";
-        const bgClass = isApprove ? "bg-green-50" : "bg-red-50";
+        const status = item.to_status || item.action || "-";
+        const approverName = item.user_name ?? "System";
 
-        // Format tanggal sederhana (bisa disesuaikan)
+        const isApprove = status === "approved";
+        const isReject = status === "rejected";
+
+        const colorClass = isApprove
+            ? "text-green-600"
+            : isReject
+              ? "text-red-600"
+              : "text-sky-600";
+
+        const dotColor = isApprove
+            ? "#16a34a"
+            : isReject
+              ? "#dc2626"
+              : "#0284c7";
+
         const date = item.created_at
             ? new Date(item.created_at).toLocaleString("id-ID", {
                   day: "2-digit",
                   month: "short",
+                  year: "numeric",
                   hour: "2-digit",
                   minute: "2-digit",
               })
             : "-";
 
         $container.append(`
-            <div class="u-mb-md u-pl-md border-l-2 border-gray-200 u-relative">
-                <div class="u-absolute" style="left: -7px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; border: 2px solid ${
-                    isApprove ? "#10b981" : "#ef4444"
-                }"></div>
+            <div class="u-mb-md u-pl-md u-relative border-l-2 border-gray-200">
+                <span class="u-absolute"
+                    style="
+                        left:-7px;
+                        top:4px;
+                        width:12px;
+                        height:12px;
+                        border-radius:50%;
+                        background:#fff;
+                        border:2px solid ${dotColor};
+                    ">
+                </span>
+
                 <div class="u-flex u-justify-between">
-                    <span class="u-text-xs u-font-bold u-uppercase text-gray-800">${
-                        item.role
-                    }</span>
+                    <span class="u-text-xs u-font-semibold ${colorClass}">
+                        ${approverName} (${item.role})
+                    </span>
                     <span class="u-text-xs u-muted">${date}</span>
                 </div>
-                <div class="u-mt-xs u-p-xs u-rounded ${bgClass} border border-gray-100">
-                    <p class="u-text-xs italic text-gray-600">"${
-                        item.note || "Tanpa catatan"
-                    }"</p>
+
+                <div class="u-text-xs u-mt-[2px]">
+                    Ke Status:
+                    <span class="u-font-semibold ${colorClass}">
+                        ${status.replace(/_/g, " ")}
+                    </span>
                 </div>
+
+                ${
+                    item.note
+                        ? `<div class="u-text-xs italic text-gray-600 u-mt-[2px]">
+                            “${item.note}”
+                           </div>`
+                        : ""
+                }
             </div>
         `);
+    });
+};
+
+const handleDeleteAction = (id, $modal) => {
+    console.log("handleDeleteAction", id);
+
+    Swal.fire({
+        title: "Yakin ingin menghapus?",
+        text: "Data yang dihapus akan dinonaktifkan.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Ya, hapus",
+        cancelButtonText: "Batal",
+        reverseButtons: true,
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        $.ajax({
+            url: `/training/training-request/${id}/delete-lna`,
+            method: "POST",
+            data: {
+                _method: "DELETE",
+                _token: $('meta[name="csrf-token"]').attr("content"),
+            },
+            beforeSend: () => {
+                Swal.fire({
+                    title: "Menghapus...",
+                    text: "Mohon tunggu",
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                });
+            },
+            success: (res) => {
+                $modal.fadeOut(200, function () {
+                    $(this).addClass("hidden").hide();
+                });
+
+                Swal.fire("Berhasil", res.message, "success");
+
+                // Reload table
+                if ($.fn.DataTable.isDataTable(".dataTable")) {
+                    $(".dataTable").DataTable().ajax.reload(null, false);
+                }
+            },
+            error: (xhr) => {
+                const status = xhr.status;
+                const message =
+                    xhr.responseJSON?.message || "Terjadi kesalahan sistem";
+
+                if (status === 409) {
+                    Swal.fire("Perhatian", message, "warning");
+                } else if (status === 404) {
+                    Swal.fire("Tidak ditemukan", message, "error");
+                } else {
+                    Swal.fire("Gagal", message, "error");
+                }
+            },
+        });
     });
 };
 
@@ -584,6 +720,8 @@ const formatDate = (d) =>
           })
         : "-";
 
+const isCancelled = ($modal) => $modal.attr("data-status") === "cancelled";
+
 const renderStatusBadge = (status) => {
     const STATUS_MAP = {
         approved: {
@@ -595,7 +733,19 @@ const renderStatusBadge = (status) => {
             class: "bg-red-100 text-red-700 border border-red-200",
         },
         in_review_gmvp: {
-            label: "In Review",
+            label: "In Review GM/VP",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_dhc: {
+            label: "In Review DHC",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_avpdhc: {
+            label: "In Review AVP DHC",
+            class: "bg-sky-100 text-sky-700 border border-sky-200",
+        },
+        in_review_vpdhc: {
+            label: "In Review VP DHC",
             class: "bg-sky-100 text-sky-700 border border-sky-200",
         },
         active: {
@@ -605,6 +755,10 @@ const renderStatusBadge = (status) => {
         pending: {
             label: "Pending",
             class: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+        },
+        cancelled: {
+            label: "Cancelled",
+            class: "bg-slate-100 text-slate-600 border border-slate-200",
         },
     };
 

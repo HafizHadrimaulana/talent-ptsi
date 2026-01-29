@@ -81,9 +81,24 @@
                                 <input type="text" name="fungsi" class="edit-mode u-input hidden w-full">
                             </div>
                             <div class="u-space-y-xs">
-                              <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Portofolio</label>
-                              <div class="view-mode u-font-semibold detail-jenis_portofolio text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
-                              <input type="text" name="jenis_portofolio" class="edit-mode u-input hidden w-full">
+                                <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Portofolio</label>
+                                <div class="view-mode u-font-semibold detail-jenis_portofolio text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                                <select name="jenis_portofolio" class="edit-mode u-input u-font-semibold" required>
+                                    <option value="" disabled selected>Pilih jenis portofolio</option>
+                                    <option value="kompetensi portofolio">Kompetensi Portofolio</option>
+                                    <option value="kompetensi non portofolio">Kompetensi Non Portofolio</option>
+                                </select>
+                            </div>
+                            <div class="u-space-y-xs">
+                                <label class="u-text-xs u-muted u-uppercase font-semibold">Jenis Pelatihan</label>
+                                <div class="view-mode u-font-semibold detail-jenis_pelatihan text-slate-700 u-p-xs u-bg-gray-50 u-rounded-sm">-</div>
+                                <select name="jenis_pelatihan" class="edit-mode u-input u-font-semibold" required>
+                                    <option value="" disabled selected>Pilih jenis pelatihan</option>
+                                    <option value="Expertise Development Program">Expertise Development Program</option>
+                                    <option value="Leadership Development Program">Leadership Development Program</option>
+                                    <option value="Service Knowledge Program">Service Knowledge Program</option>
+                                    <option value="Business Recommendation Program">Business Recommendation Program</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -125,7 +140,7 @@
 
         {{-- Modal Footer --}}
         <div class="u-modal__foot u-flex u-justify-between u-items-center">
-            <div class="u-muted u-text-sm">Status: <span class="detail-status_training_reference">Active</span></div>
+            <div class="u-muted u-text-sm">Tekan <kbd>Esc</kbd> untuk menutup</div>
             <div class="u-flex u-gap-sm">
                 {{-- Tombol Sekunder (Bisa Edit / Batal) --}}
                 <button type="button" id="btn-toggle-edit" class="u-btn u-btn--outline u-btn--danger">

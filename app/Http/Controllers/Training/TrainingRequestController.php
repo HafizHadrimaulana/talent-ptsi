@@ -13,8 +13,11 @@ use App\Models\User;
 use App\Models\TrainingEvaluationQuestion;
 use App\Models\TrainingEvaluationAnswer;
 use App\Models\TrainingDocument;
+use App\Models\Document;
+
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -85,8 +88,12 @@ class TrainingRequestController extends Controller
             'start_date' => $item->start_date,
             'end_date' => $item->end_date,
             'status_approval_training' => $item->status_approval_training,
-            'approvals' => $item->approvals, // Jika ingin menampilkan timeline
-            // ... tambahkan field lain yang dibutuhkan modal evaluasi
+            
+            'can_ikatan_dinas' =>
+                strtolower($item->trainingReference?->jenis_pelatihan ?? '') ===
+                strtolower('Expertise Development Program'),
+
+            'approvals' => $item->approvals,
         ];
 
         Log::info('questions', ['questions' => $questions]);
@@ -173,7 +180,7 @@ class TrainingRequestController extends Controller
                 'biaya' => (int) $request->biaya_pelatihan,
             ];
 
-            $document = TrainingDocument::updateOrCreate(
+            $trainingDocument = TrainingDocument::updateOrCreate(
                 [
                     'training_request_id' => $training->id,
                     'template_code'       => 'IKATAN_DINAS',
@@ -182,13 +189,39 @@ class TrainingRequestController extends Controller
                 ],
             );
 
+            /* ===============================
+            * CREATE DOCUMENT REGISTRY (ONCE)
+            * =============================== */
+            // if (!$trainingDocument->document_id) {
+
+            //     $document = Document::create([
+            //         'person_id'    => $training->person_id ?? null,
+            //         'employee_id'  => $request->nik,
+            //         'doc_type'     => 'IKATAN_DINAS',
+            //         'title'        => 'Surat Ikatan Dinas',
+            //         'storage_disk' => 'public',
+            //         'path'         => 'draft/ikatan-dinas-' . $training->id . '.pdf',
+            //         'mime'         => 'application/pdf',
+            //         'meta' => [
+            //             'training_request_id' => $training->id,
+            //             'template_code'       => 'IKATAN_DINAS',
+            //             'status'              => 'draft',
+            //         ],
+            //         'source_system' => 'IKATAN_DINAS',
+            //     ]);
+            // }
+
             DB::commit();
+
+            Log::info('trainingDocument id', ['training_document_id' => $trainingDocument->id]);
+            // Log::info('dokumen id', ['dokumen_id' => $document->id]);
 
             return response()->json([
                 'status'      => 'success',
                 'message'     => 'Dokumen Ikatan Dinas berhasil disimpan.',
                 'training_id' => $training->id,
-                'document_id' => $document->id,
+                'training_document_id' => $trainingDocument->id,
+                // 'document_id' => $document->id,
             ]);
 
         } catch (\Exception $e) {
@@ -206,12 +239,17 @@ class TrainingRequestController extends Controller
     {
         Log::info('Proses Delete Dokumen Ikdin:', $request->all());
 
+        $request->validate([
+            'training_document_id' => 'required|integer',
+            'document_id'          => 'required|integer',
+        ]);
+
         try {
             DB::beginTransaction();
 
-            $document = TrainingDocument::find($request->document_id);
+            $trainingDocument = TrainingDocument::find($request->training_document_id);
 
-            if (!$document) {
+            if (!$trainingDocument) {
                 return response()->json([
                     'status'  => 'info',
                     'message' => 'Dokumen sudah tidak ditemukan.'
@@ -219,25 +257,35 @@ class TrainingRequestController extends Controller
             }
 
             // OPTIONAL: Cegah hapus jika sudah signed
-            if ($document->status === 'signed') {
+            if ($trainingDocument->status === 'signed') {
                 return response()->json([
                     'status'  => 'warning',
                     'message' => 'Dokumen sudah ditandatangani dan tidak dapat dihapus.'
                 ], 422);
             }
 
-            // Hapus file draft jika ada
-            if ($document->draft_path && Storage::disk('public')->exists($document->draft_path)) {
-                Storage::disk('public')->delete($document->draft_path);
+            if ($trainingDocument->draft_path && Storage::disk('public')->exists($trainingDocument->draft_path)) {
+                Storage::disk('public')->delete($trainingDocument->draft_path);
             }
 
-            // (Opsional) hapus signed file kalau memang kebijakan mengizinkan
-            if ($document->signed_path && Storage::disk('public')->exists($document->signed_path)) {
-                Storage::disk('public')->delete($document->signed_path);
+            if ($trainingDocument->signed_path && Storage::disk('public')->exists($trainingDocument->signed_path)) {
+                Storage::disk('public')->delete($trainingDocument->signed_path);
             }
+
+            // $document = Document::find($request->document_id);
+
+            // if ($document) {
+            //     if (
+            //         $document->path &&
+            //         Storage::disk($document->storage_disk)->exists($document->path)
+            //     ) {
+            //         Storage::disk($document->storage_disk)->delete($document->path);
+            //     }
+            //     $document->delete();
+            // }
 
             // Hapus record database
-            $document->delete();
+            $trainingDocument->delete();
 
             DB::commit();
 
@@ -257,11 +305,12 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function previewDokumenIkdin(TrainingDocument $document)
+    public function previewDokumenIkdin(TrainingDocument $trainingDocument)
     {
-        abort_if($document->template_code !== 'IKATAN_DINAS', 404);
+        Log::info('Proses Preview Dokumen Ikdin:', $trainingDocument->toArray());
+        abort_if($trainingDocument->template_code !== 'IKATAN_DINAS', 404);
 
-        $rawPayload = $document->payload;
+        $rawPayload = $trainingDocument->payload;
         abort_if(empty($rawPayload), 404, 'Payload dokumen tidak tersedia');
 
         Carbon::setLocale('id');
@@ -304,7 +353,7 @@ class TrainingRequestController extends Controller
             ],
         ];
 
-        Log::info('Preview dokumen ikatan dinas', ['payload' => $payload]);
+        Log::info('Preview ikatan dinas', ['payload' => $payload]);
 
         $path = public_path('templates/template-bg-surat.jpg');
         abort_if(!file_exists($path), 404, 'Template background tidak ditemukan');
@@ -313,11 +362,16 @@ class TrainingRequestController extends Controller
         $data = file_get_contents($path);
         $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
 
+        Log::info('TrainingDocument Preview', [
+            'id' => $trainingDocument->id,
+            'table' => $trainingDocument->getTable(),
+        ]);
+
         $pdf = Pdf::loadView(
             'training.training-management.pdf.ikatan-dinas',
             [
                 'payload'  => $payload,
-                'document' => $document,
+                'document' => $trainingDocument,
                 'bg_image' => $base64,
             ]
         )
@@ -326,6 +380,185 @@ class TrainingRequestController extends Controller
         ->setOption('isRemoteEnabled', true);
 
         return $pdf->stream('ikatan-dinas-preview.pdf');
+    }
+
+    public function signDokumenIkdin(Request $request)
+    {
+        Log::info('Proses Sign Dokumen Ikdin', [
+            'training_document_id' => $request->training_document_id,
+            'has_signature'        => $request->filled('signature'),
+            'has_face_photo'       => $request->filled('face_photo'),
+            'latitude'             => $request->latitude,
+            'longitude'            => $request->longitude,
+        ]);
+
+        $validated = $request->validate([
+            'training_document_id' => 'required|exists:training_documents,id',
+            'face_photo'           => 'required|string',
+            'signature'            => 'required|string',
+            'latitude'             => 'required',
+            'longitude'            => 'required',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $trainingDocument = TrainingDocument::with('trainingRequest')->findOrFail($validated['training_document_id']);
+
+            abort_if($trainingDocument->template_code !== 'IKATAN_DINAS', 404, 'Template tidak valid');
+            abort_if($trainingDocument->status !== 'draft', 422, 'Dokumen sudah ditandatangani');
+            abort_if(empty($trainingDocument->payload), 422, 'Payload dokumen kosong');
+
+            Log::info('Proses Dokumen Ikdin', [
+                'training_document_id' => $trainingDocument->id,
+            ]);
+
+            // ==============================
+            // SIMPAN FOTO 
+            // ==============================
+            $facePath = $this->storeBase64Image($validated['face_photo'], 'faces/ikdin');
+            $signaturePath = $this->storeBase64Image($validated['signature'], 'signatures/ikdin');
+                
+            Log::info('File tersimpan', [
+                'face path' => $facePath,
+                'signature path' => $signaturePath,
+            ]);
+
+            // ==============================
+            // GENERATE PDF
+            // ==============================
+            $rawPayload = $trainingDocument->payload;
+            Carbon::setLocale('id');
+            $today = Carbon::now();
+
+            $startDate = data_get($rawPayload, 'program.start_date');
+            $endDate   = data_get($rawPayload, 'program.end_date');
+
+            $formattedTrainingDate = '-';
+            if ($startDate && $endDate) {
+                $formattedTrainingDate =
+                    Carbon::parse($startDate)->translatedFormat('d F Y')
+                    . ' s/d ' .
+                    Carbon::parse($endDate)->translatedFormat('d F Y');
+            }
+
+            $payload = [
+                'tanggal_surat' => [
+                    'hari'    => $today->translatedFormat('l'),
+                    'tanggal' => $today->translatedFormat('d'),
+                    'bulan'   => $today->translatedFormat('F'),
+                    'tahun'   => $today->translatedFormat('Y'),
+                    'full'    => $today->translatedFormat('l, d F Y'),
+                ],
+
+                'employee' => data_get($rawPayload, 'employee'),
+
+                'training' => [
+                    'judul'         => data_get($rawPayload, 'program.nama', '-'),
+                    'jenis_program' => [
+                        'formal'      => (bool) data_get($rawPayload, 'program.jenis.formal', false),
+                        'sertifikasi' => (bool) data_get($rawPayload, 'program.jenis.sertifikasi', false),
+                        'label'       => strtoupper(data_get($rawPayload, 'program.jenis.value', '-')),
+                    ],
+                    'tanggal'       => $formattedTrainingDate,
+                    'tempat'        => data_get($rawPayload, 'program.tempat', '-'),
+                    'biaya'         => data_get($rawPayload, 'biaya', 0),
+                ],
+            ];
+
+            $bgPath = public_path('templates/template-bg-surat.jpg');
+            abort_if(!file_exists($bgPath), 404, 'Template background tidak ditemukan');
+            $type = pathinfo($bgPath, PATHINFO_EXTENSION);
+            $data = file_get_contents($bgPath);
+            $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+
+            $signatureFullPath = storage_path('app/public/' . $signaturePath);
+            $signatureBase64 = 'data:image/' . pathinfo($signatureFullPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($signatureFullPath));
+
+            $pdf = Pdf::loadView(
+                'training.training-management.pdf.ikatan-dinas',
+                [
+                    'payload'   => $payload,
+                    'signed_at' => now(),
+                    'location'  => [
+                        'lat' => $validated['latitude'],
+                        'lng' => $validated['longitude'],
+                    ],
+                    'bg_image'  => $base64,
+                    'signature_base64' => $signatureBase64,
+                ]
+            )
+            ->setPaper('A4')
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('isRemoteEnabled', true);
+
+            $signedPdfPath = 'signed/ikatan-dinas/ikdin_' . $trainingDocument->id . '.pdf';
+            Storage::disk('public')->put($signedPdfPath, $pdf->output());
+
+            Log::info('PDF final berhasil disimpan', ['pdf_path' => $signedPdfPath]);
+
+            // =========================
+            // UPDATE TRAINING DOCUMENT
+            // =========================
+            $trainingDocument->update([
+                'status'                => 'signed',
+                'signed_at'             => now(),
+                'signed_face_path'      => $facePath,
+                'signed_signature_path' => $signaturePath,
+                'signed_location'       => [
+                    'lat' => $validated['latitude'],
+                    'lng' => $validated['longitude'],
+                ],
+                'signed_path'           => $signedPdfPath,
+                'signed_by'             => auth()->id() ?? null
+            ]);
+
+            if ($trainingDocument->trainingRequest) {
+                $trainingDocument->trainingRequest->update([
+                    'is_ikatan_dinas_filled' => true,
+                    'signed_document_path' => $signedPdfPath,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'      => 'success',
+                'message'     => 'Dokumen Ikatan Dinas berhasil ditandatangani',
+                'pdf_path'    => $signedPdfPath,
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Gagal sign dokumen ikdin', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan saat proses tanda tangan',
+            ], 500);
+        }
+    }
+
+    public function downloadSignedIkdin($id)
+    {
+        Log::info('Proses download signed ikdin', ['id' => $id]);
+
+        $trainingRequest = TrainingRequest::findOrFail($id);
+
+        // Gunakan kolom yang benar
+        $filePath = $trainingRequest->signed_document_path;
+
+        Log::info('file_path', ['file_path' => $filePath]);
+
+        // Cek apakah filePath ada dan bukan null
+        if (!$filePath || !Storage::disk('public')->exists($filePath)) {
+            return redirect()->back()->with('error', 'File tidak ditemukan di path: ' . ($filePath ?? 'NULL'));
+        }
+
+        return Storage::disk('public')->download($filePath);
     }
 
     public function submitEvaluasiTraining(Request $request)
@@ -449,6 +682,7 @@ class TrainingRequestController extends Controller
                         "biaya_pelatihan"   => $item->biaya_pelatihan ?? 0,
                         "nama_proyek"       => $item->nama_proyek ?? "-",
                         "jenis_portofolio"  => $item->jenis_portofolio ?? "-",
+                        "jenis_pelatihan"   => $item->jenis_pelatihan ?? "-",
                         "fungsi"            => $item->fungsi ?? "-",
                         "status_training_reference" => $item->status_training_reference,
                         "created_at"        => $item->created_at ? $item->created_at->format('Y-m-d H:i:s') : null,
@@ -485,7 +719,7 @@ class TrainingRequestController extends Controller
             $roles = $user->getRoleNames()->toArray();
 
             $unitId = optional($user->employee)->unit_id
-                ?? optional($user->person)->unit_id;
+                ?? optional($user->person)->unit_id ?? $user->unit_id;
 
             Log::info('getApprovalPengajuanTraining', [
                 'user_id' => $user->id,
@@ -519,6 +753,7 @@ class TrainingRequestController extends Controller
                     'biaya_pelatihan'   => $item->biaya_pelatihan ?? 0,
                     'nama_proyek'       => $item->nama_proyek ?? '-',
                     'jenis_portofolio'  => $item->jenis_portofolio ?? '-',
+                    'jenis_pelatihan'   => $item->jenis_pelatihan ?? '-',
                     'fungsi'            => $item->fungsi ?? '-',
                     'status_training_reference' => $item->status_training_reference,
                     'created_at'        => optional($item->created_at)
@@ -550,7 +785,6 @@ class TrainingRequestController extends Controller
         }
     }
 
-
     public function getDataTrainingReferences($unitId)
     {
         try {
@@ -577,6 +811,7 @@ class TrainingRequestController extends Controller
                     'penyelenggara',
                     'jumlah_jam',
                     'jenis_portofolio',
+                    'jenis_pelatihan',
                     'fungsi',
                     'waktu_pelaksanaan',
                     'nama_proyek',
@@ -771,11 +1006,11 @@ class TrainingRequestController extends Controller
                 ]);
 
             $isDHC         = $user->hasRole('DHC');
-            $isAVP         = $user->hasRole('AVP');
+            $isAVPDHC      = $user->hasRole('AVP') && $this->isHumanCapital($user);
             $isKepalaUnit  = $user->hasRole('Kepala Unit');
             $isHumanCapital = $this->isHumanCapital($user);
 
-            $canSeeAllUnit = $isDHC || (($isAVP || $isKepalaUnit) && $isHumanCapital);
+            $canSeeAllUnit = $isDHC || (($isAVPDHC || $isKepalaUnit) && $isHumanCapital);
 
             if (!$canSeeAllUnit) {
                 $query->whereHas('employee', function ($q) use ($userUnitId) {
@@ -808,8 +1043,11 @@ class TrainingRequestController extends Controller
             elseif ($isDHC) {
                 $query->where('status_approval_training', 'in_review_dhc');
             }
-            elseif ($isAVP && $isHumanCapital) {
+            elseif ($isAVPDHC && $isHumanCapital) {
                 $query->where('status_approval_training', 'in_review_avpdhc');
+            }
+            elseif ($user->hasRole('AVP') && !$isHumanCapital) {
+                $query->where('status_approval_training', 'in_review_gmvp');
             }
             elseif ($isKepalaUnit && !$isHumanCapital) {
                 $query->where('status_approval_training', 'in_review_gmvp');
@@ -818,7 +1056,7 @@ class TrainingRequestController extends Controller
             if (!empty($allowedStatuses)) {
                 $query->whereIn('status_approval_training', $allowedStatuses);
             }
-
+                
             /**
              * ==================================================
              * FETCH DATA
@@ -844,15 +1082,6 @@ class TrainingRequestController extends Controller
                     'status_approval_training' => $item->status_approval_training,
                 ];
             });
-
-            Log::info('Training Request Fetch OK', [
-                'role'              => $roles,
-                'user_unit_id'      => $userUnitId,
-                'can_see_all_unit'  => $canSeeAllUnit,
-                'filtered_unit_id' => $unitId,
-                'allowed_statuses' => $allowedStatuses,
-                'total'            => $trainingRequest->total(),
-            ]);
 
             return response()->json([
                 'status' => 'success',
@@ -902,7 +1131,7 @@ class TrainingRequestController extends Controller
         }
     }
 
-    public function destroyLna($id)
+    public function deleteLna($id)
     {
         $item = TrainingReference::find($id);
 
@@ -959,7 +1188,75 @@ class TrainingRequestController extends Controller
         ], 200);
     }
 
+    public function viewDocument($filename)
+    {
+        $path = 'lampiran_penawaran/' . $filename;
+
+        if (!Storage::disk('public')->exists($path)) {
+            abort(404, 'File tidak ditemukan.');
+        }
+
+        $file = Storage::disk('public')->get($path);
+        
+        $mimeType = Storage::disk('public')->mimeType($path);
+
+        return response($file, 200)->header('Content-Type', $mimeType);
+    }
+
     // HELPER FUNCTION
+
+    private function storeBase64Image(string $base64, string $folder): string
+    {
+        if (!preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+            throw new \Exception('Format base64 tidak valid');
+        }
+
+        $data = substr($base64, strpos($base64, ',') + 1);
+        $extension = strtolower($type[1]);
+
+        Storage::disk('public')->makeDirectory($folder);
+
+        $filename = $folder . '/' . Str::uuid() . '.' . $extension;
+
+        Storage::disk('public')->put(
+            $filename,
+            base64_decode($data),
+            'public'
+        );
+
+        if (!Storage::disk('public')->exists($filename)) {
+            throw new \Exception('Gagal menyimpan file ke storage');
+        }
+
+        return $filename;
+    }
+
+    private function generateSignedIkdinPdf(TrainingDocument $trainingDocument): string
+    {
+        $payload = $trainingDocument->payload;
+        $meta    = $trainingDocument->meta;
+
+        $signatureUrl = Storage::disk('public')->url(
+            data_get($meta, 'signature_path')
+        );
+
+        $pdf = Pdf::loadView(
+            'training.training-management.pdf.ikatan-dinas-signed',
+            [
+                'payload'       => $payload,
+                'signature_url' => $signatureUrl,
+                'signed_at'     => $trainingDocument->signed_at,
+                'location'      => data_get($meta, 'location'),
+            ]
+        )->setPaper('A4');
+
+        $path = 'documents/ikatan-dinas/' . Str::uuid() . '.pdf';
+
+        Storage::disk('public')->put($path, $pdf->output());
+
+        return $path;
+    }
+
     private function cleanRupiah($value)
     {
         if (!$value) return 0;

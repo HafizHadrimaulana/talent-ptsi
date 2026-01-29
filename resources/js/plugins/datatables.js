@@ -92,7 +92,32 @@ export const initDataTables = (selector, opts = {}) => {
         processing ? wrapper.addClass('is-loading') : wrapper.removeClass('is-loading');
     });
 
+    // Auto-adjust on window resize (responsive real-time)
+    let resizeTimer;
+    const handleResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (dt && dt.columns) {
+                dt.columns.adjust();
+                if (dt.responsive) dt.responsive.recalc();
+            }
+        }, 150);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Store cleanup function
+    dt._cleanup = () => {
+        window.removeEventListener('resize', handleResize);
+    };
+
     return dt;
+};
+
+// Reload table without page refresh
+export const reloadTable = (tableSelector) => {
+    if ($.fn.DataTable.isDataTable(tableSelector)) {
+        $(tableSelector).DataTable().ajax.reload(null, false);
+    }
 };
 
 export const bindExternalSearch = ({ searchSelector, tableSelector, delay = 400 }) => {

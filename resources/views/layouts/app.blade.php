@@ -14,15 +14,11 @@
   @vite([
     'resources/css/app.css', 
     'resources/css/app-layout.css', 
-    'resources/css/app-ui.css', 
+    'resources/css/app-ui.css',
+    'resources/css/alert.css',
     'resources/js/app-layout.js', 
     'resources/js/app.js'
   ])
-  <style>
-    div:where(.swal2-container) {
-      z-index: 99999 !important;
-    }
-  </style>
 </head>
 @php
   $user = auth()->user();
@@ -386,15 +382,32 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
   (function () {
-    window.iosSwal = Swal.mixin({
-      background:'rgba(255,255,255,0.35)', backdrop:'rgba(15,23,42,.35)', color:'#0f172a',
-      confirmButtonColor:'#2563eb', cancelButtonColor:'#94a3b8',
-      customClass:{popup:'ios-glass', title:'font-semibold', confirmButton:'u-btn u-btn--brand rounded-xl', cancelButton:'u-btn u-btn--ghost rounded-xl'}
-    });
-    const toastBase={toast:true,position:'top-end',showConfirmButton:false,timer:2200,timerProgressBar:true,customClass:{popup:'swal2-toast ios-glass'}};
-    window.toastOk=(t='Berhasil',x='')=>Swal.fire({...toastBase,icon:'success',title:t,text:x});
-    window.toastErr=(t='Gagal',x='')=>Swal.fire({...toastBase,icon:'error',title:t,text:x});
-    const meta=document.querySelector('meta[name="swal"]'); if(meta){try{const p=JSON.parse(meta.getAttribute('content')||'{}'); if(p&&typeof p==='object') window.iosSwal.fire(p);}catch(e){}}
+    // Flash message handler - uses global alert.js functions
+    const meta=document.querySelector('meta[name="swal"]');
+    if(meta){
+      try{
+        const content = meta.getAttribute('content') || '{}';
+        const p = JSON.parse(content);
+        if(p && typeof p === 'object' && Object.keys(p).length > 0){
+          // Wait for global showAlert to be available
+          const showFlash = () => {
+            if(typeof window.showAlert === 'function'){
+              window.showAlert(p);
+              meta.remove(); // Remove meta after showing
+            }
+          };
+          
+          if(typeof window.showAlert === 'function'){
+            showFlash();
+          }else{
+            window.addEventListener('load', showFlash);
+          }
+        }
+      }catch(e){
+        console.error('Flash message parse error:', e.message);
+        meta.remove(); // Remove problematic meta
+      }
+    }
 
     window.__openModal=function(id){const m=typeof id==='string'?document.getElementById(id):id;if(!m)return;m.hidden=false;document.body.classList.add('modal-open');const f=m.querySelector('input,button,select,textarea,[tabindex]:not([tabindex="-1"])');f&&f.focus();};
     window.__closeModal=function(id){const m=typeof id==='string'?document.getElementById(id):id;if(!m)return;m.hidden=true;document.body.classList.remove('modal-open');const f=m.querySelector('form');if(f)f.reset();};

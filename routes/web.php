@@ -49,11 +49,10 @@ Route::middleware('web')->group(function () {
 
         Route::prefix('training')->name('training.')->group(function () {
 
-            Route::get('dashboard', [TrainingDashboardController::class, 'index'])
-                ->middleware('permission:training.dashboard.view')->name('dashboard');
-
-            Route::get('dashboard/{unit_id}/get-detail-anggaran', [TrainingDashboardController::class, 'getDetailAnggaran'])
-                ->name('dashboard.get-detail-anggaran');
+            Route::middleware('permission:training.dashboard.view')->group(function () {
+                Route::get('dashboard', [TrainingDashboardController::class, 'index'])->name('dashboard');
+                Route::get('dashboard/{unit_id}/get-detail-anggaran', [TrainingDashboardController::class, 'getDetailAnggaran'])->name('dashboard.get-detail-anggaran');
+            });
 
             Route::middleware('permission:training.view')->group(function () {
                 Route::get('training-request', [TrainingRequestController::class, 'index'])->name('training-request');
@@ -64,7 +63,8 @@ Route::middleware('web')->group(function () {
                 Route::get('training-request/detail-training-ikdin/{id}', [TrainingRequestController::class, 'getDetailTrainingIkdin'])->name('training-request.detail-training-ikdin');
                 Route::post('training-request/update-dokumen-ikdin', [TrainingRequestController::class, 'updateDokumenIkdin'])->name('training-request.update-dokumen-ikdin');
                 Route::post('training-request/delete-dokumen-ikdin', [TrainingRequestController::class, 'deleteDokumenIkdin'])->name('training-request.delete-dokumen-ikdin');
-                Route::get('training-request/{document}/preview-ikatan-dinas', [TrainingRequestController::class, 'previewDokumenIkdin'])->name('training-request.preview-dokumen-ikdin');
+                Route::get('training-request/{trainingDocument}/preview-ikatan-dinas', [TrainingRequestController::class, 'previewDokumenIkdin'])->name('training-request.preview-dokumen-ikdin');
+                Route::post('training-request/sign-ikatan-dinas', [TrainingRequestController::class, 'signDokumenIkdin'])->name('training-request.sign-dokumen-ikdin');
 
                 Route::get('training-request/get-data-lna', [TrainingRequestController::class, 'getDataLna'])->name('training-request.get-data-lna');
                 Route::get('training-request/get-data-units', [TrainingRequestController::class, 'getDataUnits'])->name('training-request.get-data-units');
@@ -73,13 +73,13 @@ Route::middleware('web')->group(function () {
                 Route::get('training-request/{id}/get-employee-by-unit', [TrainingRequestController::class, 'getEmployeeByUnit'])->name('training-request.get-employee-by-unit');
                 Route::get('training-request/get-training-request-list', [TrainingRequestController::class, 'getTrainingRequestList'])->name('training-request.get-training-request-list');
 
-                Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'destroyLna'])->name('training-request.delete-lna');
+                Route::delete('training-request/{id}/delete-lna', [TrainingRequestController::class, 'deleteLna'])->name('training-request.delete-lna');
                 Route::delete('training-request/{id}/delete-training-request', [TrainingRequestController::class, 'destroyTrainingRequest'])->name('training-request.delete-training-request');
                 Route::post('training-request/input-training-request', [TrainingRequestController::class, 'inputTrainingRequest'])->name('training-request.input-training-request');
                 Route::post('training-request/{id}/approve-training-request', [TrainingRequestController::class, 'approveTrainingRequest'])->name('training-request.approve-training-request');
                 Route::post('training-request/{id}/reject-training-request', [TrainingRequestController::class, 'rejectTrainingRequest'])->name('training-request.reject-training-request');
-                Route::post('training-request/{id}/edit-data-lna', [TrainingManagementController::class, 'editDataLna'])->name('training-request.update-data-lna');
-                Route::post('training-request/input-lna', [TrainingManagementController::class, 'inputLna'])->name('training-request.input-lna');
+                Route::get('/training-request/lampiran_penawaran/{filename}', [TrainingRequestController::class, 'viewDocument'])->name('training.view-document');
+                Route::get('/training-request/download-ikatan-dinas/{id}', [TrainingRequestController::class, 'downloadSignedIkdin'])->name('ikatan-dinas.download');
             });
 
             Route::middleware('permission:training.management.view')->group(function () {
@@ -93,6 +93,8 @@ Route::middleware('web')->group(function () {
                     ->name('training-management.get-data-pengajuan-lna');
                 Route::get('training-management/{unitId}/get-pengajuan-training-peserta', [TrainingManagementController::class, 'getPengajuanTrainingPeserta'])
                     ->name('training-management.get-pengajuan-training-peserta');
+                Route::post('training-request/{id}/edit-data-lna', [TrainingManagementController::class, 'editDataLna'])->name('training-request.update-data-lna');
+                Route::post('training-request/input-lna', [TrainingManagementController::class, 'inputLna'])->name('training-request.input-lna');
             });
 
             Route::get('self-learning', fn() => view('training.self-learning.index'))
@@ -105,7 +107,16 @@ Route::middleware('web')->group(function () {
         Route::prefix('recruitment')->name('recruitment.')->group(function () {
 
             Route::get('contracts', [ContractController::class, 'index'])->middleware('permission:contract.view')->name('contracts.index');
-            Route::get('contracts/{contract}', [ContractController::class, 'show'])->middleware('permission:contract.view')->name('contracts.show');
+            Route::get('contracts/api/recruitment-requests', [ContractController::class, 'getRecruitmentRequests'])->middleware('permission:contract.create')->name('contracts.api.recruitment-requests');
+            Route::get('contracts/api/recruitment-requests/{recruitmentRequestId}/detail', [ContractController::class, 'getRecruitmentDetail'])->middleware('permission:contract.create')->name('contracts.api.recruitment-detail');
+            Route::get('contracts/api/recruitment-requests/{recruitmentRequestId}/applicants', [ContractController::class, 'getApplicantsFromRequest'])->middleware('permission:contract.create')->name('contracts.api.recruitment-applicants');
+            Route::get('contracts/api/persons/{personId}', [ContractController::class, 'getPersonData'])->middleware('permission:contract.create')->name('contracts.api.person-data');
+            
+            // SECURITY: Rate limit sensitive endpoints to prevent data scraping
+            Route::get('contracts/{contract}', [ContractController::class, 'show'])
+                ->middleware(['permission:contract.view', 'throttle:60,1'])
+                ->name('contracts.show');
+            
             Route::delete('contracts/{contract}', [ContractController::class, 'destroy'])->middleware('permission:contract.delete')->name('contracts.destroy');
             Route::get('contracts/{contract}/document', [ContractController::class, 'document'])
                 ->middleware('permission:contract.view')
@@ -140,7 +151,11 @@ Route::middleware('web')->group(function () {
             });
 
             Route::post('/project/store', [RecruitmentApprovalController::class, 'storeProject'])->middleware('permission:recruitment.create')->name('project.store');
+            
+            // Uraian Jabatan Routes
             Route::post('/uraian-jabatan/preview-pdf', [RecruitmentApprovalController::class, 'previewUraianPdf'])->name('uraian-jabatan.preview-pdf');
+            Route::post('/uraian-jabatan/{id}/save', [RecruitmentApprovalController::class, 'saveUraian'])->name('uraian-jabatan.save');
+            Route::get('/uraian-jabatan/{id}/load', [RecruitmentApprovalController::class, 'loadUraian'])->name('uraian-jabatan.load');
 
             Route::get('principal-approval', [RecruitmentApprovalController::class, 'index'])->middleware('permission:recruitment.view')->name('principal-approval.index');
             Route::post('principal-approval', [RecruitmentApprovalController::class, 'store'])->middleware('permission:recruitment.update')->name('principal-approval.store');

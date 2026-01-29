@@ -3,6 +3,7 @@
         type="button"
         class="u-btn u-btn--brand u-hover-lift"
         data-modal-target="lna-pengajuan-modal"
+        data-table-id="pengajuan-data-lna-table"
     >
         Ajukan LNA Baru
     </button>
@@ -21,6 +22,7 @@
             <th>Biaya Pelatihan</th>
             <th>Nama Proyek</th>
             <th>Jenis Portofolio</th>
+            <th>Jenis Pelatihan</th>
             <th>Fungsi</th>
             <th>Status</th>
             <th class="cell-actions">Aksi</th>
@@ -35,5 +37,5 @@
 <script>
     window.currentUserRoles = @json(Auth::user()->getRoleNames());
     window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
-    window.currentUnitName = "{{ optional(Auth::user()->employee->unit)->nama_unit ?? '' }}";
+    window.currentUnitName = "{{ optional(Auth::user()->unit)->name ?? Auth::user()->employee?->unit?->nama_unit ?? '' }}";
 </script>

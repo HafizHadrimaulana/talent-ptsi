@@ -21,5 +21,7 @@
 
 <script>
     window.currentUserRole = "{{ Auth::user()->getRoleNames()->first() }}";
-    window.currentUnitId = "{{ optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+    window.currentUnitId = "{{ Auth::user()->unit_id ?? optional(Auth::user()->employee)->unit_id ?? optional(Auth::user()->person)->unit_id ?? '' }}";
+
+    console.log("Role terdeteksi:", window.currentUserRole);
 </script>
